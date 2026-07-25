@@ -76,9 +76,15 @@ ObjectAnalysisStatistic/
 │   └── test_data.xlsx
 ├── src/
 │   └── ObjectAnalyzer/                 # 主项目
-│       ├── Program.cs                  # 入口 & 命令行参数 & 报告输出
+│       ├── Program.cs                  # 入口 & 命令行参数定义
+│       ├── AnalysisRunner.cs           # 分析流程编排
+│       ├── ObjectAnalyzer.cs           # 核心分析逻辑
 │       ├── FileParsers.cs              # 多格式文件解析器
-│       └── ObjectAnalyzer.cs           # 核心分析逻辑 & 数据模型
+│       ├── ConsoleReporter.cs          # 控制台报告输出
+│       ├── ReportExporter.cs           # JSON 报告导出
+│       ├── AnalysisResult.cs           # 分析结果数据模型
+│       ├── FieldStatistic.cs           # 字段统计数据模型
+│       └── DuplicateObjectStatistic.cs # 重复对象数据模型
 ├── ObjectAnalyzer.sln                # 解决方案文件
 └── README.md
 ```

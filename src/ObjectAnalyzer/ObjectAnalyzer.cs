@@ -5,34 +5,6 @@ using System.Text.Json;
 
 namespace ObjectAnalyzer;
 
-public class FieldStatistic
-{
-    public string FieldName { get; set; } = "";
-    public int Count { get; set; }
-    public double Coverage { get; set; } // 字段在所有对象中的覆盖率 (0.0 - 1.0)
-    public Dictionary<string, int> TypeCounts { get; set; } = new();
-    public Dictionary<string, int> ValueCounts { get; set; } = new();
-    
-    // 以下为关于默认值的属性
-    public string PrimaryType { get; set; } = "Unknown";
-    public bool NullAppeared { get; set; }
-    public string? DefaultValueRepresentation { get; set; }
-}
-
-public class DuplicateObjectStatistic
-{
-    public string ObjectJson { get; set; } = "";
-    public int Count { get; set; }
-}
-
-public class AnalysisResult
-{
-    public int TotalObjects { get; set; }
-    public int TotalUniqueObjects { get; set; }
-    public List<DuplicateObjectStatistic> DuplicateObjects { get; set; } = new();
-    public List<FieldStatistic> FieldStatistics { get; set; } = new();
-}
-
 public static class ObjectAnalyzer
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
