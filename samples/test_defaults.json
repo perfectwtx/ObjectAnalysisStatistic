@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "name": "张三",
+    "score": 0,
+    "active": false,
+    "grade": null
+  },
+  {
+    "id": 1,
+    "name": "张三",
+    "score": 100,
+    "active": true,
+    "grade": "A"
+  },
+  {
+    "id": 2,
+    "name": "李四",
+    "score": 0,
+    "active": false,
+    "grade": "B"
+  },
+  {
+    "id": 2,
+    "name": "李四",
+    "score": 0,
+    "active": false,
+    "grade": "B"
+  }
+]

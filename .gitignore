@@ -1,0 +1,21 @@
+# .gitignore for .NET
+
+# Build folders
+bin/
+obj/
+
+# Visual Studio / Rider / VS Code cache
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# System files
+.DS_Store
+Thumbs.db
+
+# User specific report outputs (keep samples directory, ignore report files if desired, but we can commit samples/test_data.* for demo, and ignore report_*.json output files)
+samples/report_*.json
+samples/test_data.xlsx
