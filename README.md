@@ -1,4 +1,4 @@
-# ObjectAnalysisStatistic
+# ObjectAnalyzer
 
 对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel 输入，自动统计字段频次、数据类型、值分布及重复对象。
 
@@ -25,7 +25,7 @@ dotnet build
 ## 使用方式
 
 ```bash
-dotnet run --project src/ObjectAnalysisStatistic -- [选项]
+dotnet run --project src/ObjectAnalyzer -- [选项]
 ```
 
 ### 命令行选项
@@ -44,25 +44,25 @@ dotnet run --project src/ObjectAnalysisStatistic -- [选项]
 **分析 JSON 文件并在控制台显示结果：**
 
 ```bash
-dotnet run --project src/ObjectAnalysisStatistic -- -i samples/test_data.json
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json
 ```
 
 **分析 CSV 文件并导出 JSON 报告：**
 
 ```bash
-dotnet run --project src/ObjectAnalysisStatistic -- -i samples/test_data.csv -o report.json
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.csv -o report.json
 ```
 
 **分析 JSONL 文件，不扁平化嵌套结构，最多展示 10 个唯一值：**
 
 ```bash
-dotnet run --project src/ObjectAnalysisStatistic -- -i samples/test_data.jsonl --no-flatten -m 10
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.jsonl --no-flatten -m 10
 ```
 
 **显式指定格式分析 Excel 文件：**
 
 ```bash
-dotnet run --project src/ObjectAnalysisStatistic -- -i samples/test_data.xlsx -f excel
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.xlsx -f excel
 ```
 
 ## 项目结构
@@ -75,11 +75,11 @@ ObjectAnalysisStatistic/
 │   ├── test_data.csv
 │   └── test_data.xlsx
 ├── src/
-│   └── ObjectAnalysisStatistic/      # 主项目
-│       ├── Program.cs                # 入口 & 命令行参数 & 报告输出
-│       ├── FileParsers.cs            # 多格式文件解析器
-│       └── ObjectAnalyzer.cs         # 核心分析逻辑 & 数据模型
-├── ObjectAnalysisStatistic.sln       # 解决方案文件
+│   └── ObjectAnalyzer/                 # 主项目
+│       ├── Program.cs                  # 入口 & 命令行参数 & 报告输出
+│       ├── FileParsers.cs              # 多格式文件解析器
+│       └── ObjectAnalyzer.cs           # 核心分析逻辑 & 数据模型
+├── ObjectAnalyzer.sln                # 解决方案文件
 └── README.md
 ```
 

@@ -4,7 +4,7 @@ using System.IO;
 using System.Text.Json;
 using MiniExcelLibs;
 
-namespace ObjectAnalysisStatistic;
+namespace ObjectAnalyzer;
 
 public static class FileParsers
 {

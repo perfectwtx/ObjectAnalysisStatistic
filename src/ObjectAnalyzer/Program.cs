@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace ObjectAnalysisStatistic;
+namespace ObjectAnalyzer;
 
 class Program
 {

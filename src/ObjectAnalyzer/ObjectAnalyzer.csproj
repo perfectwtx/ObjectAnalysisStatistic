@@ -5,10 +5,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>ObjectAnalysisStatistic</AssemblyName>
-    <RootNamespace>ObjectAnalysisStatistic</RootNamespace>
+    <AssemblyName>ObjectAnalyzer</AssemblyName>
+    <RootNamespace>ObjectAnalyzer</RootNamespace>
     <Version>1.0.0</Version>
-    <Authors>ObjectAnalysisStatistic Contributors</Authors>
+    <Authors>ObjectAnalyzer Contributors</Authors>
     <Description>对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel 输入，自动统计字段频次、数据类型、值分布及重复对象。</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>

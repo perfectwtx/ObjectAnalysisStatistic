@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalysisStatistic", "src\ObjectAnalysisStatistic\ObjectAnalysisStatistic.csproj", "{036EC51E-456F-45BF-8A34-0B80DE3A2E5B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalyzer", "src\ObjectAnalyzer\ObjectAnalyzer.csproj", "{036EC51E-456F-45BF-8A34-0B80DE3A2E5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
