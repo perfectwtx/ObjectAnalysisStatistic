@@ -7,13 +7,20 @@ namespace ObjectAnalyzer;
 
 public static class AnalysisRunner
 {
-    public static void Run(string inputPath, string? outputPath, string? format, bool flatten, int maxValuesToShow)
+    public static void Run(string inputPath, string? outputPath, string? format, bool flatten, int maxValuesToShow, string? typeFile = null, string? typeName = null)
     {
         if (!File.Exists(inputPath))
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"错误: 输入文件不存在: {inputPath}");
             Console.ResetColor();
+            return;
+        }
+
+        // 如果指定了 --type，使用强类型反序列化路径
+        if (!string.IsNullOrEmpty(typeFile))
+        {
+            RunTyped(inputPath, outputPath, flatten, maxValuesToShow, typeFile, typeName);
             return;
         }
 
@@ -61,6 +68,47 @@ public static class AnalysisRunner
             ConsoleReporter.Print(result, maxValuesToShow);
 
             // 如果指定了输出路径，则保存详细报告
+            if (!string.IsNullOrEmpty(outputPath))
+            {
+                ReportExporter.Save(result, outputPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"发生错误: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"内部错误: {ex.InnerException.Message}");
+            }
+            Console.ResetColor();
+        }
+    }
+
+    private static void RunTyped(string inputPath, string? outputPath, bool flatten, int maxValuesToShow, string typeFile, string? typeName)
+    {
+        try
+        {
+            Console.WriteLine($"正在编译类型定义文件: {typeFile} ...");
+            var (assembly, targetType) = TypeLoader.Compile(typeFile, typeName);
+            Console.WriteLine($"编译成功。目标类型: {targetType.FullName}");
+
+            Console.WriteLine($"正在使用强类型反序列化文件: {inputPath} ...");
+            var objectList = TypedFileParser.ParseJson(inputPath, targetType).ToList();
+            Console.WriteLine($"反序列化成功。共加载 {objectList.Count} 个对象。");
+
+            if (objectList.Count == 0)
+            {
+                Console.WriteLine("未找到任何有效对象。分析结束。");
+                return;
+            }
+
+            Console.WriteLine("正在分析对象字段...");
+            AnalysisResult result = ObjectAnalyzer.Analyze(objectList);
+            Console.WriteLine("分析完成！\n");
+
+            ConsoleReporter.Print(result, maxValuesToShow);
+
             if (!string.IsNullOrEmpty(outputPath))
             {
                 ReportExporter.Save(result, outputPath);

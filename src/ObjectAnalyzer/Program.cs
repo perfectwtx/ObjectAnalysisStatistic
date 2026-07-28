@@ -31,6 +31,14 @@ var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
     description: "生成一个 Excel 测试文件 samples/test_data.xlsx 并退出。");
 
+var typeOption = new Option<FileInfo?>(
+    aliases: new[] { "--type", "-t" },
+    description: "指定 .cs 类型定义文件路径，用于强类型反序列化。");
+
+var typeNameOption = new Option<string?>(
+    name: "--type-name",
+    description: "指定目标类名（当 .cs 文件包含多个类时使用）。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -38,8 +46,10 @@ rootCommand.AddOption(formatOption);
 rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
+rootCommand.AddOption(typeOption);
+rootCommand.AddOption(typeNameOption);
 
-rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTestExcel) =>
+rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTestExcel, type, typeName) =>
 {
     if (generateTestExcel)
     {
@@ -56,8 +66,8 @@ rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTes
         return;
     }
 
-    AnalysisRunner.Run(input.FullName, output?.FullName, format, !noFlatten, maxValues);
-}, inputOption, outputOption, formatOption, noFlattenOption, maxValuesOption, generateTestExcelOption);
+    AnalysisRunner.Run(input.FullName, output?.FullName, format, !noFlatten, maxValues, type?.FullName, typeName);
+}, inputOption, outputOption, formatOption, noFlattenOption, maxValuesOption, generateTestExcelOption, typeOption, typeNameOption);
 
 return rootCommand.Invoke(args);
 
