@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Xml.Linq;
 using MiniExcelLibs;
+using YamlDotNet.Serialization;
 
 namespace ObjectAnalyzer;
 
@@ -101,6 +104,113 @@ public static class FileParsers
             }
             yield return dict;
         }
+    }
+
+    /// <summary>
+    /// Parses an XML file. The root element contains multiple child elements,
+    /// each representing an object. Each sub-element is a property.
+    /// Example:
+    /// <root>
+    ///   <item><Id>1</Id><Name>张三</Name></item>
+    ///   <item><Id>2</Id><Name>李四</Name></item>
+    /// </root>
+    /// </summary>
+    public static IEnumerable<Dictionary<string, object?>> ParseXml(string path)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"找不到输入文件: {path}");
+
+        XDocument doc;
+        try
+        {
+            doc = XDocument.Load(path);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException($"解析 XML 文件时出错: {ex.Message}", ex);
+        }
+
+        if (doc.Root == null)
+            throw new InvalidDataException("XML 文件缺少根节点。");
+
+        // 每个子元素代表一个对象
+        foreach (var element in doc.Root.Elements())
+        {
+            yield return ConvertXElement(element);
+        }
+    }
+
+    /// <summary>
+    /// Parses a YAML file containing a list of objects or a single object.
+    /// </summary>
+    public static IEnumerable<Dictionary<string, object?>> ParseYaml(string path)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"找不到输入文件: {path}");
+
+        var deserializer = new DeserializerBuilder().Build();
+        string yamlContent = File.ReadAllText(path);
+        object? result = deserializer.Deserialize(yamlContent);
+
+        if (result is List<object?> list)
+        {
+            foreach (var item in list)
+            {
+                if (item is Dictionary<object, object> dict)
+                {
+                    yield return ConvertYamlDict(dict);
+                }
+            }
+        }
+        else if (result is Dictionary<object, object> singleDict)
+        {
+            yield return ConvertYamlDict(singleDict);
+        }
+        else
+        {
+            throw new InvalidDataException("YAML 根节点必须是对象列表或单个对象。");
+        }
+    }
+
+    private static Dictionary<string, object?> ConvertXElement(XElement element)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var child in element.Elements())
+        {
+            string key = child.Name.LocalName;
+            // 如果子元素还有子元素，递归转换
+            if (child.HasElements)
+            {
+                dict[key] = ConvertXElement(child);
+            }
+            else
+            {
+                dict[key] = child.Value;
+            }
+        }
+        return dict;
+    }
+
+    private static Dictionary<string, object?> ConvertYamlDict(Dictionary<object, object> yamlDict)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var kvp in yamlDict)
+        {
+            string key = kvp.Key?.ToString() ?? "";
+            dict[key] = ConvertYamlValue(kvp.Value);
+        }
+        return dict;
+    }
+
+    private static object? ConvertYamlValue(object? value)
+    {
+        return value switch
+        {
+            null => null,
+            Dictionary<object, object> d => ConvertYamlDict(d),
+            List<object?> list => list.Select(ConvertYamlValue).ToList(),
+            _ => value
+        };
     }
 
     private static Dictionary<string, object?> ParseJsonElement(JsonElement element, bool flatten)

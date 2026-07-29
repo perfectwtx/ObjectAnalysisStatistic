@@ -8,7 +8,7 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var inputOption = new Option<FileInfo?>(
     aliases: new[] { "--input", "-i" },
-    description: "指定输入的 JSON、JSONL、CSV 或 Excel 文件路径。");
+    description: "指定输入的 JSON、JSONL、CSV、Excel、XML 或 YAML 文件路径。");
 
 var outputOption = new Option<FileInfo?>(
     aliases: new[] { "--output", "-o" },
@@ -16,7 +16,7 @@ var outputOption = new Option<FileInfo?>(
 
 var formatOption = new Option<string?>(
     aliases: new[] { "--format", "-f" },
-    description: "显式指定输入文件格式: json, jsonl, csv, excel。");
+    description: "显式指定输入文件格式: json, jsonl, csv, excel, xml, yaml。");
 
 var noFlattenOption = new Option<bool>(
     name: "--no-flatten",

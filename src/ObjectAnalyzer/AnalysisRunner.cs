@@ -34,6 +34,8 @@ public static class AnalysisRunner
                 ".jsonl" or ".ndjson" => "jsonl",
                 ".csv" => "csv",
                 ".xlsx" => "excel",
+                ".xml" => "xml",
+                ".yaml" or ".yml" => "yaml",
                 ".txt" => "jsonl", // 默认文本文件尝试以 JSONL 解析
                 _ => "json" // 默认退回到 json
             };
@@ -48,6 +50,8 @@ public static class AnalysisRunner
                 "json" => FileParsers.ParseJson(inputPath, flatten),
                 "jsonl" => FileParsers.ParseJsonl(inputPath, flatten),
                 "csv" or "excel" => FileParsers.ParseExcelOrCsv(inputPath),
+                "xml" => FileParsers.ParseXml(inputPath),
+                "yaml" => FileParsers.ParseYaml(inputPath),
                 _ => throw new InvalidOperationException($"不支持的文件格式: {format}")
             };
 
