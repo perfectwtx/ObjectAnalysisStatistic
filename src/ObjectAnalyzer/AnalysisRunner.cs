@@ -7,7 +7,7 @@ namespace ObjectAnalyzer;
 
 public static class AnalysisRunner
 {
-    public static void Run(string inputPath, string? outputPath, string? format, bool flatten, int maxValuesToShow, string? typeFile = null, string? typeName = null)
+    public static void Run(string inputPath, string? outputPath, string? format, bool flatten, int maxValuesToShow, string? typeFile = null, string? typeName = null, string? excelJsonColumn = null)
     {
         if (!File.Exists(inputPath))
         {
@@ -52,6 +52,7 @@ public static class AnalysisRunner
                 "csv" or "excel" => FileParsers.ParseExcelOrCsv(inputPath),
                 "xml" => FileParsers.ParseXml(inputPath),
                 "yaml" => FileParsers.ParseYaml(inputPath),
+                "excel-json" => FileParsers.ParseExcelJsonColumn(inputPath, excelJsonColumn ?? "A", flatten),
                 _ => throw new InvalidOperationException($"不支持的文件格式: {format}")
             };
 

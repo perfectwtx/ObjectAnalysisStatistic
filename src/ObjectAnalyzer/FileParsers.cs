@@ -172,6 +172,66 @@ public static class FileParsers
         }
     }
 
+    /// <summary>
+    /// Parses an Excel file where a specific column contains JSON strings.
+    /// Each cell in the column is a complete JSON object text.
+    /// </summary>
+    /// <param name="path">Excel file path</param>
+    /// <param name="columnName">Column name (e.g., "A", "B", "C"). Default is "A".</param>
+    /// <param name="flatten">Whether to flatten nested JSON properties</param>
+    public static IEnumerable<Dictionary<string, object?>> ParseExcelJsonColumn(string path, string columnName = "A", bool flatten = true)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"找不到输入文件: {path}");
+
+        columnName = columnName.ToUpperInvariant();
+
+        // 不使用表头模式读取原始数据，这样可以通过列字母访问
+        var rows = MiniExcel.Query(path, useHeaderRow: false);
+        int rowIndex = 0;
+
+        foreach (var row in rows)
+        {
+            rowIndex++;
+
+            if (row is not IDictionary<string, object?> rowDict)
+                continue;
+
+            // 获取指定列的值
+            if (!rowDict.TryGetValue(columnName, out object? cellValue) || cellValue == null)
+                continue;
+
+            string jsonString = cellValue.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(jsonString))
+                continue;
+
+            // 跳过非 JSON 对象的行（如表头行）
+            string trimmed = jsonString.TrimStart();
+            if (!trimmed.StartsWith('{'))
+                continue;
+
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(jsonString);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"在第 {rowIndex} 行解析 JSON 时出错 (列 {columnName}): {ex.Message}", ex);
+            }
+
+            using (doc)
+            {
+                JsonElement root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                {
+                    throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
+                }
+                yield return ParseJsonElement(root, flatten);
+            }
+        }
+    }
+
     private static Dictionary<string, object?> ConvertXElement(XElement element)
     {
         var dict = new Dictionary<string, object?>();

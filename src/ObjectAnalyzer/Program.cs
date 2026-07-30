@@ -16,7 +16,7 @@ var outputOption = new Option<FileInfo?>(
 
 var formatOption = new Option<string?>(
     aliases: CliAliases.Format,
-    description: "显式指定输入文件格式: json, jsonl, csv, excel, xml, yaml。");
+    description: "显式指定输入文件格式: json, jsonl, csv, excel, xml, yaml, excel-json。");
 
 var noFlattenOption = new Option<bool>(
     name: "--no-flatten",
@@ -29,7 +29,7 @@ var maxValuesOption = new Option<int>(
 
 var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
-    description: "生成一个 Excel 测试文件 samples/test_data.xlsx 并退出。");
+    description: "生成 Excel 测试文件 (samples/test_data.xlsx 和 samples/test_data_excel_json.xlsx) 并退出。");
 
 var typeOption = new Option<FileInfo?>(
     aliases: CliAliases.Type,
@@ -38,6 +38,11 @@ var typeOption = new Option<FileInfo?>(
 var typeNameOption = new Option<string?>(
     name: "--type-name",
     description: "指定目标类名（当 .cs 文件包含多个类时使用）。");
+
+var excelJsonColumnOption = new Option<string>(
+    aliases: CliAliases.ExcelJsonColumn,
+    description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。",
+    getDefaultValue: () => "A");
 
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
@@ -48,12 +53,14 @@ rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(typeOption);
 rootCommand.AddOption(typeNameOption);
+rootCommand.AddOption(excelJsonColumnOption);
 
 rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTestExcel, type, typeName) =>
 {
     if (generateTestExcel)
     {
         GenerateTestExcel();
+        GenerateTestExcelJson();
         return;
     }
 
@@ -66,7 +73,10 @@ rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTes
         return;
     }
 
-    AnalysisRunner.Run(input.FullName, output?.FullName, format, !noFlatten, maxValues, type?.FullName, typeName);
+    // 手动获取 excelJsonColumn 值（避免 SetHandler 参数数量限制）
+    var excelJsonColumn = excelJsonColumnOption.Parse(args).GetValueForOption(excelJsonColumnOption) ?? "A";
+
+    AnalysisRunner.Run(input.FullName, output?.FullName, format, !noFlatten, maxValues, type?.FullName, typeName, excelJsonColumn);
 }, inputOption, outputOption, formatOption, noFlattenOption, maxValuesOption, generateTestExcelOption, typeOption, typeNameOption);
 
 return rootCommand.Invoke(args);
@@ -94,6 +104,30 @@ static void GenerateTestExcel()
     }
 }
 
+static void GenerateTestExcelJson()
+{
+    try
+    {
+        // A 列每行存储一个 JSON 对象字符串
+        var data = new[] {
+            new Dictionary<string, object?> { { "A", "{\"id\":1,\"name\":\"张三\",\"age\":28,\"gender\":\"Male\",\"city\":\"北京\"}" } },
+            new Dictionary<string, object?> { { "A", "{\"id\":2,\"name\":\"李四\",\"age\":32,\"gender\":\"Male\",\"city\":\"上海\"}" } },
+            new Dictionary<string, object?> { { "A", "{\"id\":3,\"name\":\"王五\",\"age\":25,\"gender\":\"Female\",\"city\":\"北京\"}" } }
+        };
+        Directory.CreateDirectory("samples");
+        MiniExcel.SaveAs("samples/test_data_excel_json.xlsx", data);
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("成功生成 Excel JSON 测试文件: samples/test_data_excel_json.xlsx");
+        Console.ResetColor();
+    }
+    catch (Exception ex)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"生成 Excel JSON 测试文件失败: {ex.Message}");
+        Console.ResetColor();
+    }
+}
+
 static class CliAliases
 {
     public static readonly string[] Input = { "--input", "-i" };
@@ -101,4 +135,5 @@ static class CliAliases
     public static readonly string[] Format = { "--format", "-f" };
     public static readonly string[] MaxValues = { "--max-values", "-m" };
     public static readonly string[] Type = { "--type", "-t" };
+    public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
 }
