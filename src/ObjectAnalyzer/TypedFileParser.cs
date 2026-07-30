@@ -9,6 +9,11 @@ namespace ObjectAnalyzer;
 
 public static class TypedFileParser
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     /// <summary>
     /// 使用指定的强类型反序列化 JSON 文件，并将结果转换为 Dictionary 列表。
     /// </summary>
@@ -26,10 +31,7 @@ public static class TypedFileParser
         Type arrayType = targetType.MakeArrayType();
 
         // 反序列化为对象数组
-        object? deserialized = JsonSerializer.Deserialize(jsonContent, arrayType, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        object? deserialized = JsonSerializer.Deserialize(jsonContent, arrayType, SerializerOptions);
 
         if (deserialized is not System.Collections.IEnumerable enumerable)
             throw new InvalidOperationException("反序列化结果不是可枚举类型。JSON 根节点必须是数组。");

@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore ObjectAnalyzer.sln
+
+    - name: Build
+      run: dotnet build ObjectAnalyzer.sln --no-restore -c Release
+
+    - name: Test
+      run: dotnet test ObjectAnalyzer.sln --no-build -c Release --verbosity normal

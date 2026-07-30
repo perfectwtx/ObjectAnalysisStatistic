@@ -6,17 +6,18 @@ namespace ObjectAnalyzer;
 
 public static class ReportExporter
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
     public static void Save(AnalysisResult result, string outputPath)
     {
         try
         {
             Console.WriteLine($"正在将详细分析报告保存至: {outputPath} ...");
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-            string jsonString = JsonSerializer.Serialize(result, options);
+            string jsonString = JsonSerializer.Serialize(result, SerializerOptions);
             File.WriteAllText(outputPath, jsonString);
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"报告成功保存！");

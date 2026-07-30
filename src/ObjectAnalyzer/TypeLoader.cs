@@ -43,7 +43,7 @@ public static class TypeLoader
         {
             var errors = emitResult.Diagnostics
                 .Where(d => d.Severity == DiagnosticSeverity.Error)
-                .Select(d => $"  {d.GetMessage()} ({d.Location.GetLineSpan()})");
+                .Select(d => $"  {d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)} ({d.Location.GetLineSpan()})");
             throw new InvalidOperationException(
                 $"编译 .cs 文件失败，共 {emitResult.Diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error)} 个错误:\n" +
                 string.Join("\n", errors));

@@ -7,15 +7,15 @@ using ObjectAnalyzer;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var inputOption = new Option<FileInfo?>(
-    aliases: new[] { "--input", "-i" },
+    aliases: CliAliases.Input,
     description: "指定输入的 JSON、JSONL、CSV、Excel、XML 或 YAML 文件路径。");
 
 var outputOption = new Option<FileInfo?>(
-    aliases: new[] { "--output", "-o" },
+    aliases: CliAliases.Output,
     description: "指定保存详细分析报告的目标文件路径 (.json)。");
 
 var formatOption = new Option<string?>(
-    aliases: new[] { "--format", "-f" },
+    aliases: CliAliases.Format,
     description: "显式指定输入文件格式: json, jsonl, csv, excel, xml, yaml。");
 
 var noFlattenOption = new Option<bool>(
@@ -23,7 +23,7 @@ var noFlattenOption = new Option<bool>(
     description: "解析 JSON 时，不扁平化嵌套的属性路径。");
 
 var maxValuesOption = new Option<int>(
-    aliases: new[] { "--max-values", "-m" },
+    aliases: CliAliases.MaxValues,
     description: "控制台报告中每个字段最多展示的唯一值数量。",
     getDefaultValue: () => 5);
 
@@ -32,7 +32,7 @@ var generateTestExcelOption = new Option<bool>(
     description: "生成一个 Excel 测试文件 samples/test_data.xlsx 并退出。");
 
 var typeOption = new Option<FileInfo?>(
-    aliases: new[] { "--type", "-t" },
+    aliases: CliAliases.Type,
     description: "指定 .cs 类型定义文件路径，用于强类型反序列化。");
 
 var typeNameOption = new Option<string?>(
@@ -92,4 +92,13 @@ static void GenerateTestExcel()
         Console.WriteLine($"生成 Excel 测试文件失败: {ex.Message}");
         Console.ResetColor();
     }
+}
+
+static class CliAliases
+{
+    public static readonly string[] Input = { "--input", "-i" };
+    public static readonly string[] Output = { "--output", "-o" };
+    public static readonly string[] Format = { "--format", "-f" };
+    public static readonly string[] MaxValues = { "--max-values", "-m" };
+    public static readonly string[] Type = { "--type", "-t" };
 }

@@ -67,7 +67,7 @@ public static class ConsoleReporter
                 string displayVal = val.Key;
                 if (displayVal.Length > 50)
                 {
-                    displayVal = displayVal.Substring(0, 47) + "...";
+                    displayVal = string.Concat(displayVal.AsSpan(0, 47), "...");
                 }
                 displayVal = displayVal.Replace("\r", "\\r").Replace("\n", "\\n");
 

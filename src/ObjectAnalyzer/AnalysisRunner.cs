@@ -27,7 +27,7 @@ public static class AnalysisRunner
         // 自动检测文件格式
         if (string.IsNullOrEmpty(format))
         {
-            string ext = Path.GetExtension(inputPath).ToLower();
+            string ext = Path.GetExtension(inputPath).ToLowerInvariant();
             format = ext switch
             {
                 ".json" => "json",
