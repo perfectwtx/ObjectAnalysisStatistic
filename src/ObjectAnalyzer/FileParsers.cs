@@ -12,12 +12,24 @@ namespace ObjectAnalyzer;
 public static class FileParsers
 {
     /// <summary>
+    /// Checks that the file exists and is not empty.
+    /// </summary>
+    private static void ValidateFile(string path)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"找不到输入文件: {path}");
+
+        var info = new FileInfo(path);
+        if (info.Length == 0)
+            throw new InvalidDataException($"输入文件为空: {path}");
+    }
+
+    /// <summary>
     /// Parses a JSON file which can contain an array of objects or a single object.
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ParseJson(string path, bool flatten)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+        ValidateFile(path);
 
         string jsonContent = File.ReadAllText(path);
         using JsonDocument doc = JsonDocument.Parse(jsonContent);
@@ -45,8 +57,7 @@ public static class FileParsers
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ParseJsonl(string path, bool flatten)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+        ValidateFile(path);
 
         using var reader = new StreamReader(path);
         string? line;
@@ -85,8 +96,7 @@ public static class FileParsers
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ParseExcelOrCsv(string path)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+        ValidateFile(path);
 
         var rows = MiniExcel.Query(path, useHeaderRow: true);
         foreach (var row in rows)
@@ -117,8 +127,7 @@ public static class FileParsers
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ParseXml(string path)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+        ValidateFile(path);
 
         XDocument doc;
         try
@@ -145,8 +154,7 @@ public static class FileParsers
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ParseYaml(string path)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+        ValidateFile(path);
 
         var deserializer = new DeserializerBuilder().Build();
         string yamlContent = File.ReadAllText(path);
@@ -181,8 +189,7 @@ public static class FileParsers
     /// <param name="flatten">Whether to flatten nested JSON properties</param>
     public static IEnumerable<Dictionary<string, object?>> ParseExcelJsonColumn(string path, string columnName = "A", bool flatten = true)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+        ValidateFile(path);
 
         columnName = columnName.ToUpperInvariant();
 

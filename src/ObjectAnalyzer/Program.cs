@@ -1,5 +1,6 @@
 using System;
 using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.IO;
 using MiniExcelLibs;
 using ObjectAnalyzer;
@@ -8,7 +9,7 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var inputOption = new Option<FileInfo?>(
     aliases: CliAliases.Input,
-    description: "指定输入的 JSON、JSONL、CSV、Excel、XML 或 YAML 文件路径。");
+    description: "指定输入的 JSON、JSONL、CSV、Excel、XML、YAML 文件路径。");
 
 var outputOption = new Option<FileInfo?>(
     aliases: CliAliases.Output,
@@ -39,10 +40,9 @@ var typeNameOption = new Option<string?>(
     name: "--type-name",
     description: "指定目标类名（当 .cs 文件包含多个类时使用）。");
 
-var excelJsonColumnOption = new Option<string>(
+var excelJsonColumnOption = new Option<string?>(
     aliases: CliAliases.ExcelJsonColumn,
-    description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。",
-    getDefaultValue: () => "A");
+    description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。");
 
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
@@ -55,8 +55,19 @@ rootCommand.AddOption(typeOption);
 rootCommand.AddOption(typeNameOption);
 rootCommand.AddOption(excelJsonColumnOption);
 
-rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTestExcel, type, typeName) =>
+rootCommand.SetHandler((InvocationContext context) =>
 {
+    var parseResult = context.ParseResult;
+    var input = parseResult.GetValueForOption(inputOption);
+    var output = parseResult.GetValueForOption(outputOption);
+    var format = parseResult.GetValueForOption(formatOption);
+    var noFlatten = parseResult.GetValueForOption(noFlattenOption);
+    var maxValues = parseResult.GetValueForOption(maxValuesOption);
+    var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
+    var type = parseResult.GetValueForOption(typeOption);
+    var typeName = parseResult.GetValueForOption(typeNameOption);
+    var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
+
     if (generateTestExcel)
     {
         GenerateTestExcel();
@@ -70,14 +81,24 @@ rootCommand.SetHandler((input, output, format, noFlatten, maxValues, generateTes
         Console.WriteLine("错误: 未指定输入文件。使用 -i 或 --input 指定。");
         Console.ResetColor();
         Console.WriteLine("提示: 使用 -h 或 --help 查看使用说明。");
+        context.ExitCode = 1;
         return;
     }
 
-    // 手动获取 excelJsonColumn 值（避免 SetHandler 参数数量限制）
-    var excelJsonColumn = excelJsonColumnOption.Parse(args).GetValueForOption(excelJsonColumnOption) ?? "A";
+    var options = new AnalysisOptions
+    {
+        InputPath = input.FullName,
+        OutputPath = output?.FullName,
+        Format = format,
+        Flatten = !noFlatten,
+        MaxValuesToShow = maxValues,
+        TypeFile = type?.FullName,
+        TypeName = typeName,
+        ExcelJsonColumn = excelJsonColumn ?? "A"
+    };
 
-    AnalysisRunner.Run(input.FullName, output?.FullName, format, !noFlatten, maxValues, type?.FullName, typeName, excelJsonColumn);
-}, inputOption, outputOption, formatOption, noFlattenOption, maxValuesOption, generateTestExcelOption, typeOption, typeNameOption);
+    context.ExitCode = AnalysisRunner.Run(options);
+});
 
 return rootCommand.Invoke(args);
 

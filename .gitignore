@@ -16,6 +16,7 @@ obj/
 .DS_Store
 Thumbs.db
 
-# User specific report outputs (keep samples directory, ignore report files if desired, but we can commit samples/test_data.* for demo, and ignore report_*.json output files)
+# User specific report outputs (keep samples directory, ignore report_*.json output files)
 samples/report_*.json
 samples/test_data.xlsx
+samples/test_data_excel_json.xlsx

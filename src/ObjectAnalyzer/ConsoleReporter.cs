@@ -72,22 +72,8 @@ public static class ConsoleReporter
                 displayVal = displayVal.Replace("\r", "\\r").Replace("\n", "\\n");
 
                 // 判断是否是该字段推断出的默认值
-                bool isDefaultValue = false;
-                if (stat.DefaultValueRepresentation != null)
-                {
-                    if (stat.DefaultValueRepresentation == "null")
-                    {
-                        isDefaultValue = (val.Key == "null");
-                    }
-                    else if (stat.DefaultValueRepresentation == "0")
-                    {
-                        isDefaultValue = (val.Key == "0" || val.Key == "0.0");
-                    }
-                    else if (stat.DefaultValueRepresentation == "false")
-                    {
-                        isDefaultValue = string.Equals(val.Key, "false", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
+                bool isDefaultValue = stat.DefaultValueRepresentation != null &&
+                    string.Equals(val.Key, stat.DefaultValueRepresentation, StringComparison.OrdinalIgnoreCase);
 
                 string defaultTag = isDefaultValue ? " [默认值]" : "";
 

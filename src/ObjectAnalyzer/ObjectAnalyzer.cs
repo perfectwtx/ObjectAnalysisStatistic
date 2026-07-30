@@ -2,6 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -10,39 +12,39 @@ namespace ObjectAnalyzer;
 public static class ObjectAnalyzer
 {
     private const int MaxTrackedUniqueValues = 1000;
-    private static readonly JsonSerializerOptions SerializerOptions = new()
-    {
-        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
 
     // 内部使用的线程局部状态类
     private sealed class ThreadLocalState
     {
         public Dictionary<string, FieldStatistic> StatsMap { get; } = new();
-        public Dictionary<long, int> DuplicateCounts { get; } = new();
+        public Dictionary<string, int> DuplicateCounts { get; } = new();
         public int TotalObjects { get; set; }
     }
 
     public static AnalysisResult Analyze(IEnumerable<Dictionary<string, object?>> objects)
     {
-        var globalSeenHashes = new ConcurrentDictionary<long, byte>();
-        var globalDuplicateJsons = new ConcurrentDictionary<long, string>();
+        // 物化为 List 以确保 Parallel.ForEach 的线程安全性
+        // （yield return 的 IEnumerable 底层可能共享 StreamReader 等非线程安全资源）
+        var objectList = objects as IList<Dictionary<string, object?>> ?? objects.ToList();
+
+        var globalSeenHashes = new ConcurrentDictionary<string, byte>();
+        var globalDuplicateJsons = new ConcurrentDictionary<string, string>();
 
         var globalStatsMap = new Dictionary<string, FieldStatistic>();
-        var globalDuplicateCounts = new Dictionary<long, int>();
+        var globalDuplicateCounts = new Dictionary<string, int>();
         int globalTotalObjects = 0;
-        object mergeLock = new();
+        var mergeLock = new object();
 
         // 使用 Parallel.ForEach 进行多线程并行 Map 聚合
         Parallel.ForEach(
-            objects,
+            objectList,
             () => new ThreadLocalState(),
             (obj, loopState, localState) =>
             {
                 localState.TotalObjects++;
 
-                // 1. 计算对象哈希指纹（不进行完整 JSON 序列化以节省内存）
-                long objHash = ComputeObjectHash(obj);
+                // 1. 计算对象哈希指纹（128 位 MD5，避免 64 位哈希的生日悖论碰撞）
+                string objHash = ComputeObjectHash(obj);
 
                 // 2. 检测重复对象
                 // 若该哈希已被其他线程或本线程见过，则是重复对象，此时才进行 JSON 序列化保存其实体
@@ -51,7 +53,7 @@ public static class ObjectAnalyzer
                     globalDuplicateJsons.GetOrAdd(objHash, h =>
                     {
                         var sortedDict = obj.OrderBy(kv => kv.Key).ToDictionary(kv => kv.Key, kv => kv.Value);
-                        return JsonSerializer.Serialize(sortedDict, SerializerOptions);
+                        return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
                     });
                 }
                 localState.DuplicateCounts[objHash] = localState.DuplicateCounts.GetValueOrDefault(objHash) + 1;
@@ -205,31 +207,29 @@ public static class ObjectAnalyzer
         };
     }
 
-    private static long ComputeObjectHash(Dictionary<string, object?> obj)
+    /// <summary>
+    /// Computes a 128-bit hash of the object's canonical representation.
+    /// Uses MD5 for speed (not for cryptographic security), avoiding birthday-paradox
+    /// collisions that occur with 64-bit hashes at scale.
+    /// </summary>
+#pragma warning disable CA5351 // MD5 used for deduplication, not security
+    private static string ComputeObjectHash(Dictionary<string, object?> obj)
     {
-        // FNV-1a 64位哈希实现
-        ulong hash = 14695981039346656037UL;
-
         // 排序键值，以确保不同对象但键值对相同的实体哈希一致
         var sorted = obj.OrderBy(kv => kv.Key);
+        var sb = new StringBuilder();
         foreach (var kv in sorted)
         {
-            // 哈希 Key
-            foreach (char c in kv.Key)
-            {
-                hash ^= c;
-                hash *= 1099511628211UL;
-            }
-            // 哈希 Value 字符串表现形式
-            string valStr = FormatValue(kv.Value);
-            foreach (char c in valStr)
-            {
-                hash ^= c;
-                hash *= 1099511628211UL;
-            }
+            sb.Append(kv.Key);
+            sb.Append('=');
+            sb.Append(FormatValue(kv.Value));
+            sb.Append('&');
         }
-        return (long)hash;
+
+        byte[] hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
+        return Convert.ToHexString(hashBytes);
     }
+#pragma warning restore CA5351
 
     private static string GetValueType(object? value)
     {
@@ -255,11 +255,11 @@ public static class ObjectAnalyzer
         if (value == null) return "null";
         if (value is string s) return s;
         
-        if (value is IDictionary<string, object?> || (value is System.Collections.IEnumerable && !(value is string)))
+        if (value is IDictionary<string, object?> || (value is System.Collections.IEnumerable and not string))
         {
             try
             {
-                return JsonSerializer.Serialize(value, SerializerOptions);
+                return JsonSerializer.Serialize(value, JsonSharedOptions.Write);
             }
             catch
             {
