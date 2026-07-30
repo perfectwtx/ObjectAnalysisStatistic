@@ -1,0 +1,85 @@
+{
+  "TotalObjects": 3,
+  "TotalUniqueObjects": 3,
+  "DuplicateObjects": [],
+  "FieldStatistics": [
+    {
+      "FieldName": "age",
+      "Count": 3,
+      "Coverage": 1,
+      "TypeCounts": {
+        "Number": 3
+      },
+      "ValueCounts": {
+        "25": 1,
+        "32": 1,
+        "28": 1
+      },
+      "PrimaryType": "Number",
+      "NullAppeared": false,
+      "DefaultValueRepresentation": "0"
+    },
+    {
+      "FieldName": "city",
+      "Count": 3,
+      "Coverage": 1,
+      "TypeCounts": {
+        "String": 3
+      },
+      "ValueCounts": {
+        "北京": 2,
+        "上海": 1
+      },
+      "PrimaryType": "String",
+      "NullAppeared": false,
+      "DefaultValueRepresentation": null
+    },
+    {
+      "FieldName": "gender",
+      "Count": 3,
+      "Coverage": 1,
+      "TypeCounts": {
+        "String": 3
+      },
+      "ValueCounts": {
+        "Female": 1,
+        "Male": 2
+      },
+      "PrimaryType": "String",
+      "NullAppeared": false,
+      "DefaultValueRepresentation": null
+    },
+    {
+      "FieldName": "id",
+      "Count": 3,
+      "Coverage": 1,
+      "TypeCounts": {
+        "Number": 3
+      },
+      "ValueCounts": {
+        "3": 1,
+        "2": 1,
+        "1": 1
+      },
+      "PrimaryType": "Number",
+      "NullAppeared": false,
+      "DefaultValueRepresentation": "0"
+    },
+    {
+      "FieldName": "name",
+      "Count": 3,
+      "Coverage": 1,
+      "TypeCounts": {
+        "String": 3
+      },
+      "ValueCounts": {
+        "王五": 1,
+        "李四": 1,
+        "张三": 1
+      },
+      "PrimaryType": "String",
+      "NullAppeared": false,
+      "DefaultValueRepresentation": null
+    }
+  ]
+}
