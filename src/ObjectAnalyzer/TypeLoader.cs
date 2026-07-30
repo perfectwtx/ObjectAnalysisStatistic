@@ -3,20 +3,32 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace ObjectAnalyzer;
 
+public class DynamicAssemblyContext : AssemblyLoadContext, IDisposable
+{
+    public DynamicAssemblyContext() : base(name: $"DynamicType_{Guid.NewGuid():N}", isCollectible: true) { }
+
+    public void Dispose()
+    {
+        Unload();
+        GC.SuppressFinalize(this);
+    }
+}
+
 public static class TypeLoader
 {
     /// <summary>
-    /// 编译指定的 .cs 文件，并返回编译后的 Assembly 和目标 Type。
+    /// 编译指定的 .cs 文件，并返回编译后的 AssemblyLoadContext 和目标 Type。
     /// </summary>
     /// <param name="csFilePath">.cs 源文件路径</param>
     /// <param name="typeName">目标类名（精确匹配）。为空时取唯一 public class。</param>
-    /// <returns>(编译后的 Assembly, 目标 Type)</returns>
-    public static (Assembly assembly, Type type) Compile(string csFilePath, string? typeName)
+    /// <returns>(编译后的 DynamicAssemblyContext, 目标 Type)</returns>
+    public static (DynamicAssemblyContext context, Type type) Compile(string csFilePath, string? typeName)
     {
         if (!File.Exists(csFilePath))
             throw new FileNotFoundException($"类型定义文件不存在: {csFilePath}");
@@ -50,7 +62,18 @@ public static class TypeLoader
         }
 
         ms.Seek(0, SeekOrigin.Begin);
-        var assembly = Assembly.Load(ms.ToArray());
+        
+        var context = new DynamicAssemblyContext();
+        Assembly assembly;
+        try
+        {
+            assembly = context.LoadFromStream(ms);
+        }
+        catch (Exception ex)
+        {
+            context.Dispose();
+            throw new InvalidOperationException($"将编译生成的程序集加载到沙盒上下文失败: {ex.Message}", ex);
+        }
 
         // 查找目标类型
         Type? targetType = null;
@@ -75,6 +98,7 @@ public static class TypeLoader
             else if (publicClasses.Count > 1)
             {
                 var names = string.Join(", ", publicClasses.Select(t => t.Name));
+                context.Dispose();
                 throw new InvalidOperationException(
                     $" .cs 文件中包含多个 public class: {names}。请使用 --type-name 指定目标类名。");
             }
@@ -83,11 +107,12 @@ public static class TypeLoader
         if (targetType == null)
         {
             var allTypes = assembly.GetTypes().Where(t => t.IsClass).Select(t => t.Name);
+            context.Dispose();
             throw new InvalidOperationException(
                 $"未在编译结果中找到类 '{typeName}'。可用的类: {string.Join(", ", allTypes)}");
         }
 
-        return (assembly, targetType);
+        return (context, targetType);
     }
 
     private static List<MetadataReference> GetMetadataReferences()

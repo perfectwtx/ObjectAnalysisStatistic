@@ -55,17 +55,8 @@ public static class AnalysisRunner
                 _ => throw new InvalidOperationException($"不支持的文件格式: {format}")
             };
 
-            var objectList = parsedObjects.ToList();
-            Console.WriteLine($"解析成功。共加载 {objectList.Count} 个对象。");
-
-            if (objectList.Count == 0)
-            {
-                Console.WriteLine("未找到任何有效对象。分析结束。");
-                return;
-            }
-
             Console.WriteLine("正在分析对象字段...");
-            AnalysisResult result = ObjectAnalyzer.Analyze(objectList);
+            AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects);
             Console.WriteLine("分析完成！\n");
 
             // 输出控制台统计结果
@@ -94,28 +85,26 @@ public static class AnalysisRunner
         try
         {
             Console.WriteLine($"正在编译类型定义文件: {typeFile} ...");
-            var (assembly, targetType) = TypeLoader.Compile(typeFile, typeName);
-            Console.WriteLine($"编译成功。目标类型: {targetType.FullName}");
-
-            Console.WriteLine($"正在使用强类型反序列化文件: {inputPath} ...");
-            var objectList = TypedFileParser.ParseJson(inputPath, targetType).ToList();
-            Console.WriteLine($"反序列化成功。共加载 {objectList.Count} 个对象。");
-
-            if (objectList.Count == 0)
+            var compileResult = TypeLoader.Compile(typeFile, typeName);
+            
+            using (compileResult.context)
             {
-                Console.WriteLine("未找到任何有效对象。分析结束。");
-                return;
-            }
+                var targetType = compileResult.type;
+                Console.WriteLine($"编译成功。目标类型: {targetType.FullName}");
 
-            Console.WriteLine("正在分析对象字段...");
-            AnalysisResult result = ObjectAnalyzer.Analyze(objectList);
-            Console.WriteLine("分析完成！\n");
+                Console.WriteLine($"正在使用强类型反序列化文件: {inputPath} ...");
+                var parsedObjects = TypedFileParser.ParseJson(inputPath, targetType);
 
-            ConsoleReporter.Print(result, maxValuesToShow);
+                Console.WriteLine("正在分析对象字段...");
+                AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects);
+                Console.WriteLine("分析完成！\n");
 
-            if (!string.IsNullOrEmpty(outputPath))
-            {
-                ReportExporter.Save(result, outputPath);
+                ConsoleReporter.Print(result, maxValuesToShow);
+
+                if (!string.IsNullOrEmpty(outputPath))
+                {
+                    ReportExporter.Save(result, outputPath);
+                }
             }
         }
         catch (Exception ex)
