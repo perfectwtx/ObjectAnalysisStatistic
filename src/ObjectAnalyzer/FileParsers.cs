@@ -9,276 +9,308 @@ using YamlDotNet.Serialization;
 
 namespace ObjectAnalyzer;
 
+/// <summary>
+/// Options passed to file parsers.
+/// </summary>
+public sealed class ParseOptions
+{
+    public bool Flatten { get; init; } = true;
+    public string ExcelJsonColumn { get; init; } = "A";
+}
+
+/// <summary>
+/// Interface for file format parsers. Implement this to add new input formats.
+/// </summary>
+public interface IFileParser
+{
+    /// <summary>Format names this parser handles (e.g., "json", "csv").</summary>
+    IReadOnlyList<string> SupportedFormats { get; }
+
+    /// <summary>File extensions this parser handles (e.g., ".json", ".csv").</summary>
+    IReadOnlyList<string> SupportedExtensions { get; }
+
+    /// <summary>Parse the file and return a list of property dictionaries.</summary>
+    List<Dictionary<string, object?>> Parse(string path, ParseOptions options);
+}
+
+/// <summary>
+/// Multi-format file parsers. Each parser reads a file and returns
+/// a collection of property dictionaries for analysis.
+/// </summary>
 public static class FileParsers
 {
-    /// <summary>
-    /// Checks that the file exists and is not empty.
-    /// </summary>
-    private static void ValidateFile(string path)
-    {
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"找不到输入文件: {path}");
+    // ─────────────────────────────────────────────
+    //  Parser registry — add new formats here
+    // ─────────────────────────────────────────────
 
-        var info = new FileInfo(path);
-        if (info.Length == 0)
-            throw new InvalidDataException($"输入文件为空: {path}");
+    private static readonly List<IFileParser> _parsers = new()
+    {
+        new JsonFileParser(),
+        new JsonlFileParser(),
+        new ExcelCsvFileParser(),
+        new XmlFileParser(),
+        new YamlFileParser(),
+        new ExcelJsonFileParser(),
+    };
+
+    /// <summary>
+    /// Detects the format name from a file extension.
+    /// </summary>
+    public static string DetectFormat(string path)
+    {
+        string ext = Path.GetExtension(path).ToLowerInvariant();
+        foreach (var parser in _parsers)
+        {
+            if (parser.SupportedExtensions.Contains(ext))
+                return parser.SupportedFormats[0];
+        }
+        // Fallbacks
+        if (ext is ".txt" or ".ndjson") return "jsonl";
+        return "json";
     }
 
     /// <summary>
-    /// Parses a JSON file which can contain an array of objects or a single object.
+    /// Parses a file by format name using the parser registry.
     /// </summary>
-    public static IEnumerable<Dictionary<string, object?>> ParseJson(string path, bool flatten)
+    public static List<Dictionary<string, object?>> ParseByFormat(string path, string format, ParseOptions options)
     {
-        ValidateFile(path);
-
-        string jsonContent = File.ReadAllText(path);
-        using JsonDocument doc = JsonDocument.Parse(jsonContent);
-        JsonElement root = doc.RootElement;
-
-        if (root.ValueKind == JsonValueKind.Array)
+        foreach (var parser in _parsers)
         {
-            foreach (JsonElement element in root.EnumerateArray())
-            {
-                yield return ParseJsonElement(element, flatten);
-            }
+            if (parser.SupportedFormats.Contains(format))
+                return parser.Parse(path, options);
         }
-        else if (root.ValueKind == JsonValueKind.Object)
-        {
-            yield return ParseJsonElement(root, flatten);
-        }
-        else
-        {
-            throw new InvalidDataException("JSON 根节点必须是数组或对象。");
-        }
+        throw new InvalidOperationException($"不支持的文件格式: {format}");
     }
 
-    /// <summary>
-    /// Parses a JSON Lines (NDJSON) file where each line is a JSON object.
-    /// </summary>
-    public static IEnumerable<Dictionary<string, object?>> ParseJsonl(string path, bool flatten)
+    // ─────────────────────────────────────────────
+    //  Individual format parsers (IFileParser)
+    // ─────────────────────────────────────────────
+
+    private sealed class JsonFileParser : IFileParser
     {
-        ValidateFile(path);
+        public IReadOnlyList<string> SupportedFormats => new[] { "json" };
+        public IReadOnlyList<string> SupportedExtensions => new[] { ".json" };
 
-        using var reader = new StreamReader(path);
-        string? line;
-        int lineNumber = 0;
-        while ((line = reader.ReadLine()) != null)
+        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            lineNumber++;
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
+            var result = new List<Dictionary<string, object?>>();
 
-            JsonDocument doc;
-            try
+            using var fs = File.OpenRead(path);
+            using var doc = JsonDocument.Parse(fs);
+            var root = doc.RootElement;
+
+            if (root.ValueKind == JsonValueKind.Array)
             {
-                doc = JsonDocument.Parse(line);
+                foreach (var element in root.EnumerateArray())
+                    result.Add(ParseJsonElement(element, options.Flatten));
             }
-            catch (JsonException ex)
+            else if (root.ValueKind == JsonValueKind.Object)
             {
-                throw new InvalidDataException($"在第 {lineNumber} 行解析 JSON 时出错: {ex.Message}", ex);
-            }
-
-            using (doc)
-            {
-                JsonElement root = doc.RootElement;
-                if (root.ValueKind != JsonValueKind.Object)
-                {
-                    throw new InvalidDataException($"第 {lineNumber} 行的 JSON 根节点必须是一个对象。");
-                }
-                yield return ParseJsonElement(root, flatten);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Parses an Excel file (.xlsx) or CSV file using MiniExcel.
-    /// CSV is also supported by MiniExcel.
-    /// </summary>
-    public static IEnumerable<Dictionary<string, object?>> ParseExcelOrCsv(string path)
-    {
-        ValidateFile(path);
-
-        var rows = MiniExcel.Query(path, useHeaderRow: true);
-        foreach (var row in rows)
-        {
-            var dict = new Dictionary<string, object?>();
-            if (row is IDictionary<string, object?> rowDict)
-            {
-                foreach (var kvp in rowDict)
-                {
-                    if (kvp.Key != null)
-                    {
-                        dict[kvp.Key] = kvp.Value;
-                    }
-                }
-            }
-            yield return dict;
-        }
-    }
-
-    /// <summary>
-    /// Parses an XML file. The root element contains multiple child elements,
-    /// each representing an object. Each sub-element is a property.
-    /// Example:
-    /// <root>
-    ///   <item><Id>1</Id><Name>张三</Name></item>
-    ///   <item><Id>2</Id><Name>李四</Name></item>
-    /// </root>
-    /// </summary>
-    public static IEnumerable<Dictionary<string, object?>> ParseXml(string path)
-    {
-        ValidateFile(path);
-
-        XDocument doc;
-        try
-        {
-            doc = XDocument.Load(path);
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidDataException($"解析 XML 文件时出错: {ex.Message}", ex);
-        }
-
-        if (doc.Root == null)
-            throw new InvalidDataException("XML 文件缺少根节点。");
-
-        // 每个子元素代表一个对象
-        foreach (var element in doc.Root.Elements())
-        {
-            yield return ConvertXElement(element);
-        }
-    }
-
-    /// <summary>
-    /// Parses a YAML file containing a list of objects or a single object.
-    /// </summary>
-    public static IEnumerable<Dictionary<string, object?>> ParseYaml(string path)
-    {
-        ValidateFile(path);
-
-        var deserializer = new DeserializerBuilder().Build();
-        string yamlContent = File.ReadAllText(path);
-        object? result = deserializer.Deserialize(yamlContent);
-
-        if (result is List<object?> list)
-        {
-            foreach (var item in list)
-            {
-                if (item is Dictionary<object, object> dict)
-                {
-                    yield return ConvertYamlDict(dict);
-                }
-            }
-        }
-        else if (result is Dictionary<object, object> singleDict)
-        {
-            yield return ConvertYamlDict(singleDict);
-        }
-        else
-        {
-            throw new InvalidDataException("YAML 根节点必须是对象列表或单个对象。");
-        }
-    }
-
-    /// <summary>
-    /// Parses an Excel file where a specific column contains JSON strings.
-    /// Each cell in the column is a complete JSON object text.
-    /// </summary>
-    /// <param name="path">Excel file path</param>
-    /// <param name="columnName">Column name (e.g., "A", "B", "C"). Default is "A".</param>
-    /// <param name="flatten">Whether to flatten nested JSON properties</param>
-    public static IEnumerable<Dictionary<string, object?>> ParseExcelJsonColumn(string path, string columnName = "A", bool flatten = true)
-    {
-        ValidateFile(path);
-
-        columnName = columnName.ToUpperInvariant();
-
-        // 不使用表头模式读取原始数据，这样可以通过列字母访问
-        var rows = MiniExcel.Query(path, useHeaderRow: false);
-        int rowIndex = 0;
-
-        foreach (var row in rows)
-        {
-            rowIndex++;
-
-            if (row is not IDictionary<string, object?> rowDict)
-                continue;
-
-            // 获取指定列的值
-            if (!rowDict.TryGetValue(columnName, out object? cellValue) || cellValue == null)
-                continue;
-
-            string jsonString = cellValue.ToString() ?? "";
-            if (string.IsNullOrWhiteSpace(jsonString))
-                continue;
-
-            // 跳过非 JSON 对象的行（如表头行）
-            string trimmed = jsonString.TrimStart();
-            if (!trimmed.StartsWith('{'))
-                continue;
-
-            JsonDocument doc;
-            try
-            {
-                doc = JsonDocument.Parse(jsonString);
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidDataException($"在第 {rowIndex} 行解析 JSON 时出错 (列 {columnName}): {ex.Message}", ex);
-            }
-
-            using (doc)
-            {
-                JsonElement root = doc.RootElement;
-                if (root.ValueKind != JsonValueKind.Object)
-                {
-                    throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
-                }
-                yield return ParseJsonElement(root, flatten);
-            }
-        }
-    }
-
-    private static Dictionary<string, object?> ConvertXElement(XElement element)
-    {
-        var dict = new Dictionary<string, object?>();
-        foreach (var child in element.Elements())
-        {
-            string key = child.Name.LocalName;
-            // 如果子元素还有子元素，递归转换
-            if (child.HasElements)
-            {
-                dict[key] = ConvertXElement(child);
+                result.Add(ParseJsonElement(root, options.Flatten));
             }
             else
             {
-                dict[key] = child.Value;
+                throw new InvalidDataException("JSON 根节点必须是数组或对象。");
             }
+
+            return result;
         }
-        return dict;
     }
 
-    private static Dictionary<string, object?> ConvertYamlDict(Dictionary<object, object> yamlDict)
+    private sealed class JsonlFileParser : IFileParser
     {
-        var dict = new Dictionary<string, object?>();
-        foreach (var kvp in yamlDict)
+        public IReadOnlyList<string> SupportedFormats => new[] { "jsonl" };
+        public IReadOnlyList<string> SupportedExtensions => new[] { ".jsonl", ".ndjson" };
+
+        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            string key = kvp.Key?.ToString() ?? "";
-            dict[key] = ConvertYamlValue(kvp.Value);
+            var result = new List<Dictionary<string, object?>>();
+
+            using var fs = File.OpenRead(path);
+            using var reader = new StreamReader(fs);
+            string? line;
+            int lineNumber = 0;
+            while ((line = reader.ReadLine()) != null)
+            {
+                lineNumber++;
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                JsonDocument doc;
+                try
+                {
+                    doc = JsonDocument.Parse(line);
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidDataException($"在第 {lineNumber} 行解析 JSON 时出错: {ex.Message}", ex);
+                }
+
+                using (doc)
+                {
+                    var root = doc.RootElement;
+                    if (root.ValueKind != JsonValueKind.Object)
+                        throw new InvalidDataException($"第 {lineNumber} 行的 JSON 根节点必须是一个对象。");
+                    result.Add(ParseJsonElement(root, options.Flatten));
+                }
+            }
+
+            return result;
         }
-        return dict;
     }
 
-    private static object? ConvertYamlValue(object? value)
+    private sealed class ExcelCsvFileParser : IFileParser
     {
-        return value switch
+        public IReadOnlyList<string> SupportedFormats => new[] { "csv", "excel" };
+        public IReadOnlyList<string> SupportedExtensions => new[] { ".csv", ".xlsx" };
+
+        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            null => null,
-            Dictionary<object, object> d => ConvertYamlDict(d),
-            List<object?> list => list.Select(ConvertYamlValue).ToList(),
-            _ => value
-        };
+            var result = new List<Dictionary<string, object?>>();
+
+            var rows = MiniExcel.Query(path, useHeaderRow: true);
+            foreach (var row in rows)
+            {
+                var dict = new Dictionary<string, object?>();
+                if (row is IDictionary<string, object?> rowDict)
+                {
+                    foreach (var kvp in rowDict)
+                    {
+                        if (kvp.Key != null)
+                            dict[kvp.Key] = kvp.Value;
+                    }
+                }
+                result.Add(dict);
+            }
+
+            return result;
+        }
     }
+
+    private sealed class XmlFileParser : IFileParser
+    {
+        public IReadOnlyList<string> SupportedFormats => new[] { "xml" };
+        public IReadOnlyList<string> SupportedExtensions => new[] { ".xml" };
+
+        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        {
+            var result = new List<Dictionary<string, object?>>();
+
+            XDocument doc;
+            try
+            {
+                using var fs = File.OpenRead(path);
+                doc = XDocument.Load(fs);
+            }
+            catch (InvalidDataException) { throw; }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException($"解析 XML 文件时出错: {ex.Message}", ex);
+            }
+
+            if (doc.Root == null)
+                throw new InvalidDataException("XML 文件缺少根节点。");
+
+            foreach (var element in doc.Root.Elements())
+                result.Add(ConvertXElement(element));
+
+            return result;
+        }
+    }
+
+    private sealed class YamlFileParser : IFileParser
+    {
+        public IReadOnlyList<string> SupportedFormats => new[] { "yaml" };
+        public IReadOnlyList<string> SupportedExtensions => new[] { ".yaml", ".yml" };
+
+        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        {
+            var result = new List<Dictionary<string, object?>>();
+            var deserializer = new DeserializerBuilder().Build();
+
+            using var fs = File.OpenRead(path);
+            using var reader = new StreamReader(fs);
+            object? yamlResult = deserializer.Deserialize(reader);
+
+            if (yamlResult is List<object?> list)
+            {
+                foreach (var item in list)
+                {
+                    if (item is Dictionary<object, object> dict)
+                        result.Add(ConvertYamlDict(dict));
+                }
+            }
+            else if (yamlResult is Dictionary<object, object> singleDict)
+            {
+                result.Add(ConvertYamlDict(singleDict));
+            }
+            else
+            {
+                throw new InvalidDataException("YAML 根节点必须是对象列表或单个对象。");
+            }
+
+            return result;
+        }
+    }
+
+    private sealed class ExcelJsonFileParser : IFileParser
+    {
+        public IReadOnlyList<string> SupportedFormats => new[] { "excel-json" };
+        public IReadOnlyList<string> SupportedExtensions => Array.Empty<string>(); // 无自动检测扩展名，需显式指定 --format
+
+        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        {
+            var result = new List<Dictionary<string, object?>>();
+            string columnName = options.ExcelJsonColumn.ToUpperInvariant();
+
+            var rows = MiniExcel.Query(path, useHeaderRow: false);
+            int rowIndex = 0;
+
+            foreach (var row in rows)
+            {
+                rowIndex++;
+
+                if (row is not IDictionary<string, object?> rowDict)
+                    continue;
+
+                if (!rowDict.TryGetValue(columnName, out object? cellValue) || cellValue == null)
+                    continue;
+
+                string jsonString = cellValue.ToString() ?? "";
+                if (string.IsNullOrWhiteSpace(jsonString))
+                    continue;
+
+                // 跳过非 JSON 对象的行（如表头行）
+                string trimmed = jsonString.TrimStart();
+                if (!trimmed.StartsWith('{'))
+                    continue;
+
+                JsonDocument doc;
+                try
+                {
+                    doc = JsonDocument.Parse(jsonString);
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidDataException($"在第 {rowIndex} 行解析 JSON 时出错 (列 {columnName}): {ex.Message}", ex);
+                }
+
+                using (doc)
+                {
+                    var root = doc.RootElement;
+                    if (root.ValueKind != JsonValueKind.Object)
+                        throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
+                    result.Add(ParseJsonElement(root, options.Flatten));
+                }
+            }
+
+            return result;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    //  Shared JSON helpers
+    // ─────────────────────────────────────────────
 
     private static Dictionary<string, object?> ParseJsonElement(JsonElement element, bool flatten)
     {
@@ -292,9 +324,7 @@ public static class FileParsers
             if (element.ValueKind == JsonValueKind.Object)
             {
                 foreach (var property in element.EnumerateObject())
-                {
                     target[property.Name] = ConvertJsonElement(property.Value);
-                }
             }
         }
         return target;
@@ -360,17 +390,13 @@ public static class FileParsers
             case JsonValueKind.Object:
                 var dict = new Dictionary<string, object?>();
                 foreach (var property in element.EnumerateObject())
-                {
                     dict[property.Name] = ConvertJsonElement(property.Value);
-                }
                 return dict;
 
             case JsonValueKind.Array:
                 var list = new List<object?>();
                 foreach (var item in element.EnumerateArray())
-                {
                     list.Add(ConvertJsonElement(item));
-                }
                 return list;
 
             case JsonValueKind.String:
@@ -393,5 +419,41 @@ public static class FileParsers
             default:
                 return element.GetRawText();
         }
+    }
+
+    private static Dictionary<string, object?> ConvertXElement(XElement element)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var child in element.Elements())
+        {
+            string key = child.Name.LocalName;
+            if (child.HasElements)
+                dict[key] = ConvertXElement(child);
+            else
+                dict[key] = child.Value;
+        }
+        return dict;
+    }
+
+    private static Dictionary<string, object?> ConvertYamlDict(Dictionary<object, object> yamlDict)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var kvp in yamlDict)
+        {
+            string key = kvp.Key?.ToString() ?? "";
+            dict[key] = ConvertYamlValue(kvp.Value);
+        }
+        return dict;
+    }
+
+    private static object? ConvertYamlValue(object? value)
+    {
+        return value switch
+        {
+            null => null,
+            Dictionary<object, object> d => ConvertYamlDict(d),
+            List<object?> list => list.Select(ConvertYamlValue).ToList(),
+            _ => value
+        };
     }
 }

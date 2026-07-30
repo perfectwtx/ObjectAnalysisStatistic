@@ -46,40 +46,26 @@ public static class AnalysisRunner
 
     /// <summary>
     /// Detects format from file extension and parses the file accordingly.
+    /// Uses the parser registry in FileParsers (IFileParser pattern).
     /// </summary>
-    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options)
+    private static List<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options)
     {
         string? format = options.Format;
 
         // 自动检测文件格式
         if (string.IsNullOrEmpty(format))
         {
-            string ext = Path.GetExtension(options.InputPath).ToLowerInvariant();
-            format = ext switch
-            {
-                ".json" => "json",
-                ".jsonl" or ".ndjson" => "jsonl",
-                ".csv" => "csv",
-                ".xlsx" => "excel",
-                ".xml" => "xml",
-                ".yaml" or ".yml" => "yaml",
-                ".txt" => "jsonl", // 默认文本文件尝试以 JSONL 解析
-                _ => "json" // 默认退回到 json
-            };
-            Console.WriteLine($"[自动检测] 输入文件扩展名为 '{ext}'，将使用格式 '{format}' 进行解析。");
+            format = FileParsers.DetectFormat(options.InputPath);
+            Console.WriteLine($"[自动检测] 使用格式 '{format}' 进行解析。");
         }
 
         Console.WriteLine($"正在读取并解析文件: {options.InputPath} ...");
-        return format switch
+        var parseOptions = new ParseOptions
         {
-            "json" => FileParsers.ParseJson(options.InputPath, options.Flatten),
-            "jsonl" => FileParsers.ParseJsonl(options.InputPath, options.Flatten),
-            "csv" or "excel" => FileParsers.ParseExcelOrCsv(options.InputPath),
-            "xml" => FileParsers.ParseXml(options.InputPath),
-            "yaml" => FileParsers.ParseYaml(options.InputPath),
-            "excel-json" => FileParsers.ParseExcelJsonColumn(options.InputPath, options.ExcelJsonColumn ?? "A", options.Flatten),
-            _ => throw new InvalidOperationException($"不支持的文件格式: {format}")
+            Flatten = options.Flatten,
+            ExcelJsonColumn = options.ExcelJsonColumn ?? "A"
         };
+        return FileParsers.ParseByFormat(options.InputPath, format, parseOptions);
     }
 
     /// <summary>
