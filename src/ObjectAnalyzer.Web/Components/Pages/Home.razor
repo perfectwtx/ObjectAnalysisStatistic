@@ -1,0 +1,192 @@
+﻿@page "/"
+@using Core = global::ObjectAnalyzer
+@using Microsoft.AspNetCore.Components.Forms
+@inject AnalysisState State
+@rendermode InteractiveServer
+
+<PageTitle>ObjectAnalyzer - 对象分析工具</PageTitle>
+
+<div class="analyzer-app">
+    @* 上传区域 *@
+    <div class="upload-section">
+        <h1>ObjectAnalyzer</h1>
+        <p class="subtitle">上传数据文件，交互式分析对象字段统计</p>
+
+        <div class="upload-area">
+            <InputFile OnChange="HandleFileUpload" accept=".json,.jsonl,.csv,.xlsx,.xml,.yaml,.yml" />
+            <p>拖放文件或点击选择<br/>
+               <small>支持 JSON, JSONL, CSV, Excel, XML, YAML</small>
+            </p>
+        </div>
+
+        @if (State.IsLoading)
+        {
+            <div class="loading">分析中...</div>
+        }
+
+        @if (State.ErrorMessage != null)
+        {
+            <div class="error">@State.ErrorMessage</div>
+        }
+    </div>
+
+    @* 结果区域 *@
+    @if (State.Result != null)
+    {
+        <div class="results-section">
+            @* 摘要卡片 *@
+            <div class="summary-cards">
+                <div class="card blue">
+                    <div class="card-value">@State.Result.TotalObjects</div>
+                    <div class="card-label">总对象数</div>
+                </div>
+                <div class="card green">
+                    <div class="card-value">@State.Result.TotalUniqueObjects</div>
+                    <div class="card-label">唯一对象</div>
+                </div>
+                <div class="card orange">
+                    <div class="card-value">@State.Result.DuplicateObjects.Count</div>
+                    <div class="card-label">重复组</div>
+                </div>
+                <div class="card purple">
+                    <div class="card-value">@State.Result.FieldStatistics.Count</div>
+                    <div class="card-label">字段数</div>
+                </div>
+            </div>
+
+            @* 工具栏 *@
+            <div class="toolbar">
+                <input type="text" placeholder="搜索字段名..."
+                       value="@State.SearchText"
+                       @oninput="OnSearchInput" />
+                <select value="@State.SortField" @onchange="OnSortFieldChange">
+                    <option value="Count">按频次排序</option>
+                    <option value="Name">按名称排序</option>
+                    <option value="Coverage">按覆盖率排序</option>
+                    <option value="PrimaryType">按类型排序</option>
+                </select>
+                <button @onclick="ToggleSortDirection">
+                    @(State.SortAscending ? "↑ 升序" : "↓ 降序")
+                </button>
+            </div>
+
+            @* 字段表格 *@
+            <div class="field-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>字段名</th>
+                            <th>覆盖率</th>
+                            <th>主导类型</th>
+                            <th>默认值</th>
+                            <th>唯一值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var field in State.GetFilteredSortedFields())
+                        {
+                            <tr>
+                                <td class="field-name"><code>@field.FieldName</code></td>
+                                <td>
+                                    <div class="coverage-bar">
+                                        <div class="coverage-fill" style="width: @(field.Coverage * 100)%"></div>
+                                        <span>@field.Count/@State.Result.TotalObjects (@(field.Coverage * 100).ToString("F1")%)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @foreach (var tc in field.TypeCounts.OrderByDescending(t => t.Value))
+                                    {
+                                        <span class="type-badge">@tc.Key (@tc.Value)</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (field.DefaultValueRepresentation != null)
+                                    {
+                                        <code class="default-val">@field.DefaultValueRepresentation</code>
+                                    }
+                                    else
+                                    {
+                                        <span class="na">—</span>
+                                    }
+                                </td>
+                                <td>@field.ValueCounts.Count</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* 重复对象 *@
+            @if (State.Result.DuplicateObjects.Count > 0)
+            {
+                <div class="duplicates-section">
+                    <h3>重复对象 (@State.Result.DuplicateObjects.Count 组)</h3>
+                    @foreach (var dup in State.Result.DuplicateObjects)
+                    {
+                        <div class="dup-item">
+                            <span class="dup-count">×@dup.Count</span>
+                            <code>@dup.ObjectJson</code>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        State.IsLoading = true;
+        State.ErrorMessage = null;
+        State.Result = null;
+        State.FileName = file.Name;
+
+        try
+        {
+            // 保存到临时文件
+            var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
+            await using (var fs = File.Create(tempPath))
+            {
+                await file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024).CopyToAsync(fs);
+            }
+
+            // 自动检测格式并解析
+            var format = Core.FileParsers.DetectFormat(tempPath);
+            var parseOptions = new Core.ParseOptions { Flatten = true };
+            var objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions);
+
+            // 分析
+            State.Result = Core.ObjectAnalyzer.Analyze(objects);
+
+            // 清理临时文件
+            File.Delete(tempPath);
+        }
+        catch (Exception ex)
+        {
+            State.ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            State.IsLoading = false;
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        State.SearchText = e.Value?.ToString() ?? "";
+    }
+
+    private void OnSortFieldChange(ChangeEventArgs e)
+    {
+        State.SortField = e.Value?.ToString() ?? "Count";
+    }
+
+    private void ToggleSortDirection()
+    {
+        State.SortAscending = !State.SortAscending;
+    }
+}
