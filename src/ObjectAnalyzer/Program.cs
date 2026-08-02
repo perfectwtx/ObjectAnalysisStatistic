@@ -3,6 +3,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
 using ObjectAnalyzer;
+using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -12,11 +13,12 @@ var inputOption = new Option<FileInfo?>(
 
 var outputOption = new Option<FileInfo?>(
     aliases: CliAliases.Output,
-    description: "指定保存详细分析报告的目标文件路径 (.json)。");
+    description: "指定保存分析报告的目标文件路径 (.json 或 .html)。");
 
 var formatOption = new Option<string?>(
     aliases: CliAliases.Format,
     description: "显式指定输入文件格式: json, jsonl, csv, excel, xml, yaml, excel-json。");
+formatOption.AddCompletions("json", "jsonl", "csv", "excel", "xml", "yaml", "excel-json");
 
 var noFlattenOption = new Option<bool>(
     name: "--no-flatten",
@@ -42,6 +44,7 @@ var typeNameOption = new Option<string?>(
 var excelJsonColumnOption = new Option<string?>(
     aliases: CliAliases.ExcelJsonColumn,
     description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。");
+excelJsonColumnOption.AddCompletions("A", "B", "C", "D", "E");
 
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
@@ -75,10 +78,8 @@ rootCommand.SetHandler((InvocationContext context) =>
 
     if (input == null)
     {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine("错误: 未指定输入文件。使用 -i 或 --input 指定。");
-        Console.ResetColor();
-        Console.WriteLine("提示: 使用 -h 或 --help 查看使用说明。");
+        AnsiConsole.MarkupLine("[red]错误: 未指定输入文件。使用 -i 或 --input 指定。[/]");
+        AnsiConsole.MarkupLine("[grey]提示: 使用 -h 或 --help 查看使用说明。[/]");
         context.ExitCode = 1;
         return;
     }

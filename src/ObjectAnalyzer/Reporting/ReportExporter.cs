@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using Spectre.Console;
 
 namespace ObjectAnalyzer;
 
@@ -8,20 +9,30 @@ public static class ReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
+        string ext = Path.GetExtension(outputPath).ToLowerInvariant();
+        if (ext is ".html" or ".htm")
+        {
+            HtmlReportExporter.Save(result, outputPath);
+        }
+        else
+        {
+            SaveJson(result, outputPath);
+        }
+    }
+
+    private static void SaveJson(AnalysisResult result, string outputPath)
+    {
         try
         {
-            Console.WriteLine($"正在将详细分析报告保存至: {outputPath} ...");
+            AnsiConsole.Markup($"正在将详细分析报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+            AnsiConsole.WriteLine();
             string jsonString = JsonSerializer.Serialize(result, JsonSharedOptions.Write);
             File.WriteAllText(outputPath, jsonString);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"报告成功保存！");
-            Console.ResetColor();
+            AnsiConsole.MarkupLine($"[green]报告成功保存！[/]");
         }
         catch (Exception ex)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"保存报告时出错: {ex.Message}");
-            Console.ResetColor();
+            AnsiConsole.MarkupLine($"[red]保存报告时出错: {Markup.Escape(ex.Message)}[/]");
         }
     }
 }

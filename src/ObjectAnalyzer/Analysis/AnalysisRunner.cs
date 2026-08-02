@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Spectre.Console;
 
 namespace ObjectAnalyzer;
 
@@ -13,9 +14,7 @@ public static class AnalysisRunner
     {
         if (!File.Exists(options.InputPath))
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"错误: 输入文件不存在: {options.InputPath}");
-            Console.ResetColor();
+            AnsiConsole.MarkupLine($"[red]错误: 输入文件不存在: {Markup.Escape(options.InputPath)}[/]");
             return 1;
         }
 
@@ -56,10 +55,10 @@ public static class AnalysisRunner
         if (string.IsNullOrEmpty(format))
         {
             format = FileParsers.DetectFormat(options.InputPath);
-            Console.WriteLine($"[自动检测] 使用格式 '{format}' 进行解析。");
+            AnsiConsole.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
         }
 
-        Console.WriteLine($"正在读取并解析文件: {options.InputPath} ...");
+        AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
         var parseOptions = new ParseOptions
         {
             Flatten = options.Flatten,
@@ -73,16 +72,16 @@ public static class AnalysisRunner
     /// </summary>
     private static List<Dictionary<string, object?>> RunTyped(AnalysisOptions options)
     {
-        Console.WriteLine($"正在编译类型定义文件: {options.TypeFile} ...");
+        AnsiConsole.MarkupLine($"正在编译类型定义文件: [blue]{Markup.Escape(options.TypeFile!)}[/] ...");
         var compileResult = TypeLoader.Compile(options.TypeFile!, options.TypeName);
 
         // 注意：context 必须在枚举完成后才能 Dispose，
         // 但由于 Analyze 内部会 ToList() 物化，这里在枚举后释放是安全的。
         // 我们使用一个包装来确保 context 在适当时机关闭。
         var targetType = compileResult.type;
-        Console.WriteLine($"编译成功。目标类型: {targetType.FullName}");
+        AnsiConsole.MarkupLine($"编译成功。目标类型: [green]{targetType.FullName}[/]");
 
-        Console.WriteLine($"正在使用强类型反序列化文件: {options.InputPath} ...");
+        AnsiConsole.MarkupLine($"正在使用强类型反序列化文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
         var objects = TypedFileParser.ParseJson(options.InputPath, targetType);
 
         // 物化后立即释放编译上下文，避免内存泄漏
@@ -105,9 +104,9 @@ public static class AnalysisRunner
     /// </summary>
     private static void ProcessAndReport(IEnumerable<Dictionary<string, object?>> parsedObjects, AnalysisOptions options)
     {
-        Console.WriteLine("正在分析对象字段...");
+        AnsiConsole.MarkupLine("正在分析对象字段...");
         AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects);
-        Console.WriteLine("分析完成！\n");
+        AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
         // 输出控制台统计结果
         ConsoleReporter.Print(result, options.MaxValuesToShow);
@@ -121,12 +120,10 @@ public static class AnalysisRunner
 
     private static void PrintError(Exception ex)
     {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"发生错误: {ex.Message}");
+        AnsiConsole.MarkupLine($"[red]发生错误: {Markup.Escape(ex.Message)}[/]");
         if (ex.InnerException != null)
         {
-            Console.WriteLine($"内部错误: {ex.InnerException.Message}");
+            AnsiConsole.MarkupLine($"[red]内部错误: {Markup.Escape(ex.InnerException.Message)}[/]");
         }
-        Console.ResetColor();
     }
 }
