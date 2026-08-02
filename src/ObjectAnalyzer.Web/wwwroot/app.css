@@ -108,6 +108,40 @@ h1:focus {
     color: #adb5bd;
 }
 
+/* Parse Options */
+.parse-options {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #495057;
+    cursor: pointer;
+}
+
+.option-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.option-item input[type="text"] {
+    width: 50px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
 .loading {
     margin-top: 1rem;
     padding: 0.75rem;
@@ -282,6 +316,21 @@ h1:focus {
     border-radius: 4px;
     font-size: 0.85rem;
     color: #664d03;
+}
+
+.default-val.null-val {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.default-val.number-val {
+    background: #cff4fc;
+    color: #055160;
+}
+
+.default-val.bool-val {
+    background: #d1e7dd;
+    color: #0f5132;
 }
 
 .na {

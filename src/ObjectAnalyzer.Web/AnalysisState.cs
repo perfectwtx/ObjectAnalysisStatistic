@@ -18,6 +18,10 @@ public sealed class AnalysisState
     public bool IsLoading { get; set; }
     public string? ErrorMessage { get; set; }
 
+    // 解析选项
+    public bool Flatten { get; set; } = true;
+    public string ExcelJsonColumn { get; set; } = "A";
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();

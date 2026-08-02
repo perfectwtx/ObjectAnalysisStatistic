@@ -19,6 +19,18 @@
             </p>
         </div>
 
+        @* 解析选项 *@
+        <div class="parse-options">
+            <label class="option-item">
+                <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
+                <span>展平嵌套对象</span>
+            </label>
+            <label class="option-item">
+                <span>Excel-JSON 列:</span>
+                <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
+            </label>
+        </div>
+
         @if (State.IsLoading)
         {
             <div class="loading">分析中...</div>
@@ -90,7 +102,7 @@
                                 <td>
                                     <div class="coverage-bar">
                                         <div class="coverage-fill" style="width: @(field.Coverage * 100)%"></div>
-                                        <span>@field.Count/@State.Result.TotalObjects (@(field.Coverage * 100).ToString("F1")%)</span>
+                                        <span>@field.Count/@State.Result.TotalObjects (@FormatPercent(field.Coverage))</span>
                                     </div>
                                 </td>
                                 <td>
@@ -100,9 +112,17 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (field.DefaultValueRepresentation != null)
+                                    @if (field.NullAppeared)
                                     {
-                                        <code class="default-val">@field.DefaultValueRepresentation</code>
+                                        <code class="default-val null-val">null</code>
+                                    }
+                                    else if (field.PrimaryType == "Number")
+                                    {
+                                        <code class="default-val number-val">0</code>
+                                    }
+                                    else if (field.PrimaryType == "Boolean")
+                                    {
+                                        <code class="default-val bool-val">false</code>
                                     }
                                     else
                                     {
@@ -156,7 +176,11 @@
 
             // 自动检测格式并解析
             var format = Core.FileParsers.DetectFormat(tempPath);
-            var parseOptions = new Core.ParseOptions { Flatten = true };
+            var parseOptions = new Core.ParseOptions
+            {
+                Flatten = State.Flatten,
+                ExcelJsonColumn = State.ExcelJsonColumn
+            };
             var objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions);
 
             // 分析
@@ -188,5 +212,21 @@
     private void ToggleSortDirection()
     {
         State.SortAscending = !State.SortAscending;
+    }
+
+    private void OnFlattenChange(ChangeEventArgs e)
+    {
+        State.Flatten = e.Value is true;
+    }
+
+    private void OnExcelColumnChange(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString()?.Trim().ToUpperInvariant() ?? "A";
+        State.ExcelJsonColumn = string.IsNullOrEmpty(val) ? "A" : val;
+    }
+
+    private static string FormatPercent(double coverage)
+    {
+        return $"{coverage * 100:F1}%";
     }
 }
