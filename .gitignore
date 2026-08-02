@@ -17,6 +17,4 @@ obj/
 Thumbs.db
 
 # User specific report outputs (keep samples directory, ignore report_*.json output files)
-samples/report_*.json
-samples/test_data.xlsx
-samples/test_data_excel_json.xlsx
+samples/
