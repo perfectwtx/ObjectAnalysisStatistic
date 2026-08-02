@@ -18,9 +18,14 @@ public sealed class AnalysisState
     public bool IsLoading { get; set; }
     public string? ErrorMessage { get; set; }
 
-    // 解析选项
-    public bool Flatten { get; set; } = true;
-    public string ExcelJsonColumn { get; set; } = "A";
+    // 解析选项 (对应 CLI 所有选项)
+    public bool Flatten { get; set; } = true;                    // --no-flatten
+    public string ExcelJsonColumn { get; set; } = "A";           // --excel-json-column
+    public string? Format { get; set; }                           // --format (null=自动检测)
+    public int MaxValuesToShow { get; set; } = 5;                // --max-values
+    public byte[]? TypeFileContent { get; set; }                  // --type (.cs 文件内容)
+    public string? TypeFileName { get; set; }                     // --type (文件名显示)
+    public string? TypeName { get; set; }                         // --type-name
 
     public List<FieldStatistic> GetFilteredSortedFields()
     {

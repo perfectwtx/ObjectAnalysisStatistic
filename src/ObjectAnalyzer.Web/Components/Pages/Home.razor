@@ -21,14 +21,47 @@
 
         @* 解析选项 *@
         <div class="parse-options">
-            <label class="option-item">
-                <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
-                <span>展平嵌套对象</span>
-            </label>
-            <label class="option-item">
-                <span>Excel-JSON 列:</span>
-                <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
-            </label>
+            <div class="options-row">
+                <label class="option-item">
+                    <span>格式:</span>
+                    <select value="@(State.Format ?? "")" @onchange="OnFormatChange">
+                        <option value="">自动检测</option>
+                        <option value="json">JSON</option>
+                        <option value="jsonl">JSONL</option>
+                        <option value="csv">CSV</option>
+                        <option value="excel">Excel</option>
+                        <option value="xml">XML</option>
+                        <option value="yaml">YAML</option>
+                        <option value="excel-json">Excel-JSON</option>
+                    </select>
+                </label>
+                <label class="option-item">
+                    <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
+                    <span>展平嵌套</span>
+                </label>
+                <label class="option-item">
+                    <span>最大展示值:</span>
+                    <input type="number" value="@State.MaxValuesToShow" @oninput="OnMaxValuesChange" min="1" max="100" />
+                </label>
+                <label class="option-item">
+                    <span>Excel-JSON 列:</span>
+                    <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
+                </label>
+            </div>
+            <div class="options-row type-row">
+                <label class="option-item">
+                    <span>类型定义 (.cs):</span>
+                    <InputFile OnChange="HandleTypeFileUpload" accept=".cs" />
+                </label>
+                @if (State.TypeFileName != null)
+                {
+                    <span class="type-file-name">@State.TypeFileName</span>
+                }
+                <label class="option-item">
+                    <span>目标类名:</span>
+                    <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="可选" />
+                </label>
+            </div>
         </div>
 
         @if (State.IsLoading)
@@ -167,21 +200,50 @@
 
         try
         {
-            // 保存到临时文件
+            // 保存数据文件到临时路径
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
             await using (var fs = File.Create(tempPath))
             {
                 await file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024).CopyToAsync(fs);
             }
 
-            // 自动检测格式并解析
-            var format = Core.FileParsers.DetectFormat(tempPath);
-            var parseOptions = new Core.ParseOptions
+            List<Dictionary<string, object?>> objects;
+
+            // 如果指定了类型文件，使用强类型反序列化
+            if (State.TypeFileContent != null)
             {
-                Flatten = State.Flatten,
-                ExcelJsonColumn = State.ExcelJsonColumn
-            };
-            var objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions);
+                var typeTempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.cs");
+                await File.WriteAllBytesAsync(typeTempPath, State.TypeFileContent);
+                try
+                {
+                    var compileResult = Core.TypeLoader.Compile(typeTempPath, State.TypeName);
+                    try
+                    {
+                        objects = Core.TypedFileParser.ParseJson(tempPath, compileResult.type);
+                    }
+                    finally
+                    {
+                        compileResult.context.Dispose();
+                    }
+                }
+                finally
+                {
+                    File.Delete(typeTempPath);
+                }
+            }
+            else
+            {
+                // 自动检测或指定格式解析
+                var format = string.IsNullOrEmpty(State.Format)
+                    ? Core.FileParsers.DetectFormat(tempPath)
+                    : State.Format;
+                var parseOptions = new Core.ParseOptions
+                {
+                    Flatten = State.Flatten,
+                    ExcelJsonColumn = State.ExcelJsonColumn
+                };
+                objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions);
+            }
 
             // 分析
             State.Result = Core.ObjectAnalyzer.Analyze(objects);
@@ -219,10 +281,41 @@
         State.Flatten = e.Value is true;
     }
 
+    private void OnFormatChange(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        State.Format = string.IsNullOrEmpty(val) ? null : val;
+    }
+
+    private void OnMaxValuesChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val) && val > 0)
+        {
+            State.MaxValuesToShow = val;
+        }
+    }
+
     private void OnExcelColumnChange(ChangeEventArgs e)
     {
         var val = e.Value?.ToString()?.Trim().ToUpperInvariant() ?? "A";
         State.ExcelJsonColumn = string.IsNullOrEmpty(val) ? "A" : val;
+    }
+
+    private async Task HandleTypeFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
+        State.TypeFileContent = ms.ToArray();
+        State.TypeFileName = file.Name;
+    }
+
+    private void OnTypeNameChange(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString()?.Trim();
+        State.TypeName = string.IsNullOrEmpty(val) ? null : val;
     }
 
     private static string FormatPercent(double coverage)

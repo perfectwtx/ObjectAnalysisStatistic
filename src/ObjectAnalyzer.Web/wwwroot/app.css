@@ -110,11 +110,36 @@ h1:focus {
 
 /* Parse Options */
 .parse-options {
-    display: flex;
-    gap: 1.5rem;
-    justify-content: center;
     margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.options-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
     flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.options-row:last-child {
+    margin-bottom: 0;
+}
+
+.type-row {
+    padding-top: 0.75rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.type-file-name {
+    font-size: 0.85rem;
+    color: #198754;
+    font-weight: 500;
 }
 
 .option-item {
@@ -140,6 +165,23 @@ h1:focus {
     text-align: center;
     font-size: 0.85rem;
     text-transform: uppercase;
+}
+
+.option-item input[type="number"] {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+.option-item select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background: #fff;
 }
 
 .loading {
