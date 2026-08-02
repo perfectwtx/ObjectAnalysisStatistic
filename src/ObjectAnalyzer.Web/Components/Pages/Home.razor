@@ -145,17 +145,16 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (field.NullAppeared)
+                                    @if (field.DefaultValueRepresentation != null)
                                     {
-                                        <code class="default-val null-val">null</code>
-                                    }
-                                    else if (field.PrimaryType == "Number")
-                                    {
-                                        <code class="default-val number-val">0</code>
-                                    }
-                                    else if (field.PrimaryType == "Boolean")
-                                    {
-                                        <code class="default-val bool-val">false</code>
+                                        var cssClass = field.DefaultValueRepresentation switch
+                                        {
+                                            "null" => "null-val",
+                                            "0" => "number-val",
+                                            "false" => "bool-val",
+                                            _ => ""
+                                        };
+                                        <code class="default-val @cssClass">@field.DefaultValueRepresentation</code>
                                     }
                                     else
                                     {

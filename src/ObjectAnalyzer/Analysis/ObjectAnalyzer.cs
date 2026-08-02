@@ -141,9 +141,8 @@ public static class ObjectAnalyzer
         {
             stat.Coverage = globalTotalObjects > 0 ? (double)stat.Count / globalTotalObjects : 0;
 
-            // 1. 判断是否出现过 null (显式出现 null，或者字段在某些对象中缺失)
-            stat.NullAppeared = (stat.Count < globalTotalObjects) || 
-                                stat.TypeCounts.ContainsKey("Null") || 
+            // 1. 判断是否显式出现过 null（字段缺失不等于 null）
+            stat.NullAppeared = stat.TypeCounts.ContainsKey("Null") || 
                                 stat.ValueCounts.ContainsKey("null");
 
             // 2. 确定该字段的主导数据类型
