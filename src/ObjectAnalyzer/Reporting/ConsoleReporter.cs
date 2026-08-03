@@ -52,9 +52,17 @@ public static class ConsoleReporter
             string defaultInfo = stat.DefaultValueRepresentation != null
                 ? $" → 默认值: [green]{Markup.Escape(stat.DefaultValueRepresentation)}[/]"
                 : "";
+            string ruleInfo = stat.AppliedRule != null ? " [grey][[规则已应用]][/]" : "";
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"[blue]{t.Key}[/]({t.Value})"));
-            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}");
+            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}{ruleInfo}");
             AnsiConsole.MarkupLine($"  类型分布: {types}");
+
+            // 枚举违规值
+            if (stat.EnumViolations.Count > 0)
+            {
+                var violations = string.Join(", ", stat.EnumViolations.Select(v => $"[red]{Markup.Escape(v)}[/]"));
+                AnsiConsole.MarkupLine($"  [red]枚举违规:[/] {violations}");
+            }
 
             // 值频次表格
             var valueTable = new Table()

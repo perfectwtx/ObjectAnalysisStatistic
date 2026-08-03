@@ -14,7 +14,8 @@ function handleReconnectStateChanged(event) {
     } else if (event.detail.state === "hide") {
         reconnectModal.close();
     } else if (event.detail.state === "failed") {
-        document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
+        // Auto-reload after 3 seconds instead of showing manual retry
+        setTimeout(() => location.reload(), 3000);
     } else if (event.detail.state === "rejected") {
         location.reload();
     }

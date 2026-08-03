@@ -27,6 +27,10 @@ public sealed class AnalysisState
     public string? TypeFileName { get; set; }                     // --type (文件名显示)
     public string? TypeName { get; set; }                         // --type-name
 
+    // 规则文件 (--rules)
+    public byte[]? RulesFileContent { get; set; }
+    public string? RulesFileName { get; set; }
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();

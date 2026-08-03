@@ -12,4 +12,8 @@ public class FieldStatistic
     public string PrimaryType { get; set; } = "Unknown";
     public bool NullAppeared { get; set; }
     public string? DefaultValueRepresentation { get; set; }
+
+    // 规则校验相关
+    public FieldRule? AppliedRule { get; set; }
+    public List<string> EnumViolations { get; set; } = new(); // 不符合枚举约束的实际值
 }

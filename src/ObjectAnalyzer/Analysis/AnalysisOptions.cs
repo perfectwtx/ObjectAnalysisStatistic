@@ -13,4 +13,5 @@ public sealed class AnalysisOptions
     public string? TypeFile { get; set; }
     public string? TypeName { get; set; }
     public string? ExcelJsonColumn { get; set; }
+    public string? RulesFile { get; set; }
 }

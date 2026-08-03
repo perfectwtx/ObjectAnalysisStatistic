@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using Spectre.Console;
 
 namespace ObjectAnalyzer;
@@ -104,8 +105,15 @@ public static class AnalysisRunner
     /// </summary>
     private static void ProcessAndReport(IEnumerable<Dictionary<string, object?>> parsedObjects, AnalysisOptions options)
     {
+        // 加载规则文件
+        AnalysisRules? rules = null;
+        if (!string.IsNullOrEmpty(options.RulesFile))
+        {
+            rules = LoadRules(options.RulesFile);
+        }
+
         AnsiConsole.MarkupLine("正在分析对象字段...");
-        AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects);
+        AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects, rules);
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
         // 输出控制台统计结果
@@ -125,5 +133,26 @@ public static class AnalysisRunner
         {
             AnsiConsole.MarkupLine($"[red]内部错误: {Markup.Escape(ex.InnerException.Message)}[/]");
         }
+    }
+
+    /// <summary>
+    /// 从 JSON 文件加载分析规则。
+    /// </summary>
+    private static AnalysisRules LoadRules(string rulesPath)
+    {
+        if (!File.Exists(rulesPath))
+        {
+            throw new FileNotFoundException($"规则文件不存在: {rulesPath}");
+        }
+
+        AnsiConsole.MarkupLine($"正在加载规则文件: [blue]{Markup.Escape(rulesPath)}[/] ...");
+        var json = File.ReadAllText(rulesPath);
+        var rules = JsonSerializer.Deserialize<AnalysisRules>(json);
+        if (rules == null)
+        {
+            throw new InvalidOperationException($"规则文件解析失败: {rulesPath}");
+        }
+        AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
+        return rules;
     }
 }

@@ -21,7 +21,7 @@ public static class ObjectAnalyzer
         public int TotalObjects { get; set; }
     }
 
-    public static AnalysisResult Analyze(IEnumerable<Dictionary<string, object?>> objects)
+    public static AnalysisResult Analyze(IEnumerable<Dictionary<string, object?>> objects, AnalysisRules? rules = null)
     {
         // 物化为 List 以确保 Parallel.ForEach 的线程安全性
         // （yield return 的 IEnumerable 底层可能共享 StreamReader 等非线程安全资源）
@@ -169,6 +169,30 @@ public static class ObjectAnalyzer
                 }
             }
 
+            // 4. 应用规则（覆盖自动推断结果）
+            if (rules != null && rules.Fields.TryGetValue(stat.FieldName, out var rule))
+            {
+                stat.AppliedRule = rule;
+
+                // 规则指定默认值 → 覆盖
+                if (rule.DefaultValue != null)
+                {
+                    stat.DefaultValueRepresentation = rule.DefaultValue.ToString();
+                }
+
+                // 规则指定主导类型 → 覆盖
+                if (!string.IsNullOrEmpty(rule.PrimaryType))
+                {
+                    stat.PrimaryType = rule.PrimaryType;
+                }
+
+                // 规则指定枚举约束 → 校验
+                if (rule.EnumValues != null && rule.EnumValues.Count > 0)
+                {
+                    ValidateEnumValues(stat, rule.EnumValues);
+                }
+            }
+
             results.Add(stat);
         }
 
@@ -267,5 +291,62 @@ public static class ObjectAnalyzer
         }
         
         return value.ToString() ?? "";
+    }
+
+    /// <summary>
+    /// 校验字段实际值是否符合枚举约束。
+    /// 匹配逻辑：字符串精确匹配(忽略大小写) + 数值解析双模式。
+    /// </summary>
+    private static void ValidateEnumValues(FieldStatistic stat, List<System.Text.Json.JsonElement> enumElements)
+    {
+        // 将枚举值转换为字符串集合和数值集合
+        var enumStrings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var enumNumbers = new HashSet<double>();
+
+        foreach (var elem in enumElements)
+        {
+            switch (elem.ValueKind)
+            {
+                case JsonValueKind.String:
+                    var strVal = elem.GetString();
+                    if (strVal != null) enumStrings.Add(strVal);
+                    break;
+                case JsonValueKind.Number:
+                    if (elem.TryGetDouble(out double numVal)) enumNumbers.Add(numVal);
+                    break;
+                default:
+                    var raw = elem.GetRawText();
+                    if (raw != null) enumStrings.Add(raw);
+                    break;
+            }
+        }
+
+        // 校验每个实际值
+        foreach (var actualValue in stat.ValueCounts.Keys)
+        {
+            if (actualValue == "[Other values]") continue;
+
+            if (IsEnumMatch(actualValue, enumStrings, enumNumbers))
+                continue;
+
+            stat.EnumViolations.Add(actualValue);
+        }
+    }
+
+    private static bool IsEnumMatch(string value, HashSet<string> enumStrings, HashSet<double> enumNumbers)
+    {
+        // 1. 字符串精确匹配 (忽略大小写)
+        if (enumStrings.Contains(value))
+            return true;
+
+        // 2. 数值匹配: 实际值和枚举数值都尝试解析为 double
+        if (double.TryParse(value, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out double actualNum))
+        {
+            if (enumNumbers.Contains(actualNum))
+                return true;
+        }
+
+        return false;
     }
 }

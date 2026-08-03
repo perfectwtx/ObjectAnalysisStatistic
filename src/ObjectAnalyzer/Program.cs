@@ -46,6 +46,10 @@ var excelJsonColumnOption = new Option<string?>(
     description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。");
 excelJsonColumnOption.AddCompletions("A", "B", "C", "D", "E");
 
+var rulesOption = new Option<FileInfo?>(
+    aliases: CliAliases.Rules,
+    description: "指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型和枚举约束。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -56,6 +60,7 @@ rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(typeOption);
 rootCommand.AddOption(typeNameOption);
 rootCommand.AddOption(excelJsonColumnOption);
+rootCommand.AddOption(rulesOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -69,6 +74,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var type = parseResult.GetValueForOption(typeOption);
     var typeName = parseResult.GetValueForOption(typeNameOption);
     var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
+    var rules = parseResult.GetValueForOption(rulesOption);
 
     if (generateTestExcel)
     {
@@ -93,7 +99,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         MaxValuesToShow = maxValues,
         TypeFile = type?.FullName,
         TypeName = typeName,
-        ExcelJsonColumn = excelJsonColumn ?? "A"
+        ExcelJsonColumn = excelJsonColumn ?? "A",
+        RulesFile = rules?.FullName
     };
 
     context.ExitCode = AnalysisRunner.Run(options);
@@ -109,4 +116,5 @@ static class CliAliases
     public static readonly string[] MaxValues = { "--max-values", "-m" };
     public static readonly string[] Type = { "--type", "-t" };
     public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
+    public static readonly string[] Rules = { "--rules", "-r" };
 }

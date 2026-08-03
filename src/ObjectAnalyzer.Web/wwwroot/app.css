@@ -413,3 +413,27 @@ h1:focus {
     color: #495057;
     word-break: break-all;
 }
+
+/* Rule & Violations */
+.rule-badge {
+    display: inline-block;
+    background: #e7f1ff;
+    color: #1b6ec2;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.enum-violations {
+    margin-top: 0.25rem;
+}
+
+.violation {
+    display: inline-block;
+    background: #f8d7da;
+    color: #842029;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    margin: 0.1rem;
+}

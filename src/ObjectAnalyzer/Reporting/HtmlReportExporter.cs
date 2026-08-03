@@ -100,7 +100,7 @@ public static class HtmlReportExporter
         // 字段详情表
         sb.AppendLine("<div class=\"section\">");
         sb.AppendLine("<h2>字段详情</h2>");
-        sb.AppendLine("<table><thead><tr><th>字段名</th><th>覆盖率</th><th>主导类型</th><th>默认值</th><th>唯一值数</th><th>详情</th></tr></thead><tbody>");
+        sb.AppendLine("<table><thead><tr><th>字段名</th><th>覆盖率</th><th>主导类型</th><th>默认值</th><th>唯一值数</th><th>规则</th><th>详情</th></tr></thead><tbody>");
         foreach (var stat in result.FieldStatistics)
         {
             string defaultVal = stat.DefaultValueRepresentation != null
@@ -112,6 +112,13 @@ public static class HtmlReportExporter
                 .Select(v => $"{Escape(Truncate(v.Key, 30))} ×{v.Value.ToString(CultureInfo.InvariantCulture)}"));
 
             string coveragePct = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture);
+            string ruleInfo = stat.AppliedRule != null ? "<span class=\"rule-badge\">已应用</span>" : "";
+            if (stat.EnumViolations.Count > 0)
+            {
+                var violations = string.Join(", ", stat.EnumViolations.Select(v => $"<span class=\"violation\">{Escape(v)}</span>"));
+                ruleInfo += $"<div class=\"violations\">枚举违规: {violations}</div>";
+            }
+
             sb.Append("<tr>")
                 .Append("<td><code>").Append(Escape(stat.FieldName)).Append("</code></td>")
                 .Append("<td>").Append(stat.Count.ToString(CultureInfo.InvariantCulture)).Append('/').Append(result.TotalObjects.ToString(CultureInfo.InvariantCulture))
@@ -119,6 +126,7 @@ public static class HtmlReportExporter
                 .Append("<td>").Append(Escape(types)).Append("</td>")
                 .Append("<td>").Append(defaultVal).Append("</td>")
                 .Append("<td>").Append(stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture)).Append("</td>")
+                .Append("<td>").Append(ruleInfo).Append("</td>")
                 .Append("<td class=\"detail\">").Append(topValues).Append("</td>")
                 .AppendLine("</tr>");
         }
@@ -211,5 +219,8 @@ public static class HtmlReportExporter
         code { background: #f0f2f5; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; word-break: break-all; }
         .detail { max-width: 300px; color: #666; font-size: 0.85rem; }
         .na { color: #ccc; }
+        .rule-badge { display: inline-block; background: #e7f1ff; color: #1b6ec2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .violations { margin-top: 4px; font-size: 0.8rem; color: #842029; }
+        .violation { background: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; margin: 0 2px; }
         """;
 }

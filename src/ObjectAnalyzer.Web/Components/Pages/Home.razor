@@ -62,6 +62,16 @@
                     <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="可选" />
                 </label>
             </div>
+            <div class="options-row type-row">
+                <label class="option-item">
+                    <span>规则文件 (.json):</span>
+                    <InputFile OnChange="HandleRulesFileUpload" accept=".json" />
+                </label>
+                @if (State.RulesFileName != null)
+                {
+                    <span class="type-file-name">@State.RulesFileName</span>
+                }
+            </div>
         </div>
 
         @if (State.IsLoading)
@@ -125,6 +135,7 @@
                             <th>主导类型</th>
                             <th>默认值</th>
                             <th>唯一值</th>
+                            <th>规则</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -162,6 +173,21 @@
                                     }
                                 </td>
                                 <td>@field.ValueCounts.Count</td>
+                                <td>
+                                    @if (field.AppliedRule != null)
+                                    {
+                                        <span class="rule-badge">已应用</span>
+                                    }
+                                    @if (field.EnumViolations.Count > 0)
+                                    {
+                                        <div class="enum-violations">
+                                            @foreach (var v in field.EnumViolations)
+                                            {
+                                                <span class="violation">@v</span>
+                                            }
+                                        </div>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -244,8 +270,16 @@
                 objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions);
             }
 
+            // 加载规则文件
+            Core.AnalysisRules? rules = null;
+            if (State.RulesFileContent != null)
+            {
+                var rulesJson = System.Text.Encoding.UTF8.GetString(State.RulesFileContent);
+                rules = System.Text.Json.JsonSerializer.Deserialize<Core.AnalysisRules>(rulesJson);
+            }
+
             // 分析
-            State.Result = Core.ObjectAnalyzer.Analyze(objects);
+            State.Result = Core.ObjectAnalyzer.Analyze(objects, rules);
 
             // 清理临时文件
             File.Delete(tempPath);
@@ -309,6 +343,17 @@
         await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
         State.TypeFileContent = ms.ToArray();
         State.TypeFileName = file.Name;
+    }
+
+    private async Task HandleRulesFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
+        State.RulesFileContent = ms.ToArray();
+        State.RulesFileName = file.Name;
     }
 
     private void OnTypeNameChange(ChangeEventArgs e)
