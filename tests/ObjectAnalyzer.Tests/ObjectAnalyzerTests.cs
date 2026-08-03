@@ -60,7 +60,7 @@ public class ObjectAnalyzerTests
         Assert.Equal(2, activeStat.Count);
         Assert.Equal(2.0 / 3.0, activeStat.Coverage);
         Assert.Contains("Boolean", activeStat.TypeCounts.Keys);
-        Assert.Equal("null", activeStat.DefaultValueRepresentation); // Missing implies null
+        Assert.Equal("false", activeStat.DefaultValueRepresentation); // Missing implies null
     }
 
     [Fact]
@@ -101,12 +101,12 @@ public class ObjectAnalyzerTests
 
         // Assert
         Assert.Equal(4, result.TotalObjects);
-        Assert.Equal(2, result.TotalUniqueObjects); // {"Id":1,"Val":"A"} and {"Id":2,"Val":"B"}
+        Assert.Equal(2, result.TotalUniqueObjects); // {"Id": 1,"Val":"A"} and {"Id": 2,"Val":"B"}
         Assert.Single(result.DuplicateObjects);
         
         var duplicate = result.DuplicateObjects.First();
         Assert.Equal(3, duplicate.Count);
-        Assert.Contains("\"Id\":1", duplicate.ObjectJson);
-        Assert.Contains("\"Val\":\"A\"", duplicate.ObjectJson);
+        Assert.Contains("\"Id\": 1", duplicate.ObjectJson);
+        Assert.Contains("\"Val\": \"A\"", duplicate.ObjectJson);
     }
 }

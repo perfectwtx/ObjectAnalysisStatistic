@@ -22,14 +22,14 @@ public class FileParsersTests
         try
         {
             // Act - Flattened
-            var resultFlat = FileParsers.ParseJson(tempFile, flatten: true).ToList();
+            var resultFlat = FileParsers.ParseByFormat(tempFile, "json", new() { Flatten = true }).ToList();
             Assert.Equal(2, resultFlat.Count);
             Assert.Equal(1L, resultFlat[0]["Id"]);
             Assert.Equal("Alice", resultFlat[0]["Name"]);
             Assert.Equal("New York", resultFlat[0]["Info.City"]);
 
             // Act - Unflattened
-            var resultUnflat = FileParsers.ParseJson(tempFile, flatten: false).ToList();
+            var resultUnflat = FileParsers.ParseByFormat(tempFile, "json", new() { Flatten = false }).ToList();
             Assert.Equal(2, resultUnflat.Count);
             Assert.Equal(1L, resultUnflat[0]["Id"]);
             Assert.IsType<Dictionary<string, object?>>(resultUnflat[0]["Info"]);
@@ -51,7 +51,7 @@ public class FileParsersTests
         try
         {
             // Act
-            var result = FileParsers.ParseJsonl(tempFile, flatten: true).ToList();
+            var result = FileParsers.ParseByFormat(tempFile, "jsonl", new() { Flatten = true }).ToList();
 
             // Assert
             Assert.Equal(2, result.Count);
@@ -77,7 +77,7 @@ public class FileParsersTests
         try
         {
             // Act
-            var result = FileParsers.ParseExcelOrCsv(tempFile).ToList();
+            var result = FileParsers.ParseByFormat(tempFile, "csv", new()).ToList();
 
             // Assert
             Assert.Equal(2, result.Count);
@@ -105,7 +105,7 @@ public class FileParsersTests
         try
         {
             // Act
-            var result = FileParsers.ParseXml(tempFile).ToList();
+            var result = FileParsers.ParseByFormat(tempFile, "xml", new()).ToList();
 
             // Assert
             Assert.Equal(2, result.Count);
@@ -134,7 +134,7 @@ public class FileParsersTests
         try
         {
             // Act
-            var result = FileParsers.ParseYaml(tempFile).ToList();
+            var result = FileParsers.ParseByFormat(tempFile, "yaml", new()).ToList();
 
             // Assert
             Assert.Equal(2, result.Count);
