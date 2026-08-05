@@ -172,7 +172,13 @@
                                         <span class="na">—</span>
                                     }
                                 </td>
-                                <td>@field.ValueCounts.Count</td>
+                                <td>
+                                    @field.ValueCounts.Count
+                                    @if (field.ValueCountsTruncated)
+                                    {
+                                        <span class="truncated-hint">+ (已截断)</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (field.AppliedRule != null)
                                     {
@@ -244,7 +250,12 @@
                     var compileResult = Core.TypeLoader.Compile(typeTempPath, State.TypeName);
                     try
                     {
-                        objects = Core.TypedFileParser.ParseJson(tempPath, compileResult.type);
+                        var typedResult = Core.TypedFileParser.ParseJson(tempPath, compileResult.type);
+                        objects = typedResult.Objects;
+                        if (typedResult.Errors.Count > 0)
+                        {
+                            State.ErrorMessage = $"存在 {typedResult.Errors.Count} 条属性读取错误: {typedResult.Errors[0]}";
+                        }
                     }
                     finally
                     {

@@ -37,7 +37,7 @@ public static class ConsoleReporter
             }
             if (result.DuplicateObjects.Count > 3)
             {
-                AnsiConsole.MarkupLine($"  [darkgrey]... 还有 {result.DuplicateObjects.Count - 3} 组未列出[/]");
+                AnsiConsole.MarkupLine($"  [grey]... 还有 {result.DuplicateObjects.Count - 3} 组未列出[/]");
             }
             AnsiConsole.WriteLine();
         }
@@ -53,8 +53,9 @@ public static class ConsoleReporter
                 ? $" → 默认值: [green]{Markup.Escape(stat.DefaultValueRepresentation)}[/]"
                 : "";
             string ruleInfo = stat.AppliedRule != null ? " [grey][[规则已应用]][/]" : "";
+            string truncatedInfo = stat.ValueCountsTruncated ? " [orange1][[唯一值已截断]][/]" : "";
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"[blue]{t.Key}[/]({t.Value})"));
-            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}{ruleInfo}");
+            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}{ruleInfo}{truncatedInfo}");
             AnsiConsole.MarkupLine($"  类型分布: {types}");
 
             // 枚举违规值
@@ -79,7 +80,7 @@ public static class ConsoleReporter
                 if (shown >= maxValuesToShow)
                 {
                     int remaining = sortedValues.Count - maxValuesToShow;
-                    valueTable.AddRow($"[darkgrey]... 还有 {remaining} 个唯一值[/]", "", "");
+                    valueTable.AddRow($"[grey]... 还有 {remaining} 个唯一值[/]", "", "");
                     break;
                 }
 

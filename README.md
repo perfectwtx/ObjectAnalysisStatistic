@@ -43,6 +43,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--type-name <NAME>` | — | 指定目标类名（当 .cs 文件包含多个类时使用） | 自动检测 |
 | `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型和枚举约束 | 无 |
+| `--parallel <N>` | `-p` | 指定分析时的最大并行线程数 | 所有核心 |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
 > 提示：使用 `-h` 或 `--help` 查看完整帮助。

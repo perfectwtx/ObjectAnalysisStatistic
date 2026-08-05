@@ -47,12 +47,17 @@ public static class FileParsers
 
     /// <summary>
     /// Parses a file by format name using the parser registry.
+    /// Format names are matched case-insensitively.
     /// </summary>
     public static List<Dictionary<string, object?>> ParseByFormat(string path, string format, ParseOptions options)
     {
+        if (string.IsNullOrWhiteSpace(format))
+            throw new InvalidOperationException("未指定文件格式。");
+
+        string normalized = format.Trim().ToLowerInvariant();
         foreach (var parser in _parsers)
         {
-            if (parser.SupportedFormats.Contains(format))
+            if (parser.SupportedFormats.Contains(normalized))
                 return parser.Parse(path, options);
         }
         throw new InvalidOperationException($"不支持的文件格式: {format}");

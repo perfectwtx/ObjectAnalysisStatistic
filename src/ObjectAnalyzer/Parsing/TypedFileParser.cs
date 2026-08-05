@@ -1,11 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 
 namespace ObjectAnalyzer;
+
+/// <summary>
+/// 强类型反序列化的结果：对象列表 + 属性读取错误列表（分离，避免错误文本污染统计数据）。
+/// </summary>
+public sealed class TypedParseResult
+{
+    public List<Dictionary<string, object?>> Objects { get; } = new();
+    public List<string> Errors { get; } = new();
+}
 
 public static class TypedFileParser
 {
@@ -14,11 +22,13 @@ public static class TypedFileParser
     /// </summary>
     /// <param name="jsonPath">JSON 文件路径</param>
     /// <param name="targetType">目标类型（编译后的 class）</param>
-    /// <returns>属性字典列表，供分析管线使用</returns>
-    public static List<Dictionary<string, object?>> ParseJson(string jsonPath, Type targetType)
+    /// <returns>属性字典列表与读取错误列表，供分析管线使用</returns>
+    public static TypedParseResult ParseJson(string jsonPath, Type targetType)
     {
         if (!File.Exists(jsonPath))
             throw new FileNotFoundException($"找不到输入文件: {jsonPath}");
+
+        var result = new TypedParseResult();
 
         // 构建数组类型: targetType[]
         Type arrayType = targetType.MakeArrayType();
@@ -35,7 +45,6 @@ public static class TypedFileParser
         // 获取目标类型的所有公共属性
         var properties = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-        var result = new List<Dictionary<string, object?>>();
         foreach (var item in enumerable)
         {
             if (item == null) continue;
@@ -49,10 +58,11 @@ public static class TypedFileParser
                 }
                 catch (Exception ex)
                 {
-                    dict[prop.Name] = $"<读取失败: {ex.Message}>";
+                    // 读取失败不污染统计数据：跳过该属性，并单独记录错误
+                    result.Errors.Add($"{targetType.Name}.{prop.Name}: {ex.Message}");
                 }
             }
-            result.Add(dict);
+            result.Objects.Add(dict);
         }
         return result;
     }

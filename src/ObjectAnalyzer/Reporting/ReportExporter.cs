@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Text.Json;
 using Spectre.Console;
@@ -22,17 +21,10 @@ public static class ReportExporter
 
     private static void SaveJson(AnalysisResult result, string outputPath)
     {
-        try
-        {
-            AnsiConsole.Markup($"正在将详细分析报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-            AnsiConsole.WriteLine();
-            string jsonString = JsonSerializer.Serialize(result, JsonSharedOptions.Write);
-            File.WriteAllText(outputPath, jsonString);
-            AnsiConsole.MarkupLine($"[green]报告成功保存！[/]");
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]保存报告时出错: {Markup.Escape(ex.Message)}[/]");
-        }
+        AnsiConsole.Markup($"正在将详细分析报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnsiConsole.WriteLine();
+        string jsonString = JsonSerializer.Serialize(result, JsonSharedOptions.Write);
+        File.WriteAllText(outputPath, jsonString);
+        AnsiConsole.MarkupLine($"[green]报告成功保存！[/]");
     }
 }

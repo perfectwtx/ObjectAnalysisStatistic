@@ -42,7 +42,7 @@ public class PersonTest
             Assert.Equal("TestNamespace.PersonTest", type.FullName);
 
             // Act - Parse typed JSON
-            var result = TypedFileParser.ParseJson(tempJsonFile, type).ToList();
+            var result = TypedFileParser.ParseJson(tempJsonFile, type).Objects;
 
             // Assert - Typed parse
             Assert.Equal(2, result.Count);

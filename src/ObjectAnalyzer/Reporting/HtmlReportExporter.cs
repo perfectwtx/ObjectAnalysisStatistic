@@ -13,17 +13,10 @@ public static class HtmlReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
-        try
-        {
-            AnsiConsole.MarkupLine($"正在将 HTML 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-            string html = GenerateHtml(result);
-            File.WriteAllText(outputPath, html, Encoding.UTF8);
-            AnsiConsole.MarkupLine($"[green]HTML 报告成功保存！[/]");
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]保存 HTML 报告时出错: {Markup.Escape(ex.Message)}[/]");
-        }
+        AnsiConsole.MarkupLine($"正在将 HTML 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        string html = GenerateHtml(result);
+        File.WriteAllText(outputPath, html, Encoding.UTF8);
+        AnsiConsole.MarkupLine($"[green]HTML 报告成功保存！[/]");
     }
 
     private static string GenerateHtml(AnalysisResult result)
@@ -112,6 +105,9 @@ public static class HtmlReportExporter
                 .Select(v => $"{Escape(Truncate(v.Key, 30))} ×{v.Value.ToString(CultureInfo.InvariantCulture)}"));
 
             string coveragePct = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture);
+            string uniqueCount = stat.ValueCountsTruncated
+                ? $"{stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture)}+"
+                : stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
             string ruleInfo = stat.AppliedRule != null ? "<span class=\"rule-badge\">已应用</span>" : "";
             if (stat.EnumViolations.Count > 0)
             {
@@ -125,7 +121,7 @@ public static class HtmlReportExporter
                 .Append(" (").Append(coveragePct).Append("%)</td>")
                 .Append("<td>").Append(Escape(types)).Append("</td>")
                 .Append("<td>").Append(defaultVal).Append("</td>")
-                .Append("<td>").Append(stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture)).Append("</td>")
+                .Append("<td>").Append(uniqueCount).Append("</td>")
                 .Append("<td>").Append(ruleInfo).Append("</td>")
                 .Append("<td class=\"detail\">").Append(topValues).Append("</td>")
                 .AppendLine("</tr>");
@@ -182,12 +178,32 @@ public static class HtmlReportExporter
 
     private static string Escape(string s)
     {
-        return s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+        return s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+            .Replace("\"", "&quot;").Replace("'", "&#39;");
     }
 
+    // 用于嵌入 JS 字符串字面量：转义为 \uXXXX 形式可安全放入单引号字符串，
+    // 并防止 </script> 提前关闭脚本块。
     private static string EscapeJs(string s)
     {
-        return s.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "");
+        var sb = new StringBuilder(s.Length);
+        foreach (char c in s)
+        {
+            switch (c)
+            {
+                case '\\': sb.Append("\\\\"); break;
+                case '\'': sb.Append("\\'"); break;
+                case '"': sb.Append("\\\""); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '<': sb.Append("\\u003C"); break;
+                case '>': sb.Append("\\u003E"); break;
+                case '&': sb.Append("\\u0026"); break;
+                case '/': sb.Append("\\/"); break;
+                default: sb.Append(c); break;
+            }
+        }
+        return sb.ToString();
     }
 
     private static string Truncate(string s, int maxLen)

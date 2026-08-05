@@ -83,14 +83,26 @@ public static class AnalysisRunner
         AnsiConsole.MarkupLine($"编译成功。目标类型: [green]{targetType.FullName}[/]");
 
         AnsiConsole.MarkupLine($"正在使用强类型反序列化文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
-        var objects = TypedFileParser.ParseJson(options.InputPath, targetType);
+        var typedResult = TypedFileParser.ParseJson(options.InputPath, targetType);
 
         // 物化后立即释放编译上下文，避免内存泄漏
         var materialized = new List<Dictionary<string, object?>>();
         try
         {
-            foreach (var obj in objects)
-                materialized.Add(obj);
+            materialized.AddRange(typedResult.Objects);
+
+            // 提示属性读取错误（不阻断分析）
+            if (typedResult.Errors.Count > 0)
+            {
+                foreach (var err in typedResult.Errors.Take(5))
+                {
+                    AnsiConsole.MarkupLine($"[yellow]属性读取警告: {Markup.Escape(err)}[/]");
+                }
+                if (typedResult.Errors.Count > 5)
+                {
+                    AnsiConsole.MarkupLine($"[yellow]... 还有 {typedResult.Errors.Count - 5} 条读取错误[/]");
+                }
+            }
         }
         finally
         {
@@ -113,7 +125,13 @@ public static class AnalysisRunner
         }
 
         AnsiConsole.MarkupLine("正在分析对象字段...");
-        AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects, rules);
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
+                ? options.MaxDegreeOfParallelism
+                : -1 // -1 = 不限制，由运行时决定（通常为所有核心）
+        };
+        AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions);
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
         // 输出控制台统计结果

@@ -21,7 +21,17 @@ public static class ObjectAnalyzer
         public int TotalObjects { get; set; }
     }
 
-    public static AnalysisResult Analyze(IEnumerable<Dictionary<string, object?>> objects, AnalysisRules? rules = null)
+    /// <summary>
+    /// Analyzes a collection of objects, producing field statistics and duplicate detection.
+    /// </summary>
+    /// <param name="objects">Objects to analyze.</param>
+    /// <param name="rules">Optional field rules (defaults, primary types, enum constraints).</param>
+    /// <param name="parallelOptions">Optional parallelism control (MaxDegreeOfParallelism / CancellationToken).
+    /// If null, uses the default (all cores, no cancellation).</param>
+    public static AnalysisResult Analyze(
+        IEnumerable<Dictionary<string, object?>> objects,
+        AnalysisRules? rules = null,
+        ParallelOptions? parallelOptions = null)
     {
         // 物化为 List 以确保 Parallel.ForEach 的线程安全性
         // （yield return 的 IEnumerable 底层可能共享 StreamReader 等非线程安全资源）
@@ -35,16 +45,21 @@ public static class ObjectAnalyzer
         int globalTotalObjects = 0;
         var mergeLock = new object();
 
+        var options = parallelOptions ?? new ParallelOptions();
+
         // 使用 Parallel.ForEach 进行多线程并行 Map 聚合
         Parallel.ForEach(
             objectList,
+            options,
             () => new ThreadLocalState(),
             (obj, loopState, localState) =>
             {
                 localState.TotalObjects++;
 
                 // 1. 计算对象哈希指纹（128 位 MD5，避免 64 位哈希的生日悖论碰撞）
-                string objHash = ComputeObjectHash(obj);
+                // 排序仅执行一次，哈希与重复对象 JSON 序列化共享
+                var sortedEntries = obj.OrderBy(kv => kv.Key).ToArray();
+                string objHash = ComputeObjectHash(sortedEntries);
 
                 // 2. 检测重复对象
                 // 若该哈希已被其他线程或本线程见过，则是重复对象，此时才进行 JSON 序列化保存其实体
@@ -52,7 +67,7 @@ public static class ObjectAnalyzer
                 {
                     globalDuplicateJsons.GetOrAdd(objHash, h =>
                     {
-                        var sortedDict = obj.OrderBy(kv => kv.Key).ToDictionary(kv => kv.Key, kv => kv.Value);
+                        var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
                         return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
                     });
                 }
@@ -80,6 +95,7 @@ public static class ObjectAnalyzer
                     string valStr = FormatValue(value);
                     if (stat.ValueCounts.Count >= MaxTrackedUniqueValues && !stat.ValueCounts.ContainsKey(valStr))
                     {
+                        stat.ValueCountsTruncated = true;
                         stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
                     }
                     else
@@ -107,6 +123,7 @@ public static class ObjectAnalyzer
                         }
 
                         globalStat.Count += localStat.Count;
+                        globalStat.ValueCountsTruncated |= localStat.ValueCountsTruncated;
 
                         foreach (var tc in localStat.TypeCounts)
                         {
@@ -117,6 +134,7 @@ public static class ObjectAnalyzer
                         {
                             if (globalStat.ValueCounts.Count >= MaxTrackedUniqueValues && !globalStat.ValueCounts.ContainsKey(vc.Key))
                             {
+                                globalStat.ValueCountsTruncated = true;
                                 globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
                             }
                             else
@@ -236,12 +254,11 @@ public static class ObjectAnalyzer
     /// collisions that occur with 64-bit hashes at scale.
     /// </summary>
 #pragma warning disable CA5351 // MD5 used for deduplication, not security
-    private static string ComputeObjectHash(Dictionary<string, object?> obj)
+    private static string ComputeObjectHash(KeyValuePair<string, object?>[] sortedEntries)
     {
-        // 排序键值，以确保不同对象但键值对相同的实体哈希一致
-        var sorted = obj.OrderBy(kv => kv.Key);
+        // 键值对已预先排序，确保不同对象但键值对相同的实体哈希一致
         var sb = new StringBuilder();
-        foreach (var kv in sorted)
+        foreach (var kv in sortedEntries)
         {
             sb.Append(kv.Key);
             sb.Append('=');

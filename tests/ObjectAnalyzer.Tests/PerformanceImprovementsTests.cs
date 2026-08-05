@@ -133,7 +133,7 @@ public class SandboxEntity { public int Id { get; set; } }
         out List<Dictionary<string, object?>> parsed)
     {
         var (context, type) = TypeLoader.Compile(csFile, null);
-        parsed = TypedFileParser.ParseJson(jsonFile, type).ToList();
+        parsed = TypedFileParser.ParseJson(jsonFile, type).Objects;
         return context; // 调用方持有，using 块结束时 Dispose
     }
 }

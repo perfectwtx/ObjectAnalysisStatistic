@@ -38,7 +38,7 @@ public static class TypeLoader
         // 解析语法树
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode, path: csFilePath);
 
-        // 收集运行时程序集引用（确保能编译基础类型）
+        // 收集运行时程序集引用（优先使用核心白名单，编译缺少引用时回退到全部 TPA）
         var references = GetMetadataReferences();
 
         var compilation = CSharpCompilation.Create(
@@ -53,12 +53,28 @@ public static class TypeLoader
 
         if (!emitResult.Success)
         {
-            var errors = emitResult.Diagnostics
-                .Where(d => d.Severity == DiagnosticSeverity.Error)
-                .Select(d => $"  {d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)} ({d.Location.GetLineSpan()})");
-            throw new InvalidOperationException(
-                $"编译 .cs 文件失败，共 {emitResult.Diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error)} 个错误:\n" +
-                string.Join("\n", errors));
+            // 若是因为引用不完整导致失败（如用户类型使用了白名单之外的程序集），回退到完整 TPA 重新编译
+            if (!_usedFullReferenceSet && emitResult.Diagnostics.Any(d =>
+                    d.Severity == DiagnosticSeverity.Error &&
+                    (d.Id is "CS0234" or "CS0246" or "CS0012" or "CS0400" or "CS0616")))
+            {
+                references = GetFullMetadataReferences();
+                _usedFullReferenceSet = true;
+                compilation = compilation.WithReferences(references);
+                ms.SetLength(0);
+                ms.Position = 0;
+                emitResult = compilation.Emit(ms);
+            }
+
+            if (!emitResult.Success)
+            {
+                var errors = emitResult.Diagnostics
+                    .Where(d => d.Severity == DiagnosticSeverity.Error)
+                    .Select(d => $"  {d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)} ({d.Location.GetLineSpan()})");
+                throw new InvalidOperationException(
+                    $"编译 .cs 文件失败，共 {emitResult.Diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error)} 个错误:\n" +
+                    string.Join("\n", errors));
+            }
         }
 
         ms.Seek(0, SeekOrigin.Begin);
@@ -115,7 +131,56 @@ public static class TypeLoader
         return (context, targetType);
     }
 
+    // 大多数 .cs 类型定义只依赖这些核心程序集，优先加载它们以避免数百个 TPA 的冷启动开销
+    private static readonly string[] _coreReferenceNames =
+    {
+        "netstandard",
+        "System.Runtime",
+        "System.Private.CoreLib",
+        "System.Collections",
+        "System.Collections.Concurrent",
+        "System.Collections.Specialized",
+        "System.Linq",
+        "System.Linq.Expressions",
+        "System.Text.Json",
+        "System.Text.Encoding",
+        "System.Text.Encoding.Extensions",
+        "System.Text.RegularExpressions",
+        "System.IO",
+        "System.IO.FileSystem",
+        "System.Globalization",
+        "System.Reflection",
+        "System.Reflection.Primitives",
+        "System.Runtime.InteropServices",
+        "System.Runtime.Extensions",
+        "System.Threading",
+        "System.Threading.Tasks",
+        "System.ComponentModel",
+        "System.ComponentModel.Primitives",
+        "System.ComponentModel.TypeConverter",
+        "System.Data.Common",
+        "System.Xml.XmlDocument",
+        "System.Xml.ReaderWriter",
+        "System.Net.Http",
+        "System.Security.Cryptography",
+        "System.Formats.Asn1",
+        "System.ObjectModel",
+        "System.Memory",
+        "System.Numerics.Vectors"
+    };
+
+    // 标记当前进程是否已使用完整 TPA 引用集（用于回退判定与缓存）
+    private static bool _usedFullReferenceSet;
+
     private static List<MetadataReference> GetMetadataReferences()
+    {
+        if (_usedFullReferenceSet)
+            return GetFullMetadataReferences();
+
+        return LoadReferencesByName(_coreReferenceNames);
+    }
+
+    private static List<MetadataReference> GetFullMetadataReferences()
     {
         var references = new List<MetadataReference>();
 
@@ -125,6 +190,40 @@ public static class TypeLoader
         foreach (var path in trustedAssemblies)
         {
             if (File.Exists(path))
+            {
+                try
+                {
+                    references.Add(MetadataReference.CreateFromFile(path));
+                }
+                catch
+                {
+                    // 跳过无法加载的程序集
+                }
+            }
+        }
+
+        return references;
+    }
+
+    private static List<MetadataReference> LoadReferencesByName(IReadOnlyCollection<string> assemblyNames)
+    {
+        var references = new List<MetadataReference>();
+        var trustedAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?.Split(Path.PathSeparator) ?? Array.Empty<string>();
+
+        // 按程序集文件名索引 TPA 路径
+        var pathByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in trustedAssemblies)
+        {
+            if (File.Exists(path))
+            {
+                var name = Path.GetFileNameWithoutExtension(path);
+                if (name != null) pathByName.TryAdd(name, path);
+            }
+        }
+
+        foreach (var name in assemblyNames)
+        {
+            if (pathByName.TryGetValue(name, out var path))
             {
                 try
                 {
