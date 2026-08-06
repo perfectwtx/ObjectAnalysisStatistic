@@ -14,7 +14,6 @@ public sealed class AnalysisState
     public string SortField { get; set; } = "Count";
     public bool SortAscending { get; set; }
     public string SearchText { get; set; } = "";
-    public int MaxValues { get; set; } = 5;
     public bool IsLoading { get; set; }
     public string? ErrorMessage { get; set; }
 

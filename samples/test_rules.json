@@ -1,0 +1,13 @@
+{
+  "fields": {
+    "gender": {
+      "defaultValue": "Unknown",
+      "primaryType": "String",
+      "enumValues": ["Male", "Female", "Unknown"]
+    },
+    "age": {
+      "defaultValue": 0,
+      "primaryType": "Number"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "fields": {
+    "status": {
+      "enumValues": [0, 1, 2, "Active", "Inactive"]
+    }
+  }
+}

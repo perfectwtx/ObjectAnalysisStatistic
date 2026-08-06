@@ -14,7 +14,8 @@ public static class CsvReportExporter
     public static void Save(AnalysisResult result, string outputPath)
     {
         AnsiConsole.MarkupLine($"正在将 CSV 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-        File.WriteAllText(outputPath, GenerateCsv(result), Encoding.UTF8);
+        // 带 BOM 的 UTF-8，保证 Excel 直接打开中文不乱码
+        File.WriteAllText(outputPath, GenerateCsv(result), new UTF8Encoding(true));
         AnsiConsole.MarkupLine($"[green]CSV 报告成功保存！[/]");
     }
 

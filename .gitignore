@@ -16,5 +16,5 @@ obj/
 .DS_Store
 Thumbs.db
 
-# User specific report outputs (keep samples directory, ignore report_*.json output files)
-samples/
+# 只忽略 samples 下生成的报告输出文件，输入样本数据需入库
+samples/report*
