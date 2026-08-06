@@ -13,7 +13,7 @@ var inputOption = new Option<FileInfo?>(
 
 var outputOption = new Option<FileInfo?>(
     aliases: CliAliases.Output,
-    description: "指定保存分析报告的目标文件路径 (.json 或 .html)。");
+    description: "指定保存分析报告的目标文件路径 (.json / .html / .md / .csv)。");
 
 var formatOption = new Option<string?>(
     aliases: CliAliases.Format,
@@ -95,7 +95,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
-    if (maxParallel == 0)
+    if (maxParallel < 1 && maxParallel != -1)
     {
         AnsiConsole.MarkupLine("[red]错误: --parallel 必须是正整数 (>= 1) 或 -1 (默认)。[/]");
         context.ExitCode = 1;
