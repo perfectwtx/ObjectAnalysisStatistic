@@ -41,12 +41,12 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--format <FORMAT>` | `-f` | 显式指定输入格式：`json`、`jsonl`、`csv`、`excel`、`excel-json`、`xml`、`yaml` | 自动检测 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
-| `--type <FILE>` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化 | 无 |
+| `--type <FILE>` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象） | 无 |
 | `--type-name <NAME>` | — | 指定目标类名（当 .cs 文件包含多个类时使用） | 自动检测 |
 | `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型和枚举约束 | 无 |
 | `--violations <FILE>` | — | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
-| `--parallel <N>` | `-p` | 指定分析时的最大并行线程数 | 所有核心 |
+| `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
 > 提示：使用 `-h` 或 `--help` 查看完整帮助。
@@ -114,12 +114,16 @@ dotnet run
 
 ```
 ObjectAnalysisStatistic/
-├── samples/                          # 示例数据与报告
+├── samples/                          # 示例数据
 │   ├── test_data.json / .jsonl / .csv / .xlsx / .xml / .yaml
 │   ├── test_data_excel_json.xlsx     # Excel JSON 列模式示例
 │   ├── UserInfo.cs                   # 强类型反序列化示例类
 │   ├── test_rules.json               # 规则文件示例
-│   └── report*.json / report*.html   # 示例报告输出
+│   ├── test_defaults.json            # 默认值规则示例
+│   ├── test_enum_violations.json     # 枚举约束违规示例
+│   ├── test_numeric_enum.json        # 数值枚举示例
+│   └── test_numeric_enum_rules.json  # 数值枚举规则示例
+│   （注：samples/report* 为生成物，已被 .gitignore 忽略）
 ├── src/
 │   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe)
 │   │   ├── Analysis/                 # 分析引擎

@@ -22,11 +22,12 @@ public static class CsvReportExporter
     private static string GenerateCsv(AnalysisResult result)
     {
         var sb = new StringBuilder();
+        // Coverage 输出 0.0~1.0 的机器可读小数，方便 CI/表格直接做数值计算
         sb.AppendLine("FieldName,Count,Coverage,PrimaryType,DefaultValue,UniqueValues,Truncated,EnumViolations");
 
         foreach (var stat in result.FieldStatistics)
         {
-            string coverage = (stat.Coverage * 100).ToString("F2", CultureInfo.InvariantCulture);
+            string coverage = stat.Coverage.ToString("F4", CultureInfo.InvariantCulture);
             string unique = stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
             string truncated = stat.ValueCountsTruncated ? "true" : "false";
             string violations = string.Join(";", stat.EnumViolations);

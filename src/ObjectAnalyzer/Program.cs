@@ -95,6 +95,13 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
+    if (maxParallel == 0)
+    {
+        AnsiConsole.MarkupLine("[red]错误: --parallel 必须是正整数 (>= 1) 或 -1 (默认)。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
     if (input == null)
     {
         AnsiConsole.MarkupLine("[red]错误: 未指定输入文件。使用 -i 或 --input 指定。[/]");

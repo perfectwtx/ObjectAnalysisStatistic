@@ -19,6 +19,7 @@ public static class TypedFileParser
 {
     /// <summary>
     /// 使用指定的强类型反序列化 JSON 文件，并将结果转换为 Dictionary 列表。
+    /// 支持 JSON 根节点为数组或单个对象。
     /// </summary>
     /// <param name="jsonPath">JSON 文件路径</param>
     /// <param name="targetType">目标类型（编译后的 class）</param>
@@ -30,9 +31,27 @@ public static class TypedFileParser
 
         var result = new TypedParseResult();
 
-        // 构建数组类型: targetType[]
-        Type arrayType = targetType.MakeArrayType();
+        // 获取目标类型的所有公共属性
+        var properties = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
+        // 先判断根节点类型：数组 → 反序列化为 targetType[]；单个对象 → 包装为单元素列表
+        using (var fs = File.OpenRead(jsonPath))
+        using (var doc = JsonDocument.Parse(fs))
+        {
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                var jsonText = File.ReadAllText(jsonPath);
+                var single = JsonSerializer.Deserialize(jsonText, targetType, JsonSharedOptions.Read);
+                if (single != null)
+                {
+                    result.Objects.Add(BuildDict(single, properties, targetType, result));
+                }
+                return result;
+            }
+        }
+
+        // 数组路径
+        Type arrayType = targetType.MakeArrayType();
         object? deserialized;
         using (var fs = File.OpenRead(jsonPath))
         {
@@ -40,30 +59,32 @@ public static class TypedFileParser
         }
 
         if (deserialized is not System.Collections.IEnumerable enumerable)
-            throw new InvalidOperationException("反序列化结果不是可枚举类型。JSON 根节点必须是数组。");
-
-        // 获取目标类型的所有公共属性
-        var properties = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            throw new InvalidOperationException("反序列化结果不是可枚举类型。JSON 根节点必须是数组或对象。");
 
         foreach (var item in enumerable)
         {
             if (item == null) continue;
-
-            var dict = new Dictionary<string, object?>();
-            foreach (var prop in properties)
-            {
-                try
-                {
-                    dict[prop.Name] = prop.GetValue(item);
-                }
-                catch (Exception ex)
-                {
-                    // 读取失败不污染统计数据：跳过该属性，并单独记录错误
-                    result.Errors.Add($"{targetType.Name}.{prop.Name}: {ex.Message}");
-                }
-            }
-            result.Objects.Add(dict);
+            result.Objects.Add(BuildDict(item, properties, targetType, result));
         }
         return result;
+    }
+
+    private static Dictionary<string, object?> BuildDict(
+        object item, IEnumerable<PropertyInfo> properties, Type targetType, TypedParseResult result)
+    {
+        var dict = new Dictionary<string, object?>();
+        foreach (var prop in properties)
+        {
+            try
+            {
+                dict[prop.Name] = prop.GetValue(item);
+            }
+            catch (Exception ex)
+            {
+                // 读取失败不污染统计数据：跳过该属性，并单独记录错误
+                result.Errors.Add($"{targetType.Name}.{prop.Name}: {ex.Message}");
+            }
+        }
+        return dict;
     }
 }

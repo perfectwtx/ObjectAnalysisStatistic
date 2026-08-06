@@ -2,6 +2,7 @@
 @using Core = global::ObjectAnalyzer
 @using Microsoft.AspNetCore.Components.Forms
 @inject AnalysisState State
+@inject IJSRuntime Js
 @rendermode InteractiveServer
 
 <PageTitle>ObjectAnalyzer - 对象分析工具</PageTitle>
@@ -47,6 +48,10 @@
                     <span>Excel-JSON 列:</span>
                     <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
                 </label>
+                <label class="option-item">
+                    <span>并行线程:</span>
+                    <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="最大并行线程数，-1 = 全部核心" />
+                </label>
             </div>
             <div class="options-row type-row">
                 <label class="option-item">
@@ -56,6 +61,7 @@
                 @if (State.TypeFileName != null)
                 {
                     <span class="type-file-name">@State.TypeFileName</span>
+                    <button class="clear-btn" @onclick="ClearTypeFile" title="清除类型定义">✕</button>
                 }
                 <label class="option-item">
                     <span>目标类名:</span>
@@ -70,6 +76,11 @@
                 @if (State.RulesFileName != null)
                 {
                     <span class="type-file-name">@State.RulesFileName</span>
+                    <button class="clear-btn" @onclick="ClearRulesFile" title="清除规则文件">✕</button>
+                }
+                @if (State.Result != null && State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
+                {
+                    <button class="download-btn" @onclick="DownloadViolations">导出违规 JSON</button>
                 }
             </div>
         </div>
@@ -297,7 +308,13 @@
             }
 
             // 分析
-            State.Result = Core.ObjectAnalyzer.Analyze(objects, rules);
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = State.MaxDegreeOfParallelism >= 1
+                    ? State.MaxDegreeOfParallelism
+                    : Environment.ProcessorCount
+            };
+            State.Result = Core.ObjectAnalyzer.Analyze(objects, rules, parallelOptions);
         }
         catch (Exception ex)
         {
@@ -364,6 +381,38 @@
     {
         var val = e.Value?.ToString()?.Trim().ToUpperInvariant() ?? "A";
         State.ExcelJsonColumn = string.IsNullOrEmpty(val) ? "A" : val;
+    }
+
+    private void OnParallelChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val) && val >= -1)
+        {
+            State.MaxDegreeOfParallelism = val;
+        }
+    }
+
+    private void ClearTypeFile()
+    {
+        DeleteQuietly(State.TypeFilePath);
+        State.TypeFilePath = null;
+        State.TypeFileName = null;
+        State.TypeName = null;
+        State.ErrorMessage = null;
+    }
+
+    private void ClearRulesFile()
+    {
+        DeleteQuietly(State.RulesFilePath);
+        State.RulesFilePath = null;
+        State.RulesFileName = null;
+        State.ErrorMessage = null;
+    }
+
+    private async Task DownloadViolations()
+    {
+        var fileName = $"violations-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+        await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile",
+            fileName, State.GetViolationsJson(), "application/json;charset=utf-8");
     }
 
     private async Task HandleTypeFileUpload(InputFileChangeEventArgs e)

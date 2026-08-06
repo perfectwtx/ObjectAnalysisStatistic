@@ -9,6 +9,9 @@ namespace ObjectAnalyzer.Web;
 /// </summary>
 public sealed class AnalysisState
 {
+    private static readonly System.Text.Json.JsonSerializerOptions ViolationsJsonOptions =
+        new() { WriteIndented = true };
+
     public AnalysisResult? Result { get; set; }
     public string FileName { get; set; } = "";
     public string SortField { get; set; } = "Count";
@@ -27,6 +30,7 @@ public sealed class AnalysisState
     public string ExcelJsonColumn { get; set; } = "A";           // --excel-json-column
     public string? Format { get; set; }                           // --format (null=自动检测)
     public int MaxValuesToShow { get; set; } = 5;                // --max-values
+    public int MaxDegreeOfParallelism { get; set; } = -1;        // --parallel (-1 = 全部核心)
 
     // --type (.cs 类型定义文件)：以临时文件形式保存，避免在内存中缓存大内容
     public string? TypeFilePath { get; set; }
@@ -102,4 +106,19 @@ public sealed class AnalysisState
 
     public int HiddenDuplicateCount =>
         Result == null ? 0 : Math.Max(0, Result.DuplicateObjects.Count - MaxDuplicatesToShow);
+
+    /// <summary>枚举违规的结构化 JSON（与 CLI --violations 输出一致），用于下载。</summary>
+    public string GetViolationsJson()
+    {
+        if (Result == null) return "[]";
+        var violations = Result.FieldStatistics
+            .Where(f => f.EnumViolations.Count > 0)
+            .Select(f => new
+            {
+                field = f.FieldName,
+                values = f.EnumViolations
+            })
+            .ToList();
+        return System.Text.Json.JsonSerializer.Serialize(violations, ViolationsJsonOptions);
+    }
 }

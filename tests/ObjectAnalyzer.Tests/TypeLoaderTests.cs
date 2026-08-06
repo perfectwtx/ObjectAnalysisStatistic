@@ -59,6 +59,45 @@ public class PersonTest
     }
 
     [Fact]
+    public void ParseJson_SingleObjectRoot_ReturnsSingleObject()
+    {
+        // Arrange
+        string tempCsFile = Path.ChangeExtension(Path.GetTempFileName(), ".cs");
+        string code = @"
+namespace TestNamespace;
+
+public class PersonTest
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+}
+";
+        File.WriteAllText(tempCsFile, code);
+
+        string tempJsonFile = Path.GetTempFileName();
+        string json = @"{""Id"": 42, ""Name"": ""Alice""}";
+        File.WriteAllText(tempJsonFile, json);
+
+        try
+        {
+            // Act
+            var (_, type) = TypeLoader.Compile(tempCsFile, "PersonTest");
+            var result = TypedFileParser.ParseJson(tempJsonFile, type);
+
+            // Assert
+            Assert.Empty(result.Errors);
+            var obj = Assert.Single(result.Objects);
+            Assert.Equal(42, obj["Id"]);
+            Assert.Equal("Alice", obj["Name"]);
+        }
+        finally
+        {
+            if (File.Exists(tempCsFile)) File.Delete(tempCsFile);
+            if (File.Exists(tempJsonFile)) File.Delete(tempJsonFile);
+        }
+    }
+
+    [Fact]
     public void Compile_InvalidCSharpFile_ThrowsCompilationException()
     {
         // Arrange
