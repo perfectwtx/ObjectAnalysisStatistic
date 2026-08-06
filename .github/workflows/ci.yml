@@ -19,11 +19,62 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
     - name: Restore dependencies
       run: dotnet restore ObjectAnalyzer.sln
 
     - name: Build
       run: dotnet build ObjectAnalyzer.sln --no-restore -c Release
 
-    - name: Test
-      run: dotnet test ObjectAnalyzer.sln --no-build -c Release --verbosity normal
+    - name: Test with coverage
+      run: dotnet test ObjectAnalyzer.sln --no-build -c Release --collect:"XPlat Code Coverage" --results-directory TestResults
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage
+        path: TestResults
+
+    - name: Publish CLI
+      run: dotnet publish src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release -o artifacts/cli --no-restore
+
+    - name: Publish Web
+      run: dotnet publish src/ObjectAnalyzer.Web/ObjectAnalyzer.Web.csproj -c Release -o artifacts/web --no-restore
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: publish
+        path: artifacts
+
+  codeql-analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: csharp
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3

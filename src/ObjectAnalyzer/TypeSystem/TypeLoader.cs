@@ -172,6 +172,9 @@ public static class TypeLoader
     // 标记当前进程是否已使用完整 TPA 引用集（用于回退判定与缓存）
     private static bool _usedFullReferenceSet;
 
+    // TPA 路径索引（程序集名 → 完整路径），进程内只构建一次
+    private static readonly Lazy<Dictionary<string, string>> _tpaIndex = new(BuildTpaIndex, LazyThreadSafetyMode.ExecutionAndPublication);
+
     private static List<MetadataReference> GetMetadataReferences()
     {
         if (_usedFullReferenceSet)
@@ -180,25 +183,33 @@ public static class TypeLoader
         return LoadReferencesByName(_coreReferenceNames);
     }
 
-    private static List<MetadataReference> GetFullMetadataReferences()
+    private static Dictionary<string, string> BuildTpaIndex()
     {
-        var references = new List<MetadataReference>();
-
-        // 添加核心运行时程序集
+        var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var trustedAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?.Split(Path.PathSeparator) ?? Array.Empty<string>();
 
         foreach (var path in trustedAssemblies)
         {
-            if (File.Exists(path))
+            if (!File.Exists(path)) continue;
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (name != null) index.TryAdd(name, path);
+        }
+        return index;
+    }
+
+    private static List<MetadataReference> GetFullMetadataReferences()
+    {
+        var references = new List<MetadataReference>();
+
+        foreach (var path in _tpaIndex.Value.Values)
+        {
+            try
             {
-                try
-                {
-                    references.Add(MetadataReference.CreateFromFile(path));
-                }
-                catch
-                {
-                    // 跳过无法加载的程序集
-                }
+                references.Add(MetadataReference.CreateFromFile(path));
+            }
+            catch
+            {
+                // 跳过无法加载的程序集
             }
         }
 
@@ -208,22 +219,10 @@ public static class TypeLoader
     private static List<MetadataReference> LoadReferencesByName(IReadOnlyCollection<string> assemblyNames)
     {
         var references = new List<MetadataReference>();
-        var trustedAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?.Split(Path.PathSeparator) ?? Array.Empty<string>();
-
-        // 按程序集文件名索引 TPA 路径
-        var pathByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in trustedAssemblies)
-        {
-            if (File.Exists(path))
-            {
-                var name = Path.GetFileNameWithoutExtension(path);
-                if (name != null) pathByName.TryAdd(name, path);
-            }
-        }
 
         foreach (var name in assemblyNames)
         {
-            if (pathByName.TryGetValue(name, out var path))
+            if (_tpaIndex.Value.TryGetValue(name, out var path))
             {
                 try
                 {

@@ -55,6 +55,10 @@ var parallelOption = new Option<int>(
     description: "指定分析时的最大并行线程数 (默认使用所有核心)。",
     getDefaultValue: () => -1);
 
+var violationsOption = new Option<FileInfo?>(
+    aliases: CliAliases.Violations,
+    description: "将枚举违规导出为独立的结构化 JSON 文件路径。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -67,6 +71,7 @@ rootCommand.AddOption(typeNameOption);
 rootCommand.AddOption(excelJsonColumnOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(parallelOption);
+rootCommand.AddOption(violationsOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -82,6 +87,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
+    var violations = parseResult.GetValueForOption(violationsOption);
 
     if (generateTestExcel)
     {
@@ -108,7 +114,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         TypeName = typeName,
         ExcelJsonColumn = excelJsonColumn ?? "A",
         RulesFile = rules?.FullName,
-        MaxDegreeOfParallelism = maxParallel
+        MaxDegreeOfParallelism = maxParallel,
+        ViolationsPath = violations?.FullName
     };
 
     context.ExitCode = AnalysisRunner.Run(options);
@@ -126,4 +133,5 @@ static class CliAliases
     public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Parallel = { "--parallel", "-p" };
+    public static readonly string[] Violations = { "--violations" };
 }

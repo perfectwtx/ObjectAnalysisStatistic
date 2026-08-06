@@ -12,7 +12,9 @@
 - 枚举约束校验：通过规则文件声明合法枚举值，自动校验并报告违规值
 - 重复对象检测：识别并统计完全相同的重复对象（128 位 MD5 哈希）
 - 嵌套扁平化：可选将嵌套 JSON 结构扁平化为 `a.b.c` 路径形式
-- 多种报告导出：结构化 JSON、富文本 HTML 可视化报告
+- 多种报告导出：结构化 JSON、富文本 HTML、Markdown、CSV 报告
+- 枚举违规独立导出：通过 `--violations` 输出结构化违规清单，便于 CI 断言
+- 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
 ## 环境要求
 
@@ -35,7 +37,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | 选项 | 缩写 | 说明 | 默认值 |
 |------|------|------|--------|
 | `--input <FILE>` | `-i` | 输入文件路径（JSON / JSONL / CSV / Excel / XML / YAML） | 必填 |
-| `--output <FILE>` | `-o` | 输出报告文件路径（`.json` 或 `.html`） | 无 |
+| `--output <FILE>` | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv`） | 无 |
 | `--format <FORMAT>` | `-f` | 显式指定输入格式：`json`、`jsonl`、`csv`、`excel`、`excel-json`、`xml`、`yaml` | 自动检测 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
@@ -43,6 +45,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--type-name <NAME>` | — | 指定目标类名（当 .cs 文件包含多个类时使用） | 自动检测 |
 | `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型和枚举约束 | 无 |
+| `--violations <FILE>` | — | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数 | 所有核心 |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
@@ -74,6 +77,9 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t samples/
 
 # 使用规则文件校验枚举约束，并导出 HTML 报告
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.html
+
+# 导出 Markdown 报告 + 独立违规清单（便于 CI 断言）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.md --violations violations.json
 ```
 
 ### 规则文件格式
@@ -132,7 +138,10 @@ ObjectAnalysisStatistic/
 │   │   ├── Reporting/                # 报告输出
 │   │   │   ├── ConsoleReporter.cs    # Spectre.Console 控制台报告
 │   │   │   ├── HtmlReportExporter.cs # HTML 可视化报告
-│   │   │   └── ReportExporter.cs     # JSON 报告导出
+│   │   │   ├── MarkdownReportExporter.cs # Markdown 报告
+│   │   │   ├── CsvReportExporter.cs  # CSV 报告
+│   │   │   ├── ViolationExporter.cs  # 枚举违规结构化导出
+│   │   │   └── ReportExporter.cs     # 报告路由 (按扩展名分发)
 │   │   ├── TypeSystem/
 │   │   │   └── TypeLoader.cs         # Roslyn 运行时编译 .cs 文件
 │   │   └── Program.cs                # System.CommandLine 入口

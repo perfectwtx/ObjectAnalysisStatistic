@@ -23,6 +23,9 @@ public interface IFileParser
     /// <summary>File extensions this parser handles (e.g., ".json", ".csv").</summary>
     IReadOnlyList<string> SupportedExtensions { get; }
 
-    /// <summary>Parse the file and return a list of property dictionaries.</summary>
-    List<Dictionary<string, object?>> Parse(string path, ParseOptions options);
+    /// <summary>
+    /// Parse the file and return a collection of property dictionaries.
+    /// May return a lazy enumerable (e.g., JSONL 逐行流式读取).
+    /// </summary>
+    IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options);
 }

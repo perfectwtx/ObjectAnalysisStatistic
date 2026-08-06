@@ -13,6 +13,14 @@ public static class ReportExporter
         {
             HtmlReportExporter.Save(result, outputPath);
         }
+        else if (ext is ".md" or ".markdown")
+        {
+            MarkdownReportExporter.Save(result, outputPath);
+        }
+        else if (ext is ".csv")
+        {
+            CsvReportExporter.Save(result, outputPath);
+        }
         else
         {
             SaveJson(result, outputPath);

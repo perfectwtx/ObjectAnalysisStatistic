@@ -49,7 +49,7 @@ public static class FileParsers
     /// Parses a file by format name using the parser registry.
     /// Format names are matched case-insensitively.
     /// </summary>
-    public static List<Dictionary<string, object?>> ParseByFormat(string path, string format, ParseOptions options)
+    public static IEnumerable<Dictionary<string, object?>> ParseByFormat(string path, string format, ParseOptions options)
     {
         if (string.IsNullOrWhiteSpace(format))
             throw new InvalidOperationException("未指定文件格式。");
@@ -72,7 +72,7 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "json" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".json" };
 
-        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
             var result = new List<Dictionary<string, object?>>();
 
@@ -103,10 +103,9 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "jsonl" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".jsonl", ".ndjson" };
 
-        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        // 惰性逐行流式解析：超大 JSONL 文件无需一次性物化到内存
+        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var result = new List<Dictionary<string, object?>>();
-
             using var fs = File.OpenRead(path);
             using var reader = new StreamReader(fs);
             string? line;
@@ -132,11 +131,9 @@ public static class FileParsers
                     var root = doc.RootElement;
                     if (root.ValueKind != JsonValueKind.Object)
                         throw new InvalidDataException($"第 {lineNumber} 行的 JSON 根节点必须是一个对象。");
-                    result.Add(ParseJsonElement(root, options.Flatten));
+                    yield return ParseJsonElement(root, options.Flatten);
                 }
             }
-
-            return result;
         }
     }
 
@@ -145,7 +142,7 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "csv", "excel" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".csv", ".xlsx" };
 
-        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
             var result = new List<Dictionary<string, object?>>();
 
@@ -173,7 +170,7 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "xml" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".xml" };
 
-        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
             var result = new List<Dictionary<string, object?>>();
 
@@ -204,7 +201,7 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "yaml" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".yaml", ".yml" };
 
-        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
             var result = new List<Dictionary<string, object?>>();
             var deserializer = new DeserializerBuilder().Build();
@@ -239,7 +236,7 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "excel-json" };
         public IReadOnlyList<string> SupportedExtensions => Array.Empty<string>(); // 无自动检测扩展名，需显式指定 --format
 
-        public List<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
             var result = new List<Dictionary<string, object?>>();
             string columnName = options.ExcelJsonColumn.ToUpperInvariant();

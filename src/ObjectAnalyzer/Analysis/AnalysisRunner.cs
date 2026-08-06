@@ -48,7 +48,7 @@ public static class AnalysisRunner
     /// Detects format from file extension and parses the file accordingly.
     /// Uses the parser registry in FileParsers (IFileParser pattern).
     /// </summary>
-    private static List<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options)
+    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options)
     {
         string? format = options.Format;
 
@@ -141,6 +141,12 @@ public static class AnalysisRunner
         if (!string.IsNullOrEmpty(options.OutputPath))
         {
             ReportExporter.Save(result, options.OutputPath);
+        }
+
+        // 如果指定了违规导出路径，则单独导出枚举违规清单
+        if (!string.IsNullOrEmpty(options.ViolationsPath))
+        {
+            ViolationExporter.Save(result, options.ViolationsPath);
         }
     }
 

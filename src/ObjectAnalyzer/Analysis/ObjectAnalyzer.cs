@@ -13,6 +13,9 @@ public static class ObjectAnalyzer
 {
     private const int MaxTrackedUniqueValues = 1000;
 
+    // 并行处理的分块大小：控制惰性输入的内存占用上限（每块对象 + 线程局部状态）
+    private const int ChunkSize = 10000;
+
     // 内部使用的线程局部状态类
     private sealed class ThreadLocalState
     {
@@ -33,10 +36,6 @@ public static class ObjectAnalyzer
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null)
     {
-        // 物化为 List 以确保 Parallel.ForEach 的线程安全性
-        // （yield return 的 IEnumerable 底层可能共享 StreamReader 等非线程安全资源）
-        var objectList = objects as IList<Dictionary<string, object?>> ?? objects.ToList();
-
         var globalSeenHashes = new ConcurrentDictionary<string, byte>();
         var globalDuplicateJsons = new ConcurrentDictionary<string, string>();
 
@@ -47,111 +46,134 @@ public static class ObjectAnalyzer
 
         var options = parallelOptions ?? new ParallelOptions();
 
-        // 使用 Parallel.ForEach 进行多线程并行 Map 聚合
-        Parallel.ForEach(
-            objectList,
-            options,
-            () => new ThreadLocalState(),
-            (obj, loopState, localState) =>
+        // Reduce：将线程局部的状态合并入全局状态（多个并行线程并发调用，需加锁）
+        void MergeLocalState(ThreadLocalState local)
+        {
+            lock (mergeLock)
             {
-                localState.TotalObjects++;
+                globalTotalObjects += local.TotalObjects;
 
-                // 1. 计算对象哈希指纹（128 位 MD5，避免 64 位哈希的生日悖论碰撞）
-                // 排序仅执行一次，哈希与重复对象 JSON 序列化共享
-                var sortedEntries = obj.OrderBy(kv => kv.Key).ToArray();
-                string objHash = ComputeObjectHash(sortedEntries);
-
-                // 2. 检测重复对象
-                // 若该哈希已被其他线程或本线程见过，则是重复对象，此时才进行 JSON 序列化保存其实体
-                if (!globalSeenHashes.TryAdd(objHash, 0))
+                foreach (var localStat in local.StatsMap.Values)
                 {
-                    globalDuplicateJsons.GetOrAdd(objHash, h =>
+                    if (!globalStatsMap.TryGetValue(localStat.FieldName, out var globalStat))
                     {
-                        var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
-                        return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
-                    });
-                }
-                localState.DuplicateCounts[objHash] = localState.DuplicateCounts.GetValueOrDefault(objHash) + 1;
-
-                // 3. 统计字段属性
-                foreach (var kvp in obj)
-                {
-                    string fieldName = kvp.Key;
-                    object? value = kvp.Value;
-
-                    if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
-                    {
-                        stat = new FieldStatistic { FieldName = fieldName };
-                        localState.StatsMap[fieldName] = stat;
+                        globalStat = new FieldStatistic { FieldName = localStat.FieldName };
+                        globalStatsMap[localStat.FieldName] = globalStat;
                     }
 
-                    stat.Count++;
+                    globalStat.Count += localStat.Count;
+                    globalStat.ValueCountsTruncated |= localStat.ValueCountsTruncated;
 
-                    // 统计数据类型
-                    string valType = GetValueType(value);
-                    stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
-
-                    // 统计具体值频次 (包含内存修剪)
-                    string valStr = FormatValue(value);
-                    if (stat.ValueCounts.Count >= MaxTrackedUniqueValues && !stat.ValueCounts.ContainsKey(valStr))
+                    foreach (var tc in localStat.TypeCounts)
                     {
-                        stat.ValueCountsTruncated = true;
-                        stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
+                        globalStat.TypeCounts[tc.Key] = globalStat.TypeCounts.GetValueOrDefault(tc.Key) + tc.Value;
                     }
-                    else
+
+                    foreach (var vc in localStat.ValueCounts)
                     {
-                        stat.ValueCounts[valStr] = stat.ValueCounts.GetValueOrDefault(valStr) + 1;
+                        if (globalStat.ValueCounts.Count >= MaxTrackedUniqueValues && !globalStat.ValueCounts.ContainsKey(vc.Key))
+                        {
+                            globalStat.ValueCountsTruncated = true;
+                            globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
+                        }
+                        else
+                        {
+                            globalStat.ValueCounts[vc.Key] = globalStat.ValueCounts.GetValueOrDefault(vc.Key) + vc.Value;
+                        }
                     }
                 }
 
-                return localState;
-            },
-            localState =>
-            {
-                // Reduce 阶段：将线程局部的状态合并入全局状态
-                lock (mergeLock)
+                foreach (var kvp in local.DuplicateCounts)
                 {
-                    globalTotalObjects += localState.TotalObjects;
-
-                    // 合并字段统计
-                    foreach (var localStat in localState.StatsMap.Values)
-                    {
-                        if (!globalStatsMap.TryGetValue(localStat.FieldName, out var globalStat))
-                        {
-                            globalStat = new FieldStatistic { FieldName = localStat.FieldName };
-                            globalStatsMap[localStat.FieldName] = globalStat;
-                        }
-
-                        globalStat.Count += localStat.Count;
-                        globalStat.ValueCountsTruncated |= localStat.ValueCountsTruncated;
-
-                        foreach (var tc in localStat.TypeCounts)
-                        {
-                            globalStat.TypeCounts[tc.Key] = globalStat.TypeCounts.GetValueOrDefault(tc.Key) + tc.Value;
-                        }
-
-                        foreach (var vc in localStat.ValueCounts)
-                        {
-                            if (globalStat.ValueCounts.Count >= MaxTrackedUniqueValues && !globalStat.ValueCounts.ContainsKey(vc.Key))
-                            {
-                                globalStat.ValueCountsTruncated = true;
-                                globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
-                            }
-                            else
-                            {
-                                globalStat.ValueCounts[vc.Key] = globalStat.ValueCounts.GetValueOrDefault(vc.Key) + vc.Value;
-                            }
-                        }
-                    }
-
-                    // 合并重复对象计数
-                    foreach (var kvp in localState.DuplicateCounts)
-                    {
-                        globalDuplicateCounts[kvp.Key] = globalDuplicateCounts.GetValueOrDefault(kvp.Key) + kvp.Value;
-                    }
+                    globalDuplicateCounts[kvp.Key] = globalDuplicateCounts.GetValueOrDefault(kvp.Key) + kvp.Value;
                 }
             }
-        );
+        }
+
+        // Map：对一块对象执行并行聚合（哈希构建与字段统计共享 FormatValue，嵌套对象只序列化一次）
+        void ProcessChunk(IEnumerable<Dictionary<string, object?>> chunk)
+        {
+            Parallel.ForEach(
+                chunk,
+                options,
+                () => new ThreadLocalState(),
+                (obj, loopState, localState) =>
+                {
+                    localState.TotalObjects++;
+
+                    // 排序仅执行一次，哈希构建与重复对象 JSON 序列化共享
+                    var sortedEntries = obj.OrderBy(kv => kv.Key).ToArray();
+
+                    // 单遍处理：构建规范化字符串（用于哈希）+ 字段统计，FormatValue 每属性只调用一次
+                    var sb = new StringBuilder();
+                    foreach (var kv in sortedEntries)
+                    {
+                        string fieldName = kv.Key;
+                        object? value = kv.Value;
+                        string valStr = FormatValue(value);
+
+                        sb.Append(fieldName);
+                        sb.Append('=');
+                        sb.Append(valStr);
+                        sb.Append('&');
+
+                        if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
+                        {
+                            stat = new FieldStatistic { FieldName = fieldName };
+                            localState.StatsMap[fieldName] = stat;
+                        }
+
+                        stat.Count++;
+
+                        string valType = GetValueType(value);
+                        stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
+
+                        if (stat.ValueCounts.Count >= MaxTrackedUniqueValues && !stat.ValueCounts.ContainsKey(valStr))
+                        {
+                            stat.ValueCountsTruncated = true;
+                            stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
+                        }
+                        else
+                        {
+                            stat.ValueCounts[valStr] = stat.ValueCounts.GetValueOrDefault(valStr) + 1;
+                        }
+                    }
+
+                    // 对象哈希指纹（128 位 MD5，避免 64 位哈希的生日悖论碰撞）
+                    string objHash = ComputeHash(sb.ToString());
+
+                    // 检测重复对象：若哈希已见过则序列化保存实体（仅对重复对象执行）
+                    if (!globalSeenHashes.TryAdd(objHash, 0))
+                    {
+                        globalDuplicateJsons.GetOrAdd(objHash, h =>
+                        {
+                            var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
+                            return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
+                        });
+                    }
+                    localState.DuplicateCounts[objHash] = localState.DuplicateCounts.GetValueOrDefault(objHash) + 1;
+
+                    return localState;
+                },
+                MergeLocalState);
+        }
+
+        // 分块处理：IList 直接按索引切片，惰性 IEnumerable 按块流式读取，避免一次性物化全部对象
+        if (objects is IList<Dictionary<string, object?>> objectList)
+        {
+            for (int offset = 0; offset < objectList.Count; offset += ChunkSize)
+            {
+                int count = Math.Min(ChunkSize, objectList.Count - offset);
+                ProcessChunk(objectList.Skip(offset).Take(count));
+            }
+        }
+        else
+        {
+            foreach (var chunk in EnumerateChunks(objects, ChunkSize))
+            {
+                ProcessChunk(chunk);
+            }
+        }
 
         // 后置处理：计算覆盖率并推断默认值
         var results = new List<FieldStatistic>();
@@ -254,22 +276,29 @@ public static class ObjectAnalyzer
     /// collisions that occur with 64-bit hashes at scale.
     /// </summary>
 #pragma warning disable CA5351 // MD5 used for deduplication, not security
-    private static string ComputeObjectHash(KeyValuePair<string, object?>[] sortedEntries)
-    {
-        // 键值对已预先排序，确保不同对象但键值对相同的实体哈希一致
-        var sb = new StringBuilder();
-        foreach (var kv in sortedEntries)
-        {
-            sb.Append(kv.Key);
-            sb.Append('=');
-            sb.Append(FormatValue(kv.Value));
-            sb.Append('&');
-        }
-
-        byte[] hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
-        return Convert.ToHexString(hashBytes);
-    }
+    private static string ComputeHash(string canonical) =>
+        Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(canonical)));
 #pragma warning restore CA5351
+
+    /// <summary>
+    /// 将惰性输入按固定大小分块产出，控制流式分析时的内存占用。
+    /// </summary>
+    private static IEnumerable<List<Dictionary<string, object?>>> EnumerateChunks(
+        IEnumerable<Dictionary<string, object?>> source, int chunkSize)
+    {
+        var chunk = new List<Dictionary<string, object?>>(chunkSize);
+        foreach (var obj in source)
+        {
+            chunk.Add(obj);
+            if (chunk.Count >= chunkSize)
+            {
+                yield return chunk;
+                chunk = new List<Dictionary<string, object?>>(chunkSize);
+            }
+        }
+        if (chunk.Count > 0)
+            yield return chunk;
+    }
 
     private static string GetValueType(object? value)
     {

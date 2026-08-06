@@ -139,7 +139,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var field in State.GetFilteredSortedFields())
+                        @foreach (var field in State.GetPageFields())
                         {
                             <tr>
                                 <td class="field-name"><code>@field.FieldName</code></td>
@@ -198,6 +198,16 @@
                         }
                     </tbody>
                 </table>
+
+                @* 分页 *@
+                @if (State.TotalPages > 1)
+                {
+                    <div class="pagination">
+                        <button @onclick="PrevPage" disabled="@(State.PageIndex <= 0)">← 上一页</button>
+                        <span>第 @(State.PageIndex + 1) / @State.TotalPages 页</span>
+                        <button @onclick="NextPage" disabled="@(State.PageIndex >= State.TotalPages - 1)">下一页 →</button>
+                    </div>
+                }
             </div>
 
             @* 重复对象 *@
@@ -205,12 +215,16 @@
             {
                 <div class="duplicates-section">
                     <h3>重复对象 (@State.Result.DuplicateObjects.Count 组)</h3>
-                    @foreach (var dup in State.Result.DuplicateObjects)
+                    @foreach (var dup in State.GetVisibleDuplicates())
                     {
                         <div class="dup-item">
                             <span class="dup-count">×@dup.Count</span>
                             <code>@dup.ObjectJson</code>
                         </div>
+                    }
+                    @if (State.HiddenDuplicateCount > 0)
+                    {
+                        <p class="duplicates-note">... 还有 @State.HiddenDuplicateCount 组未展示</p>
                     }
                 </div>
             }
@@ -228,11 +242,13 @@
         State.ErrorMessage = null;
         State.Result = null;
         State.FileName = file.Name;
+        State.PageIndex = 0;
 
+        string? tempPath = null;
         try
         {
             // 保存数据文件到临时路径
-            var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
+            tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
             await using (var fs = File.Create(tempPath))
             {
                 await file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024).CopyToAsync(fs);
@@ -241,30 +257,21 @@
             List<Dictionary<string, object?>> objects;
 
             // 如果指定了类型文件，使用强类型反序列化
-            if (State.TypeFileContent != null)
+            if (State.TypeFilePath != null)
             {
-                var typeTempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.cs");
-                await File.WriteAllBytesAsync(typeTempPath, State.TypeFileContent);
+                var compileResult = Core.TypeLoader.Compile(State.TypeFilePath, State.TypeName);
                 try
                 {
-                    var compileResult = Core.TypeLoader.Compile(typeTempPath, State.TypeName);
-                    try
+                    var typedResult = Core.TypedFileParser.ParseJson(tempPath, compileResult.type);
+                    objects = typedResult.Objects;
+                    if (typedResult.Errors.Count > 0)
                     {
-                        var typedResult = Core.TypedFileParser.ParseJson(tempPath, compileResult.type);
-                        objects = typedResult.Objects;
-                        if (typedResult.Errors.Count > 0)
-                        {
-                            State.ErrorMessage = $"存在 {typedResult.Errors.Count} 条属性读取错误: {typedResult.Errors[0]}";
-                        }
-                    }
-                    finally
-                    {
-                        compileResult.context.Dispose();
+                        State.ErrorMessage = $"存在 {typedResult.Errors.Count} 条属性读取错误: {typedResult.Errors[0]}";
                     }
                 }
                 finally
                 {
-                    File.Delete(typeTempPath);
+                    compileResult.context.Dispose();
                 }
             }
             else
@@ -278,46 +285,60 @@
                     Flatten = State.Flatten,
                     ExcelJsonColumn = State.ExcelJsonColumn
                 };
-                objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions);
+                objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions).ToList();
             }
 
             // 加载规则文件
             Core.AnalysisRules? rules = null;
-            if (State.RulesFileContent != null)
+            if (State.RulesFilePath != null)
             {
-                var rulesJson = System.Text.Encoding.UTF8.GetString(State.RulesFileContent);
+                var rulesJson = await File.ReadAllTextAsync(State.RulesFilePath);
                 rules = System.Text.Json.JsonSerializer.Deserialize<Core.AnalysisRules>(rulesJson);
             }
 
             // 分析
             State.Result = Core.ObjectAnalyzer.Analyze(objects, rules);
-
-            // 清理临时文件
-            File.Delete(tempPath);
         }
         catch (Exception ex)
         {
-            State.ErrorMessage = ex.Message;
+            State.ErrorMessage = ErrorSanitizer.Format(ex);
         }
         finally
         {
             State.IsLoading = false;
+            if (tempPath != null)
+            {
+                DeleteQuietly(tempPath);
+            }
         }
+    }
+
+    private void PrevPage()
+    {
+        if (State.PageIndex > 0) State.PageIndex--;
+    }
+
+    private void NextPage()
+    {
+        if (State.PageIndex < State.TotalPages - 1) State.PageIndex++;
     }
 
     private void OnSearchInput(ChangeEventArgs e)
     {
         State.SearchText = e.Value?.ToString() ?? "";
+        State.PageIndex = 0;
     }
 
     private void OnSortFieldChange(ChangeEventArgs e)
     {
         State.SortField = e.Value?.ToString() ?? "Count";
+        State.PageIndex = 0;
     }
 
     private void ToggleSortDirection()
     {
         State.SortAscending = !State.SortAscending;
+        State.PageIndex = 0;
     }
 
     private void OnFlattenChange(ChangeEventArgs e)
@@ -350,10 +371,16 @@
         var file = e.File;
         if (file == null) return;
 
-        using var ms = new MemoryStream();
-        await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
-        State.TypeFileContent = ms.ToArray();
+        // 替换旧临时文件（流式写入磁盘，避免在内存中缓存大文件）
+        DeleteQuietly(State.TypeFilePath);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.cs");
+        await using (var fs = File.Create(tempPath))
+        {
+            await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(fs);
+        }
+        State.TypeFilePath = tempPath;
         State.TypeFileName = file.Name;
+        State.ErrorMessage = null;
     }
 
     private async Task HandleRulesFileUpload(InputFileChangeEventArgs e)
@@ -361,16 +388,45 @@
         var file = e.File;
         if (file == null) return;
 
-        using var ms = new MemoryStream();
-        await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(ms);
-        State.RulesFileContent = ms.ToArray();
-        State.RulesFileName = file.Name;
+        DeleteQuietly(State.RulesFilePath);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        await using (var fs = File.Create(tempPath))
+        {
+            await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(fs);
+        }
+
+        // 上传时即时校验规则文件格式，失败则清除并提示
+        try
+        {
+            await using var verify = File.OpenRead(tempPath);
+            var rules = await System.Text.Json.JsonSerializer.DeserializeAsync<Core.AnalysisRules>(verify);
+            if (rules == null)
+            {
+                throw new InvalidDataException("规则文件内容为空或格式无效。");
+            }
+            State.RulesFilePath = tempPath;
+            State.RulesFileName = file.Name;
+            State.ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            DeleteQuietly(tempPath);
+            State.RulesFilePath = null;
+            State.RulesFileName = null;
+            State.ErrorMessage = ErrorSanitizer.Format(ex);
+        }
     }
 
     private void OnTypeNameChange(ChangeEventArgs e)
     {
         var val = e.Value?.ToString()?.Trim();
         State.TypeName = string.IsNullOrEmpty(val) ? null : val;
+    }
+
+    private static void DeleteQuietly(string? path)
+    {
+        if (path == null) return;
+        try { File.Delete(path); } catch { }
     }
 
     private static string FormatPercent(double coverage)
