@@ -20,6 +20,11 @@ public sealed class AnalysisState
     public bool IsLoading { get; set; }
     public string? ErrorMessage { get; set; }
 
+    // 已上传的数据文件（临时路径）；上传后等待用户点击"开始分析"
+    public string? DataFilePath { get; set; }
+
+    public bool HasData => DataFilePath != null;
+
     // 分页（避免大结果集一次性渲染导致电路消息过大/卡顿）
     public int PageIndex { get; set; }
     public int PageSize { get; set; } = 50;

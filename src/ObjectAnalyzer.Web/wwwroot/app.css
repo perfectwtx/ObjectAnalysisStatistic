@@ -186,6 +186,37 @@ h1:focus {
     color: #adb5bd;
 }
 
+.uploaded-file {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: #f0f6ff;
+    border: 1px solid #cfe2ff;
+    border-radius: 8px;
+    padding: 0.5rem 0.9rem;
+}
+
+/* Config Actions */
+.config-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+
+.btn-primary.btn-lg {
+    min-width: 200px;
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.btn-primary.btn-lg:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 /* Options Grid */
 .options-grid {
     display: grid;
@@ -227,16 +258,10 @@ h1:focus {
     cursor: pointer;
 }
 
-.option-item input[type="text"] {
-    width: 100%;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
-    font-size: 0.85rem;
-}
-
+.option-item input[type="text"],
 .option-item input[type="number"] {
-    width: 100%;
+    width: 130px;
+    max-width: 100%;
     padding: 0.4rem 0.6rem;
     border: 1px solid #ced4da;
     border-radius: 6px;
@@ -289,15 +314,6 @@ h1:focus {
 }
 
 /* Loading / Error */
-.loading {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: #e7f1ff;
-    border-radius: 8px;
-    color: #1b6ec2;
-    font-weight: 500;
-}
-
 .error {
     margin-top: 1rem;
     padding: 0.75rem;

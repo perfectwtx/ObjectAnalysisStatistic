@@ -35,6 +35,13 @@
                 <p>拖放文件或点击选择<br/>
                    <small>支持 JSON, JSONL, CSV, Excel, XML, YAML</small>
                 </p>
+                @if (State.HasData)
+                {
+                    <div class="uploaded-file">
+                        <span class="file-ok">已选择: @State.FileName</span>
+                        <button class="clear-btn" @onclick="ClearDataFile" title="清除文件">✕</button>
+                    </div>
+                }
             </div>
 
             <div class="options-grid">
@@ -95,10 +102,12 @@
                 </div>
             </div>
 
-            @if (State.IsLoading)
-            {
-                <div class="loading">分析中...</div>
-            }
+            <div class="config-actions">
+                <button class="btn btn-primary btn-lg" @onclick="RunAnalysis"
+                        disabled="@(!State.HasData || State.IsLoading)">
+                    @(State.IsLoading ? "分析中..." : "开始分析")
+                </button>
+            </div>
 
             @if (State.ErrorMessage != null)
             {
@@ -276,22 +285,40 @@
         var file = e.File;
         if (file == null) return;
 
-        State.IsLoading = true;
+        // 替换旧数据临时文件
+        DeleteQuietly(State.DataFilePath);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
+        await using (var fs = File.Create(tempPath))
+        {
+            await file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024).CopyToAsync(fs);
+        }
+
+        State.DataFilePath = tempPath;
+        State.FileName = file.Name;
         State.ErrorMessage = null;
         State.Result = null;
-        State.FileName = file.Name;
+        State.PageIndex = 0;
+    }
+
+    private void ClearDataFile()
+    {
+        DeleteQuietly(State.DataFilePath);
+        State.DataFilePath = null;
+        State.FileName = "";
+        State.Result = null;
+        State.ErrorMessage = null;
+    }
+
+    private async Task RunAnalysis()
+    {
+        if (State.DataFilePath == null) return;
+
+        State.IsLoading = true;
+        State.ErrorMessage = null;
         State.PageIndex = 0;
 
-        string? tempPath = null;
         try
         {
-            // 保存数据文件到临时路径
-            tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
-            await using (var fs = File.Create(tempPath))
-            {
-                await file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024).CopyToAsync(fs);
-            }
-
             List<Dictionary<string, object?>> objects;
 
             // 如果指定了类型文件，使用强类型反序列化
@@ -300,7 +327,7 @@
                 var compileResult = Core.TypeLoader.Compile(State.TypeFilePath, State.TypeName);
                 try
                 {
-                    var typedResult = Core.TypedFileParser.ParseJson(tempPath, compileResult.type);
+                    var typedResult = Core.TypedFileParser.ParseJson(State.DataFilePath, compileResult.type);
                     objects = typedResult.Objects;
                     if (typedResult.Errors.Count > 0)
                     {
@@ -316,14 +343,14 @@
             {
                 // 自动检测或指定格式解析
                 var format = string.IsNullOrEmpty(State.Format)
-                    ? Core.FileParsers.DetectFormat(tempPath)
+                    ? Core.FileParsers.DetectFormat(State.DataFilePath)
                     : State.Format;
                 var parseOptions = new Core.ParseOptions
                 {
                     Flatten = State.Flatten,
                     ExcelJsonColumn = State.ExcelJsonColumn
                 };
-                objects = Core.FileParsers.ParseByFormat(tempPath, format, parseOptions).ToList();
+                objects = Core.FileParsers.ParseByFormat(State.DataFilePath, format, parseOptions).ToList();
             }
 
             // 加载规则文件
@@ -351,10 +378,6 @@
         finally
         {
             State.IsLoading = false;
-            if (tempPath != null)
-            {
-                DeleteQuietly(tempPath);
-            }
         }
     }
 
