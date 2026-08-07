@@ -104,7 +104,7 @@
 
             <div class="config-actions">
                 <button class="btn btn-primary btn-lg" @onclick="RunAnalysis"
-                        disabled="@(!State.HasData || State.IsLoading)">
+                        disabled="@State.IsLoading">
                     @(State.IsLoading ? "分析中..." : "开始分析")
                 </button>
             </div>
@@ -311,7 +311,11 @@
 
     private async Task RunAnalysis()
     {
-        if (State.DataFilePath == null) return;
+        if (State.DataFilePath == null)
+        {
+            State.ErrorMessage = "请先选择数据文件。";
+            return;
+        }
 
         State.IsLoading = true;
         State.ErrorMessage = null;
