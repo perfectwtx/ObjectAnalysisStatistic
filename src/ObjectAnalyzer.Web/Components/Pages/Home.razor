@@ -8,23 +8,38 @@
 <PageTitle>ObjectAnalyzer - 对象分析工具</PageTitle>
 
 <div class="analyzer-app">
-    @* 上传区域 *@
-    <div class="upload-section">
-        <h1>ObjectAnalyzer</h1>
-        <p class="subtitle">上传数据文件，交互式分析对象字段统计</p>
-
-        <div class="upload-area">
-            <InputFile OnChange="HandleFileUpload" accept=".json,.jsonl,.csv,.xlsx,.xml,.yaml,.yml" />
-            <p>拖放文件或点击选择<br/>
-               <small>支持 JSON, JSONL, CSV, Excel, XML, YAML</small>
-            </p>
+    @* 顶部应用栏 *@
+    <header class="app-header">
+        <div class="app-brand">
+            <span class="brand-icon" aria-hidden="true">📊</span>
+            <div>
+                <h1>ObjectAnalyzer</h1>
+                <p class="brand-sub">对象字段分析统计</p>
+            </div>
         </div>
+        @if (State.Result != null)
+        {
+            <div class="header-actions">
+                <span class="file-chip" title="@State.FileName">📄 @State.FileName</span>
+                <button class="btn btn-outline" @onclick="ToggleConfig">@(ShowConfig ? "收起设置" : "修改设置")</button>
+            </div>
+        }
+    </header>
 
-        @* 解析选项 *@
-        <div class="parse-options">
-            <div class="options-row">
+    @* 上传与设置面板（可折叠） *@
+    @if (ShowConfig)
+    {
+        <section class="config-panel">
+            <div class="upload-area">
+                <InputFile OnChange="HandleFileUpload" accept=".json,.jsonl,.csv,.xlsx,.xml,.yaml,.yml" />
+                <p>拖放文件或点击选择<br/>
+                   <small>支持 JSON, JSONL, CSV, Excel, XML, YAML</small>
+                </p>
+            </div>
+
+            <div class="options-grid">
                 <label class="option-item">
-                    <span>格式:</span>
+                    <span>格式</span>
                     <select value="@(State.Format ?? "")" @onchange="OnFormatChange">
                         <option value="">自动检测</option>
                         <option value="json">JSON</option>
@@ -36,70 +51,75 @@
                         <option value="excel-json">Excel-JSON</option>
                     </select>
                 </label>
-                <label class="option-item">
+                <label class="option-item checkbox-item">
                     <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
                     <span>展平嵌套</span>
                 </label>
                 <label class="option-item">
-                    <span>最大展示值:</span>
+                    <span>最大展示值</span>
                     <input type="number" value="@State.MaxValuesToShow" @oninput="OnMaxValuesChange" min="1" max="100" />
                 </label>
                 <label class="option-item">
-                    <span>Excel-JSON 列:</span>
+                    <span>并行线程</span>
+                    <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="最大并行线程数，-1 = 全部核心" />
+                </label>
+                <label class="option-item">
+                    <span>Excel-JSON 列</span>
                     <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
                 </label>
                 <label class="option-item">
-                    <span>并行线程:</span>
-                    <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="最大并行线程数，-1 = 全部核心" />
-                </label>
-            </div>
-            <div class="options-row type-row">
-                <label class="option-item">
-                    <span>类型定义 (.cs):</span>
-                    <InputFile OnChange="HandleTypeFileUpload" accept=".cs" />
-                </label>
-                @if (State.TypeFileName != null)
-                {
-                    <span class="type-file-name">@State.TypeFileName</span>
-                    <button class="clear-btn" @onclick="ClearTypeFile" title="清除类型定义">✕</button>
-                }
-                <label class="option-item">
-                    <span>目标类名:</span>
+                    <span>目标类名</span>
                     <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="可选" />
                 </label>
+                <div class="option-item file-option">
+                    <span>类型定义 (.cs)</span>
+                    <div class="file-field">
+                        <InputFile OnChange="HandleTypeFileUpload" accept=".cs" />
+                        @if (State.TypeFileName != null)
+                        {
+                            <span class="file-ok">✓ @State.TypeFileName</span>
+                            <button class="clear-btn" @onclick="ClearTypeFile" title="清除类型定义">✕</button>
+                        }
+                    </div>
+                </div>
+                <div class="option-item file-option">
+                    <span>规则文件 (.json)</span>
+                    <div class="file-field">
+                        <InputFile OnChange="HandleRulesFileUpload" accept=".json" />
+                        @if (State.RulesFileName != null)
+                        {
+                            <span class="file-ok">✓ @State.RulesFileName</span>
+                            <button class="clear-btn" @onclick="ClearRulesFile" title="清除规则文件">✕</button>
+                        }
+                    </div>
+                </div>
             </div>
-            <div class="options-row type-row">
-                <label class="option-item">
-                    <span>规则文件 (.json):</span>
-                    <InputFile OnChange="HandleRulesFileUpload" accept=".json" />
-                </label>
-                @if (State.RulesFileName != null)
-                {
-                    <span class="type-file-name">@State.RulesFileName</span>
-                    <button class="clear-btn" @onclick="ClearRulesFile" title="清除规则文件">✕</button>
-                }
-                @if (State.Result != null && State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
-                {
-                    <button class="download-btn" @onclick="DownloadViolations">导出违规 JSON</button>
-                }
-            </div>
-        </div>
 
-        @if (State.IsLoading)
-        {
-            <div class="loading">分析中...</div>
-        }
+            @if (State.IsLoading)
+            {
+                <div class="loading">分析中...</div>
+            }
 
-        @if (State.ErrorMessage != null)
-        {
-            <div class="error">@State.ErrorMessage</div>
-        }
-    </div>
+            @if (State.ErrorMessage != null)
+            {
+                <div class="error">@State.ErrorMessage</div>
+            }
+        </section>
+    }
 
     @* 结果区域 *@
     @if (State.Result != null)
     {
         <div class="results-section">
+            @* 结果标题栏 *@
+            <div class="results-header">
+                <h2>分析结果 <span class="result-file">@State.FileName</span></h2>
+                @if (State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
+                {
+                    <button class="btn btn-outline btn-sm" @onclick="DownloadViolations">导出违规 JSON</button>
+                }
+            </div>
+
             @* 摘要卡片 *@
             <div class="summary-cards">
                 <div class="card blue">
@@ -244,6 +264,13 @@
 </div>
 
 @code {
+    private bool ShowConfig = true;
+
+    private void ToggleConfig()
+    {
+        ShowConfig = !ShowConfig;
+    }
+
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
         var file = e.File;
@@ -315,6 +342,7 @@
                     : Environment.ProcessorCount
             };
             State.Result = Core.ObjectAnalyzer.Analyze(objects, rules, parallelOptions);
+            ShowConfig = false;
         }
         catch (Exception ex)
         {
