@@ -16,6 +16,9 @@ public static class ObjectAnalyzer
     // 并行处理的分块大小：控制惰性输入的内存占用上限（每块对象 + 线程局部状态）
     private const int ChunkSize = 10000;
 
+    // 重复对象完整 JSON 的存储上限：防止高基数重复场景下内存无限增长
+    private const int MaxStoredDuplicateJsons = 10000;
+
     // 内部使用的线程局部状态类
     private sealed class ThreadLocalState
     {
@@ -71,7 +74,7 @@ public static class ObjectAnalyzer
 
                     foreach (var vc in localStat.ValueCounts)
                     {
-                        if (globalStat.ValueCounts.Count >= MaxTrackedUniqueValues && !globalStat.ValueCounts.ContainsKey(vc.Key))
+                        if (ShouldTruncate(globalStat, vc.Key))
                         {
                             globalStat.ValueCountsTruncated = true;
                             globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
@@ -132,7 +135,7 @@ public static class ObjectAnalyzer
                         string valType = GetValueType(value);
                         stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
 
-                        if (stat.ValueCounts.Count >= MaxTrackedUniqueValues && !stat.ValueCounts.ContainsKey(valStr))
+                        if (ShouldTruncate(stat, valStr))
                         {
                             stat.ValueCountsTruncated = true;
                             stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
@@ -147,27 +150,31 @@ public static class ObjectAnalyzer
                     string canonical = sb.ToString();
                     string objHash = ComputeHash(canonical);
 
-                    // 检测重复对象：若哈希已见过则序列化保存实体（仅对重复对象执行）
+                    // 检测重复对象：若哈希已见过则序列化保存实体（仅对重复对象执行，
+                    // 并限制存储数量以控制内存）
                     if (!globalSeenHashes.TryAdd(objHash, 0))
                     {
-                        globalDuplicateJsons.GetOrAdd(objHash, h =>
+                        if (globalDuplicateJsons.Count < MaxStoredDuplicateJsons)
                         {
-                            // 属性读取失败等导致的不可序列化值不应中断整个分析
-                            try
+                            globalDuplicateJsons.GetOrAdd(objHash, h =>
                             {
-                                var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
-                                return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
-                            }
-                            catch
-                            {
-                                var fallback = new Dictionary<string, string>(sortedEntries.Length);
-                                foreach (var kv in sortedEntries)
+                                // 属性读取失败等导致的不可序列化值不应中断整个分析
+                                try
                                 {
-                                    fallback[kv.Key] = SafeToString(kv.Value);
+                                    var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
+                                    return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
                                 }
-                                return JsonSerializer.Serialize(fallback, JsonSharedOptions.Write);
-                            }
-                        });
+                                catch
+                                {
+                                    var fallback = new Dictionary<string, string>(sortedEntries.Length);
+                                    foreach (var kv in sortedEntries)
+                                    {
+                                        fallback[kv.Key] = SafeToString(kv.Value);
+                                    }
+                                    return JsonSerializer.Serialize(fallback, JsonSharedOptions.Write);
+                                }
+                            });
+                        }
                     }
                     localState.DuplicateCounts[objHash] = localState.DuplicateCounts.GetValueOrDefault(objHash) + 1;
 
@@ -264,7 +271,7 @@ public static class ObjectAnalyzer
             return cmp;
         });
 
-        // 收集重复对象实体
+        // 收集重复对象实体（最多 MaxStoredDuplicateJsons 组，其余仅计数不保存完整 JSON）
         var duplicates = globalDuplicateCounts
             .Where(kv => kv.Value > 1 && globalDuplicateJsons.ContainsKey(kv.Key))
             .Select(kv => new DuplicateObjectStatistic
@@ -278,10 +285,14 @@ public static class ObjectAnalyzer
         // 唯一对象数量 = 已记录的总哈希数
         int totalUniqueObjects = globalSeenHashes.Count;
 
+        // 重复组总数 = 出现次数 > 1 的哈希数（不受 JSON 存储上限影响）
+        int totalDuplicateGroups = globalDuplicateCounts.Count(kv => kv.Value > 1);
+
         return new AnalysisResult
         {
             TotalObjects = globalTotalObjects,
             TotalUniqueObjects = totalUniqueObjects,
+            TotalDuplicateGroups = totalDuplicateGroups,
             DuplicateObjects = duplicates,
             FieldStatistics = results
         };
@@ -362,6 +373,15 @@ public static class ObjectAnalyzer
         if (value is string s) return s;
         try { return value.ToString() ?? ""; }
         catch { return "[unserializable]"; }
+    }
+
+    /// <summary>判断是否需要将新唯一值归入 [Other values] 桶（该哨兵键不计入 1000 上限）。</summary>
+    private static bool ShouldTruncate(FieldStatistic stat, string value)
+    {
+        if (stat.ValueCounts.ContainsKey(value)) return false;
+        int tracked = stat.ValueCounts.Count -
+            (stat.ValueCounts.ContainsKey("[Other values]") ? 1 : 0);
+        return tracked >= MaxTrackedUniqueValues;
     }
 
     /// <summary>

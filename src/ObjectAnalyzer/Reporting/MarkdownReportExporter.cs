@@ -25,11 +25,11 @@ public static class MarkdownReportExporter
         sb.AppendLine();
         sb.AppendLine(CultureInfo.InvariantCulture, $"- 总对象数: {result.TotalObjects}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"- 唯一对象数: {result.TotalUniqueObjects}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- 重复组数: {result.DuplicateObjects.Count}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- 重复组数: {result.TotalDuplicateGroups}");
         sb.AppendLine(CultureInfo.InvariantCulture, $"- 字段数: {result.FieldStatistics.Count}");
         sb.AppendLine();
 
-        if (result.DuplicateObjects.Count > 0)
+        if (result.TotalDuplicateGroups > 0)
         {
             sb.AppendLine("## 重复对象");
             sb.AppendLine();
@@ -39,6 +39,11 @@ public static class MarkdownReportExporter
             {
                 sb.Append("| ").Append(dup.Count.ToString(CultureInfo.InvariantCulture))
                     .Append(" | `").Append(EscapeMd(dup.ObjectJson)).AppendLine(" |");
+            }
+            if (result.TotalDuplicateGroups > result.DuplicateObjects.Count)
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture,
+                    $"> 完整 JSON 已省略，仅展示前 {result.DuplicateObjects.Count} 组示例（共 {result.TotalDuplicateGroups} 组）。");
             }
             sb.AppendLine();
         }

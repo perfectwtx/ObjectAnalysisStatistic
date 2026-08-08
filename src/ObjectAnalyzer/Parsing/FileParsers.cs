@@ -192,7 +192,6 @@ public static class FileParsers
                 using var fs = File.OpenRead(path);
                 doc = XDocument.Load(fs);
             }
-            catch (InvalidDataException) { throw; }
             catch (Exception ex)
             {
                 throw new InvalidDataException($"解析 XML 文件时出错: {ex.Message}", ex);

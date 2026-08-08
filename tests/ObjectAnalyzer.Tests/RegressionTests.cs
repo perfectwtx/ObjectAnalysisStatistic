@@ -143,4 +143,43 @@ public class RegressionTests
             if (File.Exists(path)) File.Delete(path);
         }
     }
+
+    [Fact]
+    public void Analyze_TotalDuplicateGroups_CountsAllGroups()
+    {
+        // 回归测试：TotalDuplicateGroups 统计所有重复组，不受 DuplicateObjects 存储上限影响
+        var objects = new List<Dictionary<string, object?>>();
+        for (int i = 0; i < 3; i++) objects.Add(new() { { "A", 1 }, { "B", 2 } }); // 组1 x3
+        for (int i = 0; i < 2; i++) objects.Add(new() { { "A", 5 }, { "B", 6 } }); // 组2 x2
+        objects.Add(new() { { "A", 9 }, { "B", 10 } });                            // 唯一
+
+        var result = ObjectAnalyzer.Analyze(objects);
+
+        Assert.Equal(6, result.TotalObjects);
+        Assert.Equal(3, result.TotalUniqueObjects);
+        Assert.Equal(2, result.TotalDuplicateGroups);
+        Assert.Equal(2, result.DuplicateObjects.Count);
+    }
+
+    [Fact]
+    public void Analyze_OtherValuesBucket_DoesNotConsumeCapSlot()
+    {
+        // 回归测试：[Other values] 哨兵键不应占用 1000 个唯一值追踪名额
+        const int distinct = 1001;
+        var objects = new List<Dictionary<string, object?>>(distinct + 1);
+        for (int i = 0; i < distinct; i++)
+        {
+            objects.Add(new() { { "F", i.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+        }
+        // 让第 1001 个值出现两次，保证超出上限时能稳定触发裁剪
+        objects.Add(new() { { "F", "overflow" } });
+
+        var result = ObjectAnalyzer.Analyze(objects);
+        var stat = result.FieldStatistics.First(f => f.FieldName == "F");
+
+        Assert.True(stat.ValueCountsTruncated);
+        Assert.True(stat.ValueCounts.ContainsKey("[Other values]"));
+        // 1000 个真实唯一值 + 1 个哨兵键
+        Assert.Equal(1001, stat.ValueCounts.Count);
+    }
 }

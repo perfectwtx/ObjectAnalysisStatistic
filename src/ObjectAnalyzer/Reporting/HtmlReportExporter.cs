@@ -54,8 +54,8 @@ public static class HtmlReportExporter
         sb.AppendLine("<div class=\"cards\">");
         sb.Append(Card("总对象数", result.TotalObjects.ToString(CultureInfo.InvariantCulture), "blue"));
         sb.Append(Card("唯一对象数", result.TotalUniqueObjects.ToString(CultureInfo.InvariantCulture), "green"));
-        sb.Append(Card("重复组数", result.DuplicateObjects.Count.ToString(CultureInfo.InvariantCulture),
-            result.DuplicateObjects.Count > 0 ? "orange" : "green"));
+        sb.Append(Card("重复组数", result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture),
+            result.TotalDuplicateGroups > 0 ? "orange" : "green"));
         sb.Append(Card("字段数", result.FieldStatistics.Count.ToString(CultureInfo.InvariantCulture), "purple"));
         sb.AppendLine("</div>");
 
@@ -76,10 +76,10 @@ public static class HtmlReportExporter
         sb.AppendLine("</div>");
 
         // 重复对象
-        if (result.DuplicateObjects.Count > 0)
+        if (result.TotalDuplicateGroups > 0)
         {
             sb.AppendLine("<div class=\"section\">");
-            sb.Append("<h2>重复对象 (").Append(result.DuplicateObjects.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(" 组)</h2>");
+            sb.Append("<h2>重复对象 (").Append(result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture)).AppendLine(" 组)</h2>");
             sb.AppendLine("<table><thead><tr><th>重复次数</th><th>对象内容</th></tr></thead><tbody>");
             foreach (var dup in result.DuplicateObjects)
             {
@@ -87,6 +87,12 @@ public static class HtmlReportExporter
                     .Append("</td><td><code>").Append(Escape(dup.ObjectJson)).AppendLine("</code></td></tr>");
             }
             sb.AppendLine("</tbody></table>");
+            if (result.TotalDuplicateGroups > result.DuplicateObjects.Count)
+            {
+                sb.Append("<p class=\"na\">… 完整 JSON 已省略，仅保留 ")
+                    .Append(result.DuplicateObjects.Count.ToString(CultureInfo.InvariantCulture))
+                    .AppendLine(" 组示例（共 " + result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture) + " 组）。</p>");
+            }
             sb.AppendLine("</div>");
         }
 

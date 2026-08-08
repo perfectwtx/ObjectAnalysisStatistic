@@ -17,8 +17,8 @@ public static class ConsoleReporter
 
         summaryTable.AddRow("总对象数", $"[aqua]{result.TotalObjects}[/]");
         summaryTable.AddRow("唯一对象数", $"[aqua]{result.TotalUniqueObjects}[/]");
-        summaryTable.AddRow("重复组数", result.DuplicateObjects.Count > 0
-            ? $"[yellow]{result.DuplicateObjects.Count}[/]"
+        summaryTable.AddRow("重复组数", result.TotalDuplicateGroups > 0
+            ? $"[yellow]{result.TotalDuplicateGroups}[/]"
             : "[green]0[/]");
         summaryTable.AddRow("字段数", $"[aqua]{result.FieldStatistics.Count}[/]");
 
@@ -28,14 +28,18 @@ public static class ConsoleReporter
             .BorderColor(Color.Green));
 
         // ── 重复对象 ──
-        if (result.DuplicateObjects.Count > 0)
+        if (result.TotalDuplicateGroups > 0)
         {
-            AnsiConsole.MarkupLine($"[yellow]━━━ 重复对象统计 ({result.DuplicateObjects.Count} 组) ━━━[/]");
+            AnsiConsole.MarkupLine($"[yellow]━━━ 重复对象统计 ({result.TotalDuplicateGroups} 组) ━━━[/]");
             foreach (var dup in result.DuplicateObjects.Take(3))
             {
                 AnsiConsole.MarkupLine($"  [grey]•[/] 重复 [yellow]{dup.Count}[/] 次: {Markup.Escape(dup.ObjectJson)}");
             }
-            if (result.DuplicateObjects.Count > 3)
+            if (result.TotalDuplicateGroups > result.DuplicateObjects.Count)
+            {
+                AnsiConsole.MarkupLine($"  [grey]... 还有 {result.TotalDuplicateGroups - result.DuplicateObjects.Count} 组未列出（完整 JSON 已省略）[/]");
+            }
+            else if (result.DuplicateObjects.Count > 3)
             {
                 AnsiConsole.MarkupLine($"  [grey]... 还有 {result.DuplicateObjects.Count - 3} 组未列出[/]");
             }

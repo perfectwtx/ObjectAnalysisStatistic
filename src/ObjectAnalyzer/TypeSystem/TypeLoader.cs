@@ -54,12 +54,15 @@ public static class TypeLoader
         if (!emitResult.Success)
         {
             // 若是因为引用不完整导致失败（如用户类型使用了白名单之外的程序集），回退到完整 TPA 重新编译
-            if (!_usedFullReferenceSet && emitResult.Diagnostics.Any(d =>
+            if (emitResult.Diagnostics.Any(d =>
                     d.Severity == DiagnosticSeverity.Error &&
                     (d.Id is "CS0234" or "CS0246" or "CS0012" or "CS0400" or "CS0616")))
             {
                 references = GetFullMetadataReferences();
-                _usedFullReferenceSet = true;
+                lock (_referenceSetLock)
+                {
+                    _usedFullReferenceSet = true;
+                }
                 compilation = compilation.WithReferences(references);
                 ms.SetLength(0);
                 ms.Position = 0;
@@ -169,7 +172,9 @@ public static class TypeLoader
         "System.Numerics.Vectors"
     };
 
-    // 标记当前进程是否已使用完整 TPA 引用集（用于回退判定与缓存）
+    // 标记当前进程是否已使用完整 TPA 引用集（用于回退判定与缓存）。
+    // 并发 Compile（Blazor 多电路）下用锁保护，避免引用集在编译中途切换。
+    private static readonly object _referenceSetLock = new();
     private static bool _usedFullReferenceSet;
 
     // TPA 路径索引（程序集名 → 完整路径），进程内只构建一次
@@ -177,10 +182,12 @@ public static class TypeLoader
 
     private static List<MetadataReference> GetMetadataReferences()
     {
-        if (_usedFullReferenceSet)
-            return GetFullMetadataReferences();
-
-        return LoadReferencesByName(_coreReferenceNames);
+        lock (_referenceSetLock)
+        {
+            return _usedFullReferenceSet
+                ? GetFullMetadataReferences()
+                : LoadReferencesByName(_coreReferenceNames);
+        }
     }
 
     private static Dictionary<string, string> BuildTpaIndex()

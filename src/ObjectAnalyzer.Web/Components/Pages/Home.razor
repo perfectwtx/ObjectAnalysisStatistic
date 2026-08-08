@@ -140,7 +140,7 @@
                     <div class="card-label">唯一对象</div>
                 </div>
                 <div class="card orange">
-                    <div class="card-value">@State.Result.DuplicateObjects.Count</div>
+                    <div class="card-value">@State.Result.TotalDuplicateGroups</div>
                     <div class="card-label">重复组</div>
                 </div>
                 <div class="card purple">
@@ -251,10 +251,10 @@
             </div>
 
             @* 重复对象 *@
-            @if (State.Result.DuplicateObjects.Count > 0)
+            @if (State.Result.TotalDuplicateGroups > 0)
             {
                 <div class="duplicates-section">
-                    <h3>重复对象 (@State.Result.DuplicateObjects.Count 组)</h3>
+                    <h3>重复对象 (@State.Result.TotalDuplicateGroups 组)</h3>
                     @foreach (var dup in State.GetVisibleDuplicates())
                     {
                         <div class="dup-item">
