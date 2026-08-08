@@ -154,7 +154,9 @@ public static partial class ObjectAnalyzer
                 {
                     localState.TotalObjects++;
 
-                    var sortedEntries = obj.OrderBy(kv => kv.Key).ToArray();
+                    // Fix #9: Array.Sort avoids LINQ lambda allocations in the per-object hot path
+                    var sortedEntries = obj.ToArray();
+                    Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
 
                     var sb = new StringBuilder();
                     foreach (var kv in sortedEntries)
@@ -237,10 +239,11 @@ public static partial class ObjectAnalyzer
 
         if (objects is IList<Dictionary<string, object?>> objectList)
         {
+            // Fix #3: Use O(1) index-based slice instead of O(n) Skip/Take per chunk
             for (int offset = 0; offset < objectList.Count; offset += ChunkSize)
             {
                 int count = Math.Min(ChunkSize, objectList.Count - offset);
-                ProcessChunk(objectList.Skip(offset).Take(count));
+                ProcessChunk(IndexedSlice(objectList, offset, count));
             }
         }
         else
@@ -419,6 +422,15 @@ public static partial class ObjectAnalyzer
         Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(canonical)));
 #pragma warning restore CA5351
 
+    // Fix #3: O(1) index-based slice over IList, avoids re-enumerating from offset
+    private static IEnumerable<Dictionary<string, object?>> IndexedSlice(
+        IList<Dictionary<string, object?>> list, int offset, int count)
+    {
+        int end = offset + count;
+        for (int i = offset; i < end; i++)
+            yield return list[i];
+    }
+
     private static IEnumerable<List<Dictionary<string, object?>>> EnumerateChunks(
         IEnumerable<Dictionary<string, object?>> source, int chunkSize)
     {
@@ -521,7 +533,7 @@ public static partial class ObjectAnalyzer
             if (IsEnumMatch(actualValue, enumStrings, enumNumbers))
                 continue;
 
-            stat.EnumViolations.Add(actualValue);
+            stat.AddEnumViolation(actualValue); // Fix #8: use internal encapsulated method
         }
     }
 

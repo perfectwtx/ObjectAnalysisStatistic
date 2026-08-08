@@ -110,7 +110,7 @@ public static class ConsoleReporter
                     string.Equals(val.Key, stat.DefaultValueRepresentation, StringComparison.OrdinalIgnoreCase);
 
                 string valMarkup = isDefault
-                    ? $"[green]{Markup.Escape(displayVal)} [bold][[\u9ed8\u8ba4\u503c]][/][/] "
+                    ? $"[green]{Markup.Escape(displayVal)} [bold][[默认值]][/][/] " // Fix #7: was Unicode-escaped \u9ed8\u8ba4\u503c
                     : Markup.Escape(displayVal);
 
                 double pct = stat.Count > 0 ? (double)val.Value / stat.Count * 100 : 0;

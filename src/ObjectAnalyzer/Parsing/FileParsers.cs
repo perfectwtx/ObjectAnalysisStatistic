@@ -214,12 +214,17 @@ public static class FileParsers
                 foreach (var item in list)
                 {
                     if (item is Dictionary<object, object> dict)
-                        yield return ConvertYamlDict(dict);
+                    {
+                        var converted = ConvertYamlDict(dict);
+                        // Fix #4: respect options.Flatten for YAML (previously ignored)
+                        yield return options.Flatten ? FlattenObjectDict(converted) : converted;
+                    }
                 }
             }
             else if (yamlResult is Dictionary<object, object> singleDict)
             {
-                yield return ConvertYamlDict(singleDict);
+                var converted = ConvertYamlDict(singleDict);
+                yield return options.Flatten ? FlattenObjectDict(converted) : converted;
             }
             else
             {
@@ -396,6 +401,13 @@ public static class FileParsers
     private static Dictionary<string, object?> ConvertXElement(XElement element)
     {
         var dict = new Dictionary<string, object?>();
+
+        // Fix #5: include XML attributes so <item id="1" name="foo"/> fields are not lost
+        foreach (var attr in element.Attributes())
+        {
+            dict[attr.Name.LocalName] = attr.Value;
+        }
+
         foreach (var child in element.Elements())
         {
             string key = child.Name.LocalName;
@@ -427,5 +439,43 @@ public static class FileParsers
             List<object?> list => list.Select(ConvertYamlValue).ToList(),
             _ => value
         };
+    }
+
+    // Fix #4: Generic dictionary flattener for YAML (and any object-graph) output
+    private static Dictionary<string, object?> FlattenObjectDict(Dictionary<string, object?> source)
+    {
+        var result = new Dictionary<string, object?>();
+        FlattenObjectDictInto(source, "", result);
+        return result;
+    }
+
+    private static void FlattenObjectDictInto(
+        Dictionary<string, object?> source,
+        string prefix,
+        Dictionary<string, object?> target)
+    {
+        foreach (var kvp in source)
+        {
+            string key = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}.{kvp.Key}";
+            switch (kvp.Value)
+            {
+                case Dictionary<string, object?> nested:
+                    FlattenObjectDictInto(nested, key, target);
+                    break;
+                case System.Collections.IList list:
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        string indexedKey = $"{key}[{i}]";
+                        if (list[i] is Dictionary<string, object?> itemDict)
+                            FlattenObjectDictInto(itemDict, indexedKey, target);
+                        else
+                            target[indexedKey] = list[i];
+                    }
+                    break;
+                default:
+                    target[key] = kvp.Value;
+                    break;
+            }
+        }
     }
 }
