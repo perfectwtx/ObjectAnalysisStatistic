@@ -158,7 +158,7 @@ public static class HtmlReportExporter
                 string t = allTypes[i];
                 string color = colors[i % colors.Length];
                 var data = topFields.Select(f => f.TypeCounts.GetValueOrDefault(t, 0).ToString(CultureInfo.InvariantCulture));
-                sb.Append(CultureInfo.InvariantCulture, $"{{ label: '{t}', data: [{string.Join(",", data)}], backgroundColor: '{color}' }},");
+                sb.Append(CultureInfo.InvariantCulture, $"{{ label: '{EscapeJs(t)}', data: [{string.Join(",", data)}], backgroundColor: '{color}' }},");
             }
             sb.AppendLine("] },");
             sb.AppendLine("  options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }");

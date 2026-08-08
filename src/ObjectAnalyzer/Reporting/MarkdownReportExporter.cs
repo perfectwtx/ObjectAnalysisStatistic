@@ -73,6 +73,8 @@ public static class MarkdownReportExporter
 
     private static string EscapeMd(string s)
     {
-        return s.Replace("|", "\\|").Replace("\r", " ").Replace("\n", "<br>");
+        // 先转义 < > 防止行内 HTML 注入，再插入换行 <br>
+        return s.Replace("<", "&lt;").Replace(">", "&gt;")
+            .Replace("|", "\\|").Replace("\r", " ").Replace("\n", "<br>");
     }
 }

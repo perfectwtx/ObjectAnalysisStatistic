@@ -105,6 +105,7 @@ public static class ObjectAnalyzer
                     var sortedEntries = obj.OrderBy(kv => kv.Key).ToArray();
 
                     // 单遍处理：构建规范化字符串（用于哈希）+ 字段统计，FormatValue 每属性只调用一次
+                    // 字段名与值均使用长度前缀编码，避免分隔符出现在值中导致的哈希碰撞
                     var sb = new StringBuilder();
                     foreach (var kv in sortedEntries)
                     {
@@ -112,10 +113,13 @@ public static class ObjectAnalyzer
                         object? value = kv.Value;
                         string valStr = FormatValue(value);
 
+                        sb.Append(fieldName.Length);
+                        sb.Append(':');
                         sb.Append(fieldName);
                         sb.Append('=');
+                        sb.Append(valStr.Length);
+                        sb.Append(':');
                         sb.Append(valStr);
-                        sb.Append('&');
 
                         if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
                         {
@@ -140,15 +144,29 @@ public static class ObjectAnalyzer
                     }
 
                     // 对象哈希指纹（128 位 MD5，避免 64 位哈希的生日悖论碰撞）
-                    string objHash = ComputeHash(sb.ToString());
+                    string canonical = sb.ToString();
+                    string objHash = ComputeHash(canonical);
 
                     // 检测重复对象：若哈希已见过则序列化保存实体（仅对重复对象执行）
                     if (!globalSeenHashes.TryAdd(objHash, 0))
                     {
                         globalDuplicateJsons.GetOrAdd(objHash, h =>
                         {
-                            var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
-                            return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
+                            // 属性读取失败等导致的不可序列化值不应中断整个分析
+                            try
+                            {
+                                var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
+                                return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
+                            }
+                            catch
+                            {
+                                var fallback = new Dictionary<string, string>(sortedEntries.Length);
+                                foreach (var kv in sortedEntries)
+                                {
+                                    fallback[kv.Key] = SafeToString(kv.Value);
+                                }
+                                return JsonSerializer.Serialize(fallback, JsonSharedOptions.Write);
+                            }
                         });
                     }
                     localState.DuplicateCounts[objHash] = localState.DuplicateCounts.GetValueOrDefault(objHash) + 1;
@@ -181,9 +199,8 @@ public static class ObjectAnalyzer
         {
             stat.Coverage = globalTotalObjects > 0 ? (double)stat.Count / globalTotalObjects : 0;
 
-            // 1. 判断是否显式出现过 null（字段缺失不等于 null）
-            stat.NullAppeared = stat.TypeCounts.ContainsKey("Null") || 
-                                stat.ValueCounts.ContainsKey("null");
+            // 1. 判断是否显式出现过 null（字段缺失不等于 null；仅依据类型分布，避免字符串 "null" 误判）
+            stat.NullAppeared = stat.TypeCounts.ContainsKey("Null");
 
             // 2. 确定该字段的主导数据类型
             stat.PrimaryType = stat.TypeCounts.OrderByDescending(t => t.Value).FirstOrDefault().Key ?? "String";
@@ -337,6 +354,14 @@ public static class ObjectAnalyzer
         }
         
         return value.ToString() ?? "";
+    }
+
+    private static string SafeToString(object? value)
+    {
+        if (value == null) return "null";
+        if (value is string s) return s;
+        try { return value.ToString() ?? ""; }
+        catch { return "[unserializable]"; }
     }
 
     /// <summary>

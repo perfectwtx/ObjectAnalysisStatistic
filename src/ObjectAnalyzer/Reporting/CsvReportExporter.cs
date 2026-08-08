@@ -47,6 +47,12 @@ public static class CsvReportExporter
 
     private static string CsvField(string value)
     {
+        // 防御 CSV 公式注入：以 = + - @ 开头的单元格会被 Excel 当作公式执行
+        if (value.Length > 0 && (value[0] == '=' || value[0] == '+' || value[0] == '-' || value[0] == '@'))
+        {
+            value = "'" + value;
+        }
+
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
         {
             return "\"" + value.Replace("\"", "\"\"") + "\"";

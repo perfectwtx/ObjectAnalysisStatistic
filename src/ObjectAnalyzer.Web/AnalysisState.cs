@@ -1,3 +1,4 @@
+using System.IO;
 using AnalysisResult = global::ObjectAnalyzer.AnalysisResult;
 using FieldStatistic = global::ObjectAnalyzer.FieldStatistic;
 
@@ -7,7 +8,7 @@ namespace ObjectAnalyzer.Web;
 /// Holds the current analysis result and configuration for the Blazor UI.
 /// Registered as scoped service.
 /// </summary>
-public sealed class AnalysisState
+public sealed class AnalysisState : IDisposable
 {
     private static readonly System.Text.Json.JsonSerializerOptions ViolationsJsonOptions =
         new() { WriteIndented = true };
@@ -125,5 +126,19 @@ public sealed class AnalysisState
             })
             .ToList();
         return System.Text.Json.JsonSerializer.Serialize(violations, ViolationsJsonOptions);
+    }
+
+    /// <summary>电路断开时清理所有上传的临时文件，避免 %TEMP% 残留。</summary>
+    public void Dispose()
+    {
+        DeleteQuietly(DataFilePath);
+        DeleteQuietly(TypeFilePath);
+        DeleteQuietly(RulesFilePath);
+    }
+
+    private static void DeleteQuietly(string? path)
+    {
+        if (path == null) return;
+        try { File.Delete(path); } catch { }
     }
 }

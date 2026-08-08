@@ -77,21 +77,33 @@ public static class FileParsers
             var result = new List<Dictionary<string, object?>>();
 
             using var fs = File.OpenRead(path);
-            using var doc = JsonDocument.Parse(fs);
-            var root = doc.RootElement;
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(fs);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException("JSON 文件解析失败，请确认文件内容为合法的 JSON。", ex);
+            }
 
-            if (root.ValueKind == JsonValueKind.Array)
+            using (doc)
             {
-                foreach (var element in root.EnumerateArray())
-                    result.Add(ParseJsonElement(element, options.Flatten));
-            }
-            else if (root.ValueKind == JsonValueKind.Object)
-            {
-                result.Add(ParseJsonElement(root, options.Flatten));
-            }
-            else
-            {
-                throw new InvalidDataException("JSON 根节点必须是数组或对象。");
+                var root = doc.RootElement;
+
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var element in root.EnumerateArray())
+                        result.Add(ParseJsonElement(element, options.Flatten));
+                }
+                else if (root.ValueKind == JsonValueKind.Object)
+                {
+                    result.Add(ParseJsonElement(root, options.Flatten));
+                }
+                else
+                {
+                    throw new InvalidDataException("JSON 根节点必须是数组或对象。");
+                }
             }
 
             return result;
