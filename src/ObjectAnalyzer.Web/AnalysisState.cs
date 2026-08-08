@@ -110,8 +110,8 @@ public sealed class AnalysisState : IDisposable
         return Result.DuplicateObjects.Take(MaxDuplicatesToShow).ToList();
     }
 
-    public int HiddenDuplicateCount =>
-        Result == null ? 0 : Math.Max(0, Result.TotalDuplicateGroups - MaxDuplicatesToShow);
+    public long HiddenDuplicateCount =>
+        Result == null ? 0L : Math.Max(0L, Result.TotalDuplicateGroups - MaxDuplicatesToShow);
 
     /// <summary>枚举违规的结构化 JSON（与 CLI --violations 输出一致），用于下载。</summary>
     public string GetViolationsJson()

@@ -5,10 +5,10 @@ using System.Text.Json.Serialization;
 public class FieldStatistic
 {
     public string FieldName { get; set; } = "";
-    public int Count { get; set; }
+    public long Count { get; set; }
     public double Coverage { get; set; } // 字段在所有对象中的覆盖率 (0.0 - 1.0)
-    public Dictionary<string, int> TypeCounts { get; set; } = new();
-    public Dictionary<string, int> ValueCounts { get; set; } = new();
+    public Dictionary<string, long> TypeCounts { get; set; } = new();
+    public Dictionary<string, long> ValueCounts { get; set; } = new();
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ValueCountsTruncated { get; set; } // 唯一值超阈值被裁剪到 [Other values] 桶
 

@@ -47,8 +47,8 @@ public static partial class ObjectAnalyzer
     {
         public Dictionary<string, FieldStatistic> StatsMap { get; } = new();
         public Dictionary<string, InternalFieldMetrics> MetricsMap { get; } = new();
-        public Dictionary<string, int> DuplicateCounts { get; } = new();
-        public int TotalObjects { get; set; }
+        public Dictionary<string, long> DuplicateCounts { get; } = new();
+        public long TotalObjects { get; set; }
     }
 
     public static AnalysisResult Analyze(
@@ -61,8 +61,8 @@ public static partial class ObjectAnalyzer
 
         var globalStatsMap = new Dictionary<string, FieldStatistic>();
         var globalMetricsMap = new Dictionary<string, InternalFieldMetrics>();
-        var globalDuplicateCounts = new Dictionary<string, int>();
-        int globalTotalObjects = 0;
+        var globalDuplicateCounts = new Dictionary<string, long>();
+        long globalTotalObjects = 0;
         var mergeLock = new object();
 
         var options = parallelOptions ?? new ParallelOptions();
@@ -352,8 +352,8 @@ public static partial class ObjectAnalyzer
             .OrderByDescending(d => d.Count)
             .ToList();
 
-        int totalUniqueObjects = globalSeenHashes.Count;
-        int totalDuplicateGroups = globalDuplicateCounts.Count(kv => kv.Value > 1);
+        long totalUniqueObjects = globalSeenHashes.Count;
+        long totalDuplicateGroups = globalDuplicateCounts.Count(kv => kv.Value > 1);
 
         return new AnalysisResult
         {

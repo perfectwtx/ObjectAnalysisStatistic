@@ -105,6 +105,75 @@ public class FullRoadmapFeaturesTests
         Assert.Contains("\"Email\"", jsonSchema);
     }
 
+    [Fact]
+    public void SchemaExporter_UnflattensNestedDotPathsAndArrayIndices()
+    {
+        // 模拟 FlattenJson 之后的字段名（address.city / tags[0] / skills.primary）
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() {
+                { "id", 1L }, { "name", "Alice" },
+                { "address.city", "Beijing" }, { "address.district", "Haidian" },
+                { "tags[0]", "C#" }, { "tags[1]", "Dev" },
+                { "skills.primary", "Python" }
+            },
+            new() {
+                { "id", 2L }, { "name", "Bob" },
+                { "address.city", "Shanghai" },
+                { "tags[0]", "Java" }, { "tags[1]", "Ops" }
+            }
+        };
+
+        var result = ObjectAnalyzer.Analyze(objects);
+
+        string csCode = SchemaExporter.GenerateCSharp(result, "GeneratedSchema");
+        // 嵌套对象被还原为独立 DTO record
+        Assert.Contains("public record AddressDto", csCode);
+        Assert.Contains("public string City", csCode);
+        Assert.Contains("public string District", csCode);
+        Assert.Contains("public AddressDto Address", csCode);
+        // 数组索引被还原为强类型数组
+        Assert.Contains("public string[] Tags", csCode);
+        // 覆盖率不足的对象成为可空类型
+        Assert.Contains("public SkillsDto? Skills", csCode);
+        // 回归：不应再生成扁平化名称
+        Assert.DoesNotContain("Address_city", csCode);
+        Assert.DoesNotContain("Tags_0_", csCode);
+
+        string tsCode = SchemaExporter.GenerateTypeScript(result, "GeneratedSchema");
+        Assert.Contains("export interface AddressDto", tsCode);
+        Assert.Contains("tags: string[];", tsCode);
+        Assert.Contains("skills?: SkillsDto;", tsCode);
+
+        string jsonSchema = SchemaExporter.GenerateJsonSchema(result);
+        Assert.Contains("\"address\"", jsonSchema);
+        Assert.Contains("\"tags\"", jsonSchema);
+        Assert.Contains("\"type\": \"array\"", jsonSchema);
+    }
+
+    [Fact]
+    public void SchemaExporter_ArrayOfObjectsBecomesTypedDtoArray()
+    {
+        // tags[0].name / tags[0].hex 应还原为 TagsItemDto[] 元素
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "id", 1L }, { "tags[0].name", "red" }, { "tags[0].hex", "#FF0000" } },
+            new() { { "id", 2L }, { "tags[0].name", "blue" }, { "tags[0].hex", "#0000FF" } }
+        };
+
+        var result = ObjectAnalyzer.Analyze(objects);
+
+        string csCode = SchemaExporter.GenerateCSharp(result, "GeneratedSchema");
+        Assert.Contains("public TagsItemDto[] Tags", csCode);
+        Assert.Contains("public record TagsItemDto", csCode);
+        Assert.Contains("public string Name", csCode);
+        Assert.Contains("public string Hex", csCode);
+
+        string tsCode = SchemaExporter.GenerateTypeScript(result, "GeneratedSchema");
+        Assert.Contains("tags: TagsItemDto[];", tsCode);
+        Assert.Contains("export interface TagsItemDto", tsCode);
+    }
+
     // ──────────────────────────────────────────────
     // 4. 各种文件格式的真·流式解析测试
     // ──────────────────────────────────────────────
