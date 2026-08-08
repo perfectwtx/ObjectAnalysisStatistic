@@ -82,9 +82,11 @@ public class FullRoadmapFeaturesTests
 
         var result = ObjectAnalyzer.Analyze(objects);
 
-        // C#
+        // C# (Roslyn AST 确保带有 { } 大括号)
         string csCode = SchemaExporter.GenerateCSharp(result, "TestEntity");
         Assert.Contains("public record TestEntity", csCode);
+        Assert.Contains("{", csCode);
+        Assert.Contains("}", csCode);
         Assert.Contains("public long Id", csCode);
         Assert.Contains("public bool IsActive", csCode);
         Assert.Contains("public string? NullableNote", csCode);
