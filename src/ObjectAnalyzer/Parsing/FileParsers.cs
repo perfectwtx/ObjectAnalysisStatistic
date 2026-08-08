@@ -12,6 +12,7 @@ namespace ObjectAnalyzer;
 /// <summary>
 /// Multi-format file parsers. Each parser reads a file and returns
 /// a collection of property dictionaries for analysis.
+/// All parsers stream results lazily via yield return to ensure minimal memory footprint.
 /// </summary>
 public static class FileParsers
 {
@@ -74,8 +75,6 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var result = new List<Dictionary<string, object?>>();
-
             using var fs = File.OpenRead(path);
             JsonDocument doc;
             try
@@ -94,19 +93,17 @@ public static class FileParsers
                 if (root.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var element in root.EnumerateArray())
-                        result.Add(ParseJsonElement(element, options.Flatten));
+                        yield return ParseJsonElement(element, options.Flatten);
                 }
                 else if (root.ValueKind == JsonValueKind.Object)
                 {
-                    result.Add(ParseJsonElement(root, options.Flatten));
+                    yield return ParseJsonElement(root, options.Flatten);
                 }
                 else
                 {
                     throw new InvalidDataException("JSON 根节点必须是数组或对象。");
                 }
             }
-
-            return result;
         }
     }
 
@@ -156,8 +153,6 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var result = new List<Dictionary<string, object?>>();
-
             var rows = MiniExcel.Query(path, useHeaderRow: true);
             foreach (var row in rows)
             {
@@ -170,10 +165,8 @@ public static class FileParsers
                             dict[kvp.Key] = kvp.Value;
                     }
                 }
-                result.Add(dict);
+                yield return dict;
             }
-
-            return result;
         }
     }
 
@@ -184,8 +177,6 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var result = new List<Dictionary<string, object?>>();
-
             XDocument doc;
             try
             {
@@ -201,9 +192,7 @@ public static class FileParsers
                 throw new InvalidDataException("XML 文件缺少根节点。");
 
             foreach (var element in doc.Root.Elements())
-                result.Add(ConvertXElement(element));
-
-            return result;
+                yield return ConvertXElement(element);
         }
     }
 
@@ -214,7 +203,6 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var result = new List<Dictionary<string, object?>>();
             var deserializer = new DeserializerBuilder().Build();
 
             using var fs = File.OpenRead(path);
@@ -226,19 +214,17 @@ public static class FileParsers
                 foreach (var item in list)
                 {
                     if (item is Dictionary<object, object> dict)
-                        result.Add(ConvertYamlDict(dict));
+                        yield return ConvertYamlDict(dict);
                 }
             }
             else if (yamlResult is Dictionary<object, object> singleDict)
             {
-                result.Add(ConvertYamlDict(singleDict));
+                yield return ConvertYamlDict(singleDict);
             }
             else
             {
                 throw new InvalidDataException("YAML 根节点必须是对象列表或单个对象。");
             }
-
-            return result;
         }
     }
 
@@ -249,7 +235,6 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var result = new List<Dictionary<string, object?>>();
             string columnName = options.ExcelJsonColumn.ToUpperInvariant();
 
             var rows = MiniExcel.Query(path, useHeaderRow: false);
@@ -289,11 +274,9 @@ public static class FileParsers
                     var root = doc.RootElement;
                     if (root.ValueKind != JsonValueKind.Object)
                         throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
-                    result.Add(ParseJsonElement(root, options.Flatten));
+                    yield return ParseJsonElement(root, options.Flatten);
                 }
             }
-
-            return result;
         }
     }
 

@@ -5,35 +5,52 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ObjectAnalyzer;
 
-public static class ObjectAnalyzer
+public static partial class ObjectAnalyzer
 {
     private const int MaxTrackedUniqueValues = 1000;
-
-    // 并行处理的分块大小：控制惰性输入的内存占用上限（每块对象 + 线程局部状态）
     private const int ChunkSize = 10000;
-
-    // 重复对象完整 JSON 的存储上限：防止高基数重复场景下内存无限增长
     private const int MaxStoredDuplicateJsons = 10000;
 
-    // 内部使用的线程局部状态类
+    // 常用语义识别正则表达式（预编译提升性能）
+    private static readonly Regex RegexDateTime = new(
+        @"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$", RegexOptions.Compiled);
+    private static readonly Regex RegexUuid = new(
+        @"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", RegexOptions.Compiled);
+    private static readonly Regex RegexEmail = new(
+        @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
+    private static readonly Regex RegexIPv4 = new(
+        @"^(\d{1,3}\.){3}\d{1,3}$", RegexOptions.Compiled);
+    private static readonly Regex RegexUrl = new(
+        @"^(https?|ftp)://[^\s/$.?#].[^\s]*$", RegexOptions.Compiled);
+
+    // 内部使用的线程局部扩展指标集
+    private sealed class InternalFieldMetrics
+    {
+        public double MinNumber { get; set; } = double.MaxValue;
+        public double MaxNumber { get; set; } = double.MinValue;
+        public double SumNumber { get; set; }
+        public int NumberCount { get; set; }
+
+        public int MinLength { get; set; } = int.MaxValue;
+        public int MaxLength { get; set; } = int.MinValue;
+        public int StringCount { get; set; }
+
+        public Dictionary<string, int> SemanticCounts { get; } = new();
+    }
+
     private sealed class ThreadLocalState
     {
         public Dictionary<string, FieldStatistic> StatsMap { get; } = new();
+        public Dictionary<string, InternalFieldMetrics> MetricsMap { get; } = new();
         public Dictionary<string, int> DuplicateCounts { get; } = new();
         public int TotalObjects { get; set; }
     }
 
-    /// <summary>
-    /// Analyzes a collection of objects, producing field statistics and duplicate detection.
-    /// </summary>
-    /// <param name="objects">Objects to analyze.</param>
-    /// <param name="rules">Optional field rules (defaults, primary types, enum constraints).</param>
-    /// <param name="parallelOptions">Optional parallelism control (MaxDegreeOfParallelism / CancellationToken).
-    /// If null, uses the default (all cores, no cancellation).</param>
     public static AnalysisResult Analyze(
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
@@ -43,13 +60,13 @@ public static class ObjectAnalyzer
         var globalDuplicateJsons = new ConcurrentDictionary<string, string>();
 
         var globalStatsMap = new Dictionary<string, FieldStatistic>();
+        var globalMetricsMap = new Dictionary<string, InternalFieldMetrics>();
         var globalDuplicateCounts = new Dictionary<string, int>();
         int globalTotalObjects = 0;
         var mergeLock = new object();
 
         var options = parallelOptions ?? new ParallelOptions();
 
-        // Reduce：将线程局部的状态合并入全局状态（多个并行线程并发调用，需加锁）
         void MergeLocalState(ThreadLocalState local)
         {
             lock (mergeLock)
@@ -58,10 +75,11 @@ public static class ObjectAnalyzer
 
                 foreach (var localStat in local.StatsMap.Values)
                 {
-                    if (!globalStatsMap.TryGetValue(localStat.FieldName, out var globalStat))
+                    string fName = localStat.FieldName;
+                    if (!globalStatsMap.TryGetValue(fName, out var globalStat))
                     {
-                        globalStat = new FieldStatistic { FieldName = localStat.FieldName };
-                        globalStatsMap[localStat.FieldName] = globalStat;
+                        globalStat = new FieldStatistic { FieldName = fName };
+                        globalStatsMap[fName] = globalStat;
                     }
 
                     globalStat.Count += localStat.Count;
@@ -86,6 +104,39 @@ public static class ObjectAnalyzer
                     }
                 }
 
+                // 合并数值与文本扩展指标
+                foreach (var kvp in local.MetricsMap)
+                {
+                    string fName = kvp.Key;
+                    var localMetrics = kvp.Value;
+
+                    if (!globalMetricsMap.TryGetValue(fName, out var globalMetrics))
+                    {
+                        globalMetrics = new InternalFieldMetrics();
+                        globalMetricsMap[fName] = globalMetrics;
+                    }
+
+                    if (localMetrics.NumberCount > 0)
+                    {
+                        globalMetrics.MinNumber = Math.Min(globalMetrics.MinNumber, localMetrics.MinNumber);
+                        globalMetrics.MaxNumber = Math.Max(globalMetrics.MaxNumber, localMetrics.MaxNumber);
+                        globalMetrics.SumNumber += localMetrics.SumNumber;
+                        globalMetrics.NumberCount += localMetrics.NumberCount;
+                    }
+
+                    if (localMetrics.StringCount > 0)
+                    {
+                        globalMetrics.MinLength = Math.Min(globalMetrics.MinLength, localMetrics.MinLength);
+                        globalMetrics.MaxLength = Math.Max(globalMetrics.MaxLength, localMetrics.MaxLength);
+                        globalMetrics.StringCount += localMetrics.StringCount;
+
+                        foreach (var sc in localMetrics.SemanticCounts)
+                        {
+                            globalMetrics.SemanticCounts[sc.Key] = globalMetrics.SemanticCounts.GetValueOrDefault(sc.Key) + sc.Value;
+                        }
+                    }
+                }
+
                 foreach (var kvp in local.DuplicateCounts)
                 {
                     globalDuplicateCounts[kvp.Key] = globalDuplicateCounts.GetValueOrDefault(kvp.Key) + kvp.Value;
@@ -93,7 +144,6 @@ public static class ObjectAnalyzer
             }
         }
 
-        // Map：对一块对象执行并行聚合（哈希构建与字段统计共享 FormatValue，嵌套对象只序列化一次）
         void ProcessChunk(IEnumerable<Dictionary<string, object?>> chunk)
         {
             Parallel.ForEach(
@@ -104,11 +154,8 @@ public static class ObjectAnalyzer
                 {
                     localState.TotalObjects++;
 
-                    // 排序仅执行一次，哈希构建与重复对象 JSON 序列化共享
                     var sortedEntries = obj.OrderBy(kv => kv.Key).ToArray();
 
-                    // 单遍处理：构建规范化字符串（用于哈希）+ 字段统计，FormatValue 每属性只调用一次
-                    // 字段名与值均使用长度前缀编码，避免分隔符出现在值中导致的哈希碰撞
                     var sb = new StringBuilder();
                     foreach (var kv in sortedEntries)
                     {
@@ -130,6 +177,12 @@ public static class ObjectAnalyzer
                             localState.StatsMap[fieldName] = stat;
                         }
 
+                        if (!localState.MetricsMap.TryGetValue(fieldName, out var metrics))
+                        {
+                            metrics = new InternalFieldMetrics();
+                            localState.MetricsMap[fieldName] = metrics;
+                        }
+
                         stat.Count++;
 
                         string valType = GetValueType(value);
@@ -144,21 +197,20 @@ public static class ObjectAnalyzer
                         {
                             stat.ValueCounts[valStr] = stat.ValueCounts.GetValueOrDefault(valStr) + 1;
                         }
+
+                        // 收集数值与字符串度量指标
+                        RecordValueMetrics(value, valStr, metrics);
                     }
 
-                    // 对象哈希指纹（128 位 MD5，避免 64 位哈希的生日悖论碰撞）
                     string canonical = sb.ToString();
                     string objHash = ComputeHash(canonical);
 
-                    // 检测重复对象：若哈希已见过则序列化保存实体（仅对重复对象执行，
-                    // 并限制存储数量以控制内存）
                     if (!globalSeenHashes.TryAdd(objHash, 0))
                     {
                         if (globalDuplicateJsons.Count < MaxStoredDuplicateJsons)
                         {
                             globalDuplicateJsons.GetOrAdd(objHash, h =>
                             {
-                                // 属性读取失败等导致的不可序列化值不应中断整个分析
                                 try
                                 {
                                     var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -183,7 +235,6 @@ public static class ObjectAnalyzer
                 MergeLocalState);
         }
 
-        // 分块处理：IList 直接按索引切片，惰性 IEnumerable 按块流式读取，避免一次性物化全部对象
         if (objects is IList<Dictionary<string, object?>> objectList)
         {
             for (int offset = 0; offset < objectList.Count; offset += ChunkSize)
@@ -200,19 +251,15 @@ public static class ObjectAnalyzer
             }
         }
 
-        // 后置处理：计算覆盖率并推断默认值
+        // 后置处理：合并极值、推断默认值与语义分类
         var results = new List<FieldStatistic>();
         foreach (var stat in globalStatsMap.Values)
         {
             stat.Coverage = globalTotalObjects > 0 ? (double)stat.Count / globalTotalObjects : 0;
 
-            // 1. 判断是否显式出现过 null（字段缺失不等于 null；仅依据类型分布，避免字符串 "null" 误判）
             stat.NullAppeared = stat.TypeCounts.ContainsKey("Null");
-
-            // 2. 确定该字段的主导数据类型
             stat.PrimaryType = stat.TypeCounts.OrderByDescending(t => t.Value).FirstOrDefault().Key ?? "String";
 
-            // 3. 确定该字段的默认值表现形式
             if (stat.NullAppeared)
             {
                 stat.DefaultValueRepresentation = "null";
@@ -233,24 +280,49 @@ public static class ObjectAnalyzer
                 }
             }
 
-            // 4. 应用规则（覆盖自动推断结果）
+            // 补充合并数值与字符串扩展指标
+            if (globalMetricsMap.TryGetValue(stat.FieldName, out var metrics))
+            {
+                if (metrics.NumberCount > 0)
+                {
+                    stat.MinNumber = metrics.MinNumber;
+                    stat.MaxNumber = metrics.MaxNumber;
+                    stat.SumNumber = metrics.SumNumber;
+                    stat.AvgNumber = metrics.SumNumber / metrics.NumberCount;
+                }
+
+                if (metrics.StringCount > 0)
+                {
+                    stat.MinLength = metrics.MinLength;
+                    stat.MaxLength = metrics.MaxLength;
+
+                    // 当某语义匹配数量达到字符串总数的 80% 以上时，标注其 SemanticType
+                    var topSemantic = metrics.SemanticCounts
+                        .OrderByDescending(kv => kv.Value)
+                        .FirstOrDefault();
+
+                    if (topSemantic.Value > 0 && (double)topSemantic.Value / metrics.StringCount >= 0.8)
+                    {
+                        stat.SemanticType = topSemantic.Key;
+                    }
+                }
+            }
+
+            // 应用配置规则
             if (rules != null && rules.Fields.TryGetValue(stat.FieldName, out var rule))
             {
                 stat.AppliedRule = rule;
 
-                // 规则指定默认值 → 覆盖
                 if (rule.DefaultValue != null)
                 {
                     stat.DefaultValueRepresentation = rule.DefaultValue.ToString();
                 }
 
-                // 规则指定主导类型 → 覆盖
                 if (!string.IsNullOrEmpty(rule.PrimaryType))
                 {
                     stat.PrimaryType = rule.PrimaryType;
                 }
 
-                // 规则指定枚举约束 → 校验
                 if (rule.EnumValues != null && rule.EnumValues.Count > 0)
                 {
                     ValidateEnumValues(stat, rule.EnumValues);
@@ -260,7 +332,6 @@ public static class ObjectAnalyzer
             results.Add(stat);
         }
 
-        // 排序结果
         results.Sort((a, b) =>
         {
             int cmp = b.Count.CompareTo(a.Count);
@@ -271,7 +342,6 @@ public static class ObjectAnalyzer
             return cmp;
         });
 
-        // 收集重复对象实体（最多 MaxStoredDuplicateJsons 组，其余仅计数不保存完整 JSON）
         var duplicates = globalDuplicateCounts
             .Where(kv => kv.Value > 1 && globalDuplicateJsons.ContainsKey(kv.Key))
             .Select(kv => new DuplicateObjectStatistic
@@ -282,10 +352,7 @@ public static class ObjectAnalyzer
             .OrderByDescending(d => d.Count)
             .ToList();
 
-        // 唯一对象数量 = 已记录的总哈希数
         int totalUniqueObjects = globalSeenHashes.Count;
-
-        // 重复组总数 = 出现次数 > 1 的哈希数（不受 JSON 存储上限影响）
         int totalDuplicateGroups = globalDuplicateCounts.Count(kv => kv.Value > 1);
 
         return new AnalysisResult
@@ -298,19 +365,60 @@ public static class ObjectAnalyzer
         };
     }
 
-    /// <summary>
-    /// Computes a 128-bit hash of the object's canonical representation.
-    /// Uses MD5 for speed (not for cryptographic security), avoiding birthday-paradox
-    /// collisions that occur with 64-bit hashes at scale.
-    /// </summary>
-#pragma warning disable CA5351 // MD5 used for deduplication, not security
+    private static void RecordValueMetrics(object? value, string valStr, InternalFieldMetrics metrics)
+    {
+        if (value == null) return;
+
+        // 1. 数值统计
+        if (TryGetDoubleValue(value, out double dVal))
+        {
+            metrics.MinNumber = Math.Min(metrics.MinNumber, dVal);
+            metrics.MaxNumber = Math.Max(metrics.MaxNumber, dVal);
+            metrics.SumNumber += dVal;
+            metrics.NumberCount++;
+        }
+
+        // 2. 字符串度量与语义测试
+        if (value is string strVal)
+        {
+            metrics.MinLength = Math.Min(metrics.MinLength, strVal.Length);
+            metrics.MaxLength = Math.Max(metrics.MaxLength, strVal.Length);
+            metrics.StringCount++;
+
+            if (RegexUuid.IsMatch(strVal))
+                metrics.SemanticCounts["UUID"] = metrics.SemanticCounts.GetValueOrDefault("UUID") + 1;
+            else if (RegexEmail.IsMatch(strVal))
+                metrics.SemanticCounts["Email"] = metrics.SemanticCounts.GetValueOrDefault("Email") + 1;
+            else if (RegexDateTime.IsMatch(strVal))
+                metrics.SemanticCounts["DateTime"] = metrics.SemanticCounts.GetValueOrDefault("DateTime") + 1;
+            else if (RegexIPv4.IsMatch(strVal))
+                metrics.SemanticCounts["IPv4"] = metrics.SemanticCounts.GetValueOrDefault("IPv4") + 1;
+            else if (RegexUrl.IsMatch(strVal))
+                metrics.SemanticCounts["URL"] = metrics.SemanticCounts.GetValueOrDefault("URL") + 1;
+        }
+    }
+
+    private static bool TryGetDoubleValue(object val, out double result)
+    {
+        if (val is double d) { result = d; return true; }
+        if (val is float f) { result = f; return true; }
+        if (val is int i) { result = i; return true; }
+        if (val is long l) { result = l; return true; }
+        if (val is decimal dec) { result = (double)dec; return true; }
+        if (val is byte b) { result = b; return true; }
+        if (val is short s) { result = s; return true; }
+        if (val is uint ui) { result = ui; return true; }
+        if (val is ulong ul) { result = ul; return true; }
+
+        result = 0;
+        return false;
+    }
+
+#pragma warning disable CA5351
     private static string ComputeHash(string canonical) =>
         Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(canonical)));
 #pragma warning restore CA5351
 
-    /// <summary>
-    /// 将惰性输入按固定大小分块产出，控制流式分析时的内存占用。
-    /// </summary>
     private static IEnumerable<List<Dictionary<string, object?>>> EnumerateChunks(
         IEnumerable<Dictionary<string, object?>> source, int chunkSize)
     {
@@ -375,7 +483,6 @@ public static class ObjectAnalyzer
         catch { return "[unserializable]"; }
     }
 
-    /// <summary>判断是否需要将新唯一值归入 [Other values] 桶（该哨兵键不计入 1000 上限）。</summary>
     private static bool ShouldTruncate(FieldStatistic stat, string value)
     {
         if (stat.ValueCounts.ContainsKey(value)) return false;
@@ -384,13 +491,8 @@ public static class ObjectAnalyzer
         return tracked >= MaxTrackedUniqueValues;
     }
 
-    /// <summary>
-    /// 校验字段实际值是否符合枚举约束。
-    /// 匹配逻辑：字符串精确匹配(忽略大小写) + 数值解析双模式。
-    /// </summary>
     private static void ValidateEnumValues(FieldStatistic stat, List<System.Text.Json.JsonElement> enumElements)
     {
-        // 将枚举值转换为字符串集合和数值集合
         var enumStrings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var enumNumbers = new HashSet<double>();
 
@@ -412,7 +514,6 @@ public static class ObjectAnalyzer
             }
         }
 
-        // 校验每个实际值
         foreach (var actualValue in stat.ValueCounts.Keys)
         {
             if (actualValue == "[Other values]") continue;
@@ -426,11 +527,9 @@ public static class ObjectAnalyzer
 
     private static bool IsEnumMatch(string value, HashSet<string> enumStrings, HashSet<double> enumNumbers)
     {
-        // 1. 字符串精确匹配 (忽略大小写)
         if (enumStrings.Contains(value))
             return true;
 
-        // 2. 数值匹配: 实际值和枚举数值都尝试解析为 double
         if (double.TryParse(value, System.Globalization.NumberStyles.Any,
             System.Globalization.CultureInfo.InvariantCulture, out double actualNum))
         {

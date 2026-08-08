@@ -59,6 +59,15 @@ var violationsOption = new Option<FileInfo?>(
     aliases: CliAliases.Violations,
     description: "将枚举违规导出为独立的结构化 JSON 文件路径。");
 
+var exportSchemaOption = new Option<string?>(
+    aliases: CliAliases.ExportSchema,
+    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema。");
+exportSchemaOption.AddCompletions("csharp", "typescript", "json-schema");
+
+var schemaOutputOption = new Option<FileInfo?>(
+    name: "--schema-output",
+    description: "指定 Schema 代码导出的文件保存路径。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -72,6 +81,8 @@ rootCommand.AddOption(excelJsonColumnOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(parallelOption);
 rootCommand.AddOption(violationsOption);
+rootCommand.AddOption(exportSchemaOption);
+rootCommand.AddOption(schemaOutputOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -88,6 +99,8 @@ rootCommand.SetHandler((InvocationContext context) =>
     var rules = parseResult.GetValueForOption(rulesOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
     var violations = parseResult.GetValueForOption(violationsOption);
+    var exportSchema = parseResult.GetValueForOption(exportSchemaOption);
+    var schemaOutput = parseResult.GetValueForOption(schemaOutputOption);
 
     if (generateTestExcel)
     {
@@ -122,7 +135,9 @@ rootCommand.SetHandler((InvocationContext context) =>
         ExcelJsonColumn = excelJsonColumn ?? "A",
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
-        ViolationsPath = violations?.FullName
+        ViolationsPath = violations?.FullName,
+        ExportSchema = exportSchema,
+        SchemaOutputPath = schemaOutput?.FullName
     };
 
     context.ExitCode = AnalysisRunner.Run(options);
@@ -141,4 +156,5 @@ static class CliAliases
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Parallel = { "--parallel", "-p" };
     public static readonly string[] Violations = { "--violations" };
+    public static readonly string[] ExportSchema = { "--export-schema", "-s" };
 }

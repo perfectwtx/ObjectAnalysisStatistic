@@ -50,7 +50,10 @@ public static class ConsoleReporter
         foreach (var stat in result.FieldStatistics)
         {
             // 字段标题行
-            AnsiConsole.Write(new Rule($"[bold cyan]{Markup.Escape(stat.FieldName)}[/]").LeftJustified());
+            string semanticBadge = !string.IsNullOrEmpty(stat.SemanticType)
+                ? $" [bold purple][[语义: {stat.SemanticType}]][/]"
+                : "";
+            AnsiConsole.Write(new Rule($"[bold cyan]{Markup.Escape(stat.FieldName)}[/]{semanticBadge}").LeftJustified());
 
             // 覆盖率 + 类型
             string defaultInfo = stat.DefaultValueRepresentation != null
@@ -61,6 +64,16 @@ public static class ConsoleReporter
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"[blue]{t.Key}[/]({t.Value})"));
             AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}{ruleInfo}{truncatedInfo}");
             AnsiConsole.MarkupLine($"  类型分布: {types}");
+
+            // 数值极值与长度指标
+            if (stat.MinNumber.HasValue && stat.MaxNumber.HasValue)
+            {
+                AnsiConsole.MarkupLine($"  数值范围: [magenta]{stat.MinNumber:G5}[/] ~ [magenta]{stat.MaxNumber:G5}[/] (均值: [magenta]{stat.AvgNumber:G5}[/])");
+            }
+            if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
+            {
+                AnsiConsole.MarkupLine($"  文本长度: [grey]{stat.MinLength}[/] ~ [grey]{stat.MaxLength}[/] 字符");
+            }
 
             // 枚举违规值
             if (stat.EnumViolations.Count > 0)

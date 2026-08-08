@@ -12,6 +12,19 @@ public class FieldStatistic
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ValueCountsTruncated { get; set; } // 唯一值超阈值被裁剪到 [Other values] 桶
 
+    // 数值统计
+    public double? MinNumber { get; set; }
+    public double? MaxNumber { get; set; }
+    public double? AvgNumber { get; set; }
+    public double? SumNumber { get; set; }
+
+    // 字符串长度统计
+    public int? MinLength { get; set; }
+    public int? MaxLength { get; set; }
+
+    // 智能语义推断（例如 "Email", "UUID", "DateTime", "IPv4", "URL"）
+    public string? SemanticType { get; set; }
+
     // 以下为关于默认值的属性
     public string PrimaryType { get; set; } = "Unknown";
     public bool NullAppeared { get; set; }

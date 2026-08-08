@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using Spectre.Console;
 
 namespace ObjectAnalyzer;
@@ -99,21 +98,33 @@ public static class HtmlReportExporter
         // 字段详情表
         sb.AppendLine("<div class=\"section\">");
         sb.AppendLine("<h2>字段详情</h2>");
-        sb.AppendLine("<table><thead><tr><th>字段名</th><th>覆盖率</th><th>主导类型</th><th>默认值</th><th>唯一值数</th><th>规则</th><th>详情</th></tr></thead><tbody>");
+        sb.AppendLine("<table><thead><tr><th>字段名</th><th>语义推断</th><th>覆盖率</th><th>极值 / 长度</th><th>主导类型</th><th>默认值</th><th>规则</th><th>详情</th></tr></thead><tbody>");
         foreach (var stat in result.FieldStatistics)
         {
             string defaultVal = stat.DefaultValueRepresentation != null
                 ? $"<code>{Escape(stat.DefaultValueRepresentation)}</code>"
                 : "<span class=\"na\">—</span>";
+            string semanticVal = !string.IsNullOrEmpty(stat.SemanticType)
+                ? $"<span class=\"semantic-badge\">{Escape(stat.SemanticType)}</span>"
+                : "<span class=\"na\">—</span>";
+
+            string metricInfo = "";
+            if (stat.MinNumber.HasValue && stat.MaxNumber.HasValue)
+            {
+                metricInfo += $"<div>数值: {stat.MinNumber:G4} ~ {stat.MaxNumber:G4}</div>";
+            }
+            if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
+            {
+                metricInfo += $"<div>长度: {stat.MinLength} ~ {stat.MaxLength} 字符</div>";
+            }
+            if (string.IsNullOrEmpty(metricInfo)) metricInfo = "<span class=\"na\">—</span>";
+
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"{t.Key}({t.Value})"));
             string topValues = string.Join(", ", stat.ValueCounts
                 .OrderByDescending(v => v.Value).Take(3)
                 .Select(v => $"{Escape(Truncate(v.Key, 30))} ×{v.Value.ToString(CultureInfo.InvariantCulture)}"));
 
             string coveragePct = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture);
-            string uniqueCount = stat.ValueCountsTruncated
-                ? $"{stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture)}+"
-                : stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
             string ruleInfo = stat.AppliedRule != null ? "<span class=\"rule-badge\">已应用</span>" : "";
             if (stat.EnumViolations.Count > 0)
             {
@@ -123,11 +134,12 @@ public static class HtmlReportExporter
 
             sb.Append("<tr>")
                 .Append("<td><code>").Append(Escape(stat.FieldName)).Append("</code></td>")
+                .Append("<td>").Append(semanticVal).Append("</td>")
                 .Append("<td>").Append(stat.Count.ToString(CultureInfo.InvariantCulture)).Append('/').Append(result.TotalObjects.ToString(CultureInfo.InvariantCulture))
                 .Append(" (").Append(coveragePct).Append("%)</td>")
+                .Append("<td>").Append(metricInfo).Append("</td>")
                 .Append("<td>").Append(Escape(types)).Append("</td>")
                 .Append("<td>").Append(defaultVal).Append("</td>")
-                .Append("<td>").Append(uniqueCount).Append("</td>")
                 .Append("<td>").Append(ruleInfo).Append("</td>")
                 .Append("<td class=\"detail\">").Append(topValues).Append("</td>")
                 .AppendLine("</tr>");
@@ -138,7 +150,6 @@ public static class HtmlReportExporter
         // Chart.js 脚本
         sb.AppendLine("<script>");
 
-        // 覆盖率图表
         sb.AppendLine("new Chart(document.getElementById('coverageChart'), {");
         sb.AppendLine("  type: 'bar',");
         sb.Append("  data: { labels: [").Append(string.Join(",", fieldNames.Select(n => $"'{n}'"))).AppendLine("],");
@@ -148,7 +159,6 @@ public static class HtmlReportExporter
         sb.AppendLine("  options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }");
         sb.AppendLine("});");
 
-        // 类型分布图表
         if (topFields.Count > 0)
         {
             var allTypes = topFields.SelectMany(f => f.TypeCounts.Keys).Distinct().ToList();
@@ -188,8 +198,6 @@ public static class HtmlReportExporter
             .Replace("\"", "&quot;").Replace("'", "&#39;");
     }
 
-    // 用于嵌入 JS 字符串字面量：转义为 \uXXXX 形式可安全放入单引号字符串，
-    // 并防止 </script> 提前关闭脚本块。
     private static string EscapeJs(string s)
     {
         var sb = new StringBuilder(s.Length);
@@ -241,6 +249,7 @@ public static class HtmlReportExporter
         code { background: #f0f2f5; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; word-break: break-all; }
         .detail { max-width: 300px; color: #666; font-size: 0.85rem; }
         .na { color: #ccc; }
+        .semantic-badge { background: #f3e5f5; color: #7b1fa2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
         .rule-badge { display: inline-block; background: #e7f1ff; color: #1b6ec2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
         .violations { margin-top: 4px; font-size: 0.8rem; color: #842029; }
         .violation { background: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; margin: 0 2px; }

@@ -33,7 +33,7 @@ public static class AnalysisRunner
                 parsedObjects = ParseByFormat(options);
             }
 
-            // 公共后处理：分析 → 报告 → 导出
+            // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
             ProcessAndReport(parsedObjects, options);
             return 0;
         }
@@ -76,22 +76,17 @@ public static class AnalysisRunner
         AnsiConsole.MarkupLine($"正在编译类型定义文件: [blue]{Markup.Escape(options.TypeFile!)}[/] ...");
         var compileResult = TypeLoader.Compile(options.TypeFile!, options.TypeName);
 
-        // 注意：context 必须在枚举完成后才能 Dispose，
-        // 但由于 Analyze 内部会 ToList() 物化，这里在枚举后释放是安全的。
-        // 我们使用一个包装来确保 context 在适当时机关闭。
         var targetType = compileResult.type;
         AnsiConsole.MarkupLine($"编译成功。目标类型: [green]{targetType.FullName}[/]");
 
         AnsiConsole.MarkupLine($"正在使用强类型反序列化文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
         var typedResult = TypedFileParser.ParseJson(options.InputPath, targetType);
 
-        // 物化后立即释放编译上下文，避免内存泄漏
         var materialized = new List<Dictionary<string, object?>>();
         try
         {
             materialized.AddRange(typedResult.Objects);
 
-            // 提示属性读取错误（不阻断分析）
             if (typedResult.Errors.Count > 0)
             {
                 foreach (var err in typedResult.Errors.Take(5))
@@ -113,7 +108,7 @@ public static class AnalysisRunner
     }
 
     /// <summary>
-    /// Common post-processing: analyze objects, print console report, and optionally export.
+    /// Common post-processing: analyze objects, print console report, export reports and optional schema.
     /// </summary>
     private static void ProcessAndReport(IEnumerable<Dictionary<string, object?>> parsedObjects, AnalysisOptions options)
     {
@@ -124,14 +119,21 @@ public static class AnalysisRunner
             rules = LoadRules(options.RulesFile);
         }
 
-        AnsiConsole.MarkupLine("正在分析对象字段...");
-        var parallelOptions = new ParallelOptions
-        {
-            MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
-                ? options.MaxDegreeOfParallelism
-                : -1 // -1 = 不限制，由运行时决定（通常为所有核心）
-        };
-        AnalysisResult result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions);
+        AnalysisResult result = null!;
+        AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("green"))
+            .Start("正在并行计算对象字段分布、数据极值与语义模式...", ctx =>
+            {
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
+                        ? options.MaxDegreeOfParallelism
+                        : -1
+                };
+                result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions);
+            });
+
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
         // 输出控制台统计结果
@@ -148,6 +150,23 @@ public static class AnalysisRunner
         {
             ViolationExporter.Save(result, options.ViolationsPath);
         }
+
+        // 如果指定了 Schema 导出，自动生成 C# / TypeScript / JSON Schema 定义
+        if (!string.IsNullOrEmpty(options.ExportSchema))
+        {
+            string schemaPath = options.SchemaOutputPath ?? Path.ChangeExtension(
+                options.OutputPath ?? options.InputPath,
+                options.ExportSchema.ToLowerInvariant() switch
+                {
+                    "csharp" or "cs" => ".cs",
+                    "typescript" or "ts" => ".d.ts",
+                    _ => ".schema.json"
+                });
+
+            AnsiConsole.MarkupLine($"正在导出 [bold green]{options.ExportSchema}[/] 格式 Schema 定义至: [blue]{Markup.Escape(schemaPath)}[/] ...");
+            SchemaExporter.Export(result, options.ExportSchema, schemaPath);
+            AnsiConsole.MarkupLine("[green]Schema 定义代码成功导出！[/]");
+        }
     }
 
     private static void PrintError(Exception ex)
@@ -159,9 +178,6 @@ public static class AnalysisRunner
         }
     }
 
-    /// <summary>
-    /// 从 JSON 文件加载分析规则。
-    /// </summary>
     private static AnalysisRules LoadRules(string rulesPath)
     {
         if (!File.Exists(rulesPath))
