@@ -14,16 +14,18 @@ public static class CsvReportExporter
     public static void Save(AnalysisResult result, string outputPath)
     {
         AnsiConsole.MarkupLine($"正在将 CSV 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-        // 带 BOM 的 UTF-8，保证 Excel 直接打开中文不乱码
-        File.WriteAllText(outputPath, GenerateCsv(result), new UTF8Encoding(true));
+        // 带 BOM 的 UTF-8，保证 Excel 直接打开中文不乱码；逐行写入避免整份报告常驻内存
+        using (var writer = new StreamWriter(outputPath, false, new UTF8Encoding(true)))
+        {
+            WriteCsv(writer, result);
+        }
         AnsiConsole.MarkupLine($"[green]CSV 报告成功保存！[/]");
     }
 
-    private static string GenerateCsv(AnalysisResult result)
+    private static void WriteCsv(TextWriter writer, AnalysisResult result)
     {
-        var sb = new StringBuilder();
         // Coverage 输出 0.0~1.0 的机器可读小数，方便 CI/表格直接做数值计算
-        sb.AppendLine("FieldName,Count,Coverage,PrimaryType,DefaultValue,UniqueValues,Truncated,EnumViolations");
+        writer.WriteLine("FieldName,Count,Coverage,PrimaryType,DefaultValue,UniqueValues,Truncated,EnumViolations");
 
         foreach (var stat in result.FieldStatistics)
         {
@@ -32,17 +34,15 @@ public static class CsvReportExporter
             string truncated = stat.ValueCountsTruncated ? "true" : "false";
             string violations = string.Join(";", stat.EnumViolations);
 
-            sb.Append(CsvField(stat.FieldName)).Append(',')
-                .Append(stat.Count.ToString(CultureInfo.InvariantCulture)).Append(',')
-                .Append(coverage).Append(',')
-                .Append(CsvField(stat.PrimaryType)).Append(',')
-                .Append(CsvField(stat.DefaultValueRepresentation ?? "")).Append(',')
-                .Append(unique).Append(',')
-                .Append(truncated).Append(',')
-                .Append(CsvField(violations)).AppendLine();
+            writer.Write(CsvField(stat.FieldName)); writer.Write(',');
+            writer.Write(stat.Count.ToString(CultureInfo.InvariantCulture)); writer.Write(',');
+            writer.Write(coverage); writer.Write(',');
+            writer.Write(CsvField(stat.PrimaryType)); writer.Write(',');
+            writer.Write(CsvField(stat.DefaultValueRepresentation ?? "")); writer.Write(',');
+            writer.Write(unique); writer.Write(',');
+            writer.Write(truncated); writer.Write(',');
+            writer.Write(CsvField(violations)); writer.WriteLine();
         }
-
-        return sb.ToString();
     }
 
     private static string CsvField(string value)

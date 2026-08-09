@@ -13,14 +13,16 @@ public static class HtmlReportExporter
     public static void Save(AnalysisResult result, string outputPath)
     {
         AnsiConsole.MarkupLine($"正在将 HTML 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-        string html = GenerateHtml(result);
-        File.WriteAllText(outputPath, html, Encoding.UTF8);
+        // 逐段写入，避免大报告整体常驻内存
+        using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
+        {
+            WriteHtml(writer, result);
+        }
         AnsiConsole.MarkupLine($"[green]HTML 报告成功保存！[/]");
     }
 
-    private static string GenerateHtml(AnalysisResult result)
+    private static void WriteHtml(TextWriter writer, AnalysisResult result)
     {
-        var sb = new StringBuilder();
         const string title = "ObjectAnalyzer 分析报告";
         string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
@@ -30,75 +32,75 @@ public static class HtmlReportExporter
 
         var topFields = result.FieldStatistics.Take(10).ToList();
 
-        sb.AppendLine("<!DOCTYPE html>");
-        sb.AppendLine("<html lang=\"zh-CN\">");
-        sb.AppendLine("<head>");
-        sb.AppendLine("<meta charset=\"UTF-8\">");
-        sb.AppendLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
-        sb.Append("<title>").Append(title).AppendLine("</title>");
-        sb.AppendLine("<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4\"></script>");
-        sb.AppendLine("<style>");
-        sb.AppendLine(CssStyles);
-        sb.AppendLine("</style>");
-        sb.AppendLine("</head>");
-        sb.AppendLine("<body>");
+        writer.WriteLine("<!DOCTYPE html>");
+        writer.WriteLine("<html lang=\"zh-CN\">");
+        writer.WriteLine("<head>");
+        writer.WriteLine("<meta charset=\"UTF-8\">");
+        writer.WriteLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+        writer.Write("<title>"); writer.Write(title); writer.WriteLine("</title>");
+        writer.WriteLine("<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4\"></script>");
+        writer.WriteLine("<style>");
+        writer.WriteLine(CssStyles);
+        writer.WriteLine("</style>");
+        writer.WriteLine("</head>");
+        writer.WriteLine("<body>");
 
         // 头部
-        sb.AppendLine("<div class=\"header\">");
-        sb.Append("<h1>").Append(title).AppendLine("</h1>");
-        sb.Append("<p class=\"timestamp\">生成时间: ").Append(timestamp).AppendLine("</p>");
-        sb.AppendLine("</div>");
+        writer.WriteLine("<div class=\"header\">");
+        writer.Write("<h1>"); writer.Write(title); writer.WriteLine("</h1>");
+        writer.Write("<p class=\"timestamp\">生成时间: "); writer.Write(timestamp); writer.WriteLine("</p>");
+        writer.WriteLine("</div>");
 
         // 摘要卡片
-        sb.AppendLine("<div class=\"cards\">");
-        sb.Append(Card("总对象数", result.TotalObjects.ToString(CultureInfo.InvariantCulture), "blue"));
-        sb.Append(Card("唯一对象数", result.TotalUniqueObjects.ToString(CultureInfo.InvariantCulture), "green"));
-        sb.Append(Card("重复组数", result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture),
+        writer.WriteLine("<div class=\"cards\">");
+        writer.Write(Card("总对象数", result.TotalObjects.ToString(CultureInfo.InvariantCulture), "blue"));
+        writer.Write(Card("唯一对象数", result.TotalUniqueObjects.ToString(CultureInfo.InvariantCulture), "green"));
+        writer.Write(Card("重复组数", result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture),
             result.TotalDuplicateGroups > 0 ? "orange" : "green"));
-        sb.Append(Card("字段数", result.FieldStatistics.Count.ToString(CultureInfo.InvariantCulture), "purple"));
-        sb.AppendLine("</div>");
+        writer.Write(Card("字段数", result.FieldStatistics.Count.ToString(CultureInfo.InvariantCulture), "purple"));
+        writer.WriteLine("</div>");
 
         // 图表区域
-        sb.AppendLine("<div class=\"charts\">");
-        sb.AppendLine("<div class=\"chart-container\">");
-        sb.AppendLine("<h2>字段覆盖率</h2>");
-        sb.AppendLine("<canvas id=\"coverageChart\"></canvas>");
-        sb.AppendLine("</div>");
+        writer.WriteLine("<div class=\"charts\">");
+        writer.WriteLine("<div class=\"chart-container\">");
+        writer.WriteLine("<h2>字段覆盖率</h2>");
+        writer.WriteLine("<canvas id=\"coverageChart\"></canvas>");
+        writer.WriteLine("</div>");
 
         if (topFields.Count > 0)
         {
-            sb.AppendLine("<div class=\"chart-container\">");
-            sb.AppendLine("<h2>字段类型分布 (Top 10)</h2>");
-            sb.AppendLine("<canvas id=\"typeChart\"></canvas>");
-            sb.AppendLine("</div>");
+            writer.WriteLine("<div class=\"chart-container\">");
+            writer.WriteLine("<h2>字段类型分布 (Top 10)</h2>");
+            writer.WriteLine("<canvas id=\"typeChart\"></canvas>");
+            writer.WriteLine("</div>");
         }
-        sb.AppendLine("</div>");
+        writer.WriteLine("</div>");
 
         // 重复对象
         if (result.TotalDuplicateGroups > 0)
         {
-            sb.AppendLine("<div class=\"section\">");
-            sb.Append("<h2>重复对象 (").Append(result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture)).AppendLine(" 组)</h2>");
-            sb.AppendLine("<table><thead><tr><th>重复次数</th><th>对象内容</th></tr></thead><tbody>");
+            writer.WriteLine("<div class=\"section\">");
+            writer.Write("<h2>重复对象 ("); writer.Write(result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture)); writer.WriteLine(" 组)</h2>");
+            writer.WriteLine("<table><thead><tr><th>重复次数</th><th>对象内容</th></tr></thead><tbody>");
             foreach (var dup in result.DuplicateObjects)
             {
-                sb.Append("<tr><td>").Append(dup.Count.ToString(CultureInfo.InvariantCulture))
-                    .Append("</td><td><code>").Append(Escape(dup.ObjectJson)).AppendLine("</code></td></tr>");
+                writer.Write("<tr><td>"); writer.Write(dup.Count.ToString(CultureInfo.InvariantCulture));
+                writer.Write("</td><td><code>"); writer.Write(Escape(dup.ObjectJson)); writer.WriteLine("</code></td></tr>");
             }
-            sb.AppendLine("</tbody></table>");
+            writer.WriteLine("</tbody></table>");
             if (result.TotalDuplicateGroups > result.DuplicateObjects.Count)
             {
-                sb.Append("<p class=\"na\">… 完整 JSON 已省略，仅保留 ")
-                    .Append(result.DuplicateObjects.Count.ToString(CultureInfo.InvariantCulture))
-                    .AppendLine(" 组示例（共 " + result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture) + " 组）。</p>");
+                writer.Write("<p class=\"na\">… 完整 JSON 已省略，仅保留 ");
+                writer.Write(result.DuplicateObjects.Count.ToString(CultureInfo.InvariantCulture));
+                writer.Write(" 组示例（共 "); writer.Write(result.TotalDuplicateGroups.ToString(CultureInfo.InvariantCulture)); writer.WriteLine(" 组）。</p>");
             }
-            sb.AppendLine("</div>");
+            writer.WriteLine("</div>");
         }
 
         // 字段详情表
-        sb.AppendLine("<div class=\"section\">");
-        sb.AppendLine("<h2>字段详情</h2>");
-        sb.AppendLine("<table><thead><tr><th>字段名</th><th>语义推断</th><th>覆盖率</th><th>极值 / 长度</th><th>主导类型</th><th>默认值</th><th>规则</th><th>详情</th></tr></thead><tbody>");
+        writer.WriteLine("<div class=\"section\">");
+        writer.WriteLine("<h2>字段详情</h2>");
+        writer.WriteLine("<table><thead><tr><th>字段名</th><th>语义推断</th><th>覆盖率</th><th>极值 / 长度</th><th>主导类型</th><th>默认值</th><th>规则</th><th>详情</th></tr></thead><tbody>");
         foreach (var stat in result.FieldStatistics)
         {
             string defaultVal = stat.DefaultValueRepresentation != null
@@ -132,32 +134,32 @@ public static class HtmlReportExporter
                 ruleInfo += $"<div class=\"violations\">枚举违规: {violations}</div>";
             }
 
-            sb.Append("<tr>")
-                .Append("<td><code>").Append(Escape(stat.FieldName)).Append("</code></td>")
-                .Append("<td>").Append(semanticVal).Append("</td>")
-                .Append("<td>").Append(stat.Count.ToString(CultureInfo.InvariantCulture)).Append('/').Append(result.TotalObjects.ToString(CultureInfo.InvariantCulture))
-                .Append(" (").Append(coveragePct).Append("%)</td>")
-                .Append("<td>").Append(metricInfo).Append("</td>")
-                .Append("<td>").Append(Escape(types)).Append("</td>")
-                .Append("<td>").Append(defaultVal).Append("</td>")
-                .Append("<td>").Append(ruleInfo).Append("</td>")
-                .Append("<td class=\"detail\">").Append(topValues).Append("</td>")
-                .AppendLine("</tr>");
+            writer.Write("<tr>");
+            writer.Write("<td><code>"); writer.Write(Escape(stat.FieldName)); writer.Write("</code></td>");
+            writer.Write("<td>"); writer.Write(semanticVal); writer.Write("</td>");
+            writer.Write("<td>"); writer.Write(stat.Count.ToString(CultureInfo.InvariantCulture)); writer.Write('/'); writer.Write(result.TotalObjects.ToString(CultureInfo.InvariantCulture));
+            writer.Write(" ("); writer.Write(coveragePct); writer.Write("%)</td>");
+            writer.Write("<td>"); writer.Write(metricInfo); writer.Write("</td>");
+            writer.Write("<td>"); writer.Write(Escape(types)); writer.Write("</td>");
+            writer.Write("<td>"); writer.Write(defaultVal); writer.Write("</td>");
+            writer.Write("<td>"); writer.Write(ruleInfo); writer.Write("</td>");
+            writer.Write("<td class=\"detail\">"); writer.Write(topValues); writer.WriteLine("</td>");
+            writer.WriteLine("</tr>");
         }
-        sb.AppendLine("</tbody></table>");
-        sb.AppendLine("</div>");
+        writer.WriteLine("</tbody></table>");
+        writer.WriteLine("</div>");
 
         // Chart.js 脚本
-        sb.AppendLine("<script>");
+        writer.WriteLine("<script>");
 
-        sb.AppendLine("new Chart(document.getElementById('coverageChart'), {");
-        sb.AppendLine("  type: 'bar',");
-        sb.Append("  data: { labels: [").Append(string.Join(",", fieldNames.Select(n => $"'{n}'"))).AppendLine("],");
-        sb.Append("    datasets: [{ label: '覆盖率 (%)', data: [").Append(string.Join(",", coverages)).AppendLine("],");
-        sb.AppendLine("      backgroundColor: 'rgba(54,162,235,0.6)', borderColor: 'rgba(54,162,235,1)', borderWidth: 1 }]");
-        sb.AppendLine("  },");
-        sb.AppendLine("  options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }");
-        sb.AppendLine("});");
+        writer.WriteLine("new Chart(document.getElementById('coverageChart'), {");
+        writer.WriteLine("  type: 'bar',");
+        writer.Write("  data: { labels: ["); writer.Write(string.Join(",", fieldNames.Select(n => $"'{n}'"))); writer.WriteLine("],");
+        writer.Write("    datasets: [{ label: '覆盖率 (%)', data: ["); writer.Write(string.Join(",", coverages)); writer.WriteLine("],");
+        writer.WriteLine("      backgroundColor: 'rgba(54,162,235,0.6)', borderColor: 'rgba(54,162,235,1)', borderWidth: 1 }]");
+        writer.WriteLine("  },");
+        writer.WriteLine("  options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }");
+        writer.WriteLine("});");
 
         if (topFields.Count > 0)
         {
@@ -165,26 +167,24 @@ public static class HtmlReportExporter
             var colors = new[] { "rgba(54,162,235,0.7)", "rgba(255,99,132,0.7)", "rgba(75,192,192,0.7)",
                 "rgba(255,205,86,0.7)", "rgba(153,102,255,0.7)", "rgba(255,159,64,0.7)" };
 
-            sb.AppendLine("new Chart(document.getElementById('typeChart'), {");
-            sb.AppendLine("  type: 'bar',");
-            sb.Append("  data: { labels: [").Append(string.Join(",", topFields.Select(f => $"'{EscapeJs(f.FieldName)}'"))).AppendLine("],");
-            sb.Append("    datasets: [");
+            writer.WriteLine("new Chart(document.getElementById('typeChart'), {");
+            writer.WriteLine("  type: 'bar',");
+            writer.Write("  data: { labels: ["); writer.Write(string.Join(",", topFields.Select(f => $"'{EscapeJs(f.FieldName)}'"))); writer.WriteLine("],");
+            writer.Write("    datasets: [");
             for (int i = 0; i < allTypes.Count; i++)
             {
                 string t = allTypes[i];
                 string color = colors[i % colors.Length];
                 var data = topFields.Select(f => f.TypeCounts.GetValueOrDefault(t, 0).ToString(CultureInfo.InvariantCulture));
-                sb.Append(CultureInfo.InvariantCulture, $"{{ label: '{EscapeJs(t)}', data: [{string.Join(",", data)}], backgroundColor: '{color}' }},");
+                writer.Write(string.Create(CultureInfo.InvariantCulture, $"{{ label: '{EscapeJs(t)}', data: [{string.Join(",", data)}], backgroundColor: '{color}' }},"));
             }
-            sb.AppendLine("] },");
-            sb.AppendLine("  options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }");
-            sb.AppendLine("});");
+            writer.WriteLine("] },");
+            writer.WriteLine("  options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }");
+            writer.WriteLine("});");
         }
 
-        sb.AppendLine("</script>");
-        sb.AppendLine("</body></html>");
-
-        return sb.ToString();
+        writer.WriteLine("</script>");
+        writer.WriteLine("</body></html>");
     }
 
     private static string Card(string label, string value, string color)

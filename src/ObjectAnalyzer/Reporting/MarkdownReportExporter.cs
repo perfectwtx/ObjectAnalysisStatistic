@@ -14,44 +14,50 @@ public static class MarkdownReportExporter
     public static void Save(AnalysisResult result, string outputPath)
     {
         AnsiConsole.MarkupLine($"正在将 Markdown 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-        File.WriteAllText(outputPath, GenerateMarkdown(result), Encoding.UTF8);
+        // 逐段写入，避免大报告整体常驻内存
+        using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
+        {
+            WriteMarkdown(writer, result);
+        }
         AnsiConsole.MarkupLine($"[green]Markdown 报告成功保存！[/]");
     }
 
-    private static string GenerateMarkdown(AnalysisResult result)
+    private static void WriteMarkdown(TextWriter writer, AnalysisResult result)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("# ObjectAnalyzer 分析报告");
-        sb.AppendLine();
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- 总对象数: {result.TotalObjects}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- 唯一对象数: {result.TotalUniqueObjects}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- 重复组数: {result.TotalDuplicateGroups}");
-        sb.AppendLine(CultureInfo.InvariantCulture, $"- 字段数: {result.FieldStatistics.Count}");
-        sb.AppendLine();
+        writer.WriteLine("# ObjectAnalyzer 分析报告");
+        writer.WriteLine();
+        writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 总对象数: {result.TotalObjects}"));
+        writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 唯一对象数: {result.TotalUniqueObjects}"));
+        writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 重复组数: {result.TotalDuplicateGroups}"));
+        writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 字段数: {result.FieldStatistics.Count}"));
+        writer.WriteLine();
 
         if (result.TotalDuplicateGroups > 0)
         {
-            sb.AppendLine("## 重复对象");
-            sb.AppendLine();
-            sb.AppendLine("| 重复次数 | 对象内容 |");
-            sb.AppendLine("|---------|---------|");
+            writer.WriteLine("## 重复对象");
+            writer.WriteLine();
+            writer.WriteLine("| 重复次数 | 对象内容 |");
+            writer.WriteLine("|---------|---------|");
             foreach (var dup in result.DuplicateObjects)
             {
-                sb.Append("| ").Append(dup.Count.ToString(CultureInfo.InvariantCulture))
-                    .Append(" | `").Append(EscapeMd(dup.ObjectJson)).AppendLine(" |");
+                writer.Write("| ");
+                writer.Write(dup.Count.ToString(CultureInfo.InvariantCulture));
+                writer.Write(" | `");
+                writer.Write(EscapeMd(dup.ObjectJson));
+                writer.WriteLine(" |");
             }
             if (result.TotalDuplicateGroups > result.DuplicateObjects.Count)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture,
-                    $"> 完整 JSON 已省略，仅展示前 {result.DuplicateObjects.Count} 组示例（共 {result.TotalDuplicateGroups} 组）。");
+                writer.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                    $"> 完整 JSON 已省略，仅展示前 {result.DuplicateObjects.Count} 组示例（共 {result.TotalDuplicateGroups} 组）。"));
             }
-            sb.AppendLine();
+            writer.WriteLine();
         }
 
-        sb.AppendLine("## 字段详情");
-        sb.AppendLine();
-        sb.AppendLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 唯一值 | 枚举违规 |");
-        sb.AppendLine("|-------|------|--------|---------|-------|-------|---------|");
+        writer.WriteLine("## 字段详情");
+        writer.WriteLine();
+        writer.WriteLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 唯一值 | 枚举违规 |");
+        writer.WriteLine("|-------|------|--------|---------|-------|-------|---------|");
         foreach (var stat in result.FieldStatistics)
         {
             string coverage = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
@@ -63,17 +69,23 @@ public static class MarkdownReportExporter
                 ? string.Join(", ", stat.EnumViolations.Select(v => $"`{EscapeMd(v)}`"))
                 : "";
 
-            sb.Append("| `").Append(EscapeMd(stat.FieldName)).Append("` | ")
-                .Append(stat.Count.ToString(CultureInfo.InvariantCulture)).Append(" | ")
-                .Append(coverage).Append(" | ")
-                .Append(EscapeMd(stat.PrimaryType)).Append(" | ")
-                .Append(EscapeMd(defaultVal)).Append(" | ")
-                .Append(unique).Append(" | ")
-                .Append(violations).AppendLine(" |");
+            writer.Write("| `");
+            writer.Write(EscapeMd(stat.FieldName));
+            writer.Write("` | ");
+            writer.Write(stat.Count.ToString(CultureInfo.InvariantCulture));
+            writer.Write(" | ");
+            writer.Write(coverage);
+            writer.Write(" | ");
+            writer.Write(EscapeMd(stat.PrimaryType));
+            writer.Write(" | ");
+            writer.Write(EscapeMd(defaultVal));
+            writer.Write(" | ");
+            writer.Write(unique);
+            writer.Write(" | ");
+            writer.Write(violations);
+            writer.WriteLine(" |");
         }
-        sb.AppendLine();
-
-        return sb.ToString();
+        writer.WriteLine();
     }
 
     private static string EscapeMd(string s)

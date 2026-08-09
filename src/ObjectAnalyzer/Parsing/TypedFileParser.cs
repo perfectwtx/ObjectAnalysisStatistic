@@ -34,14 +34,15 @@ public static class TypedFileParser
         // 获取目标类型的所有公共属性
         var properties = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-        // 先判断根节点类型：数组 → 反序列化为 targetType[]；单个对象 → 包装为单元素列表
-        using (var fs = File.OpenRead(jsonPath))
-        using (var doc = JsonDocument.Parse(fs))
+        // 只读一次文件字节，同时用于根节点判定与反序列化，避免重复读取
+        byte[] bytes = File.ReadAllBytes(jsonPath);
+
+        // 先判断根节点类型：对象 → 反序列化为单元素；数组 → 反序列化为 targetType[]
+        using (var doc = JsonDocument.Parse(bytes))
         {
             if (doc.RootElement.ValueKind == JsonValueKind.Object)
             {
-                var jsonText = File.ReadAllText(jsonPath);
-                var single = JsonSerializer.Deserialize(jsonText, targetType, JsonSharedOptions.Read);
+                var single = JsonSerializer.Deserialize(bytes, targetType, JsonSharedOptions.Read);
                 if (single != null)
                 {
                     result.Objects.Add(BuildDict(single, properties, targetType, result));
@@ -52,11 +53,7 @@ public static class TypedFileParser
 
         // 数组路径
         Type arrayType = targetType.MakeArrayType();
-        object? deserialized;
-        using (var fs = File.OpenRead(jsonPath))
-        {
-            deserialized = JsonSerializer.Deserialize(fs, arrayType, JsonSharedOptions.Read);
-        }
+        object? deserialized = JsonSerializer.Deserialize(bytes, arrayType, JsonSharedOptions.Read);
 
         if (deserialized is not System.Collections.IEnumerable enumerable)
             throw new InvalidOperationException("反序列化结果不是可枚举类型。JSON 根节点必须是数组或对象。");

@@ -530,10 +530,21 @@ public static class FileParsers
         foreach (var child in element.Elements())
         {
             string key = child.Name.LocalName;
-            if (child.HasElements)
-                dict[key] = ConvertXElement(child, depth + 1);
+            object? value = child.HasElements ? ConvertXElement(child, depth + 1) : child.Value;
+
+            // 同名重复子元素聚合为列表，避免后者覆盖前者
+            if (!dict.TryGetValue(key, out var existing))
+            {
+                dict[key] = value;
+            }
+            else if (existing is List<object?> list)
+            {
+                list.Add(value);
+            }
             else
-                dict[key] = child.Value;
+            {
+                dict[key] = new List<object?> { existing, value };
+            }
         }
         return dict;
     }

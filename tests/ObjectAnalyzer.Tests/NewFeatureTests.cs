@@ -65,7 +65,7 @@ public class NewFeatureTests
     }
 
     [Fact]
-    public void ParseXml_DuplicateElementKeys_LastWins()
+    public void ParseXml_DuplicateElementKeys_Aggregated()
     {
         string tempFile = Path.GetTempFileName();
         File.WriteAllText(tempFile, "<root><item><Id>1</Id><Id>2</Id><Name>A</Name></item></root>");
@@ -73,7 +73,8 @@ public class NewFeatureTests
         {
             var result = FileParsers.ParseByFormat(tempFile, "xml", new()).ToList();
             Assert.Single(result);
-            Assert.Equal("2", result[0]["Id"]);
+            // 同名重复子元素聚合为列表，避免后者覆盖前者导致数据丢失
+            Assert.Equal(new List<object?> { "1", "2" }, result[0]["Id"]);
         }
         finally
         {

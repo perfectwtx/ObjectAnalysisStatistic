@@ -7,6 +7,9 @@ using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+// 支持 Ctrl+C 优雅取消长任务
+var cts = new CancellationTokenSource();
+
 var inputOption = new Option<FileInfo?>(
     aliases: CliAliases.Input,
     description: "指定输入的 JSON、JSONL、CSV、Excel、XML、YAML 文件路径。");
@@ -140,8 +143,14 @@ rootCommand.SetHandler((InvocationContext context) =>
         SchemaOutputPath = schemaOutput?.FullName
     };
 
-    context.ExitCode = AnalysisRunner.Run(options);
+    context.ExitCode = AnalysisRunner.Run(options, cts.Token);
 });
+
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
 
 return rootCommand.Invoke(args);
 

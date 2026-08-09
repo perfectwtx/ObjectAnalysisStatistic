@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using Spectre.Console;
 
 namespace ObjectAnalyzer;
@@ -9,9 +10,9 @@ namespace ObjectAnalyzer;
 public static class AnalysisRunner
 {
     /// <summary>
-    /// Runs the analysis pipeline. Returns 0 on success, 1 on failure.
+    /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
     /// </summary>
-    public static int Run(AnalysisOptions options)
+    public static int Run(AnalysisOptions options, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(options.InputPath))
         {
@@ -34,8 +35,13 @@ public static class AnalysisRunner
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            ProcessAndReport(parsedObjects, options);
+            ProcessAndReport(parsedObjects, options, cancellationToken);
             return 0;
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[yellow]分析已取消。[/]");
+            return 2;
         }
         catch (Exception ex)
         {
@@ -110,7 +116,10 @@ public static class AnalysisRunner
     /// <summary>
     /// Common post-processing: analyze objects, print console report, export reports and optional schema.
     /// </summary>
-    private static void ProcessAndReport(IEnumerable<Dictionary<string, object?>> parsedObjects, AnalysisOptions options)
+    private static void ProcessAndReport(
+        IEnumerable<Dictionary<string, object?>> parsedObjects,
+        AnalysisOptions options,
+        CancellationToken cancellationToken = default)
     {
         // 加载规则文件
         AnalysisRules? rules = null;
@@ -131,7 +140,7 @@ public static class AnalysisRunner
                         ? options.MaxDegreeOfParallelism
                         : -1
                 };
-                result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions);
+                result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, cancellationToken);
             });
 
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
@@ -142,18 +151,21 @@ public static class AnalysisRunner
         // 如果指定了输出路径，则保存详细报告
         if (!string.IsNullOrEmpty(options.OutputPath))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ReportExporter.Save(result, options.OutputPath);
         }
 
         // 如果指定了违规导出路径，则单独导出枚举违规清单
         if (!string.IsNullOrEmpty(options.ViolationsPath))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ViolationExporter.Save(result, options.ViolationsPath);
         }
 
         // 如果指定了 Schema 导出，自动生成 C# / TypeScript / JSON Schema 定义
         if (!string.IsNullOrEmpty(options.ExportSchema))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string schemaPath = options.SchemaOutputPath ?? Path.ChangeExtension(
                 options.OutputPath ?? options.InputPath,
                 options.ExportSchema.ToLowerInvariant() switch

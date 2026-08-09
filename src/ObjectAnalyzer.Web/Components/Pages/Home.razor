@@ -30,6 +30,7 @@
     @if (ShowConfig)
     {
         <section class="config-panel">
+            <div class="config-fields" style="pointer-events:@(State.IsLoading ? "none" : "auto");opacity:@(State.IsLoading ? 0.6 : 1)">
             <div class="upload-area">
                 <InputFile OnChange="HandleFileUpload" accept=".json,.jsonl,.csv,.xlsx,.xml,.yaml,.yml" />
                 <p>拖放文件或点击选择<br/>
@@ -100,6 +101,7 @@
                         }
                     </div>
                 </div>
+            </div>
             </div>
 
             <div class="config-actions">
@@ -279,6 +281,14 @@
 @code {
     private bool ShowConfig = true;
     private CancellationTokenSource? _analysisCts;
+    private bool _suppressCancelMessage;
+
+    /// <summary>取消正在运行的分析（不显示"分析已取消"，用于文件被替换/清除时）。</summary>
+    private void CancelActiveAnalysis()
+    {
+        _analysisCts?.Cancel();
+        _suppressCancelMessage = true;
+    }
 
     private void ToggleConfig()
     {
@@ -290,7 +300,8 @@
         var file = e.File;
         if (file == null) return;
 
-        // 替换旧数据临时文件
+        // 替换旧数据临时文件；先取消进行中的分析，避免后台读取已删除的临时文件
+        CancelActiveAnalysis();
         DeleteQuietly(State.DataFilePath);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}");
         await using (var fs = File.Create(tempPath))
@@ -307,6 +318,7 @@
 
     private void ClearDataFile()
     {
+        CancelActiveAnalysis();
         DeleteQuietly(State.DataFilePath);
         State.DataFilePath = null;
         State.FileName = "";
@@ -331,6 +343,7 @@
         _analysisCts?.Dispose();
         _analysisCts = new CancellationTokenSource();
         var token = _analysisCts.Token;
+        _suppressCancelMessage = false;
 
         // 捕获当前配置快照，避免后台线程与 UI 状态竞争
         string dataFilePath = State.DataFilePath!;
@@ -407,7 +420,10 @@
         }
         catch (OperationCanceledException)
         {
-            State.ErrorMessage = "分析已取消。";
+            if (!_suppressCancelMessage)
+            {
+                State.ErrorMessage = "分析已取消。";
+            }
         }
         catch (Exception ex)
         {
@@ -423,6 +439,7 @@
 
     private void CancelAnalysis()
     {
+        _suppressCancelMessage = false;
         _analysisCts?.Cancel();
     }
 
@@ -489,6 +506,7 @@
 
     private void ClearTypeFile()
     {
+        CancelActiveAnalysis();
         DeleteQuietly(State.TypeFilePath);
         State.TypeFilePath = null;
         State.TypeFileName = null;
@@ -498,6 +516,7 @@
 
     private void ClearRulesFile()
     {
+        CancelActiveAnalysis();
         DeleteQuietly(State.RulesFilePath);
         State.RulesFilePath = null;
         State.RulesFileName = null;
@@ -517,6 +536,7 @@
         if (file == null) return;
 
         // 替换旧临时文件（流式写入磁盘，避免在内存中缓存大文件）
+        CancelActiveAnalysis();
         DeleteQuietly(State.TypeFilePath);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.cs");
         await using (var fs = File.Create(tempPath))
@@ -533,6 +553,7 @@
         var file = e.File;
         if (file == null) return;
 
+        CancelActiveAnalysis();
         DeleteQuietly(State.RulesFilePath);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
         await using (var fs = File.Create(tempPath))
