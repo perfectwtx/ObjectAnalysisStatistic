@@ -107,6 +107,10 @@
                         disabled="@State.IsLoading">
                     @(State.IsLoading ? "分析中..." : "开始分析")
                 </button>
+                @if (State.IsLoading)
+                {
+                    <button class="btn btn-outline" @onclick="CancelAnalysis">取消</button>
+                }
             </div>
 
             @if (State.ErrorMessage != null)
@@ -274,6 +278,7 @@
 
 @code {
     private bool ShowConfig = true;
+    private CancellationTokenSource? _analysisCts;
 
     private void ToggleConfig()
     {
@@ -321,59 +326,88 @@
         State.ErrorMessage = null;
         State.PageIndex = 0;
 
+        // 取消上一次未完成的分析
+        _analysisCts?.Cancel();
+        _analysisCts?.Dispose();
+        _analysisCts = new CancellationTokenSource();
+        var token = _analysisCts.Token;
+
+        // 捕获当前配置快照，避免后台线程与 UI 状态竞争
+        string dataFilePath = State.DataFilePath!;
+        string? typeFilePath = State.TypeFilePath;
+        string? typeName = State.TypeName;
+        string? format = State.Format;
+        bool flatten = State.Flatten;
+        string excelJsonColumn = State.ExcelJsonColumn;
+        string? rulesFilePath = State.RulesFilePath;
+        int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
+        string? typedError = null;
+
         try
         {
-            List<Dictionary<string, object?>> objects;
-
-            // 如果指定了类型文件，使用强类型反序列化
-            if (State.TypeFilePath != null)
+            var result = await Task.Run(() =>
             {
-                var compileResult = Core.TypeLoader.Compile(State.TypeFilePath, State.TypeName);
-                try
+                IEnumerable<Dictionary<string, object?>> objects;
+
+                // 如果指定了类型文件，使用强类型反序列化（该路径本身需要物化结果）
+                if (typeFilePath != null)
                 {
-                    var typedResult = Core.TypedFileParser.ParseJson(State.DataFilePath, compileResult.type);
-                    objects = typedResult.Objects;
-                    if (typedResult.Errors.Count > 0)
+                    var compileResult = Core.TypeLoader.Compile(typeFilePath, typeName);
+                    try
                     {
-                        State.ErrorMessage = $"存在 {typedResult.Errors.Count} 条属性读取错误: {typedResult.Errors[0]}";
+                        var typedResult = Core.TypedFileParser.ParseJson(dataFilePath, compileResult.type);
+                        if (typedResult.Errors.Count > 0)
+                        {
+                            typedError = $"存在 {typedResult.Errors.Count} 条属性读取错误: {typedResult.Errors[0]}";
+                        }
+                        objects = typedResult.Objects;
+                    }
+                    finally
+                    {
+                        compileResult.context.Dispose();
                     }
                 }
-                finally
+                else
                 {
-                    compileResult.context.Dispose();
+                    // 懒管道：直接传递 IEnumerable，避免为大文件物化 List
+                    var detectedFormat = string.IsNullOrEmpty(format)
+                        ? Core.FileParsers.DetectFormat(dataFilePath)
+                        : format;
+                    var parseOptions = new Core.ParseOptions
+                    {
+                        Flatten = flatten,
+                        ExcelJsonColumn = excelJsonColumn
+                    };
+                    objects = Core.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
                 }
-            }
-            else
-            {
-                // 自动检测或指定格式解析
-                var format = string.IsNullOrEmpty(State.Format)
-                    ? Core.FileParsers.DetectFormat(State.DataFilePath)
-                    : State.Format;
-                var parseOptions = new Core.ParseOptions
+
+                // 加载规则文件
+                Core.AnalysisRules? rules = null;
+                if (rulesFilePath != null)
                 {
-                    Flatten = State.Flatten,
-                    ExcelJsonColumn = State.ExcelJsonColumn
+                    var rulesJson = File.ReadAllText(rulesFilePath);
+                    rules = System.Text.Json.JsonSerializer.Deserialize<Core.AnalysisRules>(rulesJson);
+                }
+
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = maxDegreeOfParallelism >= 1
+                        ? maxDegreeOfParallelism
+                        : Environment.ProcessorCount
                 };
-                objects = Core.FileParsers.ParseByFormat(State.DataFilePath, format, parseOptions).ToList();
-            }
+                return Core.ObjectAnalyzer.Analyze(objects, rules, parallelOptions, token);
+            }, token);
 
-            // 加载规则文件
-            Core.AnalysisRules? rules = null;
-            if (State.RulesFilePath != null)
+            if (typedError != null)
             {
-                var rulesJson = await File.ReadAllTextAsync(State.RulesFilePath);
-                rules = System.Text.Json.JsonSerializer.Deserialize<Core.AnalysisRules>(rulesJson);
+                State.ErrorMessage = typedError;
             }
-
-            // 分析
-            var parallelOptions = new ParallelOptions
-            {
-                MaxDegreeOfParallelism = State.MaxDegreeOfParallelism >= 1
-                    ? State.MaxDegreeOfParallelism
-                    : Environment.ProcessorCount
-            };
-            State.Result = Core.ObjectAnalyzer.Analyze(objects, rules, parallelOptions);
+            State.Result = result;
             ShowConfig = false;
+        }
+        catch (OperationCanceledException)
+        {
+            State.ErrorMessage = "分析已取消。";
         }
         catch (Exception ex)
         {
@@ -381,8 +415,15 @@
         }
         finally
         {
+            _analysisCts?.Dispose();
+            _analysisCts = null;
             State.IsLoading = false;
         }
+    }
+
+    private void CancelAnalysis()
+    {
+        _analysisCts?.Cancel();
     }
 
     private void PrevPage()

@@ -1,11 +1,13 @@
 using System;
+using System.Buffers;
+using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ObjectAnalyzer;
@@ -47,21 +49,22 @@ public static partial class ObjectAnalyzer
     {
         public Dictionary<string, FieldStatistic> StatsMap { get; } = new();
         public Dictionary<string, InternalFieldMetrics> MetricsMap { get; } = new();
-        public Dictionary<string, long> DuplicateCounts { get; } = new();
         public long TotalObjects { get; set; }
+        public ArrayBufferWriter<byte> CanonicalWriter { get; } = new();
     }
 
     public static AnalysisResult Analyze(
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
-        ParallelOptions? parallelOptions = null)
+        ParallelOptions? parallelOptions = null,
+        CancellationToken cancellationToken = default)
     {
-        var globalSeenHashes = new ConcurrentDictionary<string, byte>();
-        var globalDuplicateJsons = new ConcurrentDictionary<string, string>();
+        var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
+        var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
 
         var globalStatsMap = new Dictionary<string, FieldStatistic>();
         var globalMetricsMap = new Dictionary<string, InternalFieldMetrics>();
-        var globalDuplicateCounts = new Dictionary<string, long>();
+        var globalDuplicateCounts = new ConcurrentDictionary<Hash128, long>();
         long globalTotalObjects = 0;
         var mergeLock = new object();
 
@@ -136,11 +139,6 @@ public static partial class ObjectAnalyzer
                         }
                     }
                 }
-
-                foreach (var kvp in local.DuplicateCounts)
-                {
-                    globalDuplicateCounts[kvp.Key] = globalDuplicateCounts.GetValueOrDefault(kvp.Key) + kvp.Value;
-                }
             }
         }
 
@@ -158,20 +156,22 @@ public static partial class ObjectAnalyzer
                     var sortedEntries = obj.ToArray();
                     Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
 
-                    var sb = new StringBuilder();
+                    // 将字段写入线程局部可复用字节缓冲区，避免为每个对象分配规范化字符串/byte[]
+                    var writer = localState.CanonicalWriter;
+                    writer.Clear();
                     foreach (var kv in sortedEntries)
                     {
                         string fieldName = kv.Key;
                         object? value = kv.Value;
                         string valStr = FormatValue(value);
 
-                        sb.Append(fieldName.Length);
-                        sb.Append(':');
-                        sb.Append(fieldName);
-                        sb.Append('=');
-                        sb.Append(valStr.Length);
-                        sb.Append(':');
-                        sb.Append(valStr);
+                        WriteAsciiNumber(writer, fieldName.Length);
+                        WriteByte(writer, (byte)':');
+                        WriteUtf8(writer, fieldName);
+                        WriteByte(writer, (byte)'=');
+                        WriteAsciiNumber(writer, valStr.Length);
+                        WriteByte(writer, (byte)':');
+                        WriteUtf8(writer, valStr);
 
                         if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
                         {
@@ -204,33 +204,19 @@ public static partial class ObjectAnalyzer
                         RecordValueMetrics(value, valStr, metrics);
                     }
 
-                    string canonical = sb.ToString();
-                    string objHash = ComputeHash(canonical);
+                    // 128 位非密码学哈希去重（替代慢速 MD5 + 十六进制字符串）
+                    var objHash = ComputeHash128(writer.WrittenSpan);
 
                     if (!globalSeenHashes.TryAdd(objHash, 0))
                     {
+                        // 仅记录实际重复的哈希：首次出现由 TryAdd 占用，故从 2 起计数
+                        globalDuplicateCounts.AddOrUpdate(objHash, 2, (_, count) => count + 1);
+
                         if (globalDuplicateJsons.Count < MaxStoredDuplicateJsons)
                         {
-                            globalDuplicateJsons.GetOrAdd(objHash, h =>
-                            {
-                                try
-                                {
-                                    var sortedDict = sortedEntries.ToDictionary(kv => kv.Key, kv => kv.Value);
-                                    return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
-                                }
-                                catch
-                                {
-                                    var fallback = new Dictionary<string, string>(sortedEntries.Length);
-                                    foreach (var kv in sortedEntries)
-                                    {
-                                        fallback[kv.Key] = SafeToString(kv.Value);
-                                    }
-                                    return JsonSerializer.Serialize(fallback, JsonSharedOptions.Write);
-                                }
-                            });
+                            globalDuplicateJsons.TryAdd(objHash, SerializeDuplicate(sortedEntries));
                         }
                     }
-                    localState.DuplicateCounts[objHash] = localState.DuplicateCounts.GetValueOrDefault(objHash) + 1;
 
                     return localState;
                 },
@@ -242,6 +228,7 @@ public static partial class ObjectAnalyzer
             // Fix #3: Use O(1) index-based slice instead of O(n) Skip/Take per chunk
             for (int offset = 0; offset < objectList.Count; offset += ChunkSize)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 int count = Math.Min(ChunkSize, objectList.Count - offset);
                 ProcessChunk(IndexedSlice(objectList, offset, count));
             }
@@ -250,6 +237,7 @@ public static partial class ObjectAnalyzer
         {
             foreach (var chunk in EnumerateChunks(objects, ChunkSize))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 ProcessChunk(chunk);
             }
         }
@@ -417,10 +405,102 @@ public static partial class ObjectAnalyzer
         return false;
     }
 
-#pragma warning disable CA5351
-    private static string ComputeHash(string canonical) =>
-        Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(canonical)));
-#pragma warning restore CA5351
+    /// <summary>
+    /// 128 位紧凑哈希键（两个 ulong），替代 32 字符十六进制字符串键，减少字典内存占用。
+    /// </summary>
+    private readonly struct Hash128 : IEquatable<Hash128>
+    {
+        public readonly ulong High;
+        public readonly ulong Low;
+
+        public Hash128(ulong high, ulong low)
+        {
+            High = high;
+            Low = low;
+        }
+
+        public bool Equals(Hash128 other) => High == other.High && Low == other.Low;
+
+        public override bool Equals(object? obj) => obj is Hash128 other && Equals(other);
+
+        public override int GetHashCode() => unchecked((int)High ^ (int)(High >> 32) ^ (int)Low ^ (int)(Low >> 32));
+    }
+
+    /// <summary>
+    /// 128 位非密码学哈希：两条不同种子的 FNV-1a 64 通道（第二条按字节逆序）加 MurmurHash3 雪崩混合。
+    /// 仅用于整行去重，128 位空间足够抵抗碰撞，且远快于 MD5。
+    /// </summary>
+    private static Hash128 ComputeHash128(ReadOnlySpan<byte> data)
+    {
+        ulong h1 = 14695981039346656037UL;
+        ulong h2 = 0x84222325cbf29ce4UL;
+        const ulong prime = 0x100000001b3UL;
+
+        foreach (byte b in data)
+        {
+            h1 ^= b;
+            h1 *= prime;
+        }
+        for (int i = data.Length - 1; i >= 0; i--)
+        {
+            h2 ^= data[i];
+            h2 *= prime;
+        }
+
+        // 雪崩混合，降低低位相关性
+        h1 ^= h1 >> 33;
+        h1 *= 0xff51afd7ed558ccdUL;
+        h1 ^= h1 >> 33;
+        h2 ^= h2 >> 33;
+        h2 *= 0xc4ceb9fe1a85ec53UL;
+        h2 ^= h2 >> 33;
+
+        return new Hash128(h1, h2);
+    }
+
+    private static void WriteUtf8(ArrayBufferWriter<byte> writer, string value)
+    {
+        int maxBytes = Encoding.UTF8.GetMaxByteCount(value.Length);
+        Span<byte> span = writer.GetSpan(maxBytes);
+        int written = Encoding.UTF8.GetBytes(value.AsSpan(), span);
+        writer.Advance(written);
+    }
+
+    private static void WriteAsciiNumber(ArrayBufferWriter<byte> writer, int value)
+    {
+        Span<byte> span = writer.GetSpan(16);
+        Utf8Formatter.TryFormat(value, span, out int written);
+        writer.Advance(written);
+    }
+
+    private static void WriteByte(ArrayBufferWriter<byte> writer, byte value)
+    {
+        Span<byte> span = writer.GetSpan(1);
+        span[0] = value;
+        writer.Advance(1);
+    }
+
+    private static string SerializeDuplicate(KeyValuePair<string, object?>[] sortedEntries)
+    {
+        try
+        {
+            var sortedDict = new Dictionary<string, object?>(sortedEntries.Length, StringComparer.Ordinal);
+            foreach (var kv in sortedEntries)
+            {
+                sortedDict[kv.Key] = kv.Value;
+            }
+            return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
+        }
+        catch
+        {
+            var fallback = new Dictionary<string, string>(sortedEntries.Length);
+            foreach (var kv in sortedEntries)
+            {
+                fallback[kv.Key] = SafeToString(kv.Value);
+            }
+            return JsonSerializer.Serialize(fallback, JsonSharedOptions.Write);
+        }
+    }
 
     // Fix #3: O(1) index-based slice over IList, avoids re-enumerating from offset
     private static IEnumerable<Dictionary<string, object?>> IndexedSlice(
@@ -476,7 +556,8 @@ public static partial class ObjectAnalyzer
         {
             try
             {
-                return JsonSerializer.Serialize(value, JsonSharedOptions.Write);
+                // 热路径使用紧凑序列化：更短、更快，且 ValueCounts 键不含换行
+                return JsonSerializer.Serialize(value, JsonSharedOptions.WriteCompact);
             }
             catch
             {

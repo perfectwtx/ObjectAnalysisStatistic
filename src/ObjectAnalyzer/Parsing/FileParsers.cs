@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Xml;
 using System.Xml.Linq;
 using MiniExcelLibs;
 using YamlDotNet.Serialization;
@@ -75,35 +76,142 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            using var fs = File.OpenRead(path);
-            JsonDocument doc;
+            // 流式解析：每个元素独立 JsonDocument，生命周期很短，
+            // 避免整个 JSON DOM 与分析过程同时常驻内存。
+            byte[] fileBytes = File.ReadAllBytes(path);
+            foreach (var item in ParseFromBytes(fileBytes, options))
+                yield return item;
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> ParseFromBytes(byte[] fileBytes, ParseOptions options)
+        {
+            JsonTokenType rootToken = PeekRootToken(fileBytes);
+
+            if (rootToken == JsonTokenType.StartArray)
+            {
+                // 先消费根 '[',否则 TryParseValue 会把整个数组当作一个元素
+                long offset = ConsumeSingleToken(fileBytes);
+                // 空数组也合法（产出 0 个对象）
+                while (TryReadNextElement(fileBytes, ref offset, out var elementDoc))
+                {
+                    using (elementDoc)
+                    {
+                        yield return ParseJsonElement(elementDoc.RootElement, options.Flatten);
+                    }
+                }
+            }
+            else if (rootToken == JsonTokenType.StartObject)
+            {
+                long offset = 0;
+                if (!TryReadNextElement(fileBytes, ref offset, out var singleDoc))
+                    throw new InvalidDataException("JSON 根节点必须是数组或对象。");
+                using (singleDoc)
+                {
+                    yield return ParseJsonElement(singleDoc.RootElement, options.Flatten);
+                }
+            }
+            else
+            {
+                throw new InvalidDataException("JSON 根节点必须是数组或对象。");
+            }
+        }
+
+        private static JsonTokenType PeekRootToken(byte[] fileBytes)
+        {
             try
             {
-                doc = JsonDocument.Parse(fs);
+                var reader = new Utf8JsonReader(fileBytes);
+                while (reader.Read())
+                {
+                    return reader.TokenType;
+                }
+                return JsonTokenType.None;
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException("JSON 文件解析失败，请确认文件内容为合法的 JSON。", ex);
+            }
+        }
+
+        /// <summary>
+        /// 从 offset 处读取下一个顶层 JSON 值（跳过空白与逗号）。
+        /// 返回 false 表示遇到数组/对象结束符。每个元素的 reader 都是局部的，
+        /// 避免 ref struct 跨 yield 边界。
+        /// </summary>
+        /// <summary>
+        /// 从开头读取一个顶层 token（如根 '['）并返回其结束偏移。
+        /// </summary>
+        private static long ConsumeSingleToken(byte[] fileBytes)
+        {
+            var reader = new Utf8JsonReader(fileBytes);
+            try
+            {
+                if (!reader.Read())
+                    throw new InvalidDataException("JSON 文件为空，缺少根 token。");
+                return reader.BytesConsumed;
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException("JSON 文件解析失败，请确认文件内容为合法的 JSON。", ex);
+            }
+        }
+
+        private static bool TryReadNextElement(byte[] fileBytes, ref long offset, out JsonDocument doc)
+        {
+            // 跳过元素间的分隔逗号与空白（TryParseValue 的 BytesConsumed 停在逗号前）
+            while (offset < fileBytes.Length)
+            {
+                byte b = fileBytes[offset];
+                if (b == (byte)' ' || b == (byte)'\t' || b == (byte)'\n' || b == (byte)'\r' || b == (byte)',')
+                    offset++;
+                else
+                    break;
+            }
+
+            if (offset >= fileBytes.Length || fileBytes[offset] == (byte)']' || fileBytes[offset] == (byte)'}')
+            {
+                doc = null!;
+                return false;
+            }
+
+            var reader = new Utf8JsonReader(fileBytes.AsSpan((int)offset));
+            try
+            {
+                while (reader.Read())
+                {
+                    switch (reader.TokenType)
+                    {
+                        case JsonTokenType.EndArray:
+                        case JsonTokenType.EndObject:
+                            offset += reader.BytesConsumed;
+                            doc = null!;
+                            return false;
+
+                        case JsonTokenType.StartObject:
+                        case JsonTokenType.StartArray:
+                        case JsonTokenType.String:
+                        case JsonTokenType.Number:
+                        case JsonTokenType.True:
+                        case JsonTokenType.False:
+                        case JsonTokenType.Null:
+                            if (JsonDocument.TryParseValue(ref reader, out var parsed))
+                            {
+                                offset += reader.BytesConsumed;
+                                doc = parsed;
+                                return true;
+                            }
+                            throw new InvalidDataException("JSON 值解析失败。");
+                    }
+                }
             }
             catch (JsonException ex)
             {
                 throw new InvalidDataException("JSON 文件解析失败，请确认文件内容为合法的 JSON。", ex);
             }
 
-            using (doc)
-            {
-                var root = doc.RootElement;
-
-                if (root.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var element in root.EnumerateArray())
-                        yield return ParseJsonElement(element, options.Flatten);
-                }
-                else if (root.ValueKind == JsonValueKind.Object)
-                {
-                    yield return ParseJsonElement(root, options.Flatten);
-                }
-                else
-                {
-                    throw new InvalidDataException("JSON 根节点必须是数组或对象。");
-                }
-            }
+            offset = fileBytes.Length;
+            doc = null!;
+            return false;
         }
     }
 
@@ -181,7 +289,14 @@ public static class FileParsers
             try
             {
                 using var fs = File.OpenRead(path);
-                doc = XDocument.Load(fs);
+                // 显式禁止 DTD（防 XXE/实体炸弹）并限制文档大小，防止超大/恶意 XML 打满内存
+                var settings = new XmlReaderSettings
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    MaxCharactersInDocument = 256 * 1024 * 1024
+                };
+                using var xmlReader = XmlReader.Create(fs, settings);
+                doc = XDocument.Load(xmlReader);
             }
             catch (Exception ex)
             {
@@ -192,7 +307,7 @@ public static class FileParsers
                 throw new InvalidDataException("XML 文件缺少根节点。");
 
             foreach (var element in doc.Root.Elements())
-                yield return ConvertXElement(element);
+                yield return ConvertXElement(element, 0);
         }
     }
 
@@ -215,7 +330,7 @@ public static class FileParsers
                 {
                     if (item is Dictionary<object, object> dict)
                     {
-                        var converted = ConvertYamlDict(dict);
+                        var converted = ConvertYamlDict(dict, 0);
                         // Fix #4: respect options.Flatten for YAML (previously ignored)
                         yield return options.Flatten ? FlattenObjectDict(converted) : converted;
                     }
@@ -223,7 +338,7 @@ public static class FileParsers
             }
             else if (yamlResult is Dictionary<object, object> singleDict)
             {
-                var converted = ConvertYamlDict(singleDict);
+                var converted = ConvertYamlDict(singleDict, 0);
                 yield return options.Flatten ? FlattenObjectDict(converted) : converted;
             }
             else
@@ -398,8 +513,12 @@ public static class FileParsers
         }
     }
 
-    private static Dictionary<string, object?> ConvertXElement(XElement element)
+    private static Dictionary<string, object?> ConvertXElement(XElement element, int depth)
     {
+        // 防御深层嵌套导致 StackOverflowException（进程崩溃 / Web DoS）
+        if (depth > 1000)
+            throw new InvalidDataException("XML 嵌套层级过深，超过 1000 层限制。");
+
         var dict = new Dictionary<string, object?>();
 
         // Fix #5: include XML attributes so <item id="1" name="foo"/> fields are not lost
@@ -412,31 +531,38 @@ public static class FileParsers
         {
             string key = child.Name.LocalName;
             if (child.HasElements)
-                dict[key] = ConvertXElement(child);
+                dict[key] = ConvertXElement(child, depth + 1);
             else
                 dict[key] = child.Value;
         }
         return dict;
     }
 
-    private static Dictionary<string, object?> ConvertYamlDict(Dictionary<object, object> yamlDict)
+    private static Dictionary<string, object?> ConvertYamlDict(Dictionary<object, object> yamlDict, int depth)
     {
+        // 防御深层嵌套导致 StackOverflowException（进程崩溃 / Web DoS）
+        if (depth > 1000)
+            throw new InvalidDataException("YAML 嵌套层级过深，超过 1000 层限制。");
+
         var dict = new Dictionary<string, object?>();
         foreach (var kvp in yamlDict)
         {
             string key = kvp.Key?.ToString() ?? "";
-            dict[key] = ConvertYamlValue(kvp.Value);
+            dict[key] = ConvertYamlValue(kvp.Value, depth + 1);
         }
         return dict;
     }
 
-    private static object? ConvertYamlValue(object? value)
+    private static object? ConvertYamlValue(object? value, int depth)
     {
+        if (depth > 1000)
+            throw new InvalidDataException("YAML 嵌套层级过深，超过 1000 层限制。");
+
         return value switch
         {
             null => null,
-            Dictionary<object, object> d => ConvertYamlDict(d),
-            List<object?> list => list.Select(ConvertYamlValue).ToList(),
+            Dictionary<object, object> d => ConvertYamlDict(d, depth + 1),
+            List<object?> list => list.Select(v => ConvertYamlValue(v, depth + 1)).ToList(),
             _ => value
         };
     }
@@ -452,22 +578,27 @@ public static class FileParsers
     private static void FlattenObjectDictInto(
         Dictionary<string, object?> source,
         string prefix,
-        Dictionary<string, object?> target)
+        Dictionary<string, object?> target,
+        int depth = 0)
     {
+        // 防御深层嵌套导致 StackOverflowException
+        if (depth > 1000)
+            throw new InvalidDataException("对象嵌套层级过深，超过 1000 层限制。");
+
         foreach (var kvp in source)
         {
             string key = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}.{kvp.Key}";
             switch (kvp.Value)
             {
                 case Dictionary<string, object?> nested:
-                    FlattenObjectDictInto(nested, key, target);
+                    FlattenObjectDictInto(nested, key, target, depth + 1);
                     break;
                 case System.Collections.IList list:
                     for (int i = 0; i < list.Count; i++)
                     {
                         string indexedKey = $"{key}[{i}]";
                         if (list[i] is Dictionary<string, object?> itemDict)
-                            FlattenObjectDictInto(itemDict, indexedKey, target);
+                            FlattenObjectDictInto(itemDict, indexedKey, target, depth + 1);
                         else
                             target[indexedKey] = list[i];
                     }
