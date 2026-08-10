@@ -286,8 +286,11 @@
     /// <summary>取消正在运行的分析（不显示"分析已取消"，用于文件被替换/清除时）。</summary>
     private void CancelActiveAnalysis()
     {
-        _analysisCts?.Cancel();
-        _suppressCancelMessage = true;
+        if (_analysisCts != null)
+        {
+            _analysisCts.Cancel();
+            _suppressCancelMessage = true;
+        }
     }
 
     private void ToggleConfig()

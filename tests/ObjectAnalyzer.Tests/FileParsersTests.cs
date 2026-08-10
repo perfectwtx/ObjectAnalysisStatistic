@@ -41,6 +41,31 @@ public class FileParsersTests
     }
 
     [Fact]
+    public void ParseJson_WithUtf8Bom_ParsesCorrectly()
+    {
+        // Arrange - UTF-8 BOM (EF BB BF) 开头的 JSON，模拟 Windows/Excel 保存的文件
+        string tempFile = Path.GetTempFileName();
+        byte[] bom = { 0xEF, 0xBB, 0xBF };
+        string json = "[{\"Id\": 1, \"Name\": \"Alice\"}]";
+        byte[] bytes = new byte[bom.Length + System.Text.Encoding.UTF8.GetByteCount(json)];
+        bom.CopyTo(bytes, 0);
+        System.Text.Encoding.UTF8.GetBytes(json, 0, json.Length, bytes, bom.Length);
+        File.WriteAllBytes(tempFile, bytes);
+
+        try
+        {
+            var result = FileParsers.ParseByFormat(tempFile, "json", new() { Flatten = true }).ToList();
+            Assert.Single(result);
+            Assert.Equal(1L, result[0]["Id"]);
+            Assert.Equal("Alice", result[0]["Name"]);
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public void ParseJsonl_ValidLines_ParsesCorrectly()
     {
         // Arrange

@@ -79,8 +79,20 @@ public static class FileParsers
             // 流式解析：每个元素独立 JsonDocument，生命周期很短，
             // 避免整个 JSON DOM 与分析过程同时常驻内存。
             byte[] fileBytes = File.ReadAllBytes(path);
+            // 剥离 UTF-8 BOM，避免 Utf8JsonReader 将 BOM 当作非法字节
+            // （Windows 工具/Excel 保存的 JSON 常带 BOM）
+            fileBytes = StripUtf8Bom(fileBytes);
             foreach (var item in ParseFromBytes(fileBytes, options))
                 yield return item;
+        }
+
+        private static byte[] StripUtf8Bom(byte[] bytes)
+        {
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            {
+                return bytes.AsSpan(3).ToArray();
+            }
+            return bytes;
         }
 
         private static IEnumerable<Dictionary<string, object?>> ParseFromBytes(byte[] fileBytes, ParseOptions options)
