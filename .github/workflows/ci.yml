@@ -45,6 +45,9 @@ jobs:
     - name: Publish CLI
       run: dotnet publish src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release -o artifacts/cli --no-restore
 
+    - name: Pack CLI as dotnet tool
+      run: dotnet pack src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release -o artifacts/packages --no-restore
+
     - name: Publish Web
       run: dotnet publish src/ObjectAnalyzer.Web/ObjectAnalyzer.Web.csproj -c Release -o artifacts/web --no-restore
 

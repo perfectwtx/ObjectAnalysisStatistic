@@ -403,6 +403,122 @@ h1:focus {
     margin-top: 0.25rem;
 }
 
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.download-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.download-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-right: 0.25rem;
+}
+
+.lang-switcher {
+    display: flex;
+    gap: 0.25rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.2rem;
+}
+
+.lang-btn {
+    border: none;
+    background: transparent;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #6c757d;
+}
+
+.lang-btn:hover {
+    color: #212529;
+}
+
+.lang-btn.active {
+    background: #667eea;
+    color: #fff;
+}
+
+/* Charts */
+.charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.chart-box {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.chart-box h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0 0 0.75rem 0;
+}
+
+/* Data preview */
+.preview-section {
+    margin: 1rem 0;
+}
+
+.preview-section h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0 0 0.75rem 0;
+}
+
+.preview-note {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #6c757d;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.table-scroll table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.table-scroll th,
+.table-scroll td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+    white-space: nowrap;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table-scroll th {
+    background: #f8f9fa;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+}
+
 /* Toolbar */
 .toolbar {
     display: flex;

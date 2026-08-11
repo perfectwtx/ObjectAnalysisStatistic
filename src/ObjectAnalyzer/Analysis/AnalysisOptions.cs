@@ -15,6 +15,8 @@ public sealed class AnalysisOptions
     public string? ExcelJsonColumn { get; set; }
     public string? RulesFile { get; set; }
     public string? ViolationsPath { get; set; }
+    public string? QualityPath { get; set; }
+    public bool FailOnViolations { get; set; }
     public int MaxDegreeOfParallelism { get; set; } = -1; // -1 = 使用默认（所有核心）
     public string? ExportSchema { get; set; } // "csharp", "typescript", "json-schema"
     public string? SchemaOutputPath { get; set; }

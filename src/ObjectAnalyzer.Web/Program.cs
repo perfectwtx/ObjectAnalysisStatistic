@@ -18,6 +18,7 @@ builder.Services.AddSignalR(options =>
 });
 
 builder.Services.AddScoped<AnalysisState>();
+builder.Services.AddScoped<LocalizationService>();
 
 var app = builder.Build();
 
@@ -38,3 +39,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+/// <summary>供集成测试 (WebApplicationFactory) 引用的入口点。</summary>
+public partial class Program { }

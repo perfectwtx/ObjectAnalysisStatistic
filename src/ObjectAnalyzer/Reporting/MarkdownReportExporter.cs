@@ -32,6 +32,21 @@ public static class MarkdownReportExporter
         writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 字段数: {result.FieldStatistics.Count}"));
         writer.WriteLine();
 
+        // 数据质量摘要
+        var quality = DataQualityReport.Build(result);
+        writer.WriteLine("## 数据质量");
+        writer.WriteLine();
+        if (quality.Passed)
+        {
+            writer.WriteLine($"✅ **通过** — {quality.TotalFields} 个字段，无枚举违规。");
+        }
+        else
+        {
+            writer.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"❌ **未通过** — {quality.FieldsWithViolations}/{quality.TotalFields} 个字段存在 {quality.TotalViolationCount} 条枚举违规（违规率 {quality.ViolationRate:P1}）。"));
+        }
+        writer.WriteLine();
+
         if (result.TotalDuplicateGroups > 0)
         {
             writer.WriteLine("## 重复对象");

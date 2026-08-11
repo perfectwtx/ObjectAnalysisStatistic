@@ -60,6 +60,30 @@ public static class HtmlReportExporter
         writer.Write(Card("字段数", result.FieldStatistics.Count.ToString(CultureInfo.InvariantCulture), "purple"));
         writer.WriteLine("</div>");
 
+        // 数据质量摘要
+        var quality = DataQualityReport.Build(result);
+        writer.WriteLine("<div class=\"section\">");
+        writer.WriteLine("<h2>数据质量</h2>");
+        if (quality.Passed)
+        {
+            writer.Write("<p class=\"quality-pass\">✅ 通过 — ");
+            writer.Write(quality.TotalFields.ToString(CultureInfo.InvariantCulture));
+            writer.WriteLine(" 个字段，无枚举违规。</p>");
+        }
+        else
+        {
+            writer.Write("<p class=\"quality-fail\">❌ 未通过 — ");
+            writer.Write(quality.FieldsWithViolations.ToString(CultureInfo.InvariantCulture));
+            writer.Write('/');
+            writer.Write(quality.TotalFields.ToString(CultureInfo.InvariantCulture));
+            writer.Write(" 个字段存在 ");
+            writer.Write(quality.TotalViolationCount.ToString(CultureInfo.InvariantCulture));
+            writer.Write(" 条枚举违规（违规率 ");
+            writer.Write(quality.ViolationRate.ToString("P1", CultureInfo.InvariantCulture));
+            writer.WriteLine("）。</p>");
+        }
+        writer.WriteLine("</div>");
+
         // 图表区域
         writer.WriteLine("<div class=\"charts\">");
         writer.WriteLine("<div class=\"chart-container\">");
@@ -253,5 +277,7 @@ public static class HtmlReportExporter
         .rule-badge { display: inline-block; background: #e7f1ff; color: #1b6ec2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
         .violations { margin-top: 4px; font-size: 0.8rem; color: #842029; }
         .violation { background: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; margin: 0 2px; }
+        .quality-pass { color: #15803d; font-weight: 600; }
+        .quality-fail { color: #b91c1c; font-weight: 600; }
         """;
 }

@@ -14,6 +14,10 @@ public sealed class AnalysisState : IDisposable
         new() { WriteIndented = true };
 
     public AnalysisResult? Result { get; set; }
+
+    /// <summary>解析结果的前 N 行预览（用于展示数据长什么样）。</summary>
+    public List<Dictionary<string, object?>>? Preview { get; set; }
+
     public string FileName { get; set; } = "";
     public string SortField { get; set; } = "Count";
     public bool SortAscending { get; set; }

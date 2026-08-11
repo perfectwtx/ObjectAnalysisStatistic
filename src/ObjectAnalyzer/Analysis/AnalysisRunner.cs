@@ -35,7 +35,16 @@ public static class AnalysisRunner
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            ProcessAndReport(parsedObjects, options, cancellationToken);
+            AnalysisResult result = ProcessAndReport(parsedObjects, options, cancellationToken);
+
+            // CI 数据质量门禁：存在枚举违规时以非零退出码结束
+            if (options.FailOnViolations && result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
+            {
+                int violationCount = result.FieldStatistics.Sum(f => f.EnumViolations.Count);
+                AnsiConsole.MarkupLine($"[red]数据质量未通过（共 {violationCount} 条枚举违规），退出码 3。[/]");
+                return 3;
+            }
+
             return 0;
         }
         catch (OperationCanceledException)
@@ -116,7 +125,7 @@ public static class AnalysisRunner
     /// <summary>
     /// Common post-processing: analyze objects, print console report, export reports and optional schema.
     /// </summary>
-    private static void ProcessAndReport(
+    private static AnalysisResult ProcessAndReport(
         IEnumerable<Dictionary<string, object?>> parsedObjects,
         AnalysisOptions options,
         CancellationToken cancellationToken = default)
@@ -162,6 +171,13 @@ public static class AnalysisRunner
             ViolationExporter.Save(result, options.ViolationsPath);
         }
 
+        // 如果指定了数据质量报告路径，导出结构化 Pass/Fail 质量报告
+        if (!string.IsNullOrEmpty(options.QualityPath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            QualityExporter.Save(result, options.QualityPath);
+        }
+
         // 如果指定了 Schema 导出，自动生成 C# / TypeScript / JSON Schema 定义
         if (!string.IsNullOrEmpty(options.ExportSchema))
         {
@@ -179,6 +195,8 @@ public static class AnalysisRunner
             SchemaExporter.Export(result, options.ExportSchema, schemaPath);
             AnsiConsole.MarkupLine("[green]Schema 定义代码成功导出！[/]");
         }
+
+        return result;
     }
 
     private static void PrintError(Exception ex)

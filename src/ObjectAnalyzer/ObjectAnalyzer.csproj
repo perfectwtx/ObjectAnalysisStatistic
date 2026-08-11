@@ -12,7 +12,17 @@
     <Description>对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel 输入，自动统计字段频次、数据类型、值分布及重复对象。</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>objectanalyzer</ToolCommandName>
+    <PackageId>ObjectAnalyzer.Tool</PackageId>
+    <PackageOutputPath>../../artifacts/packages</PackageOutputPath>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>analysis;json;csv;excel;statistics;data</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />

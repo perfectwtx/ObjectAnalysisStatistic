@@ -3,9 +3,11 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject AnalysisState State
 @inject IJSRuntime Js
+@inject LocalizationService Loc
+@implements IDisposable
 @rendermode InteractiveServer
 
-<PageTitle>ObjectAnalyzer - 对象分析工具</PageTitle>
+<PageTitle>ObjectAnalyzer - @Loc["PageTitleText"]</PageTitle>
 
 <div class="analyzer-app">
     @* 顶部应用栏 *@
@@ -14,16 +16,22 @@
             <span class="brand-icon" aria-hidden="true">📊</span>
             <div>
                 <h1>ObjectAnalyzer</h1>
-                <p class="brand-sub">对象字段分析统计</p>
+                <p class="brand-sub">@Loc["AppBrandSub"]</p>
             </div>
         </div>
-        @if (State.Result != null)
-        {
-            <div class="header-actions">
-                <span class="file-chip" title="@State.FileName">📄 @State.FileName</span>
-                <button class="btn btn-outline" @onclick="ToggleConfig">@(ShowConfig ? "收起设置" : "修改设置")</button>
+        <div class="header-actions">
+            <div class="lang-switcher" role="group" aria-label="Language">
+                <button class="lang-btn @(Loc.CurrentLanguage == "zh-CN" ? "active" : "")"
+                        @onclick='() => SetLanguage("zh-CN")'>中文</button>
+                <button class="lang-btn @(Loc.CurrentLanguage == "en" ? "active" : "")"
+                        @onclick='() => SetLanguage("en")'>EN</button>
             </div>
-        }
+            @if (State.Result != null)
+            {
+                <span class="file-chip" title="@State.FileName">📄 @State.FileName</span>
+                <button class="btn btn-outline" @onclick="ToggleConfig">@(ShowConfig ? Loc["HideConfig"] : Loc["ShowConfig"])</button>
+            }
+        </div>
     </header>
 
     @* 上传与设置面板（可折叠） *@
@@ -33,23 +41,23 @@
             <div class="config-fields" style="pointer-events:@(State.IsLoading ? "none" : "auto");opacity:@(State.IsLoading ? 0.6 : 1)">
             <div class="upload-area">
                 <InputFile OnChange="HandleFileUpload" accept=".json,.jsonl,.csv,.xlsx,.xml,.yaml,.yml" />
-                <p>拖放文件或点击选择<br/>
-                   <small>支持 JSON, JSONL, CSV, Excel, XML, YAML</small>
+                <p>@Loc["UploadHint"]<br/>
+                   <small>@Loc["UploadSupported"]</small>
                 </p>
                 @if (State.HasData)
                 {
                     <div class="uploaded-file">
-                        <span class="file-ok">已选择: @State.FileName</span>
-                        <button class="clear-btn" @onclick="ClearDataFile" title="清除文件">✕</button>
+                        <span class="file-ok">@Loc.Get("FileSelected", State.FileName)</span>
+                        <button class="clear-btn" @onclick="ClearDataFile" title="@Loc["ClearFile"]">✕</button>
                     </div>
                 }
             </div>
 
             <div class="options-grid">
                 <label class="option-item">
-                    <span>格式</span>
+                    <span>@Loc["OptFormat"]</span>
                     <select value="@(State.Format ?? "")" @onchange="OnFormatChange">
-                        <option value="">自动检测</option>
+                        <option value="">@Loc["AutoDetect"]</option>
                         <option value="json">JSON</option>
                         <option value="jsonl">JSONL</option>
                         <option value="csv">CSV</option>
@@ -61,43 +69,43 @@
                 </label>
                 <label class="option-item checkbox-item">
                     <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
-                    <span>展平嵌套</span>
+                    <span>@Loc["OptFlatten"]</span>
                 </label>
                 <label class="option-item">
-                    <span>最大展示值</span>
+                    <span>@Loc["OptMaxValues"]</span>
                     <input type="number" value="@State.MaxValuesToShow" @oninput="OnMaxValuesChange" min="1" max="100" />
                 </label>
                 <label class="option-item">
-                    <span>并行线程</span>
-                    <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="最大并行线程数，-1 = 全部核心" />
+                    <span>@Loc["OptParallel"]</span>
+                    <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="@Loc["OptParallelTitle"]" />
                 </label>
                 <label class="option-item">
-                    <span>Excel-JSON 列</span>
+                    <span>@Loc["OptExcelJsonColumn"]</span>
                     <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
                 </label>
                 <label class="option-item">
-                    <span>目标类名</span>
-                    <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="可选" />
+                    <span>@Loc["OptTypeName"]</span>
+                    <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="@Loc["OptTypeNamePlaceholder"]" />
                 </label>
                 <div class="option-item file-option">
-                    <span>类型定义 (.cs)</span>
+                    <span>@Loc["OptTypeFile"]</span>
                     <div class="file-field">
                         <InputFile OnChange="HandleTypeFileUpload" accept=".cs" />
                         @if (State.TypeFileName != null)
                         {
                             <span class="file-ok">✓ @State.TypeFileName</span>
-                            <button class="clear-btn" @onclick="ClearTypeFile" title="清除类型定义">✕</button>
+                            <button class="clear-btn" @onclick="ClearTypeFile" title="@Loc["ClearTypeFile"]">✕</button>
                         }
                     </div>
                 </div>
                 <div class="option-item file-option">
-                    <span>规则文件 (.json)</span>
+                    <span>@Loc["OptRulesFile"]</span>
                     <div class="file-field">
                         <InputFile OnChange="HandleRulesFileUpload" accept=".json" />
                         @if (State.RulesFileName != null)
                         {
                             <span class="file-ok">✓ @State.RulesFileName</span>
-                            <button class="clear-btn" @onclick="ClearRulesFile" title="清除规则文件">✕</button>
+                            <button class="clear-btn" @onclick="ClearRulesFile" title="@Loc["ClearRulesFile"]">✕</button>
                         }
                     </div>
                 </div>
@@ -107,11 +115,11 @@
             <div class="config-actions">
                 <button class="btn btn-primary btn-lg" @onclick="RunAnalysis"
                         disabled="@State.IsLoading">
-                    @(State.IsLoading ? "分析中..." : "开始分析")
+                    @(State.IsLoading ? Loc["Analyzing"] : Loc["StartAnalysis"])
                 </button>
                 @if (State.IsLoading)
                 {
-                    <button class="btn btn-outline" @onclick="CancelAnalysis">取消</button>
+                    <button class="btn btn-outline" @onclick="CancelAnalysis">@Loc["Cancel"]</button>
                 }
             </div>
 
@@ -128,46 +136,106 @@
         <div class="results-section">
             @* 结果标题栏 *@
             <div class="results-header">
-                <h2>分析结果 <span class="result-file">@State.FileName</span></h2>
-                @if (State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
-                {
-                    <button class="btn btn-outline btn-sm" @onclick="DownloadViolations">导出违规 JSON</button>
-                }
+                <h2>@Loc["ResultsTitle"] <span class="result-file">@State.FileName</span></h2>
+                <div class="header-actions">
+                    <div class="download-group">
+                        <span class="download-label">@Loc["ReportDownload"]</span>
+                        <button class="btn btn-outline btn-sm" @onclick="DownloadJsonReport">JSON</button>
+                        <button class="btn btn-outline btn-sm" @onclick="DownloadHtmlReport">HTML</button>
+                        <button class="btn btn-outline btn-sm" @onclick="DownloadMarkdownReport">MD</button>
+                        <button class="btn btn-outline btn-sm" @onclick="DownloadCsvReport">CSV</button>
+                        @if (State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
+                        {
+                            <button class="btn btn-outline btn-sm" @onclick="DownloadViolations">@Loc["ViolationsDownload"]</button>
+                        }
+                    </div>
+                    <div class="download-group">
+                        <span class="download-label">@Loc["SchemaDownload"]</span>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("csharp")'>C#</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("typescript")'>TS</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("json-schema")'>JSON Schema</button>
+                    </div>
+                </div>
             </div>
 
             @* 摘要卡片 *@
             <div class="summary-cards">
                 <div class="card blue">
                     <div class="card-value">@State.Result.TotalObjects</div>
-                    <div class="card-label">总对象数</div>
+                    <div class="card-label">@Loc["TotalObjects"]</div>
                 </div>
                 <div class="card green">
                     <div class="card-value">@State.Result.TotalUniqueObjects</div>
-                    <div class="card-label">唯一对象</div>
+                    <div class="card-label">@Loc["UniqueObjects"]</div>
                 </div>
                 <div class="card orange">
                     <div class="card-value">@State.Result.TotalDuplicateGroups</div>
-                    <div class="card-label">重复组</div>
+                    <div class="card-label">@Loc["DuplicateGroups"]</div>
                 </div>
                 <div class="card purple">
                     <div class="card-value">@State.Result.FieldStatistics.Count</div>
-                    <div class="card-label">字段数</div>
+                    <div class="card-label">@Loc["FieldCount"]</div>
                 </div>
             </div>
 
+            @* 图表区域 *@
+            <div class="charts-section">
+                <div class="chart-box">
+                    <h3>@Loc["FieldCoverageChart"]</h3>
+                    <canvas id="coverageChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h3>@Loc["FieldTypeChart"]</h3>
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+
+            @* 数据预览 *@
+            @if (State.Preview is { Count: > 0 })
+            {
+                var previewFields = GetPreviewFields();
+                var previewRows = State.Preview.Take(PreviewRowCount);
+                <div class="preview-section">
+                    <h3>@Loc["DataPreview"] <span class="preview-note">@Loc.Get("PreviewNote", PreviewRowCount, previewFields.Count)</span></h3>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    @foreach (var f in previewFields)
+                                    {
+                                        <th>@f</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in previewRows)
+                                {
+                                    <tr>
+                                        @foreach (var f in previewFields)
+                                        {
+                                            <td>@FormatPreviewValue(row.GetValueOrDefault(f))</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
             @* 工具栏 *@
             <div class="toolbar">
-                <input type="text" placeholder="搜索字段名..."
+                <input type="text" placeholder="@Loc["SearchPlaceholder"]"
                        value="@State.SearchText"
                        @oninput="OnSearchInput" />
                 <select value="@State.SortField" @onchange="OnSortFieldChange">
-                    <option value="Count">按频次排序</option>
-                    <option value="Name">按名称排序</option>
-                    <option value="Coverage">按覆盖率排序</option>
-                    <option value="PrimaryType">按类型排序</option>
+                    <option value="Count">@Loc["SortByCount"]</option>
+                    <option value="Name">@Loc["SortByName"]</option>
+                    <option value="Coverage">@Loc["SortByCoverage"]</option>
+                    <option value="PrimaryType">@Loc["SortByType"]</option>
                 </select>
                 <button @onclick="ToggleSortDirection">
-                    @(State.SortAscending ? "↑ 升序" : "↓ 降序")
+                    @(State.SortAscending ? Loc["SortAsc"] : Loc["SortDesc"])
                 </button>
             </div>
 
@@ -176,12 +244,12 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>字段名</th>
-                            <th>覆盖率</th>
-                            <th>主导类型</th>
-                            <th>默认值</th>
-                            <th>唯一值</th>
-                            <th>规则</th>
+                            <th>@Loc["FieldName"]</th>
+                            <th>@Loc["Coverage"]</th>
+                            <th>@Loc["PrimaryType"]</th>
+                            <th>@Loc["DefaultValue"]</th>
+                            <th>@Loc["UniqueValues"]</th>
+                            <th>@Loc["Rules"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -222,13 +290,13 @@
                                     @field.ValueCounts.Count
                                     @if (field.ValueCountsTruncated)
                                     {
-                                        <span class="truncated-hint">+ (已截断)</span>
+                                        <span class="truncated-hint">@Loc["Truncated"]</span>
                                     }
                                 </td>
                                 <td>
                                     @if (field.AppliedRule != null)
                                     {
-                                        <span class="rule-badge">已应用</span>
+                                        <span class="rule-badge">@Loc["Applied"]</span>
                                     }
                                     @if (field.EnumViolations.Count > 0)
                                     {
@@ -249,9 +317,9 @@
                 @if (State.TotalPages > 1)
                 {
                     <div class="pagination">
-                        <button @onclick="PrevPage" disabled="@(State.PageIndex <= 0)">← 上一页</button>
-                        <span>第 @(State.PageIndex + 1) / @State.TotalPages 页</span>
-                        <button @onclick="NextPage" disabled="@(State.PageIndex >= State.TotalPages - 1)">下一页 →</button>
+                        <button @onclick="PrevPage" disabled="@(State.PageIndex <= 0)">@Loc["PrevPage"]</button>
+                        <span>@Loc.Get("PageXofY", State.PageIndex + 1, State.TotalPages)</span>
+                        <button @onclick="NextPage" disabled="@(State.PageIndex >= State.TotalPages - 1)">@Loc["NextPage"]</button>
                     </div>
                 }
             </div>
@@ -260,7 +328,7 @@
             @if (State.Result.TotalDuplicateGroups > 0)
             {
                 <div class="duplicates-section">
-                    <h3>重复对象 (@State.Result.TotalDuplicateGroups 组)</h3>
+                    <h3>@Loc.Get("DuplicatesTitle", State.Result.TotalDuplicateGroups)</h3>
                     @foreach (var dup in State.GetVisibleDuplicates())
                     {
                         <div class="dup-item">
@@ -270,7 +338,7 @@
                     }
                     @if (State.HiddenDuplicateCount > 0)
                     {
-                        <p class="duplicates-note">... 还有 @State.HiddenDuplicateCount 组未展示</p>
+                        <p class="duplicates-note">@Loc.Get("DuplicatesMore", State.HiddenDuplicateCount)</p>
                     }
                 </div>
             }
@@ -282,6 +350,21 @@
     private bool ShowConfig = true;
     private CancellationTokenSource? _analysisCts;
     private bool _suppressCancelMessage;
+
+    protected override void OnInitialized()
+    {
+        Loc.OnLanguageChanged += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Loc.OnLanguageChanged -= StateHasChanged;
+    }
+
+    private void SetLanguage(string culture)
+    {
+        Loc.SetLanguage(culture);
+    }
 
     /// <summary>取消正在运行的分析（不显示"分析已取消"，用于文件被替换/清除时）。</summary>
     private void CancelActiveAnalysis()
@@ -316,6 +399,7 @@
         State.FileName = file.Name;
         State.ErrorMessage = null;
         State.Result = null;
+        State.Preview = null;
         State.PageIndex = 0;
     }
 
@@ -326,6 +410,7 @@
         State.DataFilePath = null;
         State.FileName = "";
         State.Result = null;
+        State.Preview = null;
         State.ErrorMessage = null;
     }
 
@@ -333,7 +418,7 @@
     {
         if (State.DataFilePath == null)
         {
-            State.ErrorMessage = "请先选择数据文件。";
+            State.ErrorMessage = Loc["ErrSelectDataFile"];
             return;
         }
 
@@ -358,6 +443,7 @@
         string? rulesFilePath = State.RulesFilePath;
         int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
         string? typedError = null;
+        List<Dictionary<string, object?>>? previewedPreview = null;
 
         try
         {
@@ -374,7 +460,7 @@
                         var typedResult = Core.TypedFileParser.ParseJson(dataFilePath, compileResult.type);
                         if (typedResult.Errors.Count > 0)
                         {
-                            typedError = $"存在 {typedResult.Errors.Count} 条属性读取错误: {typedResult.Errors[0]}";
+                            typedError = Loc.Get("ErrTypedParse", typedResult.Errors.Count, typedResult.Errors[0]);
                         }
                         objects = typedResult.Objects;
                     }
@@ -411,13 +497,31 @@
                         ? maxDegreeOfParallelism
                         : Environment.ProcessorCount
                 };
-                return Core.ObjectAnalyzer.Analyze(objects, rules, parallelOptions, token);
+
+                // 在懒管道流经时捕获前若干行作为预览样本
+                const int previewLimit = 20;
+                var preview = new List<Dictionary<string, object?>>(previewLimit);
+                var previewed = objects.Select(o =>
+                {
+                    if (preview.Count < previewLimit)
+                    {
+                        lock (preview)
+                        {
+                            if (preview.Count < previewLimit) preview.Add(o);
+                        }
+                    }
+                    return o;
+                });
+                var analysisResult = Core.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, token);
+                previewedPreview = preview;
+                return analysisResult;
             }, token);
 
             if (typedError != null)
             {
                 State.ErrorMessage = typedError;
             }
+            State.Preview = previewedPreview;
             State.Result = result;
             ShowConfig = false;
         }
@@ -425,7 +529,7 @@
         {
             if (!_suppressCancelMessage)
             {
-                State.ErrorMessage = "分析已取消。";
+                State.ErrorMessage = Loc["ErrCancelled"];
             }
         }
         catch (Exception ex)
@@ -526,6 +630,117 @@
         State.ErrorMessage = null;
     }
 
+    private const int PreviewRowCount = 8;
+    private const int PreviewColumnCount = 8;
+    private AnalysisResult? _lastChartResult;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // 结果对象变化时重绘图表（Blazor 重新渲染时避免重复实例化）
+        if (State.Result != null && !ReferenceEquals(_lastChartResult, State.Result))
+        {
+            _lastChartResult = State.Result;
+            await RenderCharts(State.Result);
+        }
+    }
+
+    private async Task RenderCharts(Core.AnalysisResult result)
+    {
+        var topFields = result.FieldStatistics
+            .OrderByDescending(f => f.Count)
+            .Take(15)
+            .ToList();
+
+        var fieldNames = topFields.Select(f => f.FieldName).ToArray();
+        var coverages = topFields.Select(f => Math.Round(f.Coverage * 100, 1)).ToArray();
+        await Js.InvokeVoidAsync("objectAnalyzer.renderCoverageChart", fieldNames, coverages);
+
+        var typeTop = topFields.Take(10).ToList();
+        var typeLabels = typeTop.Select(f => f.FieldName).ToArray();
+        var allTypes = typeTop
+            .SelectMany(f => f.TypeCounts.Keys)
+            .Distinct()
+            .ToList();
+        var colors = new[]
+        {
+            "rgba(54,162,235,0.7)", "rgba(255,99,132,0.7)", "rgba(75,192,192,0.7)",
+            "rgba(255,205,86,0.7)", "rgba(153,102,255,0.7)", "rgba(255,159,64,0.7)"
+        };
+        var datasets = allTypes
+            .Select((t, i) => new
+            {
+                label = t,
+                data = typeTop.Select(f => f.TypeCounts.GetValueOrDefault(t, 0)).ToArray(),
+                backgroundColor = colors[i % colors.Length]
+            })
+            .ToArray();
+        await Js.InvokeVoidAsync("objectAnalyzer.renderTypeChart", typeLabels, datasets);
+    }
+
+    private List<string> GetPreviewFields()
+    {
+        var result = new List<string>(PreviewColumnCount);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (State.Preview != null)
+        {
+            foreach (var row in State.Preview)
+            {
+                foreach (var key in row.Keys)
+                {
+                    if (seen.Add(key)) result.Add(key);
+                    if (result.Count >= PreviewColumnCount) return result;
+                }
+                if (result.Count >= PreviewColumnCount) break;
+            }
+        }
+        return result;
+    }
+
+    private static string FormatPreviewValue(object? value)
+    {
+        if (value == null) return "null";
+        if (value is string s) return s.Length <= 80 ? s : s[..77] + "...";
+        return value.ToString() ?? "null";
+    }
+
+    private async Task DownloadJsonReport() => await DownloadReport(".json", "application/json;charset=utf-8");
+
+    private async Task DownloadHtmlReport() => await DownloadReport(".html", "text/html;charset=utf-8");
+
+    private async Task DownloadMarkdownReport() => await DownloadReport(".md", "text/markdown;charset=utf-8");
+
+    private async Task DownloadCsvReport() => await DownloadReport(".csv", "text/csv;charset=utf-8");
+
+    private async Task DownloadReport(string ext, string mime)
+    {
+        if (State.Result == null) return;
+        var temp = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{ext}");
+        try
+        {
+            await Task.Run(() => Core.ReportExporter.Save(State.Result, temp));
+            string content = await File.ReadAllTextAsync(temp);
+            var fileName = $"analysis-{DateTime.Now:yyyyMMdd-HHmmss}{ext}";
+            await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile", fileName, content, mime);
+        }
+        finally
+        {
+            DeleteQuietly(temp);
+        }
+    }
+
+    private async Task DownloadSchema(string format)
+    {
+        if (State.Result == null) return;
+        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        (string fileName, string content, string mime) = format switch
+        {
+            "csharp" => ($"schema-{stamp}.cs", Core.SchemaExporter.GenerateCSharp(State.Result), "text/plain;charset=utf-8"),
+            "typescript" => ($"schema-{stamp}.d.ts", Core.SchemaExporter.GenerateTypeScript(State.Result), "text/plain;charset=utf-8"),
+            _ => ($"schema-{stamp}.schema.json", Core.SchemaExporter.GenerateJsonSchema(State.Result), "application/json;charset=utf-8")
+        };
+        await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile", fileName, content, mime);
+    }
+
     private async Task DownloadViolations()
     {
         var fileName = $"violations-{DateTime.Now:yyyyMMdd-HHmmss}.json";
@@ -571,7 +786,7 @@
             var rules = await System.Text.Json.JsonSerializer.DeserializeAsync<Core.AnalysisRules>(verify);
             if (rules == null)
             {
-                throw new InvalidDataException("规则文件内容为空或格式无效。");
+                throw new InvalidDataException(Loc["ErrInvalidRules"]);
             }
             State.RulesFilePath = tempPath;
             State.RulesFileName = file.Name;

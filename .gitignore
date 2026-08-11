@@ -4,6 +4,12 @@
 bin/
 obj/
 
+# 打包产物
+artifacts/
+
+# 测试覆盖率结果
+TestResults/
+
 # Visual Studio / Rider / VS Code cache
 .vs/
 .idea/

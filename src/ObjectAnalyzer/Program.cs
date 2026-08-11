@@ -62,6 +62,14 @@ var violationsOption = new Option<FileInfo?>(
     aliases: CliAliases.Violations,
     description: "将枚举违规导出为独立的结构化 JSON 文件路径。");
 
+var qualityOption = new Option<FileInfo?>(
+    aliases: CliAliases.Quality,
+    description: "导出结构化数据质量报告 JSON 文件路径（Pass/Fail 摘要 + 违规率 + 逐字段明细）。");
+
+var failOnViolationsOption = new Option<bool>(
+    name: "--fail-on-violations",
+    description: "存在枚举违规时以非零退出码结束（便于 CI 数据质量门禁）。");
+
 var exportSchemaOption = new Option<string?>(
     aliases: CliAliases.ExportSchema,
     description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema。");
@@ -84,6 +92,8 @@ rootCommand.AddOption(excelJsonColumnOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(parallelOption);
 rootCommand.AddOption(violationsOption);
+rootCommand.AddOption(qualityOption);
+rootCommand.AddOption(failOnViolationsOption);
 rootCommand.AddOption(exportSchemaOption);
 rootCommand.AddOption(schemaOutputOption);
 
@@ -102,6 +112,8 @@ rootCommand.SetHandler((InvocationContext context) =>
     var rules = parseResult.GetValueForOption(rulesOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
     var violations = parseResult.GetValueForOption(violationsOption);
+    var quality = parseResult.GetValueForOption(qualityOption);
+    var failOnViolations = parseResult.GetValueForOption(failOnViolationsOption);
     var exportSchema = parseResult.GetValueForOption(exportSchemaOption);
     var schemaOutput = parseResult.GetValueForOption(schemaOutputOption);
 
@@ -139,6 +151,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
         ViolationsPath = violations?.FullName,
+        QualityPath = quality?.FullName,
+        FailOnViolations = failOnViolations,
         ExportSchema = exportSchema,
         SchemaOutputPath = schemaOutput?.FullName
     };
@@ -165,5 +179,6 @@ static class CliAliases
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Parallel = { "--parallel", "-p" };
     public static readonly string[] Violations = { "--violations" };
+    public static readonly string[] Quality = { "--quality" };
     public static readonly string[] ExportSchema = { "--export-schema", "-s" };
 }

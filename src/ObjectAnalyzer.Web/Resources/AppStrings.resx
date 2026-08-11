@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="PageTitleText" xml:space="preserve"><value>对象分析工具</value></data>
+  <data name="AppBrandSub" xml:space="preserve"><value>对象字段分析统计</value></data>
+  <data name="ShowConfig" xml:space="preserve"><value>修改设置</value></data>
+  <data name="HideConfig" xml:space="preserve"><value>收起设置</value></data>
+  <data name="UploadHint" xml:space="preserve"><value>拖放文件或点击选择</value></data>
+  <data name="UploadSupported" xml:space="preserve"><value>支持 JSON, JSONL, CSV, Excel, XML, YAML</value></data>
+  <data name="FileSelected" xml:space="preserve"><value>已选择: {0}</value></data>
+  <data name="ClearFile" xml:space="preserve"><value>清除文件</value></data>
+  <data name="ClearTypeFile" xml:space="preserve"><value>清除类型定义</value></data>
+  <data name="ClearRulesFile" xml:space="preserve"><value>清除规则文件</value></data>
+  <data name="OptFormat" xml:space="preserve"><value>格式</value></data>
+  <data name="AutoDetect" xml:space="preserve"><value>自动检测</value></data>
+  <data name="OptFlatten" xml:space="preserve"><value>展平嵌套</value></data>
+  <data name="OptMaxValues" xml:space="preserve"><value>最大展示值</value></data>
+  <data name="OptParallel" xml:space="preserve"><value>并行线程</value></data>
+  <data name="OptParallelTitle" xml:space="preserve"><value>最大并行线程数，-1 = 全部核心</value></data>
+  <data name="OptExcelJsonColumn" xml:space="preserve"><value>Excel-JSON 列</value></data>
+  <data name="OptTypeName" xml:space="preserve"><value>目标类名</value></data>
+  <data name="OptTypeNamePlaceholder" xml:space="preserve"><value>可选</value></data>
+  <data name="OptTypeFile" xml:space="preserve"><value>类型定义 (.cs)</value></data>
+  <data name="OptRulesFile" xml:space="preserve"><value>规则文件 (.json)</value></data>
+  <data name="Analyzing" xml:space="preserve"><value>分析中...</value></data>
+  <data name="StartAnalysis" xml:space="preserve"><value>开始分析</value></data>
+  <data name="Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="ResultsTitle" xml:space="preserve"><value>分析结果</value></data>
+  <data name="ReportDownload" xml:space="preserve"><value>报告</value></data>
+  <data name="SchemaDownload" xml:space="preserve"><value>Schema</value></data>
+  <data name="ViolationsDownload" xml:space="preserve"><value>违规 JSON</value></data>
+  <data name="TotalObjects" xml:space="preserve"><value>总对象数</value></data>
+  <data name="UniqueObjects" xml:space="preserve"><value>唯一对象</value></data>
+  <data name="DuplicateGroups" xml:space="preserve"><value>重复组</value></data>
+  <data name="FieldCount" xml:space="preserve"><value>字段数</value></data>
+  <data name="FieldCoverageChart" xml:space="preserve"><value>字段覆盖率 (Top 15)</value></data>
+  <data name="FieldTypeChart" xml:space="preserve"><value>字段类型分布 (Top 10)</value></data>
+  <data name="DataPreview" xml:space="preserve"><value>数据预览</value></data>
+  <data name="PreviewNote" xml:space="preserve"><value>前 {0} 行 / {1} 列</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>搜索字段名...</value></data>
+  <data name="SortByCount" xml:space="preserve"><value>按频次排序</value></data>
+  <data name="SortByName" xml:space="preserve"><value>按名称排序</value></data>
+  <data name="SortByCoverage" xml:space="preserve"><value>按覆盖率排序</value></data>
+  <data name="SortByType" xml:space="preserve"><value>按类型排序</value></data>
+  <data name="SortAsc" xml:space="preserve"><value>↑ 升序</value></data>
+  <data name="SortDesc" xml:space="preserve"><value>↓ 降序</value></data>
+  <data name="FieldName" xml:space="preserve"><value>字段名</value></data>
+  <data name="Coverage" xml:space="preserve"><value>覆盖率</value></data>
+  <data name="PrimaryType" xml:space="preserve"><value>主导类型</value></data>
+  <data name="DefaultValue" xml:space="preserve"><value>默认值</value></data>
+  <data name="UniqueValues" xml:space="preserve"><value>唯一值</value></data>
+  <data name="Rules" xml:space="preserve"><value>规则</value></data>
+  <data name="Applied" xml:space="preserve"><value>已应用</value></data>
+  <data name="Truncated" xml:space="preserve"><value>+ (已截断)</value></data>
+  <data name="PrevPage" xml:space="preserve"><value>← 上一页</value></data>
+  <data name="NextPage" xml:space="preserve"><value>下一页 →</value></data>
+  <data name="PageXofY" xml:space="preserve"><value>第 {0} / {1} 页</value></data>
+  <data name="DuplicatesTitle" xml:space="preserve"><value>重复对象 ({0} 组)</value></data>
+  <data name="DuplicatesMore" xml:space="preserve"><value>... 还有 {0} 组未展示</value></data>
+  <data name="ErrSelectDataFile" xml:space="preserve"><value>请先选择数据文件。</value></data>
+  <data name="ErrCancelled" xml:space="preserve"><value>分析已取消。</value></data>
+  <data name="ErrTypedParse" xml:space="preserve"><value>存在 {0} 条属性读取错误: {1}</value></data>
+  <data name="ErrInvalidRules" xml:space="preserve"><value>规则文件内容为空或格式无效。</value></data>
+</root>
