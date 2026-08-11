@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using Core = global::ObjectAnalyzer
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Text.Json
 @inject AnalysisState State
 @inject IJSRuntime Js
 @inject LocalizationService Loc
@@ -213,7 +214,7 @@
                                     <tr>
                                         @foreach (var f in previewFields)
                                         {
-                                            <td>@FormatPreviewValue(row.GetValueOrDefault(f))</td>
+                                            <td>@FormatPreviewCell(row, f)</td>
                                         }
                                     </tr>
                                 }
@@ -632,6 +633,10 @@
 
     private const int PreviewRowCount = 8;
     private const int PreviewColumnCount = 8;
+    private static readonly System.Text.Json.JsonSerializerOptions PreviewJsonOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
     private AnalysisResult? _lastChartResult;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -696,11 +701,40 @@
         return result;
     }
 
-    private static string FormatPreviewValue(object? value)
+    internal static string FormatPreviewCell(Dictionary<string, object?> row, string field)
+    {
+        // 该字段在行中从未出现 → 显示空；字段出现但值为 null → 显示 "null"
+        return row.TryGetValue(field, out var value) ? FormatPreviewValue(value) : "";
+    }
+
+    internal static string FormatPreviewValue(object? value)
     {
         if (value == null) return "null";
         if (value is string s) return s.Length <= 80 ? s : s[..77] + "...";
+
+        // 非标量（嵌套对象/数组/强类型集合）以原始值的 JSON 展示，而不是类型名
+        if (!IsScalar(value))
+        {
+            try
+            {
+                string json = JsonSerializer.Serialize(value, PreviewJsonOptions);
+                return json.Length <= 80 ? json : json[..77] + "...";
+            }
+            catch
+            {
+                // 个别自定义类型无法序列化时，退回类型名兜底
+            }
+        }
+
         return value.ToString() ?? "null";
+    }
+
+    private static bool IsScalar(object value)
+    {
+        Type type = value.GetType();
+        return type.IsPrimitive
+            || type.IsEnum
+            || value is string or decimal or DateTime or DateTimeOffset or Guid or TimeSpan or char;
     }
 
     private async Task DownloadJsonReport() => await DownloadReport(".json", "application/json;charset=utf-8");
