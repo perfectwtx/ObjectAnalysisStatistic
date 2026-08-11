@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
 /// 强类型反序列化的结果：对象列表 + 属性读取错误列表（分离，避免错误文本污染统计数据）。

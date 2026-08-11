@@ -1,6 +1,6 @@
 using System.IO;
-using AnalysisResult = global::ObjectAnalyzer.AnalysisResult;
-using FieldStatistic = global::ObjectAnalyzer.FieldStatistic;
+using AnalysisResult = global::ObjectAnalyzer.Analysis.AnalysisResult;
+using FieldStatistic = global::ObjectAnalyzer.Analysis.FieldStatistic;
 
 namespace ObjectAnalyzer.Web;
 
@@ -108,7 +108,7 @@ public sealed class AnalysisState : IDisposable
     }
 
     /// <summary>重复对象仅展示前 N 组，避免大结果集。</summary>
-    public List<global::ObjectAnalyzer.DuplicateObjectStatistic> GetVisibleDuplicates()
+    public List<global::ObjectAnalyzer.Analysis.DuplicateObjectStatistic> GetVisibleDuplicates()
     {
         if (Result == null) return new();
         return Result.DuplicateObjects.Take(MaxDuplicatesToShow).ToList();

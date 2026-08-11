@@ -14,7 +14,7 @@ public class ObjectAnalyzerTests
         var objects = new List<Dictionary<string, object?>>();
 
         // Act
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         // Assert
         Assert.Equal(0, result.TotalObjects);
@@ -35,7 +35,7 @@ public class ObjectAnalyzerTests
         };
 
         // Act
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         // Assert
         Assert.Equal(3, result.TotalObjects);
@@ -74,7 +74,7 @@ public class ObjectAnalyzerTests
         };
 
         // Act
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         // Assert
         var scoreStat = result.FieldStatistics.First(f => f.FieldName == "Score");
@@ -97,7 +97,7 @@ public class ObjectAnalyzerTests
         };
 
         // Act
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         // Assert
         Assert.Equal(4, result.TotalObjects);

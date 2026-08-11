@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 /// <summary>
 /// Exports inferred object schemas based on analysis results to

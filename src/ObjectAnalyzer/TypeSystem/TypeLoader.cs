@@ -7,7 +7,7 @@ using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.TypeSystem;
 
 public class DynamicAssemblyContext : AssemblyLoadContext, IDisposable
 {

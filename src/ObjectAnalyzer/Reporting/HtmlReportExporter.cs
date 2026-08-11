@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 public static class HtmlReportExporter
 {

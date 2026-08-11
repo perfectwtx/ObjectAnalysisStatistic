@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using MiniExcelLibs;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
 /// Generates sample Excel test files for development and demo purposes.

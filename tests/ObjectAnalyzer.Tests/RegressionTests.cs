@@ -19,7 +19,7 @@ public class RegressionTests
             new() { { "a", "b" }, { "c", "d" } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         Assert.Equal(2, result.TotalObjects);
         Assert.Equal(2, result.TotalUniqueObjects);
@@ -35,7 +35,7 @@ public class RegressionTests
             new() { { "a", "b" } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         Assert.Equal(2, result.TotalUniqueObjects);
         Assert.Empty(result.DuplicateObjects);
@@ -51,7 +51,7 @@ public class RegressionTests
             new() { { "Name", "Alice" } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         var stat = result.FieldStatistics.First(f => f.FieldName == "Name");
         Assert.DoesNotContain("Null", stat.TypeCounts.Keys);
@@ -68,7 +68,7 @@ public class RegressionTests
             new() { { "Name", "Alice" } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         var stat = result.FieldStatistics.First(f => f.FieldName == "Name");
         Assert.True(stat.NullAppeared);
@@ -86,7 +86,7 @@ public class RegressionTests
             new() { { "Id", 1 }, { "Data", badValue } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         Assert.Equal(2, result.TotalObjects);
         Assert.Single(result.DuplicateObjects);
@@ -153,7 +153,7 @@ public class RegressionTests
         for (int i = 0; i < 2; i++) objects.Add(new() { { "A", 5 }, { "B", 6 } }); // 组2 x2
         objects.Add(new() { { "A", 9 }, { "B", 10 } });                            // 唯一
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         Assert.Equal(6, result.TotalObjects);
         Assert.Equal(3, result.TotalUniqueObjects);
@@ -174,7 +174,7 @@ public class RegressionTests
         // 让第 1001 个值出现两次，保证超出上限时能稳定触发裁剪
         objects.Add(new() { { "F", "overflow" } });
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
         var stat = result.FieldStatistics.First(f => f.FieldName == "F");
 
         Assert.True(stat.ValueCountsTruncated);

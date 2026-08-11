@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
 /// 字段规则定义，用于指定字段的默认值、主导类型和枚举约束。

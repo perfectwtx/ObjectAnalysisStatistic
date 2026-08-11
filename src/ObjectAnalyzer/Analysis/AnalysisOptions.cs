@@ -1,4 +1,4 @@
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
 /// Encapsulates all options for an analysis run, avoiding long parameter lists.

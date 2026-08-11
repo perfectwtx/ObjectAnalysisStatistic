@@ -30,8 +30,8 @@ public class PerformanceImprovementsTests
             .ToList();
 
         // Act – 执行两次确保结果幂等（并行哈希结果需确定）
-        var result1 = ObjectAnalyzer.Analyze(objects);
-        var result2 = ObjectAnalyzer.Analyze(objects);
+        var result1 = Analyze(objects);
+        var result2 = Analyze(objects);
 
         // Assert
         Assert.Equal(total, result1.TotalObjects);
@@ -60,7 +60,7 @@ public class PerformanceImprovementsTests
             .ToList();
 
         // Act
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
         var keyStat = result.FieldStatistics.First(f => f.FieldName == "Key");
 
         // Assert: ValueCounts 不得超过 1001（1000 正常 + 1 个 [Other values] 桶）
@@ -83,7 +83,7 @@ public class PerformanceImprovementsTests
         var objects = Enumerable.Repeat(repeated, 5).Concat(new[] { unique }).ToList();
 
         // Act
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         // Assert
         Assert.Equal(6, result.TotalObjects);

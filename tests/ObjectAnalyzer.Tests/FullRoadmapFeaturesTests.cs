@@ -21,7 +21,7 @@ public class FullRoadmapFeaturesTests
             new() { { "Score", 30.0 } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
         var scoreStat = result.FieldStatistics.First(f => f.FieldName == "Score");
 
         Assert.Equal(10.0, scoreStat.MinNumber);
@@ -50,7 +50,7 @@ public class FullRoadmapFeaturesTests
             }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         var emailStat = result.FieldStatistics.First(f => f.FieldName == "UserEmail");
         var guidStat = result.FieldStatistics.First(f => f.FieldName == "UserGuid");
@@ -80,7 +80,7 @@ public class FullRoadmapFeaturesTests
             }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         // C# (Roslyn AST 确保带有 { } 大括号)
         string csCode = SchemaExporter.GenerateCSharp(result, "TestEntity");
@@ -124,7 +124,7 @@ public class FullRoadmapFeaturesTests
             }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         string csCode = SchemaExporter.GenerateCSharp(result, "GeneratedSchema");
         // 嵌套对象被还原为独立 DTO record
@@ -161,7 +161,7 @@ public class FullRoadmapFeaturesTests
             new() { { "id", 2L }, { "tags[0].name", "blue" }, { "tags[0].hex", "#0000FF" } }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects);
+        var result = Analyze(objects);
 
         string csCode = SchemaExporter.GenerateCSharp(result, "GeneratedSchema");
         Assert.Contains("public TagsItemDto[] Tags", csCode);

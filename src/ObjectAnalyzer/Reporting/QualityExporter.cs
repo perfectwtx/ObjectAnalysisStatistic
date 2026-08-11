@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 /// <summary>
 /// 导出结构化数据质量报告 JSON（Pass/Fail 摘要 + 违规率 + 逐字段明细），

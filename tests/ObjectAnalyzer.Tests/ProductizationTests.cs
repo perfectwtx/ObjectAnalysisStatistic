@@ -17,7 +17,7 @@ public class ProductizationTests
             new() { { "Id", 1L }, { "Name", "Alice" } },
             new() { { "Id", 2L }, { "Name", "Bob" } }
         };
-        return ObjectAnalyzer.Analyze(objects);
+        return Analyze(objects);
     }
 
     private static AnalysisResult BuildResultWithViolations()
@@ -39,7 +39,7 @@ public class ProductizationTests
             }
         };
 
-        return ObjectAnalyzer.Analyze(objects, rules);
+        return Analyze(objects, rules);
     }
 
     // ──────────────────────────────────────────────

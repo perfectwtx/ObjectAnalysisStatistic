@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 public static class ConsoleReporter
 {

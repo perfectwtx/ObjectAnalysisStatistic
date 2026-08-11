@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 /// <summary>
 /// 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言/程序消费。

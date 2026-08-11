@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
 /// Options passed to file parsers.

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
 /// Shared JsonSerializerOptions instances used across the project.

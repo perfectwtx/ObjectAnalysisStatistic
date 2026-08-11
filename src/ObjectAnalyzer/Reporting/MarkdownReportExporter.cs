@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 /// <summary>
 /// 将分析结果导出为 Markdown 报告。

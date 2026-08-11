@@ -455,10 +455,10 @@
                 // 如果指定了类型文件，使用强类型反序列化（该路径本身需要物化结果）
                 if (typeFilePath != null)
                 {
-                    var compileResult = Core.TypeLoader.Compile(typeFilePath, typeName);
+                    var compileResult = Core.TypeSystem.TypeLoader.Compile(typeFilePath, typeName);
                     try
                     {
-                        var typedResult = Core.TypedFileParser.ParseJson(dataFilePath, compileResult.type);
+                        var typedResult = Core.Parsing.TypedFileParser.ParseJson(dataFilePath, compileResult.type);
                         if (typedResult.Errors.Count > 0)
                         {
                             typedError = Loc.Get("ErrTypedParse", typedResult.Errors.Count, typedResult.Errors[0]);
@@ -474,22 +474,22 @@
                 {
                     // 懒管道：直接传递 IEnumerable，避免为大文件物化 List
                     var detectedFormat = string.IsNullOrEmpty(format)
-                        ? Core.FileParsers.DetectFormat(dataFilePath)
+                        ? Core.Parsing.FileParsers.DetectFormat(dataFilePath)
                         : format;
-                    var parseOptions = new Core.ParseOptions
+                    var parseOptions = new Core.Parsing.ParseOptions
                     {
                         Flatten = flatten,
                         ExcelJsonColumn = excelJsonColumn
                     };
-                    objects = Core.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
+                    objects = Core.Parsing.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
                 }
 
                 // 加载规则文件
-                Core.AnalysisRules? rules = null;
+                Core.Analysis.AnalysisRules? rules = null;
                 if (rulesFilePath != null)
                 {
                     var rulesJson = File.ReadAllText(rulesFilePath);
-                    rules = System.Text.Json.JsonSerializer.Deserialize<Core.AnalysisRules>(rulesJson);
+                    rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson);
                 }
 
                 var parallelOptions = new ParallelOptions
@@ -513,7 +513,7 @@
                     }
                     return o;
                 });
-                var analysisResult = Core.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, token);
+                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, token);
                 previewedPreview = preview;
                 return analysisResult;
             }, token);
@@ -637,7 +637,7 @@
     {
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
-    private AnalysisResult? _lastChartResult;
+    private Core.Analysis.AnalysisResult? _lastChartResult;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -649,7 +649,7 @@
         }
     }
 
-    private async Task RenderCharts(Core.AnalysisResult result)
+    private async Task RenderCharts(Core.Analysis.AnalysisResult result)
     {
         var topFields = result.FieldStatistics
             .OrderByDescending(f => f.Count)
@@ -751,7 +751,7 @@
         var temp = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{ext}");
         try
         {
-            await Task.Run(() => Core.ReportExporter.Save(State.Result, temp));
+            await Task.Run(() => Core.Reporting.ReportExporter.Save(State.Result, temp));
             string content = await File.ReadAllTextAsync(temp);
             var fileName = $"analysis-{DateTime.Now:yyyyMMdd-HHmmss}{ext}";
             await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile", fileName, content, mime);
@@ -768,9 +768,9 @@
         var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
         (string fileName, string content, string mime) = format switch
         {
-            "csharp" => ($"schema-{stamp}.cs", Core.SchemaExporter.GenerateCSharp(State.Result), "text/plain;charset=utf-8"),
-            "typescript" => ($"schema-{stamp}.d.ts", Core.SchemaExporter.GenerateTypeScript(State.Result), "text/plain;charset=utf-8"),
-            _ => ($"schema-{stamp}.schema.json", Core.SchemaExporter.GenerateJsonSchema(State.Result), "application/json;charset=utf-8")
+            "csharp" => ($"schema-{stamp}.cs", Core.Reporting.SchemaExporter.GenerateCSharp(State.Result), "text/plain;charset=utf-8"),
+            "typescript" => ($"schema-{stamp}.d.ts", Core.Reporting.SchemaExporter.GenerateTypeScript(State.Result), "text/plain;charset=utf-8"),
+            _ => ($"schema-{stamp}.schema.json", Core.Reporting.SchemaExporter.GenerateJsonSchema(State.Result), "application/json;charset=utf-8")
         };
         await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile", fileName, content, mime);
     }
@@ -817,7 +817,7 @@
         try
         {
             await using var verify = File.OpenRead(tempPath);
-            var rules = await System.Text.Json.JsonSerializer.DeserializeAsync<Core.AnalysisRules>(verify);
+            var rules = await System.Text.Json.JsonSerializer.DeserializeAsync<Core.Analysis.AnalysisRules>(verify);
             if (rules == null)
             {
                 throw new InvalidDataException(Loc["ErrInvalidRules"]);

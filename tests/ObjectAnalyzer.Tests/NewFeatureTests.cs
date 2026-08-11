@@ -136,7 +136,7 @@ public class NewFeatureTests
         try
         {
             // 不物化，直接传入惰性流式枚举
-            var result = ObjectAnalyzer.Analyze(FileParsers.ParseByFormat(tempFile, "jsonl", new()));
+            var result = Analyze(FileParsers.ParseByFormat(tempFile, "jsonl", new()));
 
             Assert.Equal(25000, result.TotalObjects);
             Assert.Equal(25000, result.TotalUniqueObjects);
@@ -160,8 +160,8 @@ public class NewFeatureTests
             })
             .ToList();
 
-        var single = ObjectAnalyzer.Analyze(objects, null, new ParallelOptions { MaxDegreeOfParallelism = 1 });
-        var multi = ObjectAnalyzer.Analyze(objects, null, new ParallelOptions { MaxDegreeOfParallelism = 8 });
+        var single = Analyze(objects, null, new ParallelOptions { MaxDegreeOfParallelism = 1 });
+        var multi = Analyze(objects, null, new ParallelOptions { MaxDegreeOfParallelism = 8 });
 
         Assert.Equal(single.TotalObjects, multi.TotalObjects);
         Assert.Equal(single.TotalUniqueObjects, multi.TotalUniqueObjects);
@@ -200,7 +200,7 @@ public class NewFeatureTests
             }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects, rules);
+        var result = Analyze(objects, rules);
         var gender = result.FieldStatistics.First(f => f.FieldName == "Gender");
 
         Assert.Equal("Male", gender.AppliedRule?.EnumValues?[0].GetString());
@@ -229,7 +229,7 @@ public class NewFeatureTests
             }
         };
 
-        var result = ObjectAnalyzer.Analyze(objects, rules);
+        var result = Analyze(objects, rules);
         var status = result.FieldStatistics.First(f => f.FieldName == "Status");
         Assert.Equal(new List<string> { "99" }, status.EnumViolations);
     }
@@ -340,7 +340,7 @@ public class NewFeatureTests
         {
             EnumValues = new List<JsonElement> { JsonSerializer.Deserialize<JsonElement>("\"Good\"") }
         };
-        var result = ObjectAnalyzer.Analyze(objects, rules);
+        var result = Analyze(objects, rules);
 
         try
         {
@@ -357,7 +357,7 @@ public class NewFeatureTests
 
     private static AnalysisResult AnalyzeSample()
     {
-        return ObjectAnalyzer.Analyze(new List<Dictionary<string, object?>>
+        return Analyze(new List<Dictionary<string, object?>>
         {
             new() { { "Id", 1 }, { "Name", "Alice" }, { "Active", true } },
             new() { { "Id", 2 }, { "Name", "Bob" } }

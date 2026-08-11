@@ -1,4 +1,4 @@
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Analysis;
 
 public class AnalysisResult
 {

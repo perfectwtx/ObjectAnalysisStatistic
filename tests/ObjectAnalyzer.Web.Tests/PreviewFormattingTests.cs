@@ -17,7 +17,7 @@ public class PreviewFormattingTests
         try
         {
             // Flatten=false：保留嵌套结构，与用户关闭"展平嵌套"时的路径一致
-            return global::ObjectAnalyzer.FileParsers.ParseByFormat(temp, "json", new global::ObjectAnalyzer.ParseOptions { Flatten = false }).ToList();
+            return global::ObjectAnalyzer.Parsing.FileParsers.ParseByFormat(temp, "json", new global::ObjectAnalyzer.Parsing.ParseOptions { Flatten = false }).ToList();
         }
         finally
         {

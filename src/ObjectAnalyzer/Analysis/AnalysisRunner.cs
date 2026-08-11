@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Analysis;
 
 public static class AnalysisRunner
 {

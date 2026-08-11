@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using Spectre.Console;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Reporting;
 
 public static class ReportExporter
 {

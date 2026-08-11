@@ -8,7 +8,7 @@ using System.Xml.Linq;
 using MiniExcelLibs;
 using YamlDotNet.Serialization;
 
-namespace ObjectAnalyzer;
+namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
 /// Multi-format file parsers. Each parser reads a file and returns
