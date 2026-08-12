@@ -59,7 +59,7 @@
   <data name="Coverage" xml:space="preserve"><value>Coverage</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>Dominant type</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>Default value</value></data>
-  <data name="UniqueValues" xml:space="preserve"><value>Distinct count</value></data>
+  <data name="UniqueValues" xml:space="preserve"><value>Unique count</value></data>
   <data name="Rules" xml:space="preserve"><value>Rules</value></data>
   <data name="Applied" xml:space="preserve"><value>Applied</value></data>
   <data name="Truncated" xml:space="preserve"><value>+ (truncated)</value></data>
