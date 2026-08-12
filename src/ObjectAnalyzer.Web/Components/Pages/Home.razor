@@ -194,33 +194,53 @@
             @* 数据预览 *@
             @if (State.Preview is { Count: > 0 })
             {
-                var previewFields = GetPreviewFields();
+                var allFields = GetAllPreviewFields();
+                var selectedFields = allFields.Where(IsPreviewColumnSelected).ToList();
                 var previewRows = State.Preview.Take(PreviewRowCount);
                 <div class="preview-section">
-                    <h3>@Loc["DataPreview"] <span class="preview-note">@Loc.Get("PreviewNote", PreviewRowCount, previewFields.Count)</span></h3>
-                    <div class="table-scroll">
-                        <table>
-                            <thead>
-                                <tr>
-                                    @foreach (var f in previewFields)
-                                    {
-                                        <th>@f</th>
-                                    }
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var row in previewRows)
-                                {
+                    <h3>@Loc["DataPreview"] <span class="preview-note">@Loc.Get("PreviewNote", PreviewRowCount, selectedFields.Count)</span></h3>
+                    <div class="preview-col-select">
+                        <span class="preview-col-label">@Loc["PreviewColumns"]</span>
+                        <button class="minibtn" @onclick="SelectAllPreviewColumns">@Loc["SelectAll"]</button>
+                        <button class="minibtn" @onclick="ClearPreviewColumns">@Loc["ClearAll"]</button>
+                        @foreach (var f in allFields)
+                        {
+                            <label class="preview-col-toggle @(IsPreviewColumnSelected(f) ? "selected" : "")">
+                                <input type="checkbox" checked="@IsPreviewColumnSelected(f)" @onchange="() => TogglePreviewColumn(f)" />
+                                <code>@f</code>
+                            </label>
+                        }
+                    </div>
+                    @if (selectedFields.Count > 0)
+                    {
+                        <div class="table-scroll">
+                            <table>
+                                <thead>
                                     <tr>
-                                        @foreach (var f in previewFields)
+                                        @foreach (var f in selectedFields)
                                         {
-                                            <td>@FormatPreviewCell(row, f)</td>
+                                            <th>@f</th>
                                         }
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in previewRows)
+                                    {
+                                        <tr>
+                                            @foreach (var f in selectedFields)
+                                            {
+                                                <td>@FormatPreviewCell(row, f)</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="preview-empty">@Loc["PreviewNoColumns"]</p>
+                    }
                 </div>
             }
 
@@ -401,6 +421,7 @@
         State.ErrorMessage = null;
         State.Result = null;
         State.Preview = null;
+        _selectedPreviewColumns.Clear();
         State.PageIndex = 0;
     }
 
@@ -412,6 +433,7 @@
         State.FileName = "";
         State.Result = null;
         State.Preview = null;
+        _selectedPreviewColumns.Clear();
         State.ErrorMessage = null;
     }
 
@@ -523,6 +545,7 @@
                 State.ErrorMessage = typedError;
             }
             State.Preview = previewedPreview;
+            SeedPreviewSelection();
             State.Result = result;
             ShowConfig = false;
         }
@@ -682,9 +705,9 @@
         await Js.InvokeVoidAsync("objectAnalyzer.renderTypeChart", typeLabels, datasets);
     }
 
-    private List<string> GetPreviewFields()
+    private List<string> GetAllPreviewFields()
     {
-        var result = new List<string>(PreviewColumnCount);
+        var result = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (State.Preview != null)
         {
@@ -693,12 +716,44 @@
                 foreach (var key in row.Keys)
                 {
                     if (seen.Add(key)) result.Add(key);
-                    if (result.Count >= PreviewColumnCount) return result;
                 }
-                if (result.Count >= PreviewColumnCount) break;
             }
         }
         return result;
+    }
+
+    private readonly HashSet<string> _selectedPreviewColumns = new(StringComparer.OrdinalIgnoreCase);
+
+    private void SeedPreviewSelection()
+    {
+        _selectedPreviewColumns.Clear();
+        foreach (var f in GetAllPreviewFields().Take(PreviewColumnCount))
+        {
+            _selectedPreviewColumns.Add(f);
+        }
+    }
+
+    private bool IsPreviewColumnSelected(string field) => _selectedPreviewColumns.Contains(field);
+
+    private void TogglePreviewColumn(string field)
+    {
+        if (!_selectedPreviewColumns.Add(field))
+        {
+            _selectedPreviewColumns.Remove(field);
+        }
+    }
+
+    private void SelectAllPreviewColumns()
+    {
+        foreach (var f in GetAllPreviewFields())
+        {
+            _selectedPreviewColumns.Add(f);
+        }
+    }
+
+    private void ClearPreviewColumns()
+    {
+        _selectedPreviewColumns.Clear();
     }
 
     internal static string FormatPreviewCell(Dictionary<string, object?> row, string field)

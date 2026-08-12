@@ -48,6 +48,10 @@
   <data name="FieldTypeChart" xml:space="preserve"><value>字段类型分布 (Top 10)</value></data>
   <data name="DataPreview" xml:space="preserve"><value>数据预览</value></data>
   <data name="PreviewNote" xml:space="preserve"><value>前 {0} 行 / {1} 列</value></data>
+  <data name="PreviewColumns" xml:space="preserve"><value>选择列</value></data>
+  <data name="SelectAll" xml:space="preserve"><value>全选</value></data>
+  <data name="ClearAll" xml:space="preserve"><value>清空</value></data>
+  <data name="PreviewNoColumns" xml:space="preserve"><value>未选择要显示的列</value></data>
   <data name="SearchPlaceholder" xml:space="preserve"><value>搜索字段名...</value></data>
   <data name="SortByCount" xml:space="preserve"><value>按频次排序</value></data>
   <data name="SortByName" xml:space="preserve"><value>按名称排序</value></data>

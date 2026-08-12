@@ -490,6 +490,68 @@ h1:focus {
     color: #6c757d;
 }
 
+.preview-col-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.6rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.preview-col-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #495057;
+    margin-right: 0.25rem;
+}
+
+.preview-col-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    user-select: none;
+}
+
+.preview-col-toggle.selected {
+    background: #e7f1ff;
+    border-color: #86b7fe;
+    color: #0a58ca;
+}
+
+.preview-col-toggle input {
+    accent-color: #0d6efd;
+    margin: 0;
+}
+
+.minibtn {
+    padding: 0.15rem 0.6rem;
+    font-size: 0.8rem;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.minibtn:hover {
+    background: #e9ecef;
+}
+
+.preview-empty {
+    color: #6c757d;
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+}
+
 .table-scroll {
     overflow-x: auto;
     border: 1px solid #dee2e6;

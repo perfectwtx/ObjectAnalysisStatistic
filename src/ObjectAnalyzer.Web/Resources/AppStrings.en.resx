@@ -48,6 +48,10 @@
   <data name="FieldTypeChart" xml:space="preserve"><value>Field type distribution (Top 10)</value></data>
   <data name="DataPreview" xml:space="preserve"><value>Data preview</value></data>
   <data name="PreviewNote" xml:space="preserve"><value>First {0} rows / {1} columns</value></data>
+  <data name="PreviewColumns" xml:space="preserve"><value>Columns</value></data>
+  <data name="SelectAll" xml:space="preserve"><value>Select all</value></data>
+  <data name="ClearAll" xml:space="preserve"><value>Clear</value></data>
+  <data name="PreviewNoColumns" xml:space="preserve"><value>No columns selected</value></data>
   <data name="SearchPlaceholder" xml:space="preserve"><value>Search field name...</value></data>
   <data name="SortByCount" xml:space="preserve"><value>Sort by frequency</value></data>
   <data name="SortByName" xml:space="preserve"><value>Sort by name</value></data>
