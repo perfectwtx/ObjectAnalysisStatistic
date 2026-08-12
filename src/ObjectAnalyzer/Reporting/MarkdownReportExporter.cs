@@ -71,7 +71,7 @@ public static class MarkdownReportExporter
 
         writer.WriteLine("## 字段详情");
         writer.WriteLine();
-        writer.WriteLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 唯一值 | 枚举违规 |");
+        writer.WriteLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 不同取值数 | 枚举违规 |");
         writer.WriteLine("|-------|------|--------|---------|-------|-------|---------|");
         foreach (var stat in result.FieldStatistics)
         {

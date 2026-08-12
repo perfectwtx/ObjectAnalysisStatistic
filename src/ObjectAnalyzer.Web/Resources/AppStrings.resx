@@ -59,7 +59,7 @@
   <data name="Coverage" xml:space="preserve"><value>覆盖率</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>主导类型</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>默认值</value></data>
-  <data name="UniqueValues" xml:space="preserve"><value>唯一值</value></data>
+  <data name="UniqueValues" xml:space="preserve"><value>不同取值数</value></data>
   <data name="Rules" xml:space="preserve"><value>规则</value></data>
   <data name="Applied" xml:space="preserve"><value>已应用</value></data>
   <data name="Truncated" xml:space="preserve"><value>+ (已截断)</value></data>

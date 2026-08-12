@@ -29,7 +29,7 @@ var noFlattenOption = new Option<bool>(
 
 var maxValuesOption = new Option<int>(
     aliases: CliAliases.MaxValues,
-    description: "控制台报告中每个字段最多展示的唯一值数量。",
+    description: "控制台报告中每个字段最多展示的取值数量。",
     getDefaultValue: () => 5);
 
 var generateTestExcelOption = new Option<bool>(
