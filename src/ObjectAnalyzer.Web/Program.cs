@@ -1,7 +1,13 @@
 using ObjectAnalyzer.Web;
 using ObjectAnalyzer.Web.Components;
 
-var builder = WebApplication.CreateBuilder(args);
+// 自包含发布后从任意目录启动时，将内容根目录固定为可执行文件所在目录，保证 wwwroot/静态资源可用。
+string appBaseDir = AppContext.BaseDirectory;
+bool useAppBaseAsContentRoot = Directory.Exists(Path.Combine(appBaseDir, "wwwroot"));
+
+var builder = WebApplication.CreateBuilder(useAppBaseAsContentRoot
+    ? new WebApplicationOptions { Args = args, ContentRootPath = appBaseDir }
+    : new WebApplicationOptions { Args = args });
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
