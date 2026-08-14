@@ -71,8 +71,8 @@ public static class MarkdownReportExporter
 
         writer.WriteLine("## 字段详情");
         writer.WriteLine();
-        writer.WriteLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 唯一值数量 | 枚举违规 |");
-        writer.WriteLine("|-------|------|--------|---------|-------|-------|---------|");
+        writer.WriteLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 唯一值数量 | 转换 | 枚举违规 |");
+        writer.WriteLine("|-------|------|--------|---------|-------|-------|--------|---------|");
         foreach (var stat in result.FieldStatistics)
         {
             string coverage = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
@@ -80,6 +80,11 @@ public static class MarkdownReportExporter
             string unique = stat.ValueCountsTruncated
                 ? stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture) + "+"
                 : stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
+            string transform = stat.TransformType != null
+                ? (stat.TransformFailureCount > 0
+                    ? $"{EscapeMd(stat.TransformType)} (失败 {stat.TransformFailureCount})"
+                    : EscapeMd(stat.TransformType))
+                : "";
             string violations = stat.EnumViolations.Count > 0
                 ? string.Join(", ", stat.EnumViolations.Select(v => $"`{EscapeMd(v)}`"))
                 : "";
@@ -96,6 +101,8 @@ public static class MarkdownReportExporter
             writer.Write(EscapeMd(defaultVal));
             writer.Write(" | ");
             writer.Write(unique);
+            writer.Write(" | ");
+            writer.Write(transform);
             writer.Write(" | ");
             writer.Write(violations);
             writer.WriteLine(" |");

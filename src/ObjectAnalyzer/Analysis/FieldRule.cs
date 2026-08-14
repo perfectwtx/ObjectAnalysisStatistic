@@ -20,6 +20,48 @@ public class FieldRule
     /// <summary>枚举约束，支持混合类型 (数值 + 字符串)。</summary>
     [JsonPropertyName("enumValues")]
     public List<JsonElement>? EnumValues { get; set; }
+
+    /// <summary>字段值转换配置（如解密、JWT 转明文、Base64/URL 解码）。</summary>
+    [JsonPropertyName("transform")]
+    public FieldTransform? Transform { get; set; }
+}
+
+/// <summary>
+/// 字段值转换配置。类型: jwt / aes / base64 / url。
+/// </summary>
+public class FieldTransform
+{
+    /// <summary>转换类型: jwt, aes, base64, url。</summary>
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "";
+
+    /// <summary>JWT: 指定要提取的 claim 名（如 "sub" / "user_id"）。缺省返回整个 payload JSON。</summary>
+    [JsonPropertyName("claim")]
+    public string? Claim { get; set; }
+
+    /// <summary>AES: 解密密钥（格式由 KeyFormat 决定）。</summary>
+    [JsonPropertyName("key")]
+    public string? Key { get; set; }
+
+    /// <summary>AES: 初始化向量 IV（格式由 IvFormat 决定；ECB 模式无需）。</summary>
+    [JsonPropertyName("iv")]
+    public string? Iv { get; set; }
+
+    /// <summary>AES: 工作模式 cbc（默认）或 ecb。</summary>
+    [JsonPropertyName("mode")]
+    public string? Mode { get; set; }
+
+    /// <summary>AES: 填充方式 pkcs7（默认）或 none。</summary>
+    [JsonPropertyName("padding")]
+    public string? Padding { get; set; }
+
+    /// <summary>AES: Key 编码 base64（默认）或 hex。</summary>
+    [JsonPropertyName("keyFormat")]
+    public string? KeyFormat { get; set; }
+
+    /// <summary>AES: IV 编码 base64（默认）或 hex。</summary>
+    [JsonPropertyName("ivFormat")]
+    public string? IvFormat { get; set; }
 }
 
 /// <summary>
@@ -29,4 +71,8 @@ public class AnalysisRules
 {
     [JsonPropertyName("fields")]
     public Dictionary<string, FieldRule> Fields { get; set; } = new();
+
+    /// <summary>仅统计这些字段（逗号分隔）。优先级低于 CLI 的 --fields 选项。</summary>
+    [JsonPropertyName("selectedFields")]
+    public List<string>? SelectedFields { get; set; }
 }

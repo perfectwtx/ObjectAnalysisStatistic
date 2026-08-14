@@ -35,9 +35,7 @@ public static class AnalysisRunner
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            AnalysisResult result = ProcessAndReport(parsedObjects, options, cancellationToken);
-
-            // CI 数据质量门禁：存在枚举违规时以非零退出码结束
+            AnalysisResult result = ProcessAndReport(parsedObjects, options, cancellationToken);            // CI 数据质量门禁：存在枚举违规时以非零退出码结束
             if (options.FailOnViolations && result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
             {
                 int violationCount = result.FieldStatistics.Sum(f => f.EnumViolations.Count);
@@ -137,6 +135,13 @@ public static class AnalysisRunner
             rules = LoadRules(options.RulesFile);
         }
 
+        // 字段选择 + 值转换（--fields / 规则文件 selectedFields / transform）
+        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields));
+        if (transformProcessor.HasSelectionOrTransforms)
+        {
+            parsedObjects = transformProcessor.Wrap(parsedObjects);
+        }
+
         AnalysisResult result = null!;
         AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
@@ -151,6 +156,9 @@ public static class AnalysisRunner
                 };
                 result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, cancellationToken);
             });
+
+        // 转换失败次数与转换类型回填到统计结果
+        transformProcessor.ApplyFailures(result);
 
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
@@ -224,5 +232,14 @@ public static class AnalysisRunner
         }
         AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;
+    }
+
+    private static List<string>? SplitFields(string? fields)
+    {
+        if (string.IsNullOrWhiteSpace(fields))
+            return null;
+        return fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

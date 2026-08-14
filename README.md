@@ -16,6 +16,7 @@
 - 枚举违规独立导出：通过 `--violations` 输出结构化违规清单，便于 CI 断言
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
 - Schema 代码导出：`--export-schema csharp|typescript|json-schema` 生成数据结构定义
+- 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
@@ -47,7 +48,8 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--type <FILE>` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象） | 无 |
 | `--type-name <NAME>` | — | 指定目标类名（当 .cs 文件包含多个类时使用） | 自动检测 |
 | `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
-| `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型和枚举约束 | 无 |
+| `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束和字段值转换 | 无 |
+| `--fields <NAMES>` | — | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
 | `--violations <FILE>` | — | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
 | `--quality <FILE>` | — | 导出结构化数据质量报告 JSON（Pass/Fail 摘要 + 违规率 + 逐字段明细） | 无 |
 | `--fail-on-violations` | — | 存在枚举违规时以退出码 `3` 结束（质量门禁） | `false` |
@@ -84,6 +86,12 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t samples/
 
 # 使用规则文件校验枚举约束，并导出 HTML 报告
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.html
+
+# 仅统计 name 与 age 字段
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json --fields name,age
+
+# 使用转换规则：解密 / JWT 转明文后统计指定字段
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_transforms.json --fields token,encryptedPhone,encodedName
 
 # 导出 Markdown 报告 + 独立违规清单（便于 CI 断言）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.md --violations violations.json
@@ -123,6 +131,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 ```json
 {
+  "selectedFields": ["token"],
   "fields": {
     "Gender": {
       "defaultValue": "unknown",
@@ -133,10 +142,42 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
       "defaultValue": 0,
       "primaryType": "Number",
       "enumValues": [0, 1, 2]
-    }
+    },
+    "token": {
+      "transform": {
+        "type": "jwt",
+        "claim": "sub"
+      }
+    },
+    "encryptedPhone": {
+      "transform": {
+        "type": "aes",
+        "key": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "iv": "YWJjZGVmZ2hpamtsbW5vcA==",
+        "mode": "cbc",
+        "padding": "pkcs7",
+        "keyFormat": "base64",
+        "ivFormat": "base64"
+      }
+    },
+    "encodedName": { "transform": { "type": "base64" } },
+    "link": { "transform": { "type": "url" } }
   }
 }
 ```
+
+`selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
+
+`transform` 支持的转换类型：
+
+| 类型 | 说明 | 参数 |
+|------|------|------|
+| `jwt` | 将 JWT 解码为 payload 明文（可提取指定 claim） | `claim`（可选，提取 payload 中的某个 claim） |
+| `aes` | AES 对称解密，输出 UTF-8 明文 | `key`（必填）、`iv`（CBC 必填）、`mode`（`cbc`/`ecb`）、`padding`（`pkcs7`/`none`）、`keyFormat`/`ivFormat`（`base64`/`hex`） |
+| `base64` | Base64 解码为 UTF-8 字符串 | — |
+| `url` | URL 百分号编码解码 | — |
+
+> 转换失败时保留原始值，并在报告中记录该字段的转换失败次数（`TransformFailureCount`）。
 
 ## Web 界面
 
@@ -176,7 +217,8 @@ ObjectAnalysisStatistic/
 │   ├── test_defaults.json            # 默认值规则示例
 │   ├── test_enum_violations.json     # 枚举约束违规示例
 │   ├── test_numeric_enum.json        # 数值枚举示例
-│   └── test_numeric_enum_rules.json  # 数值枚举规则示例
+│   ├── test_numeric_enum_rules.json  # 数值枚举规则示例
+│   └── test_transforms.json          # 字段选择 + 值转换规则示例
 │   （注：samples/report* 为生成物，已被 .gitignore 忽略）
 ├── src/
 │   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe, dotnet tool)
@@ -184,6 +226,7 @@ ObjectAnalysisStatistic/
 │   │   │   ├── AnalysisRunner.cs     # 分析流程编排
 │   │   │   ├── ObjectAnalyzer.cs     # 核心分析逻辑 (MapReduce 并行聚合)
 │   │   │   ├── FieldRule.cs          # 字段规则 & 枚举约束模型
+│   │   │   ├── FieldTransformProcessor.cs # 字段选择 & 值转换 (JWT/AES/Base64/URL)
 │   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
 │   │   │   ├── AnalysisResult.cs     # 分析结果数据模型
 │   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)

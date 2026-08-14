@@ -43,6 +43,15 @@ public class FieldStatistic
     // 规则校验相关
     public FieldRule? AppliedRule { get; set; }
 
+    // 字段值转换相关
+    /// <summary>转换失败次数（保留原始值并记录）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public long TransformFailureCount { get; set; }
+
+    /// <summary>应用的转换类型（如 jwt / aes / base64 / url）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TransformType { get; set; }
+
     // Fix #8: EnumViolations 封装为只读接口，防止外部调用者意外修改分析结果
     private readonly List<string> _enumViolations = new();
 

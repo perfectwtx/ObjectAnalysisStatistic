@@ -152,6 +152,15 @@ public static class HtmlReportExporter
 
             string coveragePct = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture);
             string ruleInfo = stat.AppliedRule != null ? "<span class=\"rule-badge\">已应用</span>" : "";
+            if (stat.TransformType != null)
+            {
+                ruleInfo += $"<span class=\"transform-badge\">转换: {Escape(stat.TransformType)}";
+                if (stat.TransformFailureCount > 0)
+                {
+                    ruleInfo += $" (失败 {stat.TransformFailureCount})";
+                }
+                ruleInfo += "</span>";
+            }
             if (stat.EnumViolations.Count > 0)
             {
                 var violations = string.Join(", ", stat.EnumViolations.Select(v => $"<span class=\"violation\">{Escape(v)}</span>"));
@@ -275,6 +284,7 @@ public static class HtmlReportExporter
         .na { color: #ccc; }
         .semantic-badge { background: #f3e5f5; color: #7b1fa2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
         .rule-badge { display: inline-block; background: #e7f1ff; color: #1b6ec2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .transform-badge { display: inline-block; background: #f3e5f5; color: #7b1fa2; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 4px; }
         .violations { margin-top: 4px; font-size: 0.8rem; color: #842029; }
         .violation { background: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; margin: 0 2px; }
         .quality-pass { color: #15803d; font-weight: 600; }

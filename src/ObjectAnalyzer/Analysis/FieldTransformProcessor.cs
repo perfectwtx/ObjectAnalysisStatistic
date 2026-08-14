@@ -1,0 +1,230 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+namespace ObjectAnalyzer.Analysis;
+
+/// <summary>
+/// 字段选择与值转换处理器。
+/// 支持：仅统计指定字段（field selection），并按规则文件对字段值做转换（JWT 解码 / AES 解密 / Base64 / URL 解码）。
+/// 转换失败时保留原始值，并记录失败次数到 FieldStatistic.TransformFailureCount。
+/// </summary>
+public sealed class FieldTransformProcessor
+{
+    private readonly Dictionary<string, FieldTransform> _transforms = new();
+    private readonly HashSet<string>? _selectedFields;
+    private readonly ConcurrentDictionary<string, long> _failures = new();
+
+    /// <summary>
+    /// 基于规则文件构建处理器。selectedFields 优先级高于 rules.SelectedFields。
+    /// </summary>
+    public FieldTransformProcessor(AnalysisRules? rules, IEnumerable<string>? selectedFields = null)
+    {
+        var explicitSelection = selectedFields as IReadOnlyCollection<string>;
+        if (explicitSelection is { Count: > 0 })
+        {
+            _selectedFields = new HashSet<string>(explicitSelection, StringComparer.OrdinalIgnoreCase);
+        }
+        else if (rules?.SelectedFields is { Count: > 0 } ruleFields)
+        {
+            _selectedFields = new HashSet<string>(ruleFields, StringComparer.OrdinalIgnoreCase);
+        }
+
+        if (rules != null)
+        {
+            foreach (var (field, rule) in rules.Fields)
+            {
+                if (rule.Transform == null) continue;
+                ValidateTransform(field, rule.Transform);
+                _transforms[field] = rule.Transform;
+            }
+        }
+    }
+
+    public bool HasSelectionOrTransforms => _selectedFields != null || _transforms.Count > 0;
+
+    /// <summary>
+    /// 包装对象序列：惰性应用字段选择与值转换（保持流式，不物化）。
+    /// </summary>
+    public IEnumerable<Dictionary<string, object?>> Wrap(IEnumerable<Dictionary<string, object?>> objects)
+    {
+        if (!HasSelectionOrTransforms)
+            return objects;
+        return TransformAndSelect(objects);
+    }
+
+    private IEnumerable<Dictionary<string, object?>> TransformAndSelect(
+        IEnumerable<Dictionary<string, object?>> objects)
+    {
+        foreach (var obj in objects)
+        {
+            var result = new Dictionary<string, object?>(obj.Count);
+            foreach (var kv in obj)
+            {
+                if (_selectedFields != null && !_selectedFields.Contains(kv.Key))
+                    continue;
+
+                if (_transforms.TryGetValue(kv.Key, out var transform)
+                    && TryApply(transform, kv.Value, out var newValue))
+                {
+                    result[kv.Key] = newValue;
+                }
+                else
+                {
+                    // 无转换，或转换失败（保留原始值并记录失败）
+                    if (transform != null)
+                        _failures.AddOrUpdate(kv.Key, 1, (_, c) => c + 1);
+                    result[kv.Key] = kv.Value;
+                }
+            }
+            yield return result;
+        }
+    }
+
+    /// <summary>
+    /// 分析完成后，将转换失败次数与转换类型回填到统计结果。
+    /// </summary>
+    public void ApplyFailures(AnalysisResult result)
+    {
+        foreach (var stat in result.FieldStatistics)
+        {
+            if (_failures.TryGetValue(stat.FieldName, out long count))
+                stat.TransformFailureCount = count;
+            if (_transforms.TryGetValue(stat.FieldName, out var transform))
+                stat.TransformType = transform.Type;
+        }
+    }
+
+    private static void ValidateTransform(string field, FieldTransform transform)
+    {
+        string type = transform.Type.Trim().ToLowerInvariant();
+        switch (type)
+        {
+            case "jwt":
+            case "base64":
+            case "url":
+                break;
+            case "aes":
+                if (string.IsNullOrEmpty(transform.Key))
+                    throw new InvalidDataException($"字段 [{field}] 的 AES 转换缺少 key 配置。");
+                break;
+            default:
+                throw new InvalidDataException($"字段 [{field}] 的转换类型不支持: {transform.Type}（支持 jwt / aes / base64 / url）。");
+        }
+    }
+
+    private static bool TryApply(FieldTransform transform, object? value, out object? result)
+    {
+        result = value;
+        if (value is not string str)
+            return true; // 非字符串值不做转换，也不计为失败
+
+        try
+        {
+            result = transform.Type.Trim().ToLowerInvariant() switch
+            {
+                "jwt" => ApplyJwt(transform, str),
+                "aes" => ApplyAes(transform, str),
+                "base64" => ApplyBase64(str),
+                "url" => ApplyUrl(str),
+                _ => str
+            };
+            return true;
+        }
+        catch
+        {
+            result = value; // 保留原始值
+            return false;
+        }
+    }
+
+    // ── JWT 解码：提取 payload（或指定 claim）──
+    private static string ApplyJwt(FieldTransform transform, string jwt)
+    {
+        string[] parts = jwt.Split('.');
+        if (parts.Length < 2)
+            throw new InvalidDataException("JWT 格式无效（需至少 header.payload）。");
+
+        string payload = Base64UrlDecode(parts[1]);
+        if (string.IsNullOrWhiteSpace(transform.Claim))
+            return payload;
+
+        using var doc = JsonDocument.Parse(payload);
+        if (!doc.RootElement.TryGetProperty(transform.Claim, out var claim))
+            throw new InvalidDataException($"JWT payload 中不存在 claim: {transform.Claim}");
+
+        return claim.ValueKind switch
+        {
+            JsonValueKind.String => claim.GetString() ?? "",
+            JsonValueKind.Number => claim.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            _ => claim.GetRawText()
+        };
+    }
+
+    private static string Base64UrlDecode(string input)
+    {
+        string s = input.Replace('-', '+').Replace('_', '/');
+        switch (s.Length % 4)
+        {
+            case 2: s += "=="; break;
+            case 3: s += "="; break;
+        }
+        return Encoding.UTF8.GetString(Convert.FromBase64String(s));
+    }
+
+    // ── AES 解密 ──
+    private static string ApplyAes(FieldTransform transform, string cipherText)
+    {
+        CipherMode mode = string.Equals(transform.Mode, "ecb", StringComparison.OrdinalIgnoreCase)
+            ? CipherMode.ECB
+            : CipherMode.CBC;
+        PaddingMode padding = string.Equals(transform.Padding, "none", StringComparison.OrdinalIgnoreCase)
+            ? PaddingMode.None
+            : PaddingMode.PKCS7;
+
+        byte[] key = DecodeBytes(transform.Key!, transform.KeyFormat);
+        byte[] cipher = Convert.FromBase64String(cipherText);
+
+        using var aes = Aes.Create();
+        aes.Mode = mode;
+        aes.Padding = padding;
+        aes.Key = key;
+        if (mode == CipherMode.CBC)
+        {
+            if (string.IsNullOrEmpty(transform.Iv))
+                throw new InvalidDataException("CBC 模式需要提供 iv。");
+            aes.IV = DecodeBytes(transform.Iv, transform.IvFormat);
+        }
+
+        using var decryptor = aes.CreateDecryptor();
+        byte[] plain = decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
+        return Encoding.UTF8.GetString(plain);
+    }
+
+    private static byte[] DecodeBytes(string value, string? format)
+    {
+        return string.Equals(format, "hex", StringComparison.OrdinalIgnoreCase)
+            ? Convert.FromHexString(value)
+            : Convert.FromBase64String(value);
+    }
+
+    // ── Base64 解码 ──
+    private static string ApplyBase64(string input) =>
+        Encoding.UTF8.GetString(Convert.FromBase64String(input));
+
+    // ── URL 解码 ──
+    private static string ApplyUrl(string input) =>
+        System.Net.WebUtility.UrlDecode(input);
+
+    /// <summary>供测试与诊断使用的字段名集合（排序后）。</summary>
+    internal IReadOnlyCollection<string>? GetSelectedFields() => _selectedFields;
+
+    internal IReadOnlyDictionary<string, FieldTransform> GetTransforms() => _transforms;
+}

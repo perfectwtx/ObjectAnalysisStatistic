@@ -25,13 +25,15 @@ public static class CsvReportExporter
     private static void WriteCsv(TextWriter writer, AnalysisResult result)
     {
         // Coverage 输出 0.0~1.0 的机器可读小数，方便 CI/表格直接做数值计算
-        writer.WriteLine("FieldName,Count,Coverage,PrimaryType,DefaultValue,UniqueValues,Truncated,EnumViolations");
+        writer.WriteLine("FieldName,Count,Coverage,PrimaryType,DefaultValue,UniqueValues,Truncated,TransformType,TransformFailures,EnumViolations");
 
         foreach (var stat in result.FieldStatistics)
         {
             string coverage = stat.Coverage.ToString("F4", CultureInfo.InvariantCulture);
             string unique = stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
             string truncated = stat.ValueCountsTruncated ? "true" : "false";
+            string transformType = stat.TransformType ?? "";
+            string transformFailures = stat.TransformFailureCount.ToString(CultureInfo.InvariantCulture);
             string violations = string.Join(";", stat.EnumViolations);
 
             writer.Write(CsvField(stat.FieldName)); writer.Write(',');
@@ -41,6 +43,8 @@ public static class CsvReportExporter
             writer.Write(CsvField(stat.DefaultValueRepresentation ?? "")); writer.Write(',');
             writer.Write(unique); writer.Write(',');
             writer.Write(truncated); writer.Write(',');
+            writer.Write(CsvField(transformType)); writer.Write(',');
+            writer.Write(transformFailures); writer.Write(',');
             writer.Write(CsvField(violations)); writer.WriteLine();
         }
     }

@@ -20,4 +20,7 @@ public sealed class AnalysisOptions
     public int MaxDegreeOfParallelism { get; set; } = -1; // -1 = 使用默认（所有核心）
     public string? ExportSchema { get; set; } // "csharp", "typescript", "json-schema"
     public string? SchemaOutputPath { get; set; }
+
+    /// <summary>仅统计这些字段（逗号分隔，来自 --fields）。</summary>
+    public string? Fields { get; set; }
 }

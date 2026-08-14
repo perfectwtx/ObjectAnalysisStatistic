@@ -51,6 +51,9 @@ public sealed class AnalysisState : IDisposable
     public string? RulesFilePath { get; set; }
     public string? RulesFileName { get; set; }
 
+    // --fields：仅统计这些字段（逗号分隔）
+    public string Fields { get; set; } = "";
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();

@@ -1,0 +1,27 @@
+{
+  "selectedFields": ["token", "encryptedPhone", "encodedName"],
+  "fields": {
+    "token": {
+      "transform": {
+        "type": "jwt",
+        "claim": "sub"
+      }
+    },
+    "encryptedPhone": {
+      "transform": {
+        "type": "aes",
+        "key": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "iv": "YWJjZGVmZ2hpamtsbW5vcA==",
+        "mode": "cbc",
+        "padding": "pkcs7",
+        "keyFormat": "base64",
+        "ivFormat": "base64"
+      }
+    },
+    "encodedName": {
+      "transform": {
+        "type": "base64"
+      }
+    }
+  }
+}

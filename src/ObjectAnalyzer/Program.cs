@@ -51,7 +51,11 @@ excelJsonColumnOption.AddCompletions("A", "B", "C", "D", "E");
 
 var rulesOption = new Option<FileInfo?>(
     aliases: CliAliases.Rules,
-    description: "指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型和枚举约束。");
+    description: "指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束以及字段值转换（解密 / JWT 转明文等）。");
+
+var fieldsOption = new Option<string?>(
+    aliases: CliAliases.Fields,
+    description: "仅统计这些字段（逗号分隔）。与规则文件的 transform 配合时，字段值将按规则转换后再统计。");
 
 var parallelOption = new Option<int>(
     aliases: CliAliases.Parallel,
@@ -90,6 +94,7 @@ rootCommand.AddOption(typeOption);
 rootCommand.AddOption(typeNameOption);
 rootCommand.AddOption(excelJsonColumnOption);
 rootCommand.AddOption(rulesOption);
+rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(parallelOption);
 rootCommand.AddOption(violationsOption);
 rootCommand.AddOption(qualityOption);
@@ -110,6 +115,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var typeName = parseResult.GetValueForOption(typeNameOption);
     var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
     var rules = parseResult.GetValueForOption(rulesOption);
+    var fields = parseResult.GetValueForOption(fieldsOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
     var violations = parseResult.GetValueForOption(violationsOption);
     var quality = parseResult.GetValueForOption(qualityOption);
@@ -150,6 +156,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         ExcelJsonColumn = excelJsonColumn ?? "A",
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
+        Fields = fields,
         ViolationsPath = violations?.FullName,
         QualityPath = quality?.FullName,
         FailOnViolations = failOnViolations,
@@ -177,6 +184,7 @@ static class CliAliases
     public static readonly string[] Type = { "--type", "-t" };
     public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
+    public static readonly string[] Fields = { "--fields" };
     public static readonly string[] Parallel = { "--parallel", "-p" };
     public static readonly string[] Violations = { "--violations" };
     public static readonly string[] Quality = { "--quality" };
