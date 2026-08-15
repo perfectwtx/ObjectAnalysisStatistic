@@ -250,7 +250,8 @@ ObjectAnalysisStatistic/
 │   ├── test_unwrap_rules.json        # 转换后 JSON 展开规则示例 (parse: json)
 │   ├── test_data_unwrap.json         # 解密后对象展开示例数据
 │   ├── test_filter_rules.json        # 字段过滤规则示例 (filter)
-│   └── test_data_filter.json         # 字段过滤示例数据
+│   ├── test_data_filter.json         # 字段过滤示例数据
+│   ├── test_data_semantic.json       # 语义推断示例数据 (Email/UUID/IPv4/URL/DateTime)
 │   （注：samples/report* 为生成物，已被 .gitignore 忽略）
 ├── src/
 │   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe, dotnet tool)

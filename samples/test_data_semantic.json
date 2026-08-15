@@ -1,0 +1,38 @@
+[
+    {
+        "name":  "张三",
+        "email":  "zhangsan@example.com",
+        "sessionId":  "550e8400-e29b-41d4-a716-446655440000",
+        "url":  "https://example.com/page/1",
+        "clientIp":  "192.168.1.10",
+        "createdAt":  "2026-01-05T10:30:00Z",
+        "status":  "active"
+    },
+    {
+        "name":  "李四",
+        "email":  "lisi@corp.cn",
+        "sessionId":  "1f0e8a2b-7c3d-4e5f-9a6b-7c8d9e0f1a2b",
+        "url":  "https://shop.example.com/item/42",
+        "clientIp":  "10.20.30.40",
+        "createdAt":  "2026-03-12T08:15:00+08:00",
+        "status":  "active"
+    },
+    {
+        "name":  "王五",
+        "email":  "wangwu@test.net",
+        "sessionId":  "8a9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d",
+        "url":  "https://blog.example.com/2026/analysis",
+        "clientIp":  "172.16.0.5",
+        "createdAt":  "2026-06-20T23:59:59",
+        "status":  "disabled"
+    },
+    {
+        "name":  "赵六",
+        "email":  "zhaoliu@example.org",
+        "sessionId":  "c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+        "url":  "ftp://files.example.com/repo/data.json",
+        "clientIp":  "203.0.113.7",
+        "createdAt":  "2024-11-02",
+        "status":  "active"
+    }
+]
