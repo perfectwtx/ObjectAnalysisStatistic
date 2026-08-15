@@ -105,6 +105,9 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_filter.json -r s
 # 解密后展开：base64 结果若为 JSON 对象，展开为 payload.city / payload.age 再统计，并可继续过滤
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_unwrap.json -r samples/test_unwrap_rules.json --where "payload.city == '上海' AND payload.age >= 28"
 
+# 单文件整合：字段选择 + 过滤 + 枚举约束 + 默认值 + 主导类型 + 解密后展开，一次完成
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_all_in_one.json -r samples/test_all_in_one.json
+
 # 导出 Markdown 报告 + 独立违规清单（便于 CI 断言）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.md --violations violations.json
 
@@ -252,6 +255,8 @@ ObjectAnalysisStatistic/
 │   ├── test_filter_rules.json        # 字段过滤规则示例 (filter)
 │   ├── test_data_filter.json         # 字段过滤示例数据
 │   ├── test_data_semantic.json       # 语义推断示例数据 (Email/UUID/IPv4/URL/DateTime)
+│   ├── test_all_in_one.json          # 单文件整合示例（选择+过滤+枚举+转换+展开）
+│   └── test_data_all_in_one.json     # 整合示例数据
 │   （注：samples/report* 为生成物，已被 .gitignore 忽略）
 ├── src/
 │   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe, dotnet tool)
