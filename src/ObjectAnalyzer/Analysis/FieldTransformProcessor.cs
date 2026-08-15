@@ -144,13 +144,10 @@ public sealed class FieldTransformProcessor
             case "aes":
                 if (string.IsNullOrEmpty(transform.Key))
                     throw new InvalidDataException($"字段 [{field}] 的 AES 转换缺少 key 配置。");
-                foreach (var (name, value) in new[] { ("format", transform.Format), ("keyFormat", transform.KeyFormat), ("ivFormat", transform.IvFormat) })
-                {
-                    if (!string.IsNullOrWhiteSpace(value)
-                        && value.Trim() != "base64"
-                        && value.Trim() != "hex")
-                        throw new InvalidDataException($"字段 [{field}] 的 AES {name} 不支持: {value}（支持 base64 / hex）。");
-                }
+                if (!string.IsNullOrWhiteSpace(transform.Format)
+                    && transform.Format.Trim() != "base64"
+                    && transform.Format.Trim() != "hex")
+                    throw new InvalidDataException($"字段 [{field}] 的 AES format 不支持: {transform.Format}（支持 base64 / hex）。");
                 break;
             default:
                 throw new InvalidDataException($"字段 [{field}] 的转换类型不支持: {transform.Type}（支持 jwt / aes / base64 / url）。");
@@ -253,7 +250,7 @@ public sealed class FieldTransformProcessor
             ? PaddingMode.None
             : PaddingMode.PKCS7;
 
-        byte[] key = DecodeBytes(transform.Key!, transform.Format ?? transform.KeyFormat);
+        byte[] key = DecodeBytes(transform.Key!, transform.Format);
         byte[] cipher = Convert.FromBase64String(cipherText);
 
         using var aes = Aes.Create();
@@ -264,7 +261,7 @@ public sealed class FieldTransformProcessor
         {
             if (string.IsNullOrEmpty(transform.Iv))
                 throw new InvalidDataException("CBC 模式需要提供 iv。");
-            aes.IV = DecodeBytes(transform.Iv, transform.Format ?? transform.IvFormat);
+            aes.IV = DecodeBytes(transform.Iv, transform.Format);
         }
 
         using var decryptor = aes.CreateDecryptor();

@@ -200,14 +200,16 @@ public static class AnalysisRunner
         if (!string.IsNullOrEmpty(options.ExportSchema))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string schemaPath = options.SchemaOutputPath ?? Path.ChangeExtension(
-                options.OutputPath ?? options.InputPath,
-                options.ExportSchema.ToLowerInvariant() switch
-                {
-                    "csharp" or "cs" => ".cs",
-                    "typescript" or "ts" => ".d.ts",
-                    _ => ".schema.json"
-                });
+            string basePath = options.OutputPath ?? options.InputPath;
+            string schemaExt = options.ExportSchema.ToLowerInvariant() switch
+            {
+                "csharp" or "cs" => ".schema.cs",
+                "typescript" or "ts" => ".schema.d.ts",
+                _ => ".schema.json"
+            };
+            string schemaPath = options.SchemaOutputPath ?? Path.Combine(
+                Path.GetDirectoryName(basePath) ?? "",
+                Path.GetFileNameWithoutExtension(basePath) + schemaExt);
 
             AnsiConsole.MarkupLine($"正在导出 [bold green]{options.ExportSchema}[/] 格式 Schema 定义至: [blue]{Markup.Escape(schemaPath)}[/] ...");
             SchemaExporter.Export(result, options.ExportSchema, schemaPath);

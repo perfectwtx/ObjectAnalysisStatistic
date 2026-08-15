@@ -237,7 +237,7 @@ public class FieldTransformTests
     [Fact]
     public void Transform_Aes_UnifiedFormatField_Works()
     {
-        // 与上例相同，但使用统一的 format 字段替代 keyFormat/ivFormat
+        // 与上例相同，但显式声明统一的 format 编码
         byte[] key = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef");
         byte[] iv = Encoding.UTF8.GetBytes("abcdefghijklmnop");
         string plainText = "sensitive-data";

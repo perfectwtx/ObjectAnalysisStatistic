@@ -358,7 +358,8 @@ public static class SchemaExporter
                 fieldType = childNode.TsBaseType;
             }
 
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {childName}{optional}: {fieldType};");
+            string formattedPropName = FormatTsPropertyName(childName);
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {formattedPropName}{optional}: {fieldType};");
         }
         sb.AppendLine("}");
         sb.AppendLine();
@@ -497,5 +498,13 @@ public static class SchemaExporter
         if (char.IsDigit(sanitized[0])) sanitized = "_" + sanitized;
 
         return char.ToUpperInvariant(sanitized[0]) + sanitized.Substring(1);
+    }
+
+    private static string FormatTsPropertyName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "\"\"";
+        bool isValid = (char.IsLetter(name[0]) || name[0] == '_' || name[0] == '$') &&
+                       name.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '$');
+        return isValid ? name : $"\"{name}\"";
     }
 }

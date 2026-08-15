@@ -200,7 +200,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 | 类型 | 说明 | 参数 |
 |------|------|------|
 | `jwt` | 将 JWT 解码为 payload 明文（可提取指定 claim） | `claim`（可选，提取 payload 中的某个 claim） |
-| `aes` | AES 对称解密，输出 UTF-8 明文 | `key`（必填）、`iv`（CBC 必填）、`mode`（`cbc`/`ecb`）、`padding`（`pkcs7`/`none`）、`format`（`base64`/`hex`，Key 与 IV 统一编码；旧参数 `keyFormat`/`ivFormat` 仍兼容且优先） |
+| `aes` | AES 对称解密，输出 UTF-8 明文 | `key`（必填）、`iv`（CBC 必填）、`mode`（`cbc`/`ecb`）、`padding`（`pkcs7`/`none`）、`format`（`base64`/`hex`，Key 与 IV 统一编码） |
 | `base64` | Base64 解码为 UTF-8 字符串 | — |
 | `url` | URL 百分号编码解码 | — |
 
