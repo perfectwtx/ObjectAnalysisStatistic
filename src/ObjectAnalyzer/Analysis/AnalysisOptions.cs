@@ -23,4 +23,7 @@ public sealed class AnalysisOptions
 
     /// <summary>仅统计这些字段（逗号分隔，来自 --fields）。</summary>
     public string? Fields { get; set; }
+
+    /// <summary>按字段值过滤对象后再统计（--where，如 "Age &gt; 18 AND Status in ['A','B']"）。</summary>
+    public string? Filter { get; set; }
 }

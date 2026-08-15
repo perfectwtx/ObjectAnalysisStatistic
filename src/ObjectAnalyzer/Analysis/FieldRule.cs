@@ -75,4 +75,8 @@ public class AnalysisRules
     /// <summary>仅统计这些字段（逗号分隔）。优先级低于 CLI 的 --fields 选项。</summary>
     [JsonPropertyName("selectedFields")]
     public List<string>? SelectedFields { get; set; }
+
+    /// <summary>全局过滤条件表达式（如 "Age &gt; 18 AND Gender in ['男','女']"）。优先级低于 CLI 的 --where 选项。</summary>
+    [JsonPropertyName("filter")]
+    public string? Filter { get; set; }
 }

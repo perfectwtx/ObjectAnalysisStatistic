@@ -10,8 +10,9 @@ using System.Text.Json;
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
-/// 字段选择与值转换处理器。
-/// 支持：仅统计指定字段（field selection），并按规则文件对字段值做转换（JWT 解码 / AES 解密 / Base64 / URL 解码）。
+/// 字段选择、值转换与过滤处理器。
+/// 支持：仅统计指定字段（field selection）、按规则文件对字段值做转换（JWT 解码 / AES 解密 / Base64 / URL 解码），
+/// 以及按过滤表达式筛选对象（--where / 规则文件 filter）；过滤在字段选择与值转换之后执行。
 /// 转换失败时保留原始值，并记录失败次数到 FieldStatistic.TransformFailureCount。
 /// </summary>
 public sealed class FieldTransformProcessor
@@ -19,11 +20,13 @@ public sealed class FieldTransformProcessor
     private readonly Dictionary<string, FieldTransform> _transforms = new();
     private readonly HashSet<string>? _selectedFields;
     private readonly ConcurrentDictionary<string, long> _failures = new();
+    private readonly FieldFilter? _filter;
 
     /// <summary>
-    /// 基于规则文件构建处理器。selectedFields 优先级高于 rules.SelectedFields。
+    /// 基于规则文件构建处理器。selectedFields 优先级高于 rules.SelectedFields；
+    /// filterExpression 优先级高于 rules.Filter（为空字符串时回退到 rules.Filter）。
     /// </summary>
-    public FieldTransformProcessor(AnalysisRules? rules, IEnumerable<string>? selectedFields = null)
+    public FieldTransformProcessor(AnalysisRules? rules, IEnumerable<string>? selectedFields = null, string? filterExpression = null)
     {
         var explicitSelection = selectedFields as IReadOnlyCollection<string>;
         if (explicitSelection is { Count: > 0 })
@@ -33,6 +36,12 @@ public sealed class FieldTransformProcessor
         else if (rules?.SelectedFields is { Count: > 0 } ruleFields)
         {
             _selectedFields = new HashSet<string>(ruleFields, StringComparer.OrdinalIgnoreCase);
+        }
+
+        string? filter = string.IsNullOrWhiteSpace(filterExpression) ? rules?.Filter : filterExpression;
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            _filter = new FieldFilter(filter);
         }
 
         if (rules != null)
@@ -46,10 +55,10 @@ public sealed class FieldTransformProcessor
         }
     }
 
-    public bool HasSelectionOrTransforms => _selectedFields != null || _transforms.Count > 0;
+    public bool HasSelectionOrTransforms => _selectedFields != null || _transforms.Count > 0 || _filter != null;
 
     /// <summary>
-    /// 包装对象序列：惰性应用字段选择与值转换（保持流式，不物化）。
+    /// 包装对象序列：惰性应用字段选择、值转换与过滤（保持流式，不物化）。
     /// </summary>
     public IEnumerable<Dictionary<string, object?>> Wrap(IEnumerable<Dictionary<string, object?>> objects)
     {
@@ -82,6 +91,11 @@ public sealed class FieldTransformProcessor
                     result[kv.Key] = kv.Value;
                 }
             }
+
+            // 过滤在字段选择与值转换之后执行
+            if (_filter != null && !_filter.Evaluate(result))
+                continue;
+
             yield return result;
         }
     }
@@ -227,4 +241,7 @@ public sealed class FieldTransformProcessor
     internal IReadOnlyCollection<string>? GetSelectedFields() => _selectedFields;
 
     internal IReadOnlyDictionary<string, FieldTransform> GetTransforms() => _transforms;
+
+    /// <summary>供测试与诊断使用的过滤表达式（null 表示未启用过滤）。</summary>
+    internal FieldFilter? GetFilter() => _filter;
 }

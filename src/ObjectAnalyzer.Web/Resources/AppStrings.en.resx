@@ -35,6 +35,8 @@
   <data name="OptRulesFile" xml:space="preserve"><value>Rules file (.json)</value></data>
   <data name="OptFields" xml:space="preserve"><value>Fields</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>comma-separated, e.g. name,age</value></data>
+  <data name="OptWhere" xml:space="preserve"><value>Filter</value></data>
+  <data name="OptWherePlaceholder" xml:space="preserve"><value>e.g. Age &gt; 18 AND Status in ['A','B']</value></data>
   <data name="Analyzing" xml:space="preserve"><value>Analyzing...</value></data>
   <data name="StartAnalysis" xml:space="preserve"><value>Start Analysis</value></data>
   <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>

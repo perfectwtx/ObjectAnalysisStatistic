@@ -57,6 +57,10 @@ var fieldsOption = new Option<string?>(
     aliases: CliAliases.Fields,
     description: "仅统计这些字段（逗号分隔）。与规则文件的 transform 配合时，字段值将按规则转换后再统计。");
 
+var whereOption = new Option<string?>(
+    aliases: CliAliases.Where,
+    description: "按字段值过滤对象后再统计（如 \"Age > 18 AND Status in ['A','B']\"）。支持 == != > < >= <=、in/not in、like/not like、AND/OR 与括号；过滤在字段选择与值转换之后执行。");
+
 var parallelOption = new Option<int>(
     aliases: CliAliases.Parallel,
     description: "指定分析时的最大并行线程数 (默认使用所有核心)。",
@@ -95,6 +99,7 @@ rootCommand.AddOption(typeNameOption);
 rootCommand.AddOption(excelJsonColumnOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(fieldsOption);
+rootCommand.AddOption(whereOption);
 rootCommand.AddOption(parallelOption);
 rootCommand.AddOption(violationsOption);
 rootCommand.AddOption(qualityOption);
@@ -116,6 +121,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
+    var where = parseResult.GetValueForOption(whereOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
     var violations = parseResult.GetValueForOption(violationsOption);
     var quality = parseResult.GetValueForOption(qualityOption);
@@ -157,6 +163,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
         Fields = fields,
+        Filter = where,
         ViolationsPath = violations?.FullName,
         QualityPath = quality?.FullName,
         FailOnViolations = failOnViolations,
@@ -185,6 +192,7 @@ static class CliAliases
     public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Fields = { "--fields" };
+    public static readonly string[] Where = { "--where" };
     public static readonly string[] Parallel = { "--parallel", "-p" };
     public static readonly string[] Violations = { "--violations" };
     public static readonly string[] Quality = { "--quality" };

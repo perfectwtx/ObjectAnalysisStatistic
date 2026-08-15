@@ -135,8 +135,17 @@ public static class AnalysisRunner
             rules = LoadRules(options.RulesFile);
         }
 
-        // 字段选择 + 值转换（--fields / 规则文件 selectedFields / transform）
-        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields));
+        // 过滤条件：--where 优先，其次规则文件 filter
+        string? effectiveFilter = !string.IsNullOrWhiteSpace(options.Filter)
+            ? options.Filter
+            : !string.IsNullOrWhiteSpace(rules?.Filter) ? rules.Filter : null;
+
+        // 字段选择 + 值转换 + 过滤（--fields / 规则文件 selectedFields / transform / --where / 规则文件 filter）
+        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields), options.Filter);
+        if (effectiveFilter != null)
+        {
+            AnsiConsole.MarkupLine($"[grey][[过滤]][/] 已应用过滤条件: [blue]{Markup.Escape(effectiveFilter)}[/]");
+        }
         if (transformProcessor.HasSelectionOrTransforms)
         {
             parsedObjects = transformProcessor.Wrap(parsedObjects);
@@ -159,6 +168,7 @@ public static class AnalysisRunner
 
         // 转换失败次数与转换类型回填到统计结果
         transformProcessor.ApplyFailures(result);
+        result.FilterExpression = effectiveFilter;
 
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 

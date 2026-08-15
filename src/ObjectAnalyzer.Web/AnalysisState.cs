@@ -54,6 +54,9 @@ public sealed class AnalysisState : IDisposable
     // --fields：仅统计这些字段（逗号分隔）
     public string Fields { get; set; } = "";
 
+    // --where：按字段值过滤对象后再统计（过滤表达式）
+    public string Filter { get; set; } = "";
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();

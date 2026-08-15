@@ -89,6 +89,10 @@
                     <input type="text" value="@State.Fields" @oninput="OnFieldsChange" placeholder="@Loc["OptFieldsPlaceholder"]" />
                 </label>
                 <label class="option-item">
+                    <span>@Loc["OptWhere"]</span>
+                    <input type="text" value="@State.Filter" @oninput="OnFilterChange" placeholder="@Loc["OptWherePlaceholder"]" />
+                </label>
+                <label class="option-item">
                     <span>@Loc["OptTypeName"]</span>
                     <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="@Loc["OptTypeNamePlaceholder"]" />
                 </label>
@@ -469,6 +473,7 @@
         string excelJsonColumn = State.ExcelJsonColumn;
         string? rulesFilePath = State.RulesFilePath;
         string fieldsText = State.Fields;
+        string filterText = State.Filter;
         int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
         string? typedError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
@@ -526,10 +531,11 @@
                         : Environment.ProcessorCount
                 };
 
-                // 字段选择 + 值转换（--fields / 规则文件 selectedFields / transform）
+                // 字段选择 + 值转换 + 过滤（--fields / 规则文件 selectedFields / transform / --where / 规则文件 filter）
                 var transformProcessor = new Core.Analysis.FieldTransformProcessor(
                     rules,
-                    SplitFields(fieldsText));
+                    SplitFields(fieldsText),
+                    filterText);
                 if (transformProcessor.HasSelectionOrTransforms)
                 {
                     objects = transformProcessor.Wrap(objects);
@@ -645,6 +651,11 @@
     private void OnFieldsChange(ChangeEventArgs e)
     {
         State.Fields = e.Value?.ToString()?.Trim() ?? "";
+    }
+
+    private void OnFilterChange(ChangeEventArgs e)
+    {
+        State.Filter = e.Value?.ToString()?.Trim() ?? "";
     }
 
     private void OnParallelChange(ChangeEventArgs e)

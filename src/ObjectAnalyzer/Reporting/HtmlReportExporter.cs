@@ -49,6 +49,10 @@ public static class HtmlReportExporter
         writer.WriteLine("<div class=\"header\">");
         writer.Write("<h1>"); writer.Write(title); writer.WriteLine("</h1>");
         writer.Write("<p class=\"timestamp\">生成时间: "); writer.Write(timestamp); writer.WriteLine("</p>");
+        if (!string.IsNullOrEmpty(result.FilterExpression))
+        {
+            writer.Write("<p class=\"filter-line\">过滤条件: <code>"); writer.Write(Escape(result.FilterExpression)); writer.WriteLine("</code></p>");
+        }
         writer.WriteLine("</div>");
 
         // 摘要卡片
@@ -264,6 +268,7 @@ public static class HtmlReportExporter
         .header { text-align: center; margin-bottom: 32px; }
         .header h1 { font-size: 1.8rem; color: #1a1a2e; }
         .timestamp { color: #888; font-size: 0.9rem; margin-top: 4px; }
+        .filter-line { color: #7b1fa2; font-size: 0.9rem; margin-top: 6px; }
         .cards { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
         .card { background: #fff; border-radius: 12px; padding: 20px 28px; min-width: 140px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-top: 4px solid #ccc; }
         .card.blue { border-top-color: #36a2eb; } .card.green { border-top-color: #4caf50; }

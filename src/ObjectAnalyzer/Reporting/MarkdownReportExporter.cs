@@ -30,6 +30,10 @@ public static class MarkdownReportExporter
         writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 唯一对象数: {result.TotalUniqueObjects}"));
         writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 重复组数: {result.TotalDuplicateGroups}"));
         writer.WriteLine(string.Create(CultureInfo.InvariantCulture, $"- 字段数: {result.FieldStatistics.Count}"));
+        if (!string.IsNullOrEmpty(result.FilterExpression))
+        {
+            writer.WriteLine($"- 过滤条件: `{result.FilterExpression}`");
+        }
         writer.WriteLine();
 
         // 数据质量摘要

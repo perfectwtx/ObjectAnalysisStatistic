@@ -35,6 +35,8 @@
   <data name="OptRulesFile" xml:space="preserve"><value>规则文件 (.json)</value></data>
   <data name="OptFields" xml:space="preserve"><value>统计字段</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>逗号分隔，如 name,age</value></data>
+  <data name="OptWhere" xml:space="preserve"><value>过滤条件</value></data>
+  <data name="OptWherePlaceholder" xml:space="preserve"><value>如 Age > 18 AND Status in ['A','B']</value></data>
   <data name="Analyzing" xml:space="preserve"><value>分析中...</value></data>
   <data name="StartAnalysis" xml:space="preserve"><value>开始分析</value></data>
   <data name="Cancel" xml:space="preserve"><value>取消</value></data>

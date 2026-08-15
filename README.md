@@ -17,6 +17,7 @@
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
 - Schema 代码导出：`--export-schema csharp|typescript|json-schema` 生成数据结构定义
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
+- 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
@@ -50,6 +51,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束和字段值转换 | 无 |
 | `--fields <NAMES>` | — | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
+| `--where <EXPR>` | — | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
 | `--violations <FILE>` | — | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
 | `--quality <FILE>` | — | 导出结构化数据质量报告 JSON（Pass/Fail 摘要 + 违规率 + 逐字段明细） | 无 |
 | `--fail-on-violations` | — | 存在枚举违规时以退出码 `3` 结束（质量门禁） | `false` |
@@ -93,6 +95,12 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json --fields na
 # 使用转换规则：解密 / JWT 转明文后统计指定字段
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_transforms.json --fields token,encryptedPhone,encodedName
 
+# 仅统计满足过滤条件的对象（age >= 25 且 status 为 active/vip）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_filter.json --where "age >= 25 AND status in ['active','vip']"
+
+# 通过规则文件配置过滤条件（等价于 --where，CLI 优先级更高）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_filter.json -r samples/test_filter_rules.json
+
 # 导出 Markdown 报告 + 独立违规清单（便于 CI 断言）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.md --violations violations.json
 
@@ -132,6 +140,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 ```json
 {
   "selectedFields": ["token"],
+  "filter": "age >= 25 AND status in ['active', 'vip']",
   "fields": {
     "Gender": {
       "defaultValue": "unknown",
@@ -167,6 +176,18 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 ```
 
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
+
+`filter` 为全局过滤条件（等价于 CLI `--where`，后者优先级更高），字段名大小写不敏感，应用于字段选择与值转换之后。支持的运算符：
+
+| 运算符 | 说明 | 示例 |
+|--------|------|------|
+| `==` / `!=` | 等于 / 不等于（数值弱比较，`"20" == 20` 成立） | `age == 20` |
+| `>` `<` `>=` `<=` | 数值或字符串比较 | `age >= 18` |
+| `in` / `not in` | 属于 / 不属于列表（`[]` 或 `['a','b',1,2]`） | `status in ['active','vip']` |
+| `like` / `not like` | 通配符匹配（`%` 任意串、`_` 单字符，大小写不敏感） | `name like '张%'` |
+| `AND` / `OR` / 括号 | 逻辑组合（大小写不敏感，`AND` 优先于 `OR`） | `age > 18 AND (gender == '男' OR vip == true)` |
+
+> 缺失字段视为 `null`；`null == null` 成立、`null != 'xx'` 成立。非法表达式在启动时报错退出。
 
 `transform` 支持的转换类型：
 
@@ -218,7 +239,10 @@ ObjectAnalysisStatistic/
 │   ├── test_enum_violations.json     # 枚举约束违规示例
 │   ├── test_numeric_enum.json        # 数值枚举示例
 │   ├── test_numeric_enum_rules.json  # 数值枚举规则示例
-│   └── test_transforms.json          # 字段选择 + 值转换规则示例
+│   ├── test_transforms.json          # 字段选择 + 值转换规则示例
+│   ├── test_data_transforms.json     # 字段转换示例数据
+│   ├── test_filter_rules.json        # 字段过滤规则示例 (filter)
+│   └── test_data_filter.json         # 字段过滤示例数据
 │   （注：samples/report* 为生成物，已被 .gitignore 忽略）
 ├── src/
 │   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe, dotnet tool)
@@ -226,7 +250,8 @@ ObjectAnalysisStatistic/
 │   │   │   ├── AnalysisRunner.cs     # 分析流程编排
 │   │   │   ├── ObjectAnalyzer.cs     # 核心分析逻辑 (MapReduce 并行聚合)
 │   │   │   ├── FieldRule.cs          # 字段规则 & 枚举约束模型
-│   │   │   ├── FieldTransformProcessor.cs # 字段选择 & 值转换 (JWT/AES/Base64/URL)
+│   │   │   ├── FieldTransformProcessor.cs # 字段选择 & 值转换 & 过滤 (JWT/AES/Base64/URL)
+│   │   │   ├── FieldFilter.cs         # 字段过滤表达式引擎 (--where)
 │   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
 │   │   │   ├── AnalysisResult.cs     # 分析结果数据模型
 │   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)
