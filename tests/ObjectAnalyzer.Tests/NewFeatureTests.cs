@@ -235,6 +235,56 @@ public class NewFeatureTests
     }
 
     // ──────────────────────────────────────────────
+    // primaryType 从 enumValues 自动推导
+    // ──────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("[0,1,2]", "Number")]
+    [InlineData("[true,false]", "Boolean")]
+    [InlineData("[\"A\",\"B\"]", "String")]
+    [InlineData("[0,1,\"Active\"]", "String")] // 混合类型 → String
+    public void Analyze_PrimaryType_AutoDerivedFromEnumValues(string enumJson, string expected)
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "f", "x" } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["f"] = new FieldRule
+        {
+            EnumValues = JsonSerializer.Deserialize<List<JsonElement>>(enumJson)
+        };
+
+        var result = Analyze(objects, rules);
+        var field = result.FieldStatistics.First(x => x.FieldName == "f");
+        Assert.Equal(expected, field.PrimaryType);
+    }
+
+    [Fact]
+    public void Analyze_PrimaryType_ExplicitOverridesAutoDerived()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "f", "x" } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["f"] = new FieldRule
+        {
+            PrimaryType = "Object",
+            EnumValues = new List<JsonElement>
+            {
+                JsonSerializer.Deserialize<JsonElement>("\"A\"")
+            }
+        };
+
+        var result = Analyze(objects, rules);
+        var field = result.FieldStatistics.First(x => x.FieldName == "f");
+        Assert.Equal("Object", field.PrimaryType);
+    }
+
+    // ──────────────────────────────────────────────
     // 报告导出 + ValueCountsTruncated 序列化
     // ──────────────────────────────────────────────
 

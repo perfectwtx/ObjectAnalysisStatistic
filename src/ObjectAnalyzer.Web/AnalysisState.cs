@@ -45,7 +45,7 @@ public sealed class AnalysisState : IDisposable
     // --type (.cs 类型定义文件)：以临时文件形式保存，避免在内存中缓存大内容
     public string? TypeFilePath { get; set; }
     public string? TypeFileName { get; set; }
-    public string? TypeName { get; set; }                         // --type-name
+    public string? TypeName { get; set; }                         // --type "File.cs:ClassName" 冒号后部分
 
     // 规则文件 (--rules)：以临时文件形式保存
     public string? RulesFilePath { get; set; }

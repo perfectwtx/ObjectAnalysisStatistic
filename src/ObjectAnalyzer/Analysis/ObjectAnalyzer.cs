@@ -309,7 +309,11 @@ public static partial class ObjectAnalyzer
                     stat.DefaultValueRepresentation = rule.DefaultValue.ToString();
                 }
 
-                if (!string.IsNullOrEmpty(rule.PrimaryType))
+                if (string.IsNullOrEmpty(rule.PrimaryType) && rule.EnumValues is { Count: > 0 })
+                {
+                    stat.PrimaryType = InferPrimaryTypeFromEnum(rule.EnumValues);
+                }
+                else if (!string.IsNullOrEmpty(rule.PrimaryType))
                 {
                     stat.PrimaryType = rule.PrimaryType;
                 }
@@ -582,6 +586,20 @@ public static partial class ObjectAnalyzer
         int tracked = stat.ValueCounts.Count -
             (stat.ValueCounts.ContainsKey("[Other values]") ? 1 : 0);
         return tracked >= MaxTrackedUniqueValues;
+    }
+
+    private static string InferPrimaryTypeFromEnum(List<System.Text.Json.JsonElement> enumElements)
+    {
+        bool any = false, allNumber = true, allBoolean = true;
+        foreach (var elem in enumElements)
+        {
+            any = true;
+            if (elem.ValueKind != JsonValueKind.Number) allNumber = false;
+            if (elem.ValueKind != JsonValueKind.True && elem.ValueKind != JsonValueKind.False) allBoolean = false;
+        }
+        if (any && allNumber) return "Number";
+        if (any && allBoolean) return "Boolean";
+        return "String";
     }
 
     private static void ValidateEnumValues(FieldStatistic stat, List<System.Text.Json.JsonElement> enumElements)

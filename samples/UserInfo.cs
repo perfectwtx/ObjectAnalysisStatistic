@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// 示例类型定义，对应 samples/test_data.json 中的对象结构。
-/// 用于演示 --type / --type-name 强类型反序列化功能。
+/// 用于演示 --type 强类型反序列化功能（.cs 含多个类时用冒号指定类名，如 --type "UserInfo.cs:UserInfo"）。
 /// </summary>
 public class UserInfo
 {

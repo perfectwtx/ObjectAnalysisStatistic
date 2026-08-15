@@ -39,11 +39,11 @@ public class FieldTransform
     [JsonPropertyName("claim")]
     public string? Claim { get; set; }
 
-    /// <summary>AES: 解密密钥（格式由 KeyFormat 决定）。</summary>
+    /// <summary>AES: 解密密钥（编码由 format / keyFormat 决定）。</summary>
     [JsonPropertyName("key")]
     public string? Key { get; set; }
 
-    /// <summary>AES: 初始化向量 IV（格式由 IvFormat 决定；ECB 模式无需）。</summary>
+    /// <summary>AES: 初始化向量 IV（编码由 format / ivFormat 决定；ECB 模式无需）。</summary>
     [JsonPropertyName("iv")]
     public string? Iv { get; set; }
 
@@ -55,11 +55,15 @@ public class FieldTransform
     [JsonPropertyName("padding")]
     public string? Padding { get; set; }
 
-    /// <summary>AES: Key 编码 base64（默认）或 hex。</summary>
+    /// <summary>AES: Key 与 IV 统一编码 base64（默认）或 hex（可被 keyFormat / ivFormat 单独覆盖）。</summary>
+    [JsonPropertyName("format")]
+    public string? Format { get; set; }
+
+    /// <summary>AES: Key 编码 base64（默认）或 hex。旧配置兼容，优先于 format。</summary>
     [JsonPropertyName("keyFormat")]
     public string? KeyFormat { get; set; }
 
-    /// <summary>AES: IV 编码 base64（默认）或 hex。</summary>
+    /// <summary>AES: IV 编码 base64（默认）或 hex。旧配置兼容，优先于 format。</summary>
     [JsonPropertyName("ivFormat")]
     public string? IvFormat { get; set; }
 

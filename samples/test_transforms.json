@@ -14,8 +14,7 @@
         "iv": "YWJjZGVmZ2hpamtsbW5vcA==",
         "mode": "cbc",
         "padding": "pkcs7",
-        "keyFormat": "base64",
-        "ivFormat": "base64"
+        "format": "base64"
       }
     },
     "encodedName": {

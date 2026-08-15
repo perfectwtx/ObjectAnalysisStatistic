@@ -36,13 +36,9 @@ var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
     description: "生成 Excel 测试文件 (samples/test_data.xlsx 和 samples/test_data_excel_json.xlsx) 并退出。");
 
-var typeOption = new Option<FileInfo?>(
+var typeOption = new Option<string?>(
     aliases: CliAliases.Type,
-    description: "指定 .cs 类型定义文件路径，用于强类型反序列化。");
-
-var typeNameOption = new Option<string?>(
-    name: "--type-name",
-    description: "指定目标类名（当 .cs 文件包含多个类时使用）。");
+    description: "指定 .cs 类型定义文件路径，用于强类型反序列化；可带类名: \"UserInfo.cs:User\"（.cs 含多个类时冒号后指定）。");
 
 var excelJsonColumnOption = new Option<string?>(
     aliases: CliAliases.ExcelJsonColumn,
@@ -80,12 +76,8 @@ var failOnViolationsOption = new Option<bool>(
 
 var exportSchemaOption = new Option<string?>(
     aliases: CliAliases.ExportSchema,
-    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema。");
+    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema；可带输出路径: \"csharp:out.cs\"（缺省自动推导）。");
 exportSchemaOption.AddCompletions("csharp", "typescript", "json-schema");
-
-var schemaOutputOption = new Option<FileInfo?>(
-    name: "--schema-output",
-    description: "指定 Schema 代码导出的文件保存路径。");
 
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
@@ -95,7 +87,6 @@ rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(typeOption);
-rootCommand.AddOption(typeNameOption);
 rootCommand.AddOption(excelJsonColumnOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(fieldsOption);
@@ -105,7 +96,6 @@ rootCommand.AddOption(violationsOption);
 rootCommand.AddOption(qualityOption);
 rootCommand.AddOption(failOnViolationsOption);
 rootCommand.AddOption(exportSchemaOption);
-rootCommand.AddOption(schemaOutputOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -117,7 +107,6 @@ rootCommand.SetHandler((InvocationContext context) =>
     var maxValues = parseResult.GetValueForOption(maxValuesOption);
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
     var type = parseResult.GetValueForOption(typeOption);
-    var typeName = parseResult.GetValueForOption(typeNameOption);
     var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
@@ -127,7 +116,6 @@ rootCommand.SetHandler((InvocationContext context) =>
     var quality = parseResult.GetValueForOption(qualityOption);
     var failOnViolations = parseResult.GetValueForOption(failOnViolationsOption);
     var exportSchema = parseResult.GetValueForOption(exportSchemaOption);
-    var schemaOutput = parseResult.GetValueForOption(schemaOutputOption);
 
     if (generateTestExcel)
     {
@@ -150,6 +138,9 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
+    var (typeFile, typeName) = SplitColonSuffix(type);
+    var (schemaFormat, schemaOutput) = SplitColonSuffix(exportSchema);
+
     var options = new AnalysisOptions
     {
         InputPath = input.FullName,
@@ -157,7 +148,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         Format = format,
         Flatten = !noFlatten,
         MaxValuesToShow = maxValues,
-        TypeFile = type?.FullName,
+        TypeFile = typeFile,
         TypeName = typeName,
         ExcelJsonColumn = excelJsonColumn ?? "A",
         RulesFile = rules?.FullName,
@@ -167,8 +158,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         ViolationsPath = violations?.FullName,
         QualityPath = quality?.FullName,
         FailOnViolations = failOnViolations,
-        ExportSchema = exportSchema,
-        SchemaOutputPath = schemaOutput?.FullName
+        ExportSchema = schemaFormat,
+        SchemaOutputPath = schemaOutput
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);
@@ -182,6 +173,17 @@ Console.CancelKeyPress += (_, e) =>
 
 return rootCommand.Invoke(args);
 
+/// <summary>按最后一个冒号切分 "路径[:后缀]"（类名或输出路径），无冒号时原样作为路径。</summary>
+static (string? path, string? suffix) SplitColonSuffix(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+        return (null, null);
+    int idx = value.LastIndexOf(':');
+    if (idx > 0 && idx < value.Length - 1)
+        return (value[..idx], value[(idx + 1)..]);
+    return (value, null);
+}
+
 static class CliAliases
 {
     public static readonly string[] Input = { "--input", "-i" };
@@ -191,10 +193,10 @@ static class CliAliases
     public static readonly string[] Type = { "--type", "-t" };
     public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
-    public static readonly string[] Fields = { "--fields" };
-    public static readonly string[] Where = { "--where" };
+    public static readonly string[] Fields = { "--fields", "-F" };
+    public static readonly string[] Where = { "--where", "-w" };
     public static readonly string[] Parallel = { "--parallel", "-p" };
-    public static readonly string[] Violations = { "--violations" };
-    public static readonly string[] Quality = { "--quality" };
+    public static readonly string[] Violations = { "--violations", "-v" };
+    public static readonly string[] Quality = { "--quality", "-q" };
     public static readonly string[] ExportSchema = { "--export-schema", "-s" };
 }

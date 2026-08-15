@@ -119,7 +119,7 @@ public static class TypeLoader
                 var names = string.Join(", ", publicClasses.Select(t => t.Name));
                 context.Dispose();
                 throw new InvalidOperationException(
-                    $" .cs 文件中包含多个 public class: {names}。请使用 --type-name 指定目标类名。");
+                    $" .cs 文件中包含多个 public class: {names}。请在 --type 中指定类名，如 --type \"UserInfo.cs:User\"。");
             }
         }
 

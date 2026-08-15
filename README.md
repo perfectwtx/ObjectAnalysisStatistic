@@ -5,7 +5,7 @@
 - CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)
 - 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML
 - Excel JSON 列模式：从 Excel 指定列逐行读取 JSON 字符串并解析 (`--format excel-json`)
-- 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type` / `--type-name`)
+- 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)
 - 字段统计：每个字段的出现频次、覆盖率、主导数据类型
 - 值频率分析：展示每个字段中唯一值的出现次数与占比
 - 默认值推断：自动推断字段可能的默认值 (`null` / `0` / `false`)
@@ -47,17 +47,15 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--format <FORMAT>` | `-f` | 显式指定输入格式：`json`、`jsonl`、`csv`、`excel`、`excel-json`、`xml`、`yaml` | 自动检测 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
-| `--type <FILE>` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象） | 无 |
-| `--type-name <NAME>` | — | 指定目标类名（当 .cs 文件包含多个类时使用） | 自动检测 |
+| `--type <FILE>[:<CLASS>]` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象）；.cs 含多个类时用冒号指定类名，如 `-t "samples/UserInfo.cs:UserInfo"` | 类名自动检测 |
 | `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束和字段值转换 | 无 |
-| `--fields <NAMES>` | — | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
-| `--where <EXPR>` | — | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
-| `--violations <FILE>` | — | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
-| `--quality <FILE>` | — | 导出结构化数据质量报告 JSON（Pass/Fail 摘要 + 违规率 + 逐字段明细） | 无 |
+| `--fields <NAMES>` | `-F` | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
+| `--where <EXPR>` | `-w` | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
+| `--violations <FILE>` | `-v` | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
+| `--quality <FILE>` | `-q` | 导出结构化数据质量报告 JSON（Pass/Fail 摘要 + 违规率 + 逐字段明细） | 无 |
 | `--fail-on-violations` | — | 存在枚举违规时以退出码 `3` 结束（质量门禁） | `false` |
-| `--export-schema <FORMAT>` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema` | 无 |
-| `--schema-output <FILE>` | — | Schema 代码导出的保存路径（配合 `--export-schema`） | 无 |
+| `--export-schema <FORMAT>[:<FILE>]` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema`；可带输出路径，如 `-s "csharp:out.cs"`（缺省自动推导） | 无 |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
@@ -84,8 +82,9 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.yaml
 # 从 Excel A 列读取 JSON 字符串
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json.xlsx -f excel-json -c A
 
-# 使用强类型反序列化
+# 使用强类型反序列化（.cs 文件含多个类时用冒号指定类名）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t samples/UserInfo.cs
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t "samples/UserInfo.cs:UserInfo"
 
 # 使用规则文件校验枚举约束，并导出 HTML 报告
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.html
@@ -156,7 +155,6 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
     },
     "Status": {
       "defaultValue": 0,
-      "primaryType": "Number",
       "enumValues": [0, 1, 2]
     },
     "token": {
@@ -172,8 +170,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
         "iv": "YWJjZGVmZ2hpamtsbW5vcA==",
         "mode": "cbc",
         "padding": "pkcs7",
-        "keyFormat": "base64",
-        "ivFormat": "base64"
+        "format": "base64"
       }
     },
     "encodedName": { "transform": { "type": "base64" } },
@@ -183,6 +180,8 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 ```
 
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
+
+`primaryType` 可省略：仅配置 `enumValues` 时自动推导——全部为数值 → `Number`、全部为布尔 → `Boolean`，否则（含混合）→ `String`；显式 `primaryType` 优先。
 
 `filter` 为全局过滤条件（等价于 CLI `--where`，后者优先级更高），字段名大小写不敏感，应用于字段选择与值转换之后。支持的运算符：
 
@@ -201,7 +200,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 | 类型 | 说明 | 参数 |
 |------|------|------|
 | `jwt` | 将 JWT 解码为 payload 明文（可提取指定 claim） | `claim`（可选，提取 payload 中的某个 claim） |
-| `aes` | AES 对称解密，输出 UTF-8 明文 | `key`（必填）、`iv`（CBC 必填）、`mode`（`cbc`/`ecb`）、`padding`（`pkcs7`/`none`）、`keyFormat`/`ivFormat`（`base64`/`hex`） |
+| `aes` | AES 对称解密，输出 UTF-8 明文 | `key`（必填）、`iv`（CBC 必填）、`mode`（`cbc`/`ecb`）、`padding`（`pkcs7`/`none`）、`format`（`base64`/`hex`，Key 与 IV 统一编码；旧参数 `keyFormat`/`ivFormat` 仍兼容且优先） |
 | `base64` | Base64 解码为 UTF-8 字符串 | — |
 | `url` | URL 百分号编码解码 | — |
 

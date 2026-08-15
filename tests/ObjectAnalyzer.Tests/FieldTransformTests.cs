@@ -234,6 +234,64 @@ public class FieldTransformTests
         Assert.Equal(0, stat.TransformFailureCount);
     }
 
+    [Fact]
+    public void Transform_Aes_UnifiedFormatField_Works()
+    {
+        // 与上例相同，但使用统一的 format 字段替代 keyFormat/ivFormat
+        byte[] key = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef");
+        byte[] iv = Encoding.UTF8.GetBytes("abcdefghijklmnop");
+        string plainText = "sensitive-data";
+
+        byte[] cipher;
+        using (var aes = System.Security.Cryptography.Aes.Create())
+        {
+            aes.Key = key;
+            aes.IV = iv;
+            aes.Mode = System.Security.Cryptography.CipherMode.CBC;
+            aes.Padding = System.Security.Cryptography.PaddingMode.PKCS7;
+            using var encryptor = aes.CreateEncryptor();
+            cipher = encryptor.TransformFinalBlock(Encoding.UTF8.GetBytes(plainText), 0, plainText.Length);
+        }
+
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "secret", Convert.ToBase64String(cipher) } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["secret"] = new FieldRule
+        {
+            Transform = new FieldTransform
+            {
+                Type = "aes",
+                Key = Convert.ToBase64String(key),
+                Iv = Convert.ToBase64String(iv),
+                Format = "base64"
+            }
+        };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var stat = result.FieldStatistics.First(f => f.FieldName == "secret");
+        Assert.Equal(plainText, stat.ValueCounts.Keys.Single());
+        Assert.Equal(0, stat.TransformFailureCount);
+    }
+
+    [Fact]
+    public void Transform_Aes_InvalidFormat_Throws()
+    {
+        var rules = new AnalysisRules();
+        rules.Fields["x"] = new FieldRule
+        {
+            Transform = new FieldTransform { Type = "aes", Key = "aGVsbG8=", Format = "hexx" }
+        };
+
+        var ex = Assert.Throws<System.IO.InvalidDataException>(() => new FieldTransformProcessor(rules));
+        Assert.Contains("format", ex.Message);
+    }
+
     // ──────────────────────────────────────────────
     // 转换失败：保留原始值 + 记录失败次数
     // ──────────────────────────────────────────────
