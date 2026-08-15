@@ -699,6 +699,18 @@ h1:focus {
     margin: 0.1rem;
 }
 
+/* Semantic Badge */
+.semantic-badge {
+    display: inline-block;
+    background: #f3e5f5;
+    color: #7b1fa2;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin: 0.1rem;
+    font-weight: 600;
+}
+
 .default-val {
     background: #fff3cd;
     padding: 0.1rem 0.4rem;

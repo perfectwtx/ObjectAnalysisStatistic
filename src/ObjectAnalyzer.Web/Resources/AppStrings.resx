@@ -61,9 +61,11 @@
   <data name="SortByName" xml:space="preserve"><value>按名称排序</value></data>
   <data name="SortByCoverage" xml:space="preserve"><value>按覆盖率排序</value></data>
   <data name="SortByType" xml:space="preserve"><value>按类型排序</value></data>
+  <data name="SortBySemantic" xml:space="preserve"><value>按语义推断</value></data>
   <data name="SortAsc" xml:space="preserve"><value>↑ 升序</value></data>
   <data name="SortDesc" xml:space="preserve"><value>↓ 降序</value></data>
   <data name="FieldName" xml:space="preserve"><value>字段名</value></data>
+  <data name="SemanticType" xml:space="preserve"><value>语义推断</value></data>
   <data name="Coverage" xml:space="preserve"><value>覆盖率</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>主导类型</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>默认值</value></data>

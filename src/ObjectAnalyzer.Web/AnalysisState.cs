@@ -82,6 +82,9 @@ public sealed class AnalysisState : IDisposable
             "PrimaryType" => SortAscending
                 ? fields.OrderBy(f => f.PrimaryType)
                 : fields.OrderByDescending(f => f.PrimaryType),
+            "Semantic" => SortAscending
+                ? fields.OrderBy(f => f.SemanticType)
+                : fields.OrderByDescending(f => f.SemanticType),
             _ => SortAscending
                 ? fields.OrderBy(f => f.Count)
                 : fields.OrderByDescending(f => f.Count)

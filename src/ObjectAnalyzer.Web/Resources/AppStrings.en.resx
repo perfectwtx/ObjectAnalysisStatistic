@@ -61,9 +61,11 @@
   <data name="SortByName" xml:space="preserve"><value>Sort by name</value></data>
   <data name="SortByCoverage" xml:space="preserve"><value>Sort by coverage</value></data>
   <data name="SortByType" xml:space="preserve"><value>Sort by type</value></data>
+  <data name="SortBySemantic" xml:space="preserve"><value>Sort by semantic type</value></data>
   <data name="SortAsc" xml:space="preserve"><value>↑ Ascending</value></data>
   <data name="SortDesc" xml:space="preserve"><value>↓ Descending</value></data>
   <data name="FieldName" xml:space="preserve"><value>Field</value></data>
+  <data name="SemanticType" xml:space="preserve"><value>Semantic type</value></data>
   <data name="Coverage" xml:space="preserve"><value>Coverage</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>Dominant type</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>Default value</value></data>

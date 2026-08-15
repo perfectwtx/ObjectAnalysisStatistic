@@ -262,6 +262,7 @@
                     <option value="Name">@Loc["SortByName"]</option>
                     <option value="Coverage">@Loc["SortByCoverage"]</option>
                     <option value="PrimaryType">@Loc["SortByType"]</option>
+                    <option value="Semantic">@Loc["SortBySemantic"]</option>
                 </select>
                 <button @onclick="ToggleSortDirection">
                     @(State.SortAscending ? Loc["SortAsc"] : Loc["SortDesc"])
@@ -274,6 +275,7 @@
                     <thead>
                         <tr>
                             <th>@Loc["FieldName"]</th>
+                            <th>@Loc["SemanticType"]</th>
                             <th>@Loc["Coverage"]</th>
                             <th>@Loc["PrimaryType"]</th>
                             <th>@Loc["DefaultValue"]</th>
@@ -286,6 +288,16 @@
                         {
                             <tr>
                                 <td class="field-name"><code>@field.FieldName</code></td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(field.SemanticType))
+                                    {
+                                        <span class="semantic-badge">@field.SemanticType</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="na">—</span>
+                                    }
+                                </td>
                                 <td>
                                     <div class="coverage-bar">
                                         <div class="coverage-fill" style="width: @(field.Coverage * 100)%"></div>
