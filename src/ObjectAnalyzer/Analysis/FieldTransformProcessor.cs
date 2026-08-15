@@ -6,6 +6,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ObjectAnalyzer.Parsing;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -81,6 +82,9 @@ public sealed class FieldTransformProcessor
                 if (_transforms.TryGetValue(kv.Key, out var transform)
                     && TryApply(transform, kv.Value, out var newValue))
                 {
+                    // parse: 将转换结果解析为 JSON 并展开为嵌套字段（如 payload.city / payload[0]）
+                    if (TryUnwrapJson(kv.Key, transform, newValue, result))
+                        continue;
                     result[kv.Key] = newValue;
                 }
                 else
@@ -116,7 +120,21 @@ public sealed class FieldTransformProcessor
 
     private static void ValidateTransform(string field, FieldTransform transform)
     {
+        if (!string.IsNullOrWhiteSpace(transform.Parse)
+            && !string.Equals(transform.Parse.Trim(), "json", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException($"字段 [{field}] 的 parse 模式不支持: {transform.Parse}（当前支持 json）。");
+        }
+
         string type = transform.Type.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(type))
+        {
+            // 无转换类型时仅允许 parse 展开（透传原值再解析）
+            if (!string.IsNullOrWhiteSpace(transform.Parse))
+                return;
+            throw new InvalidDataException($"字段 [{field}] 缺少 transform.type 配置。");
+        }
+
         switch (type)
         {
             case "jwt":
@@ -129,6 +147,31 @@ public sealed class FieldTransformProcessor
                 break;
             default:
                 throw new InvalidDataException($"字段 [{field}] 的转换类型不支持: {transform.Type}（支持 jwt / aes / base64 / url）。");
+        }
+    }
+
+    /// <summary>
+    /// 将转换结果按 parse 模式解析并展开到目标字典。
+    /// 成功（含解析失败回退）返回 true；无 parse 配置或值非字符串时返回 false 由调用方原样保留。
+    /// </summary>
+    private static bool TryUnwrapJson(
+        string field, FieldTransform transform, object? value, Dictionary<string, object?> target)
+    {
+        if (value is not string text
+            || !string.Equals(transform.Parse?.Trim(), "json", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            FileParsers.FlattenJson(doc.RootElement, field, target);
+            return true;
+        }
+        catch (JsonException)
+        {
+            // 非合法 JSON：保留原始转换结果字符串
+            target[field] = text;
+            return true;
         }
     }
 

@@ -62,6 +62,14 @@ public class FieldTransform
     /// <summary>AES: IV 编码 base64（默认）或 hex。</summary>
     [JsonPropertyName("ivFormat")]
     public string? IvFormat { get; set; }
+
+    /// <summary>
+    /// 转换后再解析并展开为嵌套字段（当前支持 "json"）：
+    /// 将转换结果当作 JSON 文本解析，对象按字段名前缀展开（如 payload.city / payload.age），
+    /// 数组按下标展开（如 payload[0]）；非合法 JSON 时保留原始转换结果。可省略 type（仅展开）。
+    /// </summary>
+    [JsonPropertyName("parse")]
+    public string? Parse { get; set; }
 }
 
 /// <summary>

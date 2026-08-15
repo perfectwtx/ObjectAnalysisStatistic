@@ -18,6 +18,7 @@
 - Schema 代码导出：`--export-schema csharp|typescript|json-schema` 生成数据结构定义
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
+- 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
@@ -100,6 +101,9 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_filter.json --wh
 
 # 通过规则文件配置过滤条件（等价于 --where，CLI 优先级更高）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_filter.json -r samples/test_filter_rules.json
+
+# 解密后展开：base64 结果若为 JSON 对象，展开为 payload.city / payload.age 再统计，并可继续过滤
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_unwrap.json -r samples/test_unwrap_rules.json --where "payload.city == '上海' AND payload.age >= 28"
 
 # 导出 Markdown 报告 + 独立违规清单（便于 CI 断言）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.md --violations violations.json
@@ -200,6 +204,8 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 > 转换失败时保留原始值，并在报告中记录该字段的转换失败次数（`TransformFailureCount`）。
 
+所有类型都支持可选参数 `parse`（当前仅 `"json"`）：转换完成后把结果当作 JSON 文本解析并**展开为嵌套字段**再统计——对象按键展开（`payload.city`、`payload.age`）、数组按下标展开（`payload[0]`）；非合法 JSON 时保留转换后的原文。`parse` 也可单独使用（不写 `type`，仅把已是 JSON 文本的字段值展开）。例如一个 base64 加密的 `{"city":"上海","age":30}`，展开后会得到 `payload.city` 与 `payload.age` 两个字段参与统计与过滤。
+
 ## Web 界面
 
 Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换。
@@ -241,6 +247,8 @@ ObjectAnalysisStatistic/
 │   ├── test_numeric_enum_rules.json  # 数值枚举规则示例
 │   ├── test_transforms.json          # 字段选择 + 值转换规则示例
 │   ├── test_data_transforms.json     # 字段转换示例数据
+│   ├── test_unwrap_rules.json        # 转换后 JSON 展开规则示例 (parse: json)
+│   ├── test_data_unwrap.json         # 解密后对象展开示例数据
 │   ├── test_filter_rules.json        # 字段过滤规则示例 (filter)
 │   └── test_data_filter.json         # 字段过滤示例数据
 │   （注：samples/report* 为生成物，已被 .gitignore 忽略）

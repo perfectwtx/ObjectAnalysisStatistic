@@ -434,7 +434,7 @@ public static class FileParsers
         return target;
     }
 
-    private static void FlattenJson(JsonElement element, string prefix, Dictionary<string, object?> target)
+    internal static void FlattenJson(JsonElement element, string prefix, Dictionary<string, object?> target)
     {
         switch (element.ValueKind)
         {

@@ -301,4 +301,185 @@ public class FieldTransformTests
         Assert.Contains("TransformFailureCount", json);
         Assert.Contains("\"TransformType\":\"jwt\"", json);
     }
+
+    // ──────────────────────────────────────────────
+    // parse: json —— 转换后展开为嵌套字段再统计
+    // ──────────────────────────────────────────────
+
+    private static string B64(string text) =>
+        Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
+
+    [Fact]
+    public void ParseJson_AfterBase64_ExpandsNestedObject()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "payload", B64("{\"city\":\"上海\",\"age\":30}") } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["payload"] = new FieldRule
+        {
+            Transform = new FieldTransform { Type = "base64", Parse = "json" }
+        };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var names = result.FieldStatistics.Select(f => f.FieldName).ToList();
+        Assert.Contains("payload.city", names);
+        Assert.Contains("payload.age", names);
+        Assert.DoesNotContain("payload", names); // 原字段被展开后不再保留
+
+        var city = result.FieldStatistics.First(f => f.FieldName == "payload.city");
+        Assert.Equal("上海", city.ValueCounts.Keys.Single());
+        var age = result.FieldStatistics.First(f => f.FieldName == "payload.age");
+        Assert.Equal("30", age.ValueCounts.Keys.Single());
+    }
+
+    [Fact]
+    public void ParseJson_AfterJwt_ExpandsPayloadClaims()
+    {
+        string payload = B64("{\"sub\":\"user-42\",\"role\":\"admin\"}")
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        string jwt = $"eyJhbGciOiJIUzI1NiJ9.{payload}.sig";
+
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "token", jwt } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["token"] = new FieldRule
+        {
+            Transform = new FieldTransform { Type = "jwt", Parse = "json" }
+        };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var names = result.FieldStatistics.Select(f => f.FieldName).ToList();
+        Assert.Contains("token.sub", names);
+        Assert.Contains("token.role", names);
+
+        var sub = result.FieldStatistics.First(f => f.FieldName == "token.sub");
+        Assert.Equal("user-42", sub.ValueCounts.Keys.Single());
+    }
+
+    [Fact]
+    public void ParseJson_Array_ExpandsIndexedFields()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "tags", B64("[\"a\",\"b\",\"c\"]") } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["tags"] = new FieldRule
+        {
+            Transform = new FieldTransform { Type = "base64", Parse = "json" }
+        };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var names = result.FieldStatistics.Select(f => f.FieldName).ToList();
+        Assert.Contains("tags[0]", names);
+        Assert.Contains("tags[1]", names);
+        Assert.Contains("tags[2]", names);
+    }
+
+    [Fact]
+    public void ParseJson_InvalidJson_KeepsRawTransformedText()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "payload", B64("not a json object") } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["payload"] = new FieldRule
+        {
+            Transform = new FieldTransform { Type = "base64", Parse = "json" }
+        };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var stat = Assert.Single(result.FieldStatistics);
+        Assert.Equal("payload", stat.FieldName);
+        Assert.Equal("not a json object", stat.ValueCounts.Keys.Single());
+        Assert.Equal(0, stat.TransformFailureCount); // 转换成功，仅解析失败，不计为失败
+    }
+
+    [Fact]
+    public void ParseJson_WithoutType_ExpandsPlainJsonField()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "info", "{\"level\":2,\"active\":true}" } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["info"] = new FieldRule
+        {
+            Transform = new FieldTransform { Parse = "json" } // 无 type，仅展开
+        };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var names = result.FieldStatistics.Select(f => f.FieldName).ToList();
+        Assert.Contains("info.level", names);
+        Assert.Contains("info.active", names);
+    }
+
+    [Fact]
+    public void ParseJson_FilterAppliesToExpandedField()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "payload", B64("{\"city\":\"上海\",\"age\":30}") } },
+            new() { { "payload", B64("{\"city\":\"北京\",\"age\":20}") } }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["payload"] = new FieldRule
+        {
+            Transform = new FieldTransform { Type = "base64", Parse = "json" }
+        };
+
+        var processor = new FieldTransformProcessor(rules, filterExpression: "payload.age >= 25");
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        Assert.Equal(1, result.TotalObjects);
+        var city = result.FieldStatistics.First(f => f.FieldName == "payload.city");
+        Assert.Equal("上海", city.ValueCounts.Keys.Single());
+    }
+
+    [Fact]
+    public void ParseJson_InvalidParseMode_Throws()
+    {
+        var rules = new AnalysisRules();
+        rules.Fields["x"] = new FieldRule { Transform = new FieldTransform { Type = "base64", Parse = "yaml" } };
+
+        var ex = Assert.Throws<System.IO.InvalidDataException>(() => new FieldTransformProcessor(rules));
+        Assert.Contains("parse", ex.Message);
+    }
+
+    [Fact]
+    public void ParseJson_WithoutTypeAndParse_Throws()
+    {
+        var rules = new AnalysisRules();
+        rules.Fields["x"] = new FieldRule { Transform = new FieldTransform { Type = "  " } };
+
+        var ex = Assert.Throws<System.IO.InvalidDataException>(() => new FieldTransformProcessor(rules));
+        Assert.Contains("type", ex.Message);
+    }
 }

@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "payload": {
+      "transform": {
+        "type": "base64",
+        "parse": "json"
+      }
+    }
+  }
+}
