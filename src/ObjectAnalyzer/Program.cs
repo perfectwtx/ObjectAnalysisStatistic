@@ -87,8 +87,21 @@ var failOnViolationsOption = new Option<bool>(
 
 var exportSchemaOption = new Option<string?>(
     aliases: CliAliases.ExportSchema,
-    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema；可带输出路径: \"csharp:out.cs\"（缺省自动推导）。");
-exportSchemaOption.AddCompletions("csharp", "typescript", "json-schema");
+    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema, sql (postgres/mysql/sqlite/sqlserver)；可带输出路径: \"csharp:out.cs\"（缺省自动推导）。");
+exportSchemaOption.AddCompletions("csharp", "typescript", "json-schema", "sql", "mysql", "sqlite", "sqlserver");
+
+var connectionOption = new Option<string?>(
+    name: "--connection",
+    description: "数据库直连：输入连接字符串（如 \"Host=localhost;Database=mydb\"），配合 --query 流式读取查询结果进行分析，无需先导出为文件。");
+
+var queryOption = new Option<string?>(
+    name: "--query",
+    description: "数据库直连时执行的 SQL 查询（如 \"SELECT * FROM users\"）。");
+
+var providerOption = new Option<string?>(
+    name: "--provider",
+    description: "数据库类型: postgres, mysql, sqlite, sqlserver；缺省根据连接字符串关键字自动推断（建议显式指定）。");
+providerOption.AddCompletions("postgres", "mysql", "sqlite", "sqlserver");
 
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
@@ -109,6 +122,9 @@ rootCommand.AddOption(failOnViolationsOption);
 rootCommand.AddOption(sampleReservoirOption);
 rootCommand.AddOption(sampleStepOption);
 rootCommand.AddOption(exportSchemaOption);
+rootCommand.AddOption(connectionOption);
+rootCommand.AddOption(queryOption);
+rootCommand.AddOption(providerOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -131,6 +147,9 @@ rootCommand.SetHandler((InvocationContext context) =>
     var sampleReservoir = parseResult.GetValueForOption(sampleReservoirOption);
     var sampleStep = parseResult.GetValueForOption(sampleStepOption);
     var exportSchema = parseResult.GetValueForOption(exportSchemaOption);
+    var connection = parseResult.GetValueForOption(connectionOption);
+    var query = parseResult.GetValueForOption(queryOption);
+    var provider = parseResult.GetValueForOption(providerOption);
 
     if (generateTestExcel)
     {
@@ -156,9 +175,16 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
-    if (input == null)
+    if (!string.IsNullOrEmpty(query) && string.IsNullOrEmpty(connection))
     {
-        AnsiConsole.MarkupLine("[red]错误: 未指定输入文件。使用 -i 或 --input 指定。[/]");
+        AnsiConsole.MarkupLine("[red]错误: 使用 --query 时必须同时提供 --connection。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
+    if (input == null && string.IsNullOrEmpty(connection))
+    {
+        AnsiConsole.MarkupLine("[red]错误: 未指定输入文件或数据库连接。使用 -i 指定文件，或使用 --connection + --query 直连数据库。[/]");
         AnsiConsole.MarkupLine("[grey]提示: 使用 -h 或 --help 查看使用说明。[/]");
         context.ExitCode = 1;
         return;
@@ -169,7 +195,7 @@ rootCommand.SetHandler((InvocationContext context) =>
 
     var options = new AnalysisOptions
     {
-        InputPath = input.FullName,
+        InputPath = input?.FullName ?? "",
         OutputPath = output?.FullName,
         Format = format,
         Flatten = !noFlatten,
@@ -187,7 +213,10 @@ rootCommand.SetHandler((InvocationContext context) =>
         SampleReservoir = sampleReservoir,
         SampleStep = sampleStep,
         ExportSchema = schemaFormat,
-        SchemaOutputPath = schemaOutput
+        SchemaOutputPath = schemaOutput,
+        ConnectionString = connection,
+        Query = query,
+        DbProvider = provider
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

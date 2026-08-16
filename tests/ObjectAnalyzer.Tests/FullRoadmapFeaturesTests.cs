@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using Xunit;
 
 namespace ObjectAnalyzer.Tests;
@@ -172,6 +173,73 @@ public class FullRoadmapFeaturesTests
         string tsCode = SchemaExporter.GenerateTypeScript(result, "GeneratedSchema");
         Assert.Contains("tags: TagsItemDto[];", tsCode);
         Assert.Contains("export interface TagsItemDto", tsCode);
+    }
+
+    [Fact]
+    public void SchemaExporter_GeneratesSqlDdlWithDialectsConstraintsAndNullability()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() {
+                { "id", 1L }, { "name", "Alice" }, { "active", true },
+                { "price", 9.99 }, { "status", "active" },
+                { "tags[0]", "C#" }, { "profile.age", 30L },
+                { "created_at", "2026-08-08T12:00:00Z" }
+            },
+            new() {
+                { "id", 3L }, { "name", "Bob" }, { "active", false },
+                { "price", 19.99 }, { "status", "disabled" },
+                { "profile.age", 31L }, { "created_at", "2026-08-09T15:30:00Z" }
+            }
+        };
+
+        var result = Analyze(objects);
+        // 通过规则为 status 提供混合类型枚举值（含引号转义场景）
+        result.FieldStatistics.First(f => f.FieldName == "status").AppliedRule = new FieldRule
+        {
+            EnumValues = new List<JsonElement>
+            {
+                JsonDocument.Parse("\"active\"").RootElement.Clone(),
+                JsonDocument.Parse("\"disabled\"").RootElement.Clone(),
+                JsonDocument.Parse("\"O'Brien\"").RootElement.Clone()
+            }
+        };
+
+        // PostgreSQL (双引号标识符、JSONB、DOUBLE PRECISION、BOOLEAN)
+        string pg = SchemaExporter.GenerateSql(result, "postgres", "users");
+        Assert.Contains("CREATE TABLE \"users\" (", pg);
+        Assert.Contains("\"id\" BIGINT NOT NULL", pg);
+        Assert.Contains("\"name\" TEXT NOT NULL", pg);
+        Assert.Contains("\"active\" BOOLEAN NOT NULL", pg);
+        Assert.Contains("\"price\" DOUBLE PRECISION NOT NULL", pg);
+        Assert.Contains("\"created_at\" TIMESTAMP NOT NULL", pg);
+        Assert.Contains("\"profile\" JSONB", pg);
+        Assert.Contains("\"tags\" JSONB", pg);
+        Assert.Contains("CHECK (\"status\" IN ('active', 'disabled', 'O''Brien'))", pg);
+
+        // MySQL (反引号标识符、JSON、DOUBLE、TINYINT(1))
+        string my = SchemaExporter.GenerateSql(result, "mysql", "users");
+        Assert.Contains("`id` BIGINT NOT NULL", my);
+        Assert.Contains("`active` TINYINT(1) NOT NULL", my);
+        Assert.Contains("`price` DOUBLE NOT NULL", my);
+        Assert.Contains("`tags` JSON", my);
+
+        // SQLite (INTEGER / TEXT)
+        string sq = SchemaExporter.GenerateSql(result, "sqlite", "users");
+        Assert.Contains("\"id\" INTEGER NOT NULL", sq);
+        Assert.Contains("\"name\" TEXT NOT NULL", sq);
+        Assert.Contains("\"price\" REAL NOT NULL", sq);
+
+        // SQL Server (方括号标识符、BIT、FLOAT、DATETIME2、UNIQUEIDENTIFIER、NVARCHAR(MAX))
+        string ss = SchemaExporter.GenerateSql(result, "sqlserver", "users");
+        Assert.Contains("CREATE TABLE [users] (", ss);
+        Assert.Contains("[id] BIGINT NOT NULL", ss);
+        Assert.Contains("[active] BIT NOT NULL", ss);
+        Assert.Contains("[price] FLOAT NOT NULL", ss);
+        Assert.Contains("[created_at] DATETIME2 NOT NULL", ss);
+        Assert.Contains("[tags] NVARCHAR(MAX)", ss);
+        Assert.Contains("[name] NVARCHAR(MAX) NOT NULL", ss);
+        Assert.Contains("CHECK ([status] IN ('active', 'disabled', 'O''Brien'))", ss);
     }
 
     // ──────────────────────────────────────────────

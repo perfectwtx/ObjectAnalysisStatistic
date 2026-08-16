@@ -14,7 +14,8 @@ public static class AnalysisRunner
     /// </summary>
     public static int Run(AnalysisOptions options, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(options.InputPath))
+        bool dbMode = !string.IsNullOrEmpty(options.ConnectionString);
+        if (!dbMode && !File.Exists(options.InputPath))
         {
             AnsiConsole.MarkupLine($"[red]错误: 输入文件不存在: {Markup.Escape(options.InputPath)}[/]");
             return 1;
@@ -24,12 +25,36 @@ public static class AnalysisRunner
         if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
             Sampling.Validate(options.SampleReservoir, options.SampleStep);
 
+        // 数据库直连参数提前校验
+        if (dbMode)
+        {
+            if (string.IsNullOrEmpty(options.Query))
+            {
+                AnsiConsole.MarkupLine("[red]错误: 使用 --connection 直连数据库时必须指定 --query。[/]");
+                return 1;
+            }
+            try
+            {
+                DatabaseReader.ResolveProvider(options.DbProvider, options.ConnectionString!);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+                return 1;
+            }
+        }
+
         try
         {
             IEnumerable<Dictionary<string, object?>> parsedObjects;
 
+            // 数据库直连：DbDataReader 惰性流式读取查询结果
+            if (dbMode)
+            {
+                parsedObjects = ParseFromDatabase(options);
+            }
             // 如果指定了 --type，使用强类型反序列化路径
-            if (!string.IsNullOrEmpty(options.TypeFile))
+            else if (!string.IsNullOrEmpty(options.TypeFile))
             {
                 parsedObjects = RunTyped(options);
             }
@@ -90,6 +115,18 @@ public static class AnalysisRunner
         // 其余整体物化格式（json / xml / yaml）在解析完成后统一做采样包装。
         bool parserAlreadySampled = format is "jsonl" or "csv" or "excel" or "excel-json";
         return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled);
+    }
+
+    private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options)
+    {
+        var provider = DatabaseReader.ResolveProvider(options.DbProvider, options.ConnectionString!);
+        AnsiConsole.MarkupLine($"[grey][[数据库直连]][/] 使用 [blue]{DatabaseReader.DisplayName(provider)}[/] 数据源，流式读取查询结果...");
+        AnsiConsole.MarkupLine($"正在直连数据库并执行查询: [blue]{Markup.Escape(options.Query!)}[/] ...");
+
+        IEnumerable<Dictionary<string, object?>> parsed =
+            DatabaseReader.ReadRows(options.ConnectionString!, provider, options.Query!);
+
+        return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled: false);
     }
 
     private static IEnumerable<Dictionary<string, object?>> ApplySamplingIfEnabled(
@@ -245,10 +282,12 @@ public static class AnalysisRunner
         {
             cancellationToken.ThrowIfCancellationRequested();
             string basePath = options.OutputPath ?? options.InputPath;
+            if (string.IsNullOrEmpty(basePath)) basePath = "database"; // 数据库直连模式下没有输入文件
             string schemaExt = options.ExportSchema.ToLowerInvariant() switch
             {
                 "csharp" or "cs" => ".schema.cs",
                 "typescript" or "ts" => ".schema.d.ts",
+                "sql" or "postgres" or "postgresql" or "pg" or "mysql" or "sqlite" or "sqlserver" or "mssql" => ".schema.sql",
                 _ => ".schema.json"
             };
             string schemaPath = options.SchemaOutputPath ?? Path.Combine(

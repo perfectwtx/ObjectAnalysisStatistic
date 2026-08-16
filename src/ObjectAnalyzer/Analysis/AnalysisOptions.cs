@@ -32,4 +32,13 @@ public sealed class AnalysisOptions
 
     /// <summary>等距系统抽样步长（--sample-step，>1 启用）。</summary>
     public int SampleStep { get; set; }
+
+    /// <summary>数据库直连连接字符串（--connection）。非空时进入数据库直连模式。</summary>
+    public string? ConnectionString { get; set; }
+
+    /// <summary>数据库直连时执行的 SQL 查询（--query，如 "SELECT * FROM users"）。</summary>
+    public string? Query { get; set; }
+
+    /// <summary>数据库类型（--provider：postgres/mysql/sqlite/sqlserver），缺省由连接字符串推断。</summary>
+    public string? DbProvider { get; set; }
 }

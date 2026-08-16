@@ -171,6 +171,13 @@
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("csharp")'>C#</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("typescript")'>TS</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("json-schema")'>JSON Schema</button>
+                        <select class="select-sm" @bind="SchemaSqlDialect" aria-label="SQL dialect">
+                            <option value="postgres">PostgreSQL</option>
+                            <option value="mysql">MySQL</option>
+                            <option value="sqlite">SQLite</option>
+                            <option value="sqlserver">SQL Server</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("sql")'>SQL</button>
                     </div>
                 </div>
             </div>
@@ -910,10 +917,19 @@
         {
             "csharp" => ($"schema-{stamp}.cs", Core.Reporting.SchemaExporter.GenerateCSharp(State.Result), "text/plain;charset=utf-8"),
             "typescript" => ($"schema-{stamp}.d.ts", Core.Reporting.SchemaExporter.GenerateTypeScript(State.Result), "text/plain;charset=utf-8"),
+            "sql" => SchemaSqlDialect switch
+            {
+                "mysql" => ($"schema-{stamp}.mysql.sql", Core.Reporting.SchemaExporter.GenerateSql(State.Result, "mysql"), "application/sql;charset=utf-8"),
+                "sqlite" => ($"schema-{stamp}.sqlite.sql", Core.Reporting.SchemaExporter.GenerateSql(State.Result, "sqlite"), "application/sql;charset=utf-8"),
+                "sqlserver" => ($"schema-{stamp}.sqlserver.sql", Core.Reporting.SchemaExporter.GenerateSql(State.Result, "sqlserver"), "application/sql;charset=utf-8"),
+                _ => ($"schema-{stamp}.postgres.sql", Core.Reporting.SchemaExporter.GenerateSql(State.Result, "postgres"), "application/sql;charset=utf-8")
+            },
             _ => ($"schema-{stamp}.schema.json", Core.Reporting.SchemaExporter.GenerateJsonSchema(State.Result), "application/json;charset=utf-8")
         };
         await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile", fileName, content, mime);
     }
+
+    private string SchemaSqlDialect { get; set; } = "postgres";
 
     private async Task DownloadViolations()
     {

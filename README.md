@@ -15,10 +15,11 @@
 - 多种报告导出：结构化 JSON、富文本 HTML、Markdown、CSV 报告
 - 枚举违规独立导出：通过 `--violations` 输出结构化违规清单，便于 CI 断言
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
-- Schema 代码导出：`--export-schema csharp|typescript|json-schema` 生成数据结构定义
+- Schema 代码导出：`--export-schema csharp|typescript|json-schema|sql` 生成数据结构定义（SQL 支持 postgres / mysql / sqlite / sqlserver 方言）
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
+- 数据库直连 (Live DB Ingestion)：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，无需先导出为 CSV/JSON 即可进行实时结构与质量分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
@@ -58,7 +59,10 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--fail-on-violations` | — | 存在枚举违规时以退出码 `3` 结束（质量门禁） | `false` |
 | `--sample-reservoir <N>` | — | 蓄水池随机抽样：均匀随机抽取最多 N 个对象分析，快速预估 Schema（如 `--sample-reservoir 50000`）；与 `--sample-step` 互斥 | `0`（关闭） |
 | `--sample-step <K>` | — | 等距系统抽样：每 K 条记录取 1 条分析，快速预估 Schema（如 `--sample-step 100`）；与 `--sample-reservoir` 互斥 | `0`（关闭） |
-| `--export-schema <FORMAT>[:<FILE>]` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema`；可带输出路径，如 `-s "csharp:out.cs"`（缺省自动推导） | 无 |
+| `--export-schema <FORMAT>[:<FILE>]` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema`，或 SQL `sql`（默认 PostgreSQL）/`postgres`/`mysql`/`sqlite`/`sqlserver`；可带输出路径，如 `-s "csharp:out.cs"`（缺省自动推导） | 无 |
+| `--connection <CONN_STR>` | — | 数据库直连：输入连接字符串（如 `"Host=localhost;Database=mydb"`），配合 `--query` 流式读取查询结果，无需先导出为文件 | 无 |
+| `--query <SQL>` | — | 数据库直连时执行的 SQL 查询（如 `"SELECT * FROM users"`） | 无 |
+| `--provider <DB>` | — | 数据库类型：`postgres`、`mysql`、`sqlite`、`sqlserver`；缺省按连接字符串关键字自动推断（建议显式指定） | 自动推断 |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
@@ -121,6 +125,23 @@ dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-step 10
 
 # 超大文件采样：蓄水池随机抽样，均匀抽取最多 5W 条
 dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-reservoir 50000 -s "typescript:schema.d.ts"
+
+# 导出 PostgreSQL CREATE TABLE（缺省方言；嵌套对象/数组折叠为 JSONB 列）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sql:schema.sql"
+
+# 导出 MySQL / SQLite / SQL Server 方言 DDL（反引号标识符 + JSON 列 / INTEGER+TEXT / [方括号]+NVARCHAR(MAX) 等）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "mysql:schema.mysql.sql"
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sqlite:schema.sqlite.sql"
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sqlserver:schema.sqlserver.sql"
+
+# 数据库直连：直连 SQLite 文件并流式分析全表结构与质量
+dotnet run --project src/ObjectAnalyzer -- --connection "Data Source=users.db" --query "SELECT * FROM users"
+
+# 数据库直连：PostgreSQL（--provider 显式指定更可靠）；配合 Schema 导出与报告
+dotnet run --project src/ObjectAnalyzer -- --provider postgres --connection "Host=localhost;Database=mydb;User Id=app;Password=secret" --query "SELECT * FROM orders" -o orders_report.html -s "sql:orders.sql"
+
+# 超大表直连采样：蓄水池随机抽样 5W 行做 Schema 概览（内存有界）
+dotnet run --project src/ObjectAnalyzer -- --provider sqlserver --connection "Server=.;Database=mydb;Trusted_Connection=true" --query "SELECT TOP (1000000) * FROM events" --sample-reservoir 50000 -s "csharp:events.cs"
 ```
 
 ## 安装与分发
