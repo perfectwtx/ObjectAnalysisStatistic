@@ -43,6 +43,8 @@ public class WebSmokeTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         string content = await response.Content.ReadAsStringAsync();
         Assert.Contains("downloadTextFile", content);
+        Assert.Contains("setTheme", content);
+        Assert.Contains("isDarkTheme", content);
     }
 
     [Fact]
@@ -54,5 +56,7 @@ public class WebSmokeTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         string content = await response.Content.ReadAsStringAsync();
         Assert.Contains("charts-section", content);
+        Assert.Contains("data-bs-theme=\"dark\"", content);
+        Assert.Contains(".theme-toggle", content);
     }
 }

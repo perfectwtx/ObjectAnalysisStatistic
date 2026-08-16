@@ -50,5 +50,15 @@ window.objectAnalyzer = {
                 scales: { x: { stacked: true }, y: { stacked: true } }
             }
         });
+    },
+
+    // 主题切换（浅色/深色），依赖 Bootstrap 5.3+ 的 data-bs-theme 属性
+    isDarkTheme: function () {
+        return document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    },
+
+    setTheme: function (theme) {
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        try { localStorage.setItem('oa-theme', theme); } catch (e) { }
     }
 };

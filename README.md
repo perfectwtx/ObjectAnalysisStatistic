@@ -23,7 +23,7 @@
 - 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱字段，所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄
 - 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
-- 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n）
+- 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
 ## 环境要求
@@ -175,7 +175,7 @@ cd src/ObjectAnalyzer.Web
 dotnet run
 ```
 
-Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图表、数据预览、报告下载（JSON/HTML/MD/CSV）与 Schema 下载（C#/TS/JSON Schema），并支持中/英文界面切换。
+Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图表、数据预览、报告下载（JSON/HTML/MD/CSV）与 Schema 下载（C#/TS/JSON Schema），并支持中/英文界面切换与浅色/深色主题切换（顶部按钮，选择持久化到 localStorage，首次绘制前即生效，无闪烁）。
 
 ### 规则文件格式
 
@@ -246,7 +246,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 ## Web 界面
 
-Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换。
+Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换、浅色/深色主题切换。
 
 ```bash
 cd src/ObjectAnalyzer.Web

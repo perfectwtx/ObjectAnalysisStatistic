@@ -16,6 +16,8 @@
   <data name="AppBrandSub" xml:space="preserve"><value>对象字段分析统计</value></data>
   <data name="ShowConfig" xml:space="preserve"><value>修改设置</value></data>
   <data name="HideConfig" xml:space="preserve"><value>收起设置</value></data>
+  <data name="ThemeDarkTitle" xml:space="preserve"><value>切换到深色主题</value></data>
+  <data name="ThemeLightTitle" xml:space="preserve"><value>切换到浅色主题</value></data>
   <data name="UploadHint" xml:space="preserve"><value>拖放文件或点击选择</value></data>
   <data name="UploadSupported" xml:space="preserve"><value>支持 JSON, JSONL, CSV, Excel, XML, YAML</value></data>
   <data name="FileSelected" xml:space="preserve"><value>已选择: {0}</value></data>

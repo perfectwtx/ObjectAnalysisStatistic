@@ -11,6 +11,8 @@ public class LocalizationServiceTests
         Assert.Equal("开始分析", svc["StartAnalysis"]);
         Assert.Equal("对象字段分析统计", svc["AppBrandSub"]);
         Assert.Equal("请先选择数据文件。", svc["ErrSelectDataFile"]);
+        Assert.Equal("切换到深色主题", svc["ThemeDarkTitle"]);
+        Assert.Equal("切换到浅色主题", svc["ThemeLightTitle"]);
     }
 
     [Fact]
@@ -22,6 +24,8 @@ public class LocalizationServiceTests
         Assert.Equal("Start Analysis", svc["StartAnalysis"]);
         Assert.Equal("Object field analysis & statistics", svc["AppBrandSub"]);
         Assert.Equal("Please select a data file first.", svc["ErrSelectDataFile"]);
+        Assert.Equal("Switch to dark theme", svc["ThemeDarkTitle"]);
+        Assert.Equal("Switch to light theme", svc["ThemeLightTitle"]);
     }
 
     [Fact]

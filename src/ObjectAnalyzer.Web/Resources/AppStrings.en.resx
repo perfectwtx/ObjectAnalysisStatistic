@@ -16,6 +16,8 @@
   <data name="AppBrandSub" xml:space="preserve"><value>Object field analysis &amp; statistics</value></data>
   <data name="ShowConfig" xml:space="preserve"><value>Modify Settings</value></data>
   <data name="HideConfig" xml:space="preserve"><value>Collapse Settings</value></data>
+  <data name="ThemeDarkTitle" xml:space="preserve"><value>Switch to dark theme</value></data>
+  <data name="ThemeLightTitle" xml:space="preserve"><value>Switch to light theme</value></data>
   <data name="UploadHint" xml:space="preserve"><value>Drag &amp; drop or click to select</value></data>
   <data name="UploadSupported" xml:space="preserve"><value>Supports JSON, JSONL, CSV, Excel, XML, YAML</value></data>
   <data name="FileSelected" xml:space="preserve"><value>Selected: {0}</value></data>
