@@ -12,6 +12,8 @@ public static class QualityExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
+        result = PiiRedactor.Redact(result);
+
         var report = DataQualityReport.Build(result);
 
         string json = JsonSerializer.Serialize(report, JsonSharedOptions.Write);

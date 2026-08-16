@@ -41,4 +41,7 @@ public sealed class AnalysisOptions
 
     /// <summary>数据库类型（--provider：postgres/mysql/sqlite/sqlserver），缺省由连接字符串推断。</summary>
     public string? DbProvider { get; set; }
+
+    /// <summary>导出数据安全合规等级报告 JSON 路径（--pii-report）。</summary>
+    public string? PiiPath { get; set; }
 }

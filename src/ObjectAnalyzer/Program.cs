@@ -103,6 +103,10 @@ var providerOption = new Option<string?>(
     description: "数据库类型: postgres, mysql, sqlite, sqlserver；缺省根据连接字符串关键字自动推断（建议显式指定）。");
 providerOption.AddCompletions("postgres", "mysql", "sqlite", "sqlserver");
 
+var piiReportOption = new Option<FileInfo?>(
+    name: "--pii-report",
+    description: "导出数据安全合规等级报告 JSON 文件路径（合规等级 A/B/C + 敏感字段清单 + 打码样本）。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -125,6 +129,7 @@ rootCommand.AddOption(exportSchemaOption);
 rootCommand.AddOption(connectionOption);
 rootCommand.AddOption(queryOption);
 rootCommand.AddOption(providerOption);
+rootCommand.AddOption(piiReportOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -150,6 +155,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var connection = parseResult.GetValueForOption(connectionOption);
     var query = parseResult.GetValueForOption(queryOption);
     var provider = parseResult.GetValueForOption(providerOption);
+    var piiReport = parseResult.GetValueForOption(piiReportOption);
 
     if (generateTestExcel)
     {
@@ -216,7 +222,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         SchemaOutputPath = schemaOutput,
         ConnectionString = connection,
         Query = query,
-        DbProvider = provider
+        DbProvider = provider,
+        PiiPath = piiReport?.FullName
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

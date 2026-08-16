@@ -8,6 +8,8 @@ public static class ConsoleReporter
 {
     public static void Print(AnalysisResult result, int maxValuesToShow)
     {
+        result = PiiRedactor.Redact(result);
+
         // ── 摘要面板 ──
         var summaryTable = new Table()
             .Border(TableBorder.Rounded)

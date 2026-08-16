@@ -14,6 +14,8 @@ public static class ViolationExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
+        result = PiiRedactor.Redact(result);
+
         var violations = result.FieldStatistics
             .Where(f => f.EnumViolations.Count > 0)
             .Select(f => new

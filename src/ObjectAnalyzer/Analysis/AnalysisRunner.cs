@@ -256,6 +256,9 @@ public static class AnalysisRunner
         // 输出控制台统计结果
         ConsoleReporter.Print(result, options.MaxValuesToShow);
 
+        // 输出数据安全合规摘要（发现敏感字段时提示打码与合规导出）
+        PiiReport.PrintSummary(result);
+
         // 如果指定了输出路径，则保存详细报告
         if (!string.IsNullOrEmpty(options.OutputPath))
         {
@@ -275,6 +278,13 @@ public static class AnalysisRunner
         {
             cancellationToken.ThrowIfCancellationRequested();
             QualityExporter.Save(result, options.QualityPath);
+        }
+
+        // 如果指定了数据安全合规报告路径，导出合规等级 + 敏感字段清单
+        if (!string.IsNullOrEmpty(options.PiiPath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            PiiExporter.Save(result, options.PiiPath);
         }
 
         // 如果指定了 Schema 导出，自动生成 C# / TypeScript / JSON Schema 定义

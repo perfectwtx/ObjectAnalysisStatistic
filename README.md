@@ -20,6 +20,8 @@
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
 - 数据库直连 (Live DB Ingestion)：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，无需先导出为 CSV/JSON 即可进行实时结构与质量分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
+- 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱字段，所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄
+- 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
@@ -63,6 +65,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--connection <CONN_STR>` | — | 数据库直连：输入连接字符串（如 `"Host=localhost;Database=mydb"`），配合 `--query` 流式读取查询结果，无需先导出为文件 | 无 |
 | `--query <SQL>` | — | 数据库直连时执行的 SQL 查询（如 `"SELECT * FROM users"`） | 无 |
 | `--provider <DB>` | — | 数据库类型：`postgres`、`mysql`、`sqlite`、`sqlserver`；缺省按连接字符串关键字自动推断（建议显式指定） | 自动推断 |
+| `--pii-report <FILE>` | — | 导出数据安全合规等级报告 JSON（合规等级 A/B/C + 敏感字段清单 + 打码样本 + 各类别统计） | 无 |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
@@ -142,6 +145,9 @@ dotnet run --project src/ObjectAnalyzer -- --provider postgres --connection "Hos
 
 # 超大表直连采样：蓄水池随机抽样 5W 行做 Schema 概览（内存有界）
 dotnet run --project src/ObjectAnalyzer -- --provider sqlserver --connection "Server=.;Database=mydb;Trusted_Connection=true" --query "SELECT TOP (1000000) * FROM events" --sample-reservoir 50000 -s "csharp:events.cs"
+
+# 敏感数据打码 + 导出数据安全合规等级报告（控制台同步输出打码后的值频次）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -o report.html --pii-report compliance.json
 ```
 
 ## 安装与分发
@@ -322,6 +328,7 @@ ObjectAnalysisStatistic/
 │   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
 │   │   │   ├── AnalysisResult.cs     # 分析结果数据模型
 │   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)
+│   │   │   ├── PiiDetector.cs        # PII 分类与打码规则
 │   │   │   └── DuplicateObjectStatistic.cs
 │   │   ├── Parsing/                  # 多格式解析器
 │   │   │   ├── FileParsers.cs        # IFileParser 注册表模式
@@ -336,6 +343,9 @@ ObjectAnalysisStatistic/
 │   │   │   ├── CsvReportExporter.cs  # CSV 报告
 │   │   │   ├── ViolationExporter.cs  # 枚举违规结构化导出
 │   │   │   ├── QualityExporter.cs    # 数据质量报告导出 (P1)
+│   │   │   ├── PiiRedactor.cs        # 报告输出前 PII 打码 (redaction)
+│   │   │   ├── PiiReport.cs          # 数据安全合规报告模型 (A/B/C)
+│   │   │   ├── PiiExporter.cs        # 数据安全合规报告导出
 │   │   │   └── ReportExporter.cs     # 报告路由 (按扩展名分发)
 │   │   ├── TypeSystem/
 │   │   │   └── TypeLoader.cs         # Roslyn 运行时编译 .cs 文件

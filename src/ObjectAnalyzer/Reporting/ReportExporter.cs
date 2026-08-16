@@ -8,6 +8,9 @@ public static class ReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
+        // 敏感字段值统一打码后再输出，保证任何报告格式都不会泄露原始 PII
+        result = PiiRedactor.Redact(result);
+
         string ext = Path.GetExtension(outputPath).ToLowerInvariant();
         if (ext is ".html" or ".htm")
         {

@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Added
+- **敏感数据识别 (PII) 与报告打码**：自动识别手机号（`1[3-9]\d{9}`）、身份证号（15/18 位）、银行卡号（16-19 位）、姓名（字段名提示 + 纯字母/CJK 值形态）与邮箱字段，并写入 `FieldStatistic.SemanticType`（新增 `Phone` / `IdCard` / `BankCard` / `Name` 语义类别）。所有报告输出（控制台、JSON、HTML、Markdown、CSV、数据质量/违规清单导出，含 Web 下载链接）在导出前经 `PiiRedactor.Redact` 统一打码——值频次键、枚举违规值与重复对象 JSON 中的敏感值按语义打码（`138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），打码确定性且幂等；无敏感字段时零开销原样返回。
+- **数据安全合规等级报告**：`--pii-report <FILE>` 输出结构化 JSON（`PiiReport` / `PiiExporter`）——合规等级 A/B/C（A=未发现敏感字段；B=存在敏感字段且已全部自动打码；C=样本无法完全打码需人工复核）+ 敏感字段清单（字段名/类别/高危标记/覆盖率/打码样本）+ 各类别统计；控制台在每次分析后同步输出一行"数据安全合规"摘要。
+- **测试**：PII 语义识别（手机号/身份证/银行卡/姓名/邮箱）、打码规则（10 组掩码样例）、`PiiRedactor` 打码不改动原始结果、重复对象 JSON 脱敏、JSON 报告无原始 PII 泄漏、`PiiReport` 等级 A/B 构建、`PiiExporter` 合规快照回读，共 21 个新用例。
 - **Web：覆盖率/类型分布图表**（Chart.js，`Home.razor` + `interop.js` 渲染函数）。
 - **Web：数据预览**（前 8 行 x 前 8 列，`AnalysisState.Preview`）。
 - **Web：报告下载**（JSON / HTML / MD / CSV，复用 `ReportExporter.Save` + `downloadTextFile`）。

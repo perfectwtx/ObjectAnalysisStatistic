@@ -29,6 +29,20 @@ public static partial class ObjectAnalyzer
         @"^(\d{1,3}\.){3}\d{1,3}$", RegexOptions.Compiled);
     private static readonly Regex RegexUrl = new(
         @"^(https?|ftp)://[^\s/$.?#].[^\s]*$", RegexOptions.Compiled);
+    private static readonly Regex RegexPhone = new(
+        @"^1[3-9]\d{9}$", RegexOptions.Compiled); // 中国大陆手机号
+    private static readonly Regex RegexIdCard = new(
+        @"^\d{15}$|^\d{17}[\dXx]$", RegexOptions.Compiled); // 中国大陆身份证（15/18 位）
+    private static readonly Regex RegexBankCard = new(
+        @"^\d{16,19}$", RegexOptions.Compiled); // 银行卡号
+
+    // 字段名强提示：用于在值形态上辅助判别"姓名"语义（避免仅凭形态误判普通文本）
+    private static readonly string[] NameFieldHints =
+    {
+        "name", "fullname", "realname", "username", "nickname", "displayname",
+        "firstname", "lastname", "familyname", "givenname", "surname",
+        "姓名", "用户名", "昵称", "联系人", "真实姓名"
+    };
 
     // 内部使用的线程局部扩展指标集
     private sealed class InternalFieldMetrics
@@ -201,7 +215,7 @@ public static partial class ObjectAnalyzer
                         }
 
                         // 收集数值与字符串度量指标
-                        RecordValueMetrics(value, valStr, metrics);
+                        RecordValueMetrics(value, valStr, fieldName, metrics);
                     }
 
                     // 128 位非密码学哈希去重（替代慢速 MD5 + 十六进制字符串）
@@ -360,7 +374,7 @@ public static partial class ObjectAnalyzer
         };
     }
 
-    private static void RecordValueMetrics(object? value, string valStr, InternalFieldMetrics metrics)
+    private static void RecordValueMetrics(object? value, string valStr, string fieldName, InternalFieldMetrics metrics)
     {
         if (value == null) return;
 
@@ -386,11 +400,60 @@ public static partial class ObjectAnalyzer
                 metrics.SemanticCounts["Email"] = metrics.SemanticCounts.GetValueOrDefault("Email") + 1;
             else if (RegexDateTime.IsMatch(strVal))
                 metrics.SemanticCounts["DateTime"] = metrics.SemanticCounts.GetValueOrDefault("DateTime") + 1;
+            else if (RegexIdCard.IsMatch(strVal))
+                metrics.SemanticCounts["IdCard"] = metrics.SemanticCounts.GetValueOrDefault("IdCard") + 1;
+            else if (RegexPhone.IsMatch(strVal))
+                metrics.SemanticCounts["Phone"] = metrics.SemanticCounts.GetValueOrDefault("Phone") + 1;
+            else if (RegexBankCard.IsMatch(strVal))
+                metrics.SemanticCounts["BankCard"] = metrics.SemanticCounts.GetValueOrDefault("BankCard") + 1;
             else if (RegexIPv4.IsMatch(strVal))
                 metrics.SemanticCounts["IPv4"] = metrics.SemanticCounts.GetValueOrDefault("IPv4") + 1;
             else if (RegexUrl.IsMatch(strVal))
                 metrics.SemanticCounts["URL"] = metrics.SemanticCounts.GetValueOrDefault("URL") + 1;
+            else if (LooksLikeHumanName(strVal, fieldName))
+                metrics.SemanticCounts["Name"] = metrics.SemanticCounts.GetValueOrDefault("Name") + 1;
         }
+    }
+
+    private static bool LooksLikeHumanName(string value, string fieldName)
+    {
+        if (!IsNameFieldName(fieldName))
+            return false;
+
+        if (value.Length < 2 || value.Length > 40)
+            return false;
+
+        int letterCount = 0;
+        foreach (char c in value)
+        {
+            if (char.IsLetter(c))
+            {
+                letterCount++;
+                continue;
+            }
+            if (c is ' ' or '-' or '.')
+                continue;
+            return false;
+        }
+        return letterCount > 0;
+    }
+
+    private static bool IsNameFieldName(string fieldName)
+    {
+        foreach (string hint in NameFieldHints)
+        {
+            int hintLength = hint.Length;
+            if (fieldName.Length < hintLength)
+                continue;
+            if (!fieldName.EndsWith(hint, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (fieldName.Length == hintLength)
+                return true;
+            char before = fieldName[fieldName.Length - hintLength - 1];
+            if (before is '.' or '_' or '-')
+                return true;
+        }
+        return false;
     }
 
     private static bool TryGetDoubleValue(object val, out double result)
