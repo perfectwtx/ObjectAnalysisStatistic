@@ -10,6 +10,12 @@ public sealed class ParseOptions
 {
     public bool Flatten { get; init; } = true;
     public string ExcelJsonColumn { get; init; } = "A";
+
+    /// <summary>蓄水池随机抽样：均匀随机保留最多 N 条记录参与统计（>0 启用）。由行/记录级解析器在解析前跳过未选中记录。</summary>
+    public int SampleReservoir { get; init; }
+
+    /// <summary>等距系统抽样：每 step 条记录取 1 条参与统计（>1 启用）。由行/记录级解析器跳过未选中记录。</summary>
+    public int SampleStep { get; init; }
 }
 
 /// <summary>

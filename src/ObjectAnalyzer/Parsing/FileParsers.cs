@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 using MiniExcelLibs;
+using ObjectAnalyzer.Analysis;
 using YamlDotNet.Serialization;
 
 namespace ObjectAnalyzer.Parsing;
@@ -232,36 +233,86 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "jsonl" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".jsonl", ".ndjson" };
 
-        // 惰性逐行流式解析：超大 JSONL 文件无需一次性物化到内存
+        // 惰性逐行流式解析：超大 JSONL 文件无需一次性物化到内存。
+        // 采样模式下（--sample-reservoir / --sample-step）仅在选中行上做 JSON 解析，
+        // 未选中行直接跳过，从而在巨型文件上数秒内完成 Schema 概览。
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            using var fs = File.OpenRead(path);
-            using var reader = new StreamReader(fs);
+            if (options.SampleReservoir > 0)
+                return ParseReservoir(path, options);
+            if (options.SampleStep > 0)
+                return ParseStep(path, options);
+            return ParseAll(path, options);
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
+        {
+            using var reader = new StreamReader(File.OpenRead(path));
             string? line;
-            int lineNumber = 0;
+            long lineNumber = 0;
             while ((line = reader.ReadLine()) != null)
             {
                 lineNumber++;
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
+                yield return ParseJsonLine(line, lineNumber, options);
+            }
+        }
 
-                JsonDocument doc;
-                try
-                {
-                    doc = JsonDocument.Parse(line);
-                }
-                catch (JsonException ex)
-                {
-                    throw new InvalidDataException($"在第 {lineNumber} 行解析 JSON 时出错: {ex.Message}", ex);
-                }
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
+        {
+            var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
+            using var reader = new StreamReader(File.OpenRead(path));
+            string? line;
+            long lineNumber = 0;
+            while ((line = reader.ReadLine()) != null)
+            {
+                lineNumber++;
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+                int slot = sampler.NextSlot();
+                if (slot < 0)
+                    continue; // 未命中槽位：跳过解析，只付出 I/O 成本
+                sampler.SetSlot(slot, ParseJsonLine(line, lineNumber, options));
+            }
+            return sampler.Items;
+        }
 
-                using (doc)
-                {
-                    var root = doc.RootElement;
-                    if (root.ValueKind != JsonValueKind.Object)
-                        throw new InvalidDataException($"第 {lineNumber} 行的 JSON 根节点必须是一个对象。");
-                    yield return ParseJsonElement(root, options.Flatten);
-                }
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
+        {
+            using var reader = new StreamReader(File.OpenRead(path));
+            string? line;
+            long lineNumber = 0;
+            long recordIndex = 0;
+            while ((line = reader.ReadLine()) != null)
+            {
+                lineNumber++;
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+                if (recordIndex++ % options.SampleStep != 0)
+                    continue; // 未命中步长：跳过解析
+                yield return ParseJsonLine(line, lineNumber, options);
+            }
+        }
+
+        private static Dictionary<string, object?> ParseJsonLine(string line, long lineNumber, ParseOptions options)
+        {
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(line);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"在第 {lineNumber} 行解析 JSON 时出错: {ex.Message}", ex);
+            }
+
+            using (doc)
+            {
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException($"第 {lineNumber} 行的 JSON 根节点必须是一个对象。");
+                return ParseJsonElement(root, options.Flatten);
             }
         }
     }
@@ -273,20 +324,62 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var rows = MiniExcel.Query(path, useHeaderRow: true);
-            foreach (var row in rows)
+            if (options.SampleReservoir > 0)
+                return ParseReservoir(path, options);
+            if (options.SampleStep > 0)
+                return ParseStep(path, options);
+            return ParseAll(path, options);
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
+        {
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
             {
-                var dict = new Dictionary<string, object?>();
-                if (row is IDictionary<string, object?> rowDict)
-                {
-                    foreach (var kvp in rowDict)
-                    {
-                        if (kvp.Key != null)
-                            dict[kvp.Key] = kvp.Value;
-                    }
-                }
-                yield return dict;
+                var dict = ToRowDict(row);
+                if (dict != null)
+                    yield return dict;
             }
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
+        {
+            var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            {
+                int slot = sampler.NextSlot();
+                if (slot < 0)
+                    continue;
+                var dict = ToRowDict(row);
+                if (dict != null)
+                    sampler.SetSlot(slot, dict);
+            }
+            return sampler.Items;
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
+        {
+            long recordIndex = 0;
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            {
+                if (recordIndex++ % options.SampleStep != 0)
+                    continue;
+                var dict = ToRowDict(row);
+                if (dict != null)
+                    yield return dict;
+            }
+        }
+
+        private static Dictionary<string, object?>? ToRowDict(object? row)
+        {
+            if (row is not IDictionary<string, object?> rowDict)
+                return null;
+            var dict = new Dictionary<string, object?>();
+            foreach (var kvp in rowDict)
+            {
+                if (kvp.Key != null)
+                    dict[kvp.Key] = kvp.Value;
+            }
+            return dict;
         }
     }
 
@@ -368,46 +461,95 @@ public static class FileParsers
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
             string columnName = options.ExcelJsonColumn.ToUpperInvariant();
+            if (options.SampleReservoir > 0)
+                return ParseReservoir(path, columnName, options);
+            if (options.SampleStep > 0)
+                return ParseStep(path, columnName, options);
+            return ParseAll(path, columnName, options);
+        }
 
-            var rows = MiniExcel.Query(path, useHeaderRow: false);
-            int rowIndex = 0;
-
-            foreach (var row in rows)
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, string columnName, ParseOptions options)
+        {
+            long rowIndex = 0;
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: false))
             {
                 rowIndex++;
+                var dict = TryParseJsonCell(row, columnName, rowIndex, options);
+                if (dict != null)
+                    yield return dict;
+            }
+        }
 
-                if (row is not IDictionary<string, object?> rowDict)
+        // 采样：先按记录序做准入/步长判定，未选中行连 JSON 单元格都不解析
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, string columnName, ParseOptions options)
+        {
+            var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
+            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: false)))
+            {
+                int slot = sampler.NextSlot();
+                if (slot < 0)
                     continue;
+                var dict = TryParseJsonCell(row, columnName, rowIndex, options);
+                if (dict != null)
+                    sampler.SetSlot(slot, dict);
+            }
+            return sampler.Items;
+        }
 
-                if (!rowDict.TryGetValue(columnName, out object? cellValue) || cellValue == null)
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, string columnName, ParseOptions options)
+        {
+            long recordIndex = 0;
+            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: false)))
+            {
+                if (recordIndex++ % options.SampleStep != 0)
                     continue;
+                var dict = TryParseJsonCell(row, columnName, rowIndex, options);
+                if (dict != null)
+                    yield return dict;
+            }
+        }
 
-                string jsonString = cellValue.ToString() ?? "";
-                if (string.IsNullOrWhiteSpace(jsonString))
-                    continue;
+        private static Dictionary<string, object?>? TryParseJsonCell(object? row, string columnName, long rowIndex, ParseOptions options)
+        {
+            if (row is not IDictionary<string, object?> rowDict)
+                return null;
+            if (!rowDict.TryGetValue(columnName, out object? cellValue) || cellValue == null)
+                return null;
 
-                // 跳过非 JSON 对象的行（如表头行）
-                string trimmed = jsonString.TrimStart();
-                if (!trimmed.StartsWith('{'))
-                    continue;
+            string jsonString = cellValue.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(jsonString))
+                return null;
 
-                JsonDocument doc;
-                try
-                {
-                    doc = JsonDocument.Parse(jsonString);
-                }
-                catch (JsonException ex)
-                {
-                    throw new InvalidDataException($"在第 {rowIndex} 行解析 JSON 时出错 (列 {columnName}): {ex.Message}", ex);
-                }
+            // 跳过非 JSON 对象的行（如表头行）
+            string trimmed = jsonString.TrimStart();
+            if (!trimmed.StartsWith('{'))
+                return null;
 
-                using (doc)
-                {
-                    var root = doc.RootElement;
-                    if (root.ValueKind != JsonValueKind.Object)
-                        throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
-                    yield return ParseJsonElement(root, options.Flatten);
-                }
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(jsonString);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidDataException($"在第 {rowIndex} 行解析 JSON 时出错 (列 {columnName}): {ex.Message}", ex);
+            }
+
+            using (doc)
+            {
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
+                return ParseJsonElement(root, options.Flatten);
+            }
+        }
+
+        private static IEnumerable<(long Index, object? Row)> Indexed(IEnumerable<object?> rows)
+        {
+            long index = 0;
+            foreach (var row in rows)
+            {
+                yield return (index++, row);
             }
         }
     }

@@ -41,6 +41,8 @@ public sealed class AnalysisState : IDisposable
     public string? Format { get; set; }                           // --format (null=自动检测)
     public int MaxValuesToShow { get; set; } = 5;                // --max-values
     public int MaxDegreeOfParallelism { get; set; } = -1;        // --parallel (-1 = 全部核心)
+    public int SampleReservoir { get; set; }                     // --sample-reservoir (>0 启用)
+    public int SampleStep { get; set; }                          // --sample-step (>1 启用)
 
     // --type (.cs 类型定义文件)：以临时文件形式保存，避免在内存中缓存大内容
     public string? TypeFilePath { get; set; }

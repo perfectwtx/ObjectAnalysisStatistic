@@ -3,6 +3,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
 using ObjectAnalyzer;
+using ObjectAnalyzer.Analysis;
 using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -70,6 +71,16 @@ var qualityOption = new Option<FileInfo?>(
     aliases: CliAliases.Quality,
     description: "导出结构化数据质量报告 JSON 文件路径（Pass/Fail 摘要 + 违规率 + 逐字段明细）。");
 
+var sampleReservoirOption = new Option<int>(
+    name: "--sample-reservoir",
+    description: "蓄水池随机抽样：从海量数据中均匀随机抽取最多 N 个对象分析，快速预估 Schema（如 --sample-reservoir 50000）。与 --sample-step 互斥。",
+    getDefaultValue: () => 0);
+
+var sampleStepOption = new Option<int>(
+    name: "--sample-step",
+    description: "等距系统抽样：每 N 条记录取 1 条分析，快速预估 Schema（如 --sample-step 100）。与 --sample-reservoir 互斥。",
+    getDefaultValue: () => 0);
+
 var failOnViolationsOption = new Option<bool>(
     name: "--fail-on-violations",
     description: "存在枚举违规时以非零退出码结束（便于 CI 数据质量门禁）。");
@@ -95,6 +106,8 @@ rootCommand.AddOption(parallelOption);
 rootCommand.AddOption(violationsOption);
 rootCommand.AddOption(qualityOption);
 rootCommand.AddOption(failOnViolationsOption);
+rootCommand.AddOption(sampleReservoirOption);
+rootCommand.AddOption(sampleStepOption);
 rootCommand.AddOption(exportSchemaOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
@@ -115,6 +128,8 @@ rootCommand.SetHandler((InvocationContext context) =>
     var violations = parseResult.GetValueForOption(violationsOption);
     var quality = parseResult.GetValueForOption(qualityOption);
     var failOnViolations = parseResult.GetValueForOption(failOnViolationsOption);
+    var sampleReservoir = parseResult.GetValueForOption(sampleReservoirOption);
+    var sampleStep = parseResult.GetValueForOption(sampleStepOption);
     var exportSchema = parseResult.GetValueForOption(exportSchemaOption);
 
     if (generateTestExcel)
@@ -126,6 +141,17 @@ rootCommand.SetHandler((InvocationContext context) =>
     if (maxParallel < 1 && maxParallel != -1)
     {
         AnsiConsole.MarkupLine("[red]错误: --parallel 必须是正整数 (>= 1) 或 -1 (默认)。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
+    try
+    {
+        Sampling.Validate(sampleReservoir, sampleStep);
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
         context.ExitCode = 1;
         return;
     }
@@ -158,6 +184,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         ViolationsPath = violations?.FullName,
         QualityPath = quality?.FullName,
         FailOnViolations = failOnViolations,
+        SampleReservoir = sampleReservoir,
+        SampleStep = sampleStep,
         ExportSchema = schemaFormat,
         SchemaOutputPath = schemaOutput
     };
@@ -173,14 +201,26 @@ Console.CancelKeyPress += (_, e) =>
 
 return rootCommand.Invoke(args);
 
-/// <summary>按最后一个冒号切分 "路径[:后缀]"（类名或输出路径），无冒号时原样作为路径。</summary>
+/// <summary>
+/// 切分 "前缀[:后缀]"（如 "File.cs:ClassName"、"csharp:out.cs"）。
+/// 跳过 Windows 盘符冒号（如 "C:\x" 中的 'C:'），因此 "csharp:C:\out.cs" 会正确切分为 ("csharp","C:\out.cs")。
+/// 无可用冒号时原样作为路径。
+/// </summary>
 static (string? path, string? suffix) SplitColonSuffix(string? value)
 {
     if (string.IsNullOrWhiteSpace(value))
         return (null, null);
-    int idx = value.LastIndexOf(':');
-    if (idx > 0 && idx < value.Length - 1)
-        return (value[..idx], value[(idx + 1)..]);
+    bool driveLetter = value.Length >= 2 && value[1] == ':' && char.IsAsciiLetter(value[0]);
+    for (int i = 0; i < value.Length; i++)
+    {
+        if (value[i] != ':')
+            continue;
+        if (driveLetter && i == 1)
+            continue; // 盘符冒号不算分隔符
+        if (i > 0 && i < value.Length - 1)
+            return (value[..i], value[(i + 1)..]);
+        break;
+    }
     return (value, null);
 }
 

@@ -26,4 +26,10 @@ public sealed class AnalysisOptions
 
     /// <summary>按字段值过滤对象后再统计（--where，如 "Age &gt; 18 AND Status in ['A','B']"）。</summary>
     public string? Filter { get; set; }
+
+    /// <summary>蓄水池随机抽样容量（--sample-reservoir，>0 启用）。</summary>
+    public int SampleReservoir { get; set; }
+
+    /// <summary>等距系统抽样步长（--sample-step，>1 启用）。</summary>
+    public int SampleStep { get; set; }
 }

@@ -20,6 +20,10 @@ public static class AnalysisRunner
             return 1;
         }
 
+        // 采样参数提前校验，避免解析到一半才发现配置非法
+        if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
+            Sampling.Validate(options.SampleReservoir, options.SampleStep);
+
         try
         {
             IEnumerable<Dictionary<string, object?>> parsedObjects;
@@ -76,9 +80,42 @@ public static class AnalysisRunner
         var parseOptions = new ParseOptions
         {
             Flatten = options.Flatten,
-            ExcelJsonColumn = options.ExcelJsonColumn ?? "A"
+            ExcelJsonColumn = options.ExcelJsonColumn ?? "A",
+            SampleReservoir = options.SampleReservoir,
+            SampleStep = options.SampleStep
         };
-        return FileParsers.ParseByFormat(options.InputPath, format, parseOptions);
+        IEnumerable<Dictionary<string, object?>> parsed = FileParsers.ParseByFormat(options.InputPath, format, parseOptions);
+
+        // jsonl / csv / excel / excel-json 已在行/记录级跳过未选中记录；
+        // 其余整体物化格式（json / xml / yaml）在解析完成后统一做采样包装。
+        bool parserAlreadySampled = format is "jsonl" or "csv" or "excel" or "excel-json";
+        return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled);
+    }
+
+    private static IEnumerable<Dictionary<string, object?>> ApplySamplingIfEnabled(
+        IEnumerable<Dictionary<string, object?>> parsed,
+        AnalysisOptions options,
+        bool parserAlreadySampled)
+    {
+        if (!Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
+            return parsed;
+
+        AnnounceSampling(options);
+        return parserAlreadySampled
+            ? parsed
+            : Sampling.Apply(parsed, options.SampleReservoir, options.SampleStep);
+    }
+
+    private static void AnnounceSampling(AnalysisOptions options)
+    {
+        if (options.SampleReservoir > 0)
+        {
+            AnsiConsole.MarkupLine($"[grey][[采样]][/] 蓄水池随机抽样：从海量数据中均匀抽取最多 [blue]{options.SampleReservoir}[/] 条进行统计与 Schema 概览。");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
+        }
     }
 
     /// <summary>
@@ -115,6 +152,13 @@ public static class AnalysisRunner
         finally
         {
             compileResult.context.Dispose();
+        }
+
+        // 强类型路径已整体物化，采样以通用包装实现
+        if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
+        {
+            AnnounceSampling(options);
+            return Sampling.Apply(materialized, options.SampleReservoir, options.SampleStep).ToList();
         }
 
         return materialized;

@@ -81,6 +81,14 @@
                     <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="@Loc["OptParallelTitle"]" />
                 </label>
                 <label class="option-item">
+                    <span>@Loc["OptSampleReservoir"]</span>
+                    <input type="number" value="@State.SampleReservoir" @oninput="OnSampleReservoirChange" min="0" placeholder="0" title="@Loc["OptSampleTitle"]" />
+                </label>
+                <label class="option-item">
+                    <span>@Loc["OptSampleStep"]</span>
+                    <input type="number" value="@State.SampleStep" @oninput="OnSampleStepChange" min="0" placeholder="0" title="@Loc["OptSampleTitle"]" />
+                </label>
+                <label class="option-item">
                     <span>@Loc["OptExcelJsonColumn"]</span>
                     <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
                 </label>
@@ -487,11 +495,16 @@
         string fieldsText = State.Fields;
         string filterText = State.Filter;
         int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
+        int sampleReservoir = State.SampleReservoir;
+        int sampleStep = State.SampleStep;
         string? typedError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
 
         try
         {
+            // 采样参数校验（蓄水池与等距互斥、参数合法性）
+            Core.Analysis.Sampling.Validate(sampleReservoir, sampleStep);
+
             var result = await Task.Run(() =>
             {
                 IEnumerable<Dictionary<string, object?>> objects;
@@ -508,6 +521,11 @@
                             typedError = Loc.Get("ErrTypedParse", typedResult.Errors.Count, typedResult.Errors[0]);
                         }
                         objects = typedResult.Objects;
+                        if (Core.Analysis.Sampling.IsEnabled(sampleReservoir, sampleStep))
+                        {
+                            // 强类型路径已整体物化，采样以通用包装实现
+                            objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep).ToList();
+                        }
                     }
                     finally
                     {
@@ -523,9 +541,17 @@
                     var parseOptions = new Core.Parsing.ParseOptions
                     {
                         Flatten = flatten,
-                        ExcelJsonColumn = excelJsonColumn
+                        ExcelJsonColumn = excelJsonColumn,
+                        SampleReservoir = sampleReservoir,
+                        SampleStep = sampleStep
                     };
                     objects = Core.Parsing.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
+                    // jsonl/csv/excel/excel-json 已在行/记录级跳过未选中记录；其余格式做通用采样包装
+                    if (Core.Analysis.Sampling.IsEnabled(sampleReservoir, sampleStep)
+                        && detectedFormat is not ("jsonl" or "csv" or "excel" or "excel-json"))
+                    {
+                        objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep);
+                    }
                 }
 
                 // 加载规则文件
@@ -675,6 +701,22 @@
         if (int.TryParse(e.Value?.ToString(), out int val) && val >= -1)
         {
             State.MaxDegreeOfParallelism = val;
+        }
+    }
+
+    private void OnSampleReservoirChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val) && val >= 0)
+        {
+            State.SampleReservoir = val;
+        }
+    }
+
+    private void OnSampleStepChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val) && val >= 0)
+        {
+            State.SampleStep = val;
         }
     }
 

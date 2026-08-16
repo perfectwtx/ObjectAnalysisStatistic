@@ -28,6 +28,9 @@
   <data name="OptMaxValues" xml:space="preserve"><value>Max values shown</value></data>
   <data name="OptParallel" xml:space="preserve"><value>Parallel threads</value></data>
   <data name="OptParallelTitle" xml:space="preserve"><value>Max parallel threads, -1 = all cores</value></data>
+  <data name="OptSampleReservoir" xml:space="preserve"><value>Reservoir sample</value></data>
+  <data name="OptSampleStep" xml:space="preserve"><value>Step sample size</value></data>
+  <data name="OptSampleTitle" xml:space="preserve"><value>Sampling for huge files: reservoir keeps up to N random objects / step keeps 1 per N rows for fast schema overview (mutually exclusive, 0 = off)</value></data>
   <data name="OptExcelJsonColumn" xml:space="preserve"><value>Excel-JSON column</value></data>
   <data name="OptTypeName" xml:space="preserve"><value>Target class name</value></data>
   <data name="OptTypeNamePlaceholder" xml:space="preserve"><value>Optional</value></data>
