@@ -80,6 +80,10 @@ public class ValueParserConfig
     /// <summary>解析类型：none / auto / json / json-string。</summary>
     [JsonPropertyName("parseType")]
     public string ParseType { get; set; } = "auto";
+
+    /// <summary>是否对该来源解析出的对象/数组做扁平化。null 表示沿用全局 flatten 配置。</summary>
+    [JsonPropertyName("flatten")]
+    public bool? Flatten { get; set; }
 }
 
 /// <summary>

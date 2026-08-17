@@ -545,7 +545,8 @@ public static class FileParsers
                 if (parsedValue == null)
                     continue;
 
-                if (options.Flatten)
+                bool shouldFlatten = source.Flatten ?? options.Flatten;
+                if (shouldFlatten)
                 {
                     AddFlattenedParsedValue(result, sourceKey, parsedValue);
                     continue;

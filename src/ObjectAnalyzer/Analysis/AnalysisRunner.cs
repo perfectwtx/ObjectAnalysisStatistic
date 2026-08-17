@@ -367,7 +367,12 @@ public static class AnalysisRunner
         {
             return rules.ValueParsers
                 .Where(p => !string.IsNullOrWhiteSpace(p.Source))
-                .Select(p => new ValueParserConfig { Source = p.Source.Trim(), ParseType = string.IsNullOrWhiteSpace(p.ParseType) ? "auto" : p.ParseType.Trim() })
+                .Select(p => new ValueParserConfig
+                {
+                    Source = p.Source.Trim(),
+                    ParseType = string.IsNullOrWhiteSpace(p.ParseType) ? "auto" : p.ParseType.Trim(),
+                    Flatten = p.Flatten
+                })
                 .ToList();
         }
 

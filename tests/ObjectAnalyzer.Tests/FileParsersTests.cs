@@ -213,4 +213,44 @@ public class FileParsersTests
            if (File.Exists(tempFile)) File.Delete(tempFile);
        }
    }
+
+   [Fact]
+   public void ParseExcelJson_PerSourceFlattenOverride_Works()
+   {
+       string tempFile = Path.ChangeExtension(Path.GetTempFileName(), ".xlsx");
+       var payload = new[]
+       {
+           new Dictionary<string, object?>
+           {
+               { "A", "{\"id\":1,\"name\":\"Alice\"}" },
+               { "B", "{\"age\":30,\"city\":\"Beijing\"}" }
+           }
+       };
+
+       MiniExcel.SaveAs(tempFile, payload);
+
+       try
+       {
+           var result = FileParsers.ParseByFormat(tempFile, "excel-json", new ParseOptions
+           {
+               Flatten = false,
+               ValueParsers = new[]
+               {
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Flatten = true },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Flatten = false }
+               }
+           }).ToList();
+
+           Assert.Single(result);
+           Assert.Equal(1L, result[0]["A.id"]);
+           Assert.Equal("Alice", result[0]["A.name"]);
+           var b = Assert.IsType<Dictionary<string, object?>>(result[0]["B"]);
+           Assert.Equal(30L, b["age"]);
+           Assert.Equal("Beijing", b["city"]);
+       }
+       finally
+       {
+           if (File.Exists(tempFile)) File.Delete(tempFile);
+       }
+   }
 }
