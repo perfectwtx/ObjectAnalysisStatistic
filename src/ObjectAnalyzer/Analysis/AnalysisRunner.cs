@@ -102,13 +102,16 @@ public static class AnalysisRunner
         AnalysisRules? rules = null,
         IReadOnlyList<ValueParserConfig>? valueParsers = null)
     {
-        string? format = options.Format;
+        string format = ResolveEffectiveFormat(options, rules);
 
         // 自动检测文件格式
-        if (string.IsNullOrEmpty(format))
+        if (string.IsNullOrEmpty(options.Format) && !string.Equals(format, "excel-json", StringComparison.OrdinalIgnoreCase))
         {
-            format = FileParsers.DetectFormat(options.InputPath);
             AnsiConsole.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
+        }
+        else if (!string.IsNullOrEmpty(options.Format) && !string.Equals(options.Format, format, StringComparison.OrdinalIgnoreCase))
+        {
+            AnsiConsole.MarkupLine($"[grey][[规则驱动]][/] 因规则配置要求 Excel JSON 解析，使用格式 '[blue]{format}[/]' 进行解析。");
         }
 
         AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
@@ -129,6 +132,42 @@ public static class AnalysisRunner
         // 其余整体物化格式（json / xml / yaml）在解析完成后统一做采样包装。
         bool parserAlreadySampled = format is "jsonl" or "csv" or "excel" or "excel-json";
         return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled);
+    }
+
+    private static string ResolveEffectiveFormat(AnalysisOptions options, AnalysisRules? rules)
+    {
+        if (RequiresExcelJsonValueParsing(options, rules))
+        {
+            var shouldForceExcelJson = string.IsNullOrWhiteSpace(options.Format)
+                || string.Equals(options.Format, "excel", StringComparison.OrdinalIgnoreCase);
+            if (shouldForceExcelJson)
+            {
+                return "excel-json";
+            }
+        }
+
+        if (string.IsNullOrEmpty(options.Format))
+        {
+            return FileParsers.DetectFormat(options.InputPath);
+        }
+
+        return options.Format;
+    }
+
+    private static bool RequiresExcelJsonValueParsing(AnalysisOptions options, AnalysisRules? rules)
+    {
+        if (rules != null)
+        {
+            if (rules.ValueParsers is { Count: > 0 }) return true;
+            if (rules.ExcelJsonColumns is { Count: > 0 }) return true;
+            if (!string.IsNullOrWhiteSpace(rules.ExcelJsonColumn)) return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumns)) return true;
+        if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumn)
+            && !string.Equals(options.ExcelJsonColumn, "A", StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
     }
 
     private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options)

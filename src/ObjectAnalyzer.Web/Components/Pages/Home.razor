@@ -528,6 +528,69 @@
         string? typedError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
 
+        Core.Analysis.AnalysisRules? rules = null;
+        if (rulesFilePath != null)
+        {
+            var rulesJson = File.ReadAllText(rulesFilePath);
+            rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson);
+        }
+
+        string effectiveFormat = ResolveEffectiveFormat(format, rules, dataFilePath);
+
+        var effectiveFlatten = flatten;
+        if (rules?.Flatten is bool rulesFlatten)
+        {
+            effectiveFlatten = rulesFlatten;
+        }
+
+        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = Array.Empty<Core.Analysis.ValueParserConfig>();
+        if (rules?.ValueParsers is { Count: > 0 })
+        {
+            effectiveValueParsers = rules.ValueParsers;
+        }
+        else
+        {
+            var legacySources = new List<string>();
+            if (!string.IsNullOrWhiteSpace(excelJsonColumn))
+            {
+                legacySources.Add(excelJsonColumn.Trim());
+            }
+            if (rules?.ExcelJsonColumns is { Count: > 0 })
+            {
+                foreach (var candidate in rules.ExcelJsonColumns)
+                {
+                    var trimmed = candidate?.Trim();
+                    if (string.IsNullOrWhiteSpace(trimmed)) continue;
+                    if (legacySources.Any(source => string.Equals(source, trimmed, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+                    legacySources.Add(trimmed);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(rules?.ExcelJsonColumn))
+            {
+                var legacyColumn = rules.ExcelJsonColumn.Trim();
+                if (!legacySources.Any(source => string.Equals(source, legacyColumn, StringComparison.OrdinalIgnoreCase)))
+                {
+                    legacySources.Add(legacyColumn);
+                }
+            }
+
+            if (legacySources.Count > 0)
+            {
+                effectiveValueParsers = legacySources
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(source => new Core.Analysis.ValueParserConfig
+                    {
+                        Source = source,
+                        ParseType = "json",
+                        Flatten = rules?.Flatten ?? effectiveFlatten
+                    })
+                    .ToList();
+            }
+        }
+
         try
         {
             // 采样参数校验（蓄水池与等距互斥、参数合法性）
@@ -563,13 +626,12 @@
                 else
                 {
                     // 懒管道：直接传递 IEnumerable，避免为大文件物化 List
-                    var detectedFormat = string.IsNullOrEmpty(format)
-                        ? Core.Parsing.FileParsers.DetectFormat(dataFilePath)
-                        : format;
+                    var detectedFormat = effectiveFormat;
                     var parseOptions = new Core.Parsing.ParseOptions
                     {
-                        Flatten = flatten,
+                        Flatten = effectiveFlatten,
                         ExcelJsonColumn = excelJsonColumn,
+                        ValueParsers = effectiveValueParsers,
                         SampleReservoir = sampleReservoir,
                         SampleStep = sampleStep
                     };
@@ -580,14 +642,6 @@
                     {
                         objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep);
                     }
-                }
-
-                // 加载规则文件
-                Core.Analysis.AnalysisRules? rules = null;
-                if (rulesFilePath != null)
-                {
-                    var rulesJson = File.ReadAllText(rulesFilePath);
-                    rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson);
                 }
 
                 var parallelOptions = new ParallelOptions
@@ -653,6 +707,28 @@
             _analysisCts = null;
             State.IsLoading = false;
         }
+    }
+
+    private static string ResolveEffectiveFormat(string? format, Core.Analysis.AnalysisRules? rules, string? filePath)
+    {
+        if (rules != null)
+        {
+            if (rules.ValueParsers is { Count: > 0 }
+                || rules.ExcelJsonColumns is { Count: > 0 }
+                || !string.IsNullOrWhiteSpace(rules.ExcelJsonColumn))
+            {
+                if (string.IsNullOrWhiteSpace(format) || string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "excel-json";
+                }
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(format)
+            ? (string.IsNullOrWhiteSpace(filePath)
+                ? "json"
+                : Core.Parsing.FileParsers.DetectFormat(filePath))
+            : format;
     }
 
     private void CancelAnalysis()
