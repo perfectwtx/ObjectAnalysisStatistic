@@ -1,4 +1,5 @@
 {
+  "flatten": true,
   "valueParsers": [
     { "source": "A", "parseType": "json" },
     { "source": "B", "parseType": "json" },

@@ -87,6 +87,10 @@ public class ValueParserConfig
 /// </summary>
 public class AnalysisRules
 {
+    /// <summary>全局 JSON 展开行为：true 时扁平化嵌套对象，false 时保留对象树。CLI 的 --no-flatten 优先级更高。</summary>
+    [JsonPropertyName("flatten")]
+    public bool? Flatten { get; set; }
+
     [JsonPropertyName("fields")]
     public Dictionary<string, FieldRule> Fields { get; set; } = new();
 

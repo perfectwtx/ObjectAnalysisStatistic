@@ -67,7 +67,7 @@ public static class AnalysisRunner
             }
             else
             {
-                parsedObjects = ParseByFormat(options, effectiveValueParsers);
+                parsedObjects = ParseByFormat(options, rules, effectiveValueParsers);
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
@@ -97,7 +97,10 @@ public static class AnalysisRunner
     /// Detects format from file extension and parses the file accordingly.
     /// Uses the parser registry in FileParsers (IFileParser pattern).
     /// </summary>
-    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options, IReadOnlyList<ValueParserConfig>? valueParsers = null)
+    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(
+        AnalysisOptions options,
+        AnalysisRules? rules = null,
+        IReadOnlyList<ValueParserConfig>? valueParsers = null)
     {
         string? format = options.Format;
 
@@ -111,7 +114,7 @@ public static class AnalysisRunner
         AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
         var parseOptions = new ParseOptions
         {
-            Flatten = options.Flatten,
+            Flatten = ResolveFlatten(options, rules),
             ExcelJsonColumn = !string.IsNullOrWhiteSpace(options.ExcelJsonColumn)
                 ? options.ExcelJsonColumn
                 : "A",
@@ -345,6 +348,17 @@ public static class AnalysisRunner
         }
         AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;
+    }
+
+    private static bool ResolveFlatten(AnalysisOptions options, AnalysisRules? rules)
+    {
+        if (!options.Flatten)
+            return false;
+
+        if (rules?.Flatten is bool flatten)
+            return flatten;
+
+        return options.Flatten;
     }
 
     private static IReadOnlyList<ValueParserConfig> ResolveValueParsers(AnalysisOptions options, AnalysisRules? rules)

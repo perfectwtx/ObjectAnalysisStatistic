@@ -189,6 +189,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 ```json
 {
+  "flatten": true,
   "valueParsers": [
     { "source": "A", "parseType": "json" },
     { "source": "B", "parseType": "auto" },
@@ -230,7 +231,9 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `valueParsers` 用于声明“值读取时如何解析”，不属于 `fields` 的字段分析配置。`source` 表示来源字段/列名（如 `A` / `B` / `payload`），`parseType` 控制是否与如何解析内容：`none` 保持原值、`auto` 自动识别并解析 JSON、`json` 要求值必须是合法 JSON、`json-string` 允许值本身是 JSON 字符串或嵌套字符串 JSON，最终解析出真实对象/数组/值。
 
-对于 Excel JSON 多列场景，多个配置项会保持独立对象桶，不会被合并成同一个对象，结果形态类似 `{"A": {...}, "B": {...}, "C": {...}}`。兼容旧写法 `excelJsonColumn` / `excelJsonColumns` 仍会转换成同一套 `valueParsers` 逻辑，CLI `--excel-json-column` / `--excel-json-columns` 优先级更高。
+顶层 `flatten` 控制解析后是否把对象继续展开为 `A.id` / `B.age` 之类字段。默认值为 `true`，当没有显式传 `--no-flatten` 时，规则文件里的 `flatten` 会生效；`--no-flatten` 仍然优先级最高。
+
+对于 Excel JSON 多列场景，多个配置项会保持独立对象桶，不会被合并成同一个对象；在 `flatten: true` 时，会展开成 `A.id` / `A.name` / `B.age` 这类字段，结果形态类似 `{"A.id": 1, "A.name": "张三", "B.age": 28}`。兼容旧写法 `excelJsonColumn` / `excelJsonColumns` 仍会转换成同一套 `valueParsers` 逻辑，CLI `--excel-json-column` / `--excel-json-columns` 优先级更高。
 
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
 
