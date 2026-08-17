@@ -199,14 +199,14 @@ public class FileParsersTests
            }).ToList();
 
            Assert.Single(result);
-           var a = Assert.IsType<Dictionary<string, object?>>(result[0]["A"]);
-           var b = Assert.IsType<Dictionary<string, object?>>(result[0]["B"]);
-           var c = Assert.IsType<Dictionary<string, object?>>(result[0]["C"]);
-           Assert.Equal(1L, a["id"]);
-           Assert.Equal("Alice", a["name"]);
-           Assert.Equal(30L, b["age"]);
-           Assert.Equal("Beijing", b["city"]);
-           Assert.Equal("Admin", c["role"]);
+           Assert.Equal(1L, result[0]["A.id"]);
+           Assert.Equal("Alice", result[0]["A.name"]);
+           Assert.Equal(30L, result[0]["B.age"]);
+           Assert.Equal("Beijing", result[0]["B.city"]);
+           Assert.Equal("Admin", result[0]["C.role"]);
+           Assert.False(result[0].ContainsKey("A"));
+           Assert.False(result[0].ContainsKey("B"));
+           Assert.False(result[0].ContainsKey("C"));
        }
        finally
        {

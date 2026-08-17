@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -544,10 +545,47 @@ public static class FileParsers
                 if (parsedValue == null)
                     continue;
 
+                if (options.Flatten)
+                {
+                    AddFlattenedParsedValue(result, sourceKey, parsedValue);
+                    continue;
+                }
+
                 result[sourceKey] = parsedValue;
             }
 
             return result.Count > 0 ? result : null;
+        }
+
+        private static void AddFlattenedParsedValue(Dictionary<string, object?> result, string sourceKey, object? parsedValue)
+        {
+            if (parsedValue == null)
+                return;
+
+            switch (parsedValue)
+            {
+                case Dictionary<string, object?> nestedDict:
+                    FlattenObjectDictInto(nestedDict, sourceKey, result, 0);
+                    break;
+                case IList list:
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        string indexedKey = $"{sourceKey}[{i}]";
+                        var item = list[i];
+                        if (item is Dictionary<string, object?> itemDict)
+                        {
+                            FlattenObjectDictInto(itemDict, indexedKey, result, 0);
+                        }
+                        else
+                        {
+                            result[indexedKey] = item;
+                        }
+                    }
+                    break;
+                default:
+                    result[sourceKey] = parsedValue;
+                    break;
+            }
         }
 
         private static object? ParseValueByType(object? value, string parseType, string sourceKey, long rowIndex, ParseOptions options)
