@@ -37,8 +37,7 @@ public sealed class AnalysisState : IDisposable
 
     // 解析选项 (对应 CLI 所有选项)
     public bool Flatten { get; set; } = true;                    // --no-flatten
-    public string ExcelJsonColumn { get; set; } = "A";           // --excel-json-column
-    public string? Format { get; set; }                           // --format (null=自动检测)
+    public string? Format { get; set; }                           // null = 自动检测
     public int MaxValuesToShow { get; set; } = 5;                // --max-values
     public int MaxDegreeOfParallelism { get; set; } = -1;        // --parallel (-1 = 全部核心)
     public int SampleReservoir { get; set; }                     // --sample-reservoir (>0 启用)

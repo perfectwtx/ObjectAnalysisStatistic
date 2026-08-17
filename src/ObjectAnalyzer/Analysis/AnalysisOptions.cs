@@ -12,8 +12,6 @@ public sealed class AnalysisOptions
     public int MaxValuesToShow { get; set; } = 5;
     public string? TypeFile { get; set; }
     public string? TypeName { get; set; }
-    public string? ExcelJsonColumn { get; set; }
-    public string? ExcelJsonColumns { get; set; }
     public string? RulesFile { get; set; }
     public string? ViolationsPath { get; set; }
     public string? QualityPath { get; set; }

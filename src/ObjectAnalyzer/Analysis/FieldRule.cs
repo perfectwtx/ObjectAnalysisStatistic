@@ -109,12 +109,4 @@ public class AnalysisRules
     /// <summary>通用值解析器：按 source + parseType 决定是否解析值，适用于 Excel / JSON / 任意输入来源。</summary>
     [JsonPropertyName("valueParsers")]
     public List<ValueParserConfig>? ValueParsers { get; set; }
-
-    /// <summary>兼容旧写法：Excel-JSON 单列。</summary>
-    [JsonPropertyName("excelJsonColumn")]
-    public string? ExcelJsonColumn { get; set; }
-
-    /// <summary>兼容旧写法：Excel-JSON 多列。</summary>
-    [JsonPropertyName("excelJsonColumns")]
-    public List<string>? ExcelJsonColumns { get; set; }
 }

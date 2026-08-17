@@ -191,11 +191,15 @@ public class FileParsersTests
 
        try
        {
-           var readColumns = new List<string> { "A", "B", "C" };
            var result = FileParsers.ParseByFormat(tempFile, "excel-json", new ParseOptions
            {
                Flatten = true,
-               ExcelJsonColumns = readColumns
+               ValueParsers = new[]
+               {
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json" },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json" },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "C", ParseType = "json" }
+               }
            }).ToList();
 
            Assert.Single(result);

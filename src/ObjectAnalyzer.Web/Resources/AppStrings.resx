@@ -33,7 +33,6 @@
   <data name="OptSampleReservoir" xml:space="preserve"><value>蓄水池采样</value></data>
   <data name="OptSampleStep" xml:space="preserve"><value>等距采样步长</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>超大文件采样：蓄水池随机取 N 条 / 等距每 N 条取 1 条，快速预估 Schema（两者互斥，0 = 关闭）</value></data>
-  <data name="OptExcelJsonColumn" xml:space="preserve"><value>Excel-JSON 列</value></data>
   <data name="OptTypeName" xml:space="preserve"><value>目标类名</value></data>
   <data name="OptTypeNamePlaceholder" xml:space="preserve"><value>可选</value></data>
   <data name="OptTypeFile" xml:space="preserve"><value>类型定义 (.cs)</value></data>

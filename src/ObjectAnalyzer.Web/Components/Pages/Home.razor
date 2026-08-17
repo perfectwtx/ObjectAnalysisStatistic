@@ -102,10 +102,6 @@
                     <input type="number" value="@State.SampleStep" @oninput="OnSampleStepChange" min="0" placeholder="0" title="@Loc["OptSampleTitle"]" />
                 </label>
                 <label class="option-item">
-                    <span>@Loc["OptExcelJsonColumn"]</span>
-                    <input type="text" value="@State.ExcelJsonColumn" @oninput="OnExcelColumnChange" maxlength="3" placeholder="A" />
-                </label>
-                <label class="option-item">
                     <span>@Loc["OptFields"]</span>
                     <input type="text" value="@State.Fields" @oninput="OnFieldsChange" placeholder="@Loc["OptFieldsPlaceholder"]" />
                 </label>
@@ -518,7 +514,6 @@
         string? typeName = State.TypeName;
         string? format = State.Format;
         bool flatten = State.Flatten;
-        string excelJsonColumn = State.ExcelJsonColumn;
         string? rulesFilePath = State.RulesFilePath;
         string fieldsText = State.Fields;
         string filterText = State.Filter;
@@ -543,53 +538,9 @@
             effectiveFlatten = rulesFlatten;
         }
 
-        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = Array.Empty<Core.Analysis.ValueParserConfig>();
-        if (rules?.ValueParsers is { Count: > 0 })
-        {
-            effectiveValueParsers = rules.ValueParsers;
-        }
-        else
-        {
-            var legacySources = new List<string>();
-            if (!string.IsNullOrWhiteSpace(excelJsonColumn))
-            {
-                legacySources.Add(excelJsonColumn.Trim());
-            }
-            if (rules?.ExcelJsonColumns is { Count: > 0 })
-            {
-                foreach (var candidate in rules.ExcelJsonColumns)
-                {
-                    var trimmed = candidate?.Trim();
-                    if (string.IsNullOrWhiteSpace(trimmed)) continue;
-                    if (legacySources.Any(source => string.Equals(source, trimmed, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        continue;
-                    }
-                    legacySources.Add(trimmed);
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(rules?.ExcelJsonColumn))
-            {
-                var legacyColumn = rules.ExcelJsonColumn.Trim();
-                if (!legacySources.Any(source => string.Equals(source, legacyColumn, StringComparison.OrdinalIgnoreCase)))
-                {
-                    legacySources.Add(legacyColumn);
-                }
-            }
-
-            if (legacySources.Count > 0)
-            {
-                effectiveValueParsers = legacySources
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Select(source => new Core.Analysis.ValueParserConfig
-                    {
-                        Source = source,
-                        ParseType = "json",
-                        Flatten = rules?.Flatten ?? effectiveFlatten
-                    })
-                    .ToList();
-            }
-        }
+        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = rules?.ValueParsers is { Count: > 0 }
+            ? rules.ValueParsers
+            : Array.Empty<Core.Analysis.ValueParserConfig>();
 
         try
         {
@@ -630,7 +581,6 @@
                     var parseOptions = new Core.Parsing.ParseOptions
                     {
                         Flatten = effectiveFlatten,
-                        ExcelJsonColumn = excelJsonColumn,
                         ValueParsers = effectiveValueParsers,
                         SampleReservoir = sampleReservoir,
                         SampleStep = sampleStep
@@ -711,16 +661,11 @@
 
     private static string ResolveEffectiveFormat(string? format, Core.Analysis.AnalysisRules? rules, string? filePath)
     {
-        if (rules != null)
+        if (rules?.ValueParsers is { Count: > 0 })
         {
-            if (rules.ValueParsers is { Count: > 0 }
-                || rules.ExcelJsonColumns is { Count: > 0 }
-                || !string.IsNullOrWhiteSpace(rules.ExcelJsonColumn))
+            if (string.IsNullOrWhiteSpace(format) || string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrWhiteSpace(format) || string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "excel-json";
-                }
+                return "excel-json";
             }
         }
 
@@ -782,12 +727,6 @@
         {
             State.MaxValuesToShow = val;
         }
-    }
-
-    private void OnExcelColumnChange(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString()?.Trim().ToUpperInvariant() ?? "A";
-        State.ExcelJsonColumn = string.IsNullOrEmpty(val) ? "A" : val;
     }
 
     private void OnFieldsChange(ChangeEventArgs e)

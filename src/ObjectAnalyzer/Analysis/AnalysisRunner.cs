@@ -118,10 +118,6 @@ public static class AnalysisRunner
         var parseOptions = new ParseOptions
         {
             Flatten = ResolveFlatten(options, rules),
-            ExcelJsonColumn = !string.IsNullOrWhiteSpace(options.ExcelJsonColumn)
-                ? options.ExcelJsonColumn
-                : "A",
-            ExcelJsonColumns = Array.Empty<string>(),
             ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
             SampleReservoir = options.SampleReservoir,
             SampleStep = options.SampleStep
@@ -156,18 +152,7 @@ public static class AnalysisRunner
 
     private static bool RequiresExcelJsonValueParsing(AnalysisOptions options, AnalysisRules? rules)
     {
-        if (rules != null)
-        {
-            if (rules.ValueParsers is { Count: > 0 }) return true;
-            if (rules.ExcelJsonColumns is { Count: > 0 }) return true;
-            if (!string.IsNullOrWhiteSpace(rules.ExcelJsonColumn)) return true;
-        }
-
-        if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumns)) return true;
-        if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumn)
-            && !string.Equals(options.ExcelJsonColumn, "A", StringComparison.OrdinalIgnoreCase)) return true;
-
-        return false;
+        return rules?.ValueParsers is { Count: > 0 };
     }
 
     private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options)
@@ -415,47 +400,7 @@ public static class AnalysisRunner
                 .ToList();
         }
 
-        var legacyColumns = new List<string>();
-        if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumns))
-        {
-            legacyColumns.AddRange(ParseColumnList(options.ExcelJsonColumns));
-        }
-        else if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumn))
-        {
-            legacyColumns.Add(options.ExcelJsonColumn.Trim());
-        }
-
-        if (legacyColumns.Count == 0 && rules != null)
-        {
-            if (rules.ExcelJsonColumns is { Count: > 0 })
-            {
-                legacyColumns.AddRange(rules.ExcelJsonColumns.Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()));
-            }
-            else if (!string.IsNullOrWhiteSpace(rules.ExcelJsonColumn))
-            {
-                legacyColumns.Add(rules.ExcelJsonColumn.Trim());
-            }
-        }
-
-        if (legacyColumns.Count == 0)
-        {
-            return Array.Empty<ValueParserConfig>();
-        }
-
-        return legacyColumns
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(c => new ValueParserConfig { Source = c, ParseType = "json" })
-            .ToList();
-    }
-
-    private static List<string> ParseColumnList(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return new();
-
-        return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return Array.Empty<ValueParserConfig>();
     }
 
     private static List<string>? SplitFields(string? fields)

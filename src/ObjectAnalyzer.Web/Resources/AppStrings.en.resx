@@ -33,7 +33,6 @@
   <data name="OptSampleReservoir" xml:space="preserve"><value>Reservoir sample</value></data>
   <data name="OptSampleStep" xml:space="preserve"><value>Step sample size</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>Sampling for huge files: reservoir keeps up to N random objects / step keeps 1 per N rows for fast schema overview (mutually exclusive, 0 = off)</value></data>
-  <data name="OptExcelJsonColumn" xml:space="preserve"><value>Excel-JSON column</value></data>
   <data name="OptTypeName" xml:space="preserve"><value>Target class name</value></data>
   <data name="OptTypeNamePlaceholder" xml:space="preserve"><value>Optional</value></data>
   <data name="OptTypeFile" xml:space="preserve"><value>Type definition (.cs)</value></data>

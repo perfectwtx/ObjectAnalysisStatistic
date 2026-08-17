@@ -457,28 +457,17 @@ public static class FileParsers
     private sealed class ExcelJsonFileParser : IFileParser
     {
         public IReadOnlyList<string> SupportedFormats => new[] { "excel-json" };
-        public IReadOnlyList<string> SupportedExtensions => Array.Empty<string>(); // 无自动检测扩展名，需显式指定 --format
+        public IReadOnlyList<string> SupportedExtensions => Array.Empty<string>(); // 无自动检测扩展名，需在规则或调用方显式使用 excel-json
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            var sources = options.ValueParsers.Count > 0
-                ? options.ValueParsers
-                : BuildLegacySources(options);
+            var sources = options.ValueParsers;
 
             if (options.SampleReservoir > 0)
                 return ParseReservoir(path, sources, options);
             if (options.SampleStep > 0)
                 return ParseStep(path, sources, options);
             return ParseAll(path, sources, options);
-        }
-
-        private static List<ObjectAnalyzer.Analysis.ValueParserConfig> BuildLegacySources(ParseOptions options)
-        {
-            var columns = options.ExcelJsonColumns.Count > 0
-                ? options.ExcelJsonColumns.Select(c => c.Trim()).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
-                : new List<string> { options.ExcelJsonColumn.Trim() };
-
-            return columns.Select(c => new ObjectAnalyzer.Analysis.ValueParserConfig { Source = c, ParseType = "json" }).ToList();
         }
 
         private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)

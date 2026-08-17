@@ -19,11 +19,6 @@ var outputOption = new Option<FileInfo?>(
     aliases: CliAliases.Output,
     description: "指定保存分析报告的目标文件路径 (.json / .html / .md / .csv)。");
 
-var formatOption = new Option<string?>(
-    aliases: CliAliases.Format,
-    description: "显式指定输入文件格式: json, jsonl, csv, excel, xml, yaml, excel-json。");
-formatOption.AddCompletions("json", "jsonl", "csv", "excel", "xml", "yaml", "excel-json");
-
 var noFlattenOption = new Option<bool>(
     name: "--no-flatten",
     description: "解析 JSON 时，不扁平化嵌套的属性路径。");
@@ -40,16 +35,6 @@ var generateTestExcelOption = new Option<bool>(
 var typeOption = new Option<string?>(
     aliases: CliAliases.Type,
     description: "指定 .cs 类型定义文件路径，用于强类型反序列化；可带类名: \"UserInfo.cs:User\"（.cs 含多个类时冒号后指定）。");
-
-var excelJsonColumnOption = new Option<string?>(
-    aliases: CliAliases.ExcelJsonColumn,
-    description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。");
-excelJsonColumnOption.AddCompletions("A", "B", "C", "D", "E");
-
-var excelJsonColumnsOption = new Option<string?>(
-    name: "--excel-json-columns",
-    description: "指定 Excel 文件中包含 JSON 字符串的多个列名（逗号分隔，如 \"A,B,C\"）。读取后会保留各列对应的独立对象桶，不做合并。与 --format excel-json 配合使用。");
-excelJsonColumnsOption.AddCompletions("A,B,C", "A,B", "A,C");
 
 var rulesOption = new Option<FileInfo?>(
     aliases: CliAliases.Rules,
@@ -115,13 +100,10 @@ var piiReportOption = new Option<FileInfo?>(
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
-rootCommand.AddOption(formatOption);
 rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(typeOption);
-rootCommand.AddOption(excelJsonColumnOption);
-rootCommand.AddOption(excelJsonColumnsOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(whereOption);
@@ -142,13 +124,10 @@ rootCommand.SetHandler((InvocationContext context) =>
     var parseResult = context.ParseResult;
     var input = parseResult.GetValueForOption(inputOption);
     var output = parseResult.GetValueForOption(outputOption);
-    var format = parseResult.GetValueForOption(formatOption);
     var noFlatten = parseResult.GetValueForOption(noFlattenOption);
     var maxValues = parseResult.GetValueForOption(maxValuesOption);
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
     var type = parseResult.GetValueForOption(typeOption);
-    var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
-    var excelJsonColumns = parseResult.GetValueForOption(excelJsonColumnsOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
     var where = parseResult.GetValueForOption(whereOption);
@@ -210,13 +189,10 @@ rootCommand.SetHandler((InvocationContext context) =>
     {
         InputPath = input?.FullName ?? "",
         OutputPath = output?.FullName,
-        Format = format,
         Flatten = !noFlatten,
         MaxValuesToShow = maxValues,
         TypeFile = typeFile,
         TypeName = typeName,
-        ExcelJsonColumn = excelJsonColumn,
-        ExcelJsonColumns = excelJsonColumns,
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
         Fields = fields,
@@ -272,10 +248,8 @@ static class CliAliases
 {
     public static readonly string[] Input = { "--input", "-i" };
     public static readonly string[] Output = { "--output", "-o" };
-    public static readonly string[] Format = { "--format", "-f" };
     public static readonly string[] MaxValues = { "--max-values", "-m" };
     public static readonly string[] Type = { "--type", "-t" };
-    public static readonly string[] ExcelJsonColumn = { "--excel-json-column", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Fields = { "--fields", "-F" };
     public static readonly string[] Where = { "--where", "-w" };

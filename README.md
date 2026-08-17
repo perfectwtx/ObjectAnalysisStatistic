@@ -4,7 +4,7 @@
 
 - CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)
 - 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML
-- Excel JSON 列模式：从 Excel 指定列逐行读取 JSON 字符串并解析 (`--format excel-json`)
+- 规则驱动值解析：通过规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串，适用于 Excel 多列 JSON 及其他值级解析场景
 - 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)
 - 字段统计：每个字段的出现频次、覆盖率、主导数据类型
 - 值频率分析：展示每个字段中唯一值的出现次数与占比
@@ -48,12 +48,10 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 |------|------|------|--------|
 | `--input <FILE>` | `-i` | 输入文件路径（JSON / JSONL / CSV / Excel / XML / YAML） | 必填 |
 | `--output <FILE>` | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv`） | 无 |
-| `--format <FORMAT>` | `-f` | 显式指定输入格式：`json`、`jsonl`、`csv`、`excel`、`excel-json`、`xml`、`yaml` | 自动检测 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
 | `--type <FILE>[:<CLASS>]` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象）；.cs 含多个类时用冒号指定类名，如 `-t "samples/UserInfo.cs:UserInfo"` | 类名自动检测 |
-| `--excel-json-column <COL>` | `-c` | 指定 Excel 中包含 JSON 字符串的列名（A、B、C…），配合 `--format excel-json` | `A` |
-| `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束和字段值转换 | 无 |
+| `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束、字段值转换及值解析规则 | 无 |
 | `--fields <NAMES>` | `-F` | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
 | `--where <EXPR>` | `-w` | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
 | `--violations <FILE>` | `-v` | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
@@ -89,13 +87,10 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.xml
 # 分析 YAML 文件
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.yaml
 
-# 从 Excel A 列读取 JSON 字符串
-dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json.xlsx -f excel-json -c A
-
 # 从 Excel 多列 JSON 中分别读取 A / B / C，并保留独立对象桶
 # 规则文件示例：samples/test_excel_json_multi_columns_rules.json
 # 导出示例：samples/test_data_excel_json_multi_columns.xlsx
-dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json_multi_columns.xlsx -f excel-json -r samples/test_excel_json_multi_columns_rules.json
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json_multi_columns.xlsx -r samples/test_excel_json_multi_columns_rules.json
 
 # 生成 Excel 测试文件（含普通 Excel + 单列/多列 JSON 示例）
 dotnet run --project src/ObjectAnalyzer -- --generate-test-excel
@@ -233,7 +228,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `flatten` 可以放在顶层规则，也可以直接写在单个 `valueParsers` 项里：顶层值作为全局默认，单项的 `flatten` 允许对某个 source 做单独覆盖；`--no-flatten` 仍然优先级最高。
 
-对于 Excel JSON 多列场景，多个配置项会保持独立对象桶，不会被合并成同一个对象；在 `flatten: true` 时，会展开成 `A.id` / `A.name` / `B.age` 这类字段，结果形态类似 `{"A.id": 1, "A.name": "张三", "B.age": 28}`。兼容旧写法 `excelJsonColumn` / `excelJsonColumns` 仍会转换成同一套 `valueParsers` 逻辑，CLI `--excel-json-column` / `--excel-json-columns` 优先级更高。
+对于 Excel JSON 多列场景，多个 `valueParsers` 会保持独立对象桶，不会被合并成同一个对象；在 `flatten: true` 时，会展开成 `A.id` / `A.name` / `B.age` 这类字段，结果形态类似 `{"A.id": 1, "A.name": "张三", "B.age": 28}`。
 
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
 
