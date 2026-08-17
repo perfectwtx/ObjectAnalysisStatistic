@@ -104,14 +104,13 @@ public static class AnalysisRunner
     {
         string format = ResolveEffectiveFormat(options, rules);
 
-        // 自动检测文件格式
-        if (string.IsNullOrEmpty(options.Format) && !string.Equals(format, "excel-json", StringComparison.OrdinalIgnoreCase))
+        if (RequiresExcelJsonValueParsing(rules))
+        {
+            AnsiConsole.MarkupLine($"[grey][[规则驱动]][/] 因规则文件配置了 valueParsers，使用格式 '[blue]{format}[/]' 进行解析。");
+        }
+        else
         {
             AnsiConsole.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
-        }
-        else if (!string.IsNullOrEmpty(options.Format) && !string.Equals(options.Format, format, StringComparison.OrdinalIgnoreCase))
-        {
-            AnsiConsole.MarkupLine($"[grey][[规则驱动]][/] 因规则配置要求 Excel JSON 解析，使用格式 '[blue]{format}[/]' 进行解析。");
         }
 
         AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
@@ -132,25 +131,15 @@ public static class AnalysisRunner
 
     private static string ResolveEffectiveFormat(AnalysisOptions options, AnalysisRules? rules)
     {
-        if (RequiresExcelJsonValueParsing(options, rules))
+        if (RequiresExcelJsonValueParsing(rules))
         {
-            var shouldForceExcelJson = string.IsNullOrWhiteSpace(options.Format)
-                || string.Equals(options.Format, "excel", StringComparison.OrdinalIgnoreCase);
-            if (shouldForceExcelJson)
-            {
-                return "excel-json";
-            }
+            return "excel-json";
         }
 
-        if (string.IsNullOrEmpty(options.Format))
-        {
-            return FileParsers.DetectFormat(options.InputPath);
-        }
-
-        return options.Format;
+        return FileParsers.DetectFormat(options.InputPath);
     }
 
-    private static bool RequiresExcelJsonValueParsing(AnalysisOptions options, AnalysisRules? rules)
+    private static bool RequiresExcelJsonValueParsing(AnalysisRules? rules)
     {
         return rules?.ValueParsers is { Count: > 0 };
     }

@@ -24,8 +24,6 @@
   <data name="ClearFile" xml:space="preserve"><value>清除文件</value></data>
   <data name="ClearTypeFile" xml:space="preserve"><value>清除类型定义</value></data>
   <data name="ClearRulesFile" xml:space="preserve"><value>清除规则文件</value></data>
-  <data name="OptFormat" xml:space="preserve"><value>格式</value></data>
-  <data name="AutoDetect" xml:space="preserve"><value>自动检测</value></data>
   <data name="OptFlatten" xml:space="preserve"><value>展平嵌套</value></data>
   <data name="OptMaxValues" xml:space="preserve"><value>最大展示值</value></data>
   <data name="OptParallel" xml:space="preserve"><value>并行线程</value></data>

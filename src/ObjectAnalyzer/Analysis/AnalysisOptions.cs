@@ -7,7 +7,6 @@ public sealed class AnalysisOptions
 {
     public string InputPath { get; set; } = "";
     public string? OutputPath { get; set; }
-    public string? Format { get; set; }
     public bool Flatten { get; set; } = true;
     public int MaxValuesToShow { get; set; } = 5;
     public string? TypeFile { get; set; }

@@ -68,19 +68,6 @@
             </div>
 
             <div class="options-grid">
-                <label class="option-item">
-                    <span>@Loc["OptFormat"]</span>
-                    <select value="@(State.Format ?? "")" @onchange="OnFormatChange">
-                        <option value="">@Loc["AutoDetect"]</option>
-                        <option value="json">JSON</option>
-                        <option value="jsonl">JSONL</option>
-                        <option value="csv">CSV</option>
-                        <option value="excel">Excel</option>
-                        <option value="xml">XML</option>
-                        <option value="yaml">YAML</option>
-                        <option value="excel-json">Excel-JSON</option>
-                    </select>
-                </label>
                 <label class="option-item checkbox-item">
                     <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
                     <span>@Loc["OptFlatten"]</span>
@@ -512,7 +499,6 @@
         string dataFilePath = State.DataFilePath!;
         string? typeFilePath = State.TypeFilePath;
         string? typeName = State.TypeName;
-        string? format = State.Format;
         bool flatten = State.Flatten;
         string? rulesFilePath = State.RulesFilePath;
         string fieldsText = State.Fields;
@@ -530,7 +516,9 @@
             rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson);
         }
 
-        string effectiveFormat = ResolveEffectiveFormat(format, rules, dataFilePath);
+        string effectiveFormat = rules?.ValueParsers is { Count: > 0 }
+            ? "excel-json"
+            : Core.Parsing.FileParsers.DetectFormat(dataFilePath);
 
         var effectiveFlatten = flatten;
         if (rules?.Flatten is bool rulesFlatten)
@@ -659,23 +647,6 @@
         }
     }
 
-    private static string ResolveEffectiveFormat(string? format, Core.Analysis.AnalysisRules? rules, string? filePath)
-    {
-        if (rules?.ValueParsers is { Count: > 0 })
-        {
-            if (string.IsNullOrWhiteSpace(format) || string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase))
-            {
-                return "excel-json";
-            }
-        }
-
-        return string.IsNullOrWhiteSpace(format)
-            ? (string.IsNullOrWhiteSpace(filePath)
-                ? "json"
-                : Core.Parsing.FileParsers.DetectFormat(filePath))
-            : format;
-    }
-
     private void CancelAnalysis()
     {
         _suppressCancelMessage = false;
@@ -713,12 +684,6 @@
     private void OnFlattenChange(ChangeEventArgs e)
     {
         State.Flatten = e.Value is true;
-    }
-
-    private void OnFormatChange(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        State.Format = string.IsNullOrEmpty(val) ? null : val;
     }
 
     private void OnMaxValuesChange(ChangeEventArgs e)

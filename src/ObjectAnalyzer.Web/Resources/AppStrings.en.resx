@@ -24,8 +24,6 @@
   <data name="ClearFile" xml:space="preserve"><value>Clear file</value></data>
   <data name="ClearTypeFile" xml:space="preserve"><value>Clear type definition</value></data>
   <data name="ClearRulesFile" xml:space="preserve"><value>Clear rules file</value></data>
-  <data name="OptFormat" xml:space="preserve"><value>Format</value></data>
-  <data name="AutoDetect" xml:space="preserve"><value>Auto-detect</value></data>
   <data name="OptFlatten" xml:space="preserve"><value>Flatten nested</value></data>
   <data name="OptMaxValues" xml:space="preserve"><value>Max values shown</value></data>
   <data name="OptParallel" xml:space="preserve"><value>Parallel threads</value></data>
