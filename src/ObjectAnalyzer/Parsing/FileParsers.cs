@@ -460,28 +460,40 @@ public static class FileParsers
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
         {
-            string columnName = options.ExcelJsonColumn.ToUpperInvariant();
+            var sources = options.ValueParsers.Count > 0
+                ? options.ValueParsers
+                : BuildLegacySources(options);
+
             if (options.SampleReservoir > 0)
-                return ParseReservoir(path, columnName, options);
+                return ParseReservoir(path, sources, options);
             if (options.SampleStep > 0)
-                return ParseStep(path, columnName, options);
-            return ParseAll(path, columnName, options);
+                return ParseStep(path, sources, options);
+            return ParseAll(path, sources, options);
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, string columnName, ParseOptions options)
+        private static List<ObjectAnalyzer.Analysis.ValueParserConfig> BuildLegacySources(ParseOptions options)
+        {
+            var columns = options.ExcelJsonColumns.Count > 0
+                ? options.ExcelJsonColumns.Select(c => c.Trim()).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                : new List<string> { options.ExcelJsonColumn.Trim() };
+
+            return columns.Select(c => new ObjectAnalyzer.Analysis.ValueParserConfig { Source = c, ParseType = "json" }).ToList();
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             long rowIndex = 0;
             foreach (var row in MiniExcel.Query(path, useHeaderRow: false))
             {
                 rowIndex++;
-                var dict = TryParseJsonCell(row, columnName, rowIndex, options);
+                var dict = TryParseValueSources(row, sources, rowIndex, options);
                 if (dict != null)
                     yield return dict;
             }
         }
 
         // 采样：先按记录序做准入/步长判定，未选中行连 JSON 单元格都不解析
-        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, string columnName, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
             foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: false)))
@@ -489,59 +501,198 @@ public static class FileParsers
                 int slot = sampler.NextSlot();
                 if (slot < 0)
                     continue;
-                var dict = TryParseJsonCell(row, columnName, rowIndex, options);
+                var dict = TryParseValueSources(row, sources, rowIndex, options);
                 if (dict != null)
                     sampler.SetSlot(slot, dict);
             }
             return sampler.Items;
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, string columnName, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             long recordIndex = 0;
             foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: false)))
             {
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
-                var dict = TryParseJsonCell(row, columnName, rowIndex, options);
+                var dict = TryParseValueSources(row, sources, rowIndex, options);
                 if (dict != null)
                     yield return dict;
             }
         }
 
-        private static Dictionary<string, object?>? TryParseJsonCell(object? row, string columnName, long rowIndex, ParseOptions options)
+        private static Dictionary<string, object?>? TryParseValueSources(object? row, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, long rowIndex, ParseOptions options)
         {
             if (row is not IDictionary<string, object?> rowDict)
                 return null;
-            if (!rowDict.TryGetValue(columnName, out object? cellValue) || cellValue == null)
+
+            if (LooksLikeHeaderRow(rowDict, sources))
                 return null;
 
-            string jsonString = cellValue.ToString() ?? "";
+            var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var source in sources)
+            {
+                string sourceKey = source.Source.Trim();
+                if (string.IsNullOrWhiteSpace(sourceKey))
+                    continue;
+
+                object? cellValue = LookupCellValue(rowDict, sourceKey);
+                if (cellValue == null)
+                    continue;
+
+                var parsedValue = ParseValueByType(cellValue, source.ParseType, sourceKey, rowIndex, options);
+                if (parsedValue == null)
+                    continue;
+
+                result[sourceKey] = parsedValue;
+            }
+
+            return result.Count > 0 ? result : null;
+        }
+
+        private static object? ParseValueByType(object? value, string parseType, string sourceKey, long rowIndex, ParseOptions options)
+        {
+            string raw = value?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(raw))
+                return null;
+
+            var normalizedType = parseType?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedType))
+                normalizedType = "auto";
+
+            normalizedType = normalizedType.ToLowerInvariant();
+            return normalizedType switch
+            {
+                "none" => raw,
+                "auto" => TryParseJsonValue(raw, out var autoValue) ? autoValue : raw,
+                "json" => ParseJsonValue(raw, sourceKey, rowIndex),
+                "json-string" => ParseJsonStringValue(raw, sourceKey, rowIndex),
+                _ => throw new InvalidDataException($"不支持的 parseType '{parseType}'（支持: none / auto / json / json-string）。")
+            };
+        }
+
+        private static object? ParseJsonStringValue(string jsonString, string sourceKey, long rowIndex)
+        {
+            var trimmed = jsonString.Trim();
+            if (trimmed.Length == 0)
+                return null;
+
+            if (TryParseJsonValue(trimmed, out var directValue))
+                return directValue;
+
+            if (trimmed.StartsWith('"'))
+            {
+                using var doc = JsonDocument.Parse(trimmed);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.String)
+                    throw new InvalidDataException($"第 {rowIndex} 行 (源 {sourceKey}) 的 json-string 值必须是一个 JSON 字符串。");
+                var inner = root.GetString() ?? "";
+                if (string.IsNullOrWhiteSpace(inner))
+                    return "";
+                return TryParseJsonValue(inner, out var nested) ? nested : inner;
+            }
+
+            return ParseJsonValue(trimmed, sourceKey, rowIndex);
+        }
+
+        private static object? ParseJsonValue(string jsonString, string sourceKey, long rowIndex)
+        {
             if (string.IsNullOrWhiteSpace(jsonString))
                 return null;
 
-            // 跳过非 JSON 对象的行（如表头行）
-            string trimmed = jsonString.TrimStart();
-            if (!trimmed.StartsWith('{'))
-                return null;
+            if (!TryParseJsonValue(jsonString, out var parsed))
+                throw new InvalidDataException($"第 {rowIndex} 行 (源 {sourceKey}) 的值不是有效 JSON：{jsonString}");
+            return parsed;
+        }
 
-            JsonDocument doc;
+        private static bool TryParseJsonValue(string raw, out object? value)
+        {
+            string trimmed = raw.Trim();
+            if (trimmed.Length == 0)
+            {
+                value = null;
+                return false;
+            }
+
             try
             {
-                doc = JsonDocument.Parse(jsonString);
+                using var doc = JsonDocument.Parse(trimmed);
+                value = ConvertJsonDocument(doc.RootElement);
+                return true;
             }
-            catch (JsonException ex)
+            catch (JsonException)
             {
-                throw new InvalidDataException($"在第 {rowIndex} 行解析 JSON 时出错 (列 {columnName}): {ex.Message}", ex);
+                value = null;
+                return false;
+            }
+        }
+
+        private static object? ConvertJsonDocument(JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.Object => ParseJsonElement(element, true),
+                JsonValueKind.Array => element.EnumerateArray().Select(ConvertJsonDocument).ToList(),
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.TryGetDouble(out var d) ? d : element.GetRawText(),
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Null => null,
+                _ => element.GetRawText()
+            };
+        }
+
+        private static bool LooksLikeHeaderRow(IDictionary<string, object?> rowDict, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources)
+        {
+            if (sources.Count == 0)
+                return false;
+
+            foreach (var source in sources)
+            {
+                string sourceKey = source.Source?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(sourceKey))
+                    continue;
+
+                if (!rowDict.TryGetValue(sourceKey, out var value) && !TryFindKey(rowDict, sourceKey, out value))
+                    return false;
+
+                if (value is null)
+                    return false;
+
+                if (!string.Equals(value.ToString(), sourceKey, StringComparison.OrdinalIgnoreCase))
+                    return false;
             }
 
-            using (doc)
+            return true;
+        }
+
+        private static bool TryFindKey(IDictionary<string, object?> rowDict, string sourceKey, out object? value)
+        {
+            foreach (var kvp in rowDict)
             {
-                var root = doc.RootElement;
-                if (root.ValueKind != JsonValueKind.Object)
-                    throw new InvalidDataException($"第 {rowIndex} 行 (列 {columnName}) 的 JSON 根节点必须是一个对象。");
-                return ParseJsonElement(root, options.Flatten);
+                if (string.Equals(kvp.Key, sourceKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = kvp.Value;
+                    return true;
+                }
             }
+
+            value = null;
+            return false;
+        }
+
+        private static object? LookupCellValue(IDictionary<string, object?> rowDict, string sourceKey)
+        {
+            if (rowDict.TryGetValue(sourceKey, out var exact))
+                return exact;
+
+            foreach (var kvp in rowDict)
+            {
+                if (string.Equals(kvp.Key, sourceKey, StringComparison.OrdinalIgnoreCase))
+                    return kvp.Value;
+            }
+
+            return null;
         }
 
         private static IEnumerable<(long Index, object? Row)> Indexed(IEnumerable<object?> rows)

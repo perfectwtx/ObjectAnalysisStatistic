@@ -35,7 +35,7 @@ var maxValuesOption = new Option<int>(
 
 var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
-    description: "生成 Excel 测试文件 (samples/test_data.xlsx 和 samples/test_data_excel_json.xlsx) 并退出。");
+    description: "生成 Excel 测试文件 (samples/test_data.xlsx、samples/test_data_excel_json.xlsx、samples/test_data_excel_json_multi_columns.xlsx) 并退出。");
 
 var typeOption = new Option<string?>(
     aliases: CliAliases.Type,
@@ -45,6 +45,11 @@ var excelJsonColumnOption = new Option<string?>(
     aliases: CliAliases.ExcelJsonColumn,
     description: "指定 Excel 文件中包含 JSON 字符串的列名（如 A、B、C）。与 --format excel-json 配合使用。");
 excelJsonColumnOption.AddCompletions("A", "B", "C", "D", "E");
+
+var excelJsonColumnsOption = new Option<string?>(
+    name: "--excel-json-columns",
+    description: "指定 Excel 文件中包含 JSON 字符串的多个列名（逗号分隔，如 \"A,B,C\"）。读取后会保留各列对应的独立对象桶，不做合并。与 --format excel-json 配合使用。");
+excelJsonColumnsOption.AddCompletions("A,B,C", "A,B", "A,C");
 
 var rulesOption = new Option<FileInfo?>(
     aliases: CliAliases.Rules,
@@ -116,6 +121,7 @@ rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(typeOption);
 rootCommand.AddOption(excelJsonColumnOption);
+rootCommand.AddOption(excelJsonColumnsOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(whereOption);
@@ -142,6 +148,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
     var type = parseResult.GetValueForOption(typeOption);
     var excelJsonColumn = parseResult.GetValueForOption(excelJsonColumnOption);
+    var excelJsonColumns = parseResult.GetValueForOption(excelJsonColumnsOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
     var where = parseResult.GetValueForOption(whereOption);
@@ -208,7 +215,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         MaxValuesToShow = maxValues,
         TypeFile = typeFile,
         TypeName = typeName,
-        ExcelJsonColumn = excelJsonColumn ?? "A",
+        ExcelJsonColumn = excelJsonColumn,
+        ExcelJsonColumns = excelJsonColumns,
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
         Fields = fields,

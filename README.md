@@ -92,6 +92,14 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.yaml
 # 从 Excel A 列读取 JSON 字符串
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json.xlsx -f excel-json -c A
 
+# 从 Excel 多列 JSON 中分别读取 A / B / C，并保留独立对象桶
+# 规则文件示例：samples/test_excel_json_multi_columns_rules.json
+# 导出示例：samples/test_data_excel_json_multi_columns.xlsx
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json_multi_columns.xlsx -f excel-json -r samples/test_excel_json_multi_columns_rules.json
+
+# 生成 Excel 测试文件（含普通 Excel + 单列/多列 JSON 示例）
+dotnet run --project src/ObjectAnalyzer -- --generate-test-excel
+
 # 使用强类型反序列化（.cs 文件含多个类时用冒号指定类名）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t samples/UserInfo.cs
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t "samples/UserInfo.cs:UserInfo"
@@ -181,6 +189,11 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 ```json
 {
+  "valueParsers": [
+    { "source": "A", "parseType": "json" },
+    { "source": "B", "parseType": "auto" },
+    { "source": "payload", "parseType": "json-string" }
+  ],
   "selectedFields": ["token"],
   "filter": "age >= 25 AND status in ['active', 'vip']",
   "fields": {
@@ -214,6 +227,10 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
   }
 }
 ```
+
+`valueParsers` 用于声明“值读取时如何解析”，不属于 `fields` 的字段分析配置。`source` 表示来源字段/列名（如 `A` / `B` / `payload`），`parseType` 控制是否与如何解析内容：`none` 保持原值、`auto` 自动识别并解析 JSON、`json` 要求值必须是合法 JSON、`json-string` 允许值本身是 JSON 字符串或嵌套字符串 JSON，最终解析出真实对象/数组/值。
+
+对于 Excel JSON 多列场景，多个配置项会保持独立对象桶，不会被合并成同一个对象，结果形态类似 `{"A": {...}, "B": {...}, "C": {...}}`。兼容旧写法 `excelJsonColumn` / `excelJsonColumns` 仍会转换成同一套 `valueParsers` 逻辑，CLI `--excel-json-column` / `--excel-json-columns` 优先级更高。
 
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
 

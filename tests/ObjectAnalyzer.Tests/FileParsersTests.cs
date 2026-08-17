@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MiniExcelLibs;
 using Xunit;
 
 namespace ObjectAnalyzer.Tests;
@@ -171,4 +172,45 @@ public class FileParsersTests
             if (File.Exists(tempFile)) File.Delete(tempFile);
         }
     }
+
+   [Fact]
+   public void ParseExcelJson_MultipleColumns_PreservesSeparateBuckets()
+   {
+       string tempFile = Path.ChangeExtension(Path.GetTempFileName(), ".xlsx");
+       var payload = new[]
+       {
+           new Dictionary<string, object?>
+           {
+               { "A", "{\"id\":1,\"name\":\"Alice\"}" },
+               { "B", "{\"age\":30,\"city\":\"Beijing\"}" },
+               { "C", "{\"role\":\"Admin\"}" }
+           }
+       };
+
+       MiniExcel.SaveAs(tempFile, payload);
+
+       try
+       {
+           var readColumns = new List<string> { "A", "B", "C" };
+           var result = FileParsers.ParseByFormat(tempFile, "excel-json", new ParseOptions
+           {
+               Flatten = true,
+               ExcelJsonColumns = readColumns
+           }).ToList();
+
+           Assert.Single(result);
+           var a = Assert.IsType<Dictionary<string, object?>>(result[0]["A"]);
+           var b = Assert.IsType<Dictionary<string, object?>>(result[0]["B"]);
+           var c = Assert.IsType<Dictionary<string, object?>>(result[0]["C"]);
+           Assert.Equal(1L, a["id"]);
+           Assert.Equal("Alice", a["name"]);
+           Assert.Equal(30L, b["age"]);
+           Assert.Equal("Beijing", b["city"]);
+           Assert.Equal("Admin", c["role"]);
+       }
+       finally
+       {
+           if (File.Exists(tempFile)) File.Delete(tempFile);
+       }
+   }
 }

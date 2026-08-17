@@ -10,6 +10,8 @@ public sealed class ParseOptions
 {
     public bool Flatten { get; init; } = true;
     public string ExcelJsonColumn { get; init; } = "A";
+    public IReadOnlyList<string> ExcelJsonColumns { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> ValueParsers { get; init; } = Array.Empty<ObjectAnalyzer.Analysis.ValueParserConfig>();
 
     /// <summary>蓄水池随机抽样：均匀随机保留最多 N 条记录参与统计（>0 启用）。由行/记录级解析器在解析前跳过未选中记录。</summary>
     public int SampleReservoir { get; init; }

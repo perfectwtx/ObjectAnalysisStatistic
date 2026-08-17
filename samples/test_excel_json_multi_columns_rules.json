@@ -1,0 +1,18 @@
+{
+  "valueParsers": [
+    { "source": "A", "parseType": "json" },
+    { "source": "B", "parseType": "json" },
+    { "source": "C", "parseType": "json" }
+  ],
+  "fields": {
+    "A.id": {
+      "primaryType": "Number"
+    },
+    "B.age": {
+      "primaryType": "Number"
+    },
+    "C.role": {
+      "enumValues": ["Admin", "User", "Guest"]
+    }
+  }
+}

@@ -21,6 +21,12 @@ public static class AnalysisRunner
             return 1;
         }
 
+        AnalysisRules? rules = null;
+        if (!string.IsNullOrEmpty(options.RulesFile))
+        {
+            rules = LoadRules(options.RulesFile);
+        }
+
         // 采样参数提前校验，避免解析到一半才发现配置非法
         if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
             Sampling.Validate(options.SampleReservoir, options.SampleStep);
@@ -47,6 +53,7 @@ public static class AnalysisRunner
         try
         {
             IEnumerable<Dictionary<string, object?>> parsedObjects;
+            var effectiveValueParsers = ResolveValueParsers(options, rules);
 
             // 数据库直连：DbDataReader 惰性流式读取查询结果
             if (dbMode)
@@ -60,11 +67,11 @@ public static class AnalysisRunner
             }
             else
             {
-                parsedObjects = ParseByFormat(options);
+                parsedObjects = ParseByFormat(options, effectiveValueParsers);
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            AnalysisResult result = ProcessAndReport(parsedObjects, options, cancellationToken);            // CI 数据质量门禁：存在枚举违规时以非零退出码结束
+            AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, cancellationToken); // CI 数据质量门禁：存在枚举违规时以非零退出码结束
             if (options.FailOnViolations && result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
             {
                 int violationCount = result.FieldStatistics.Sum(f => f.EnumViolations.Count);
@@ -90,7 +97,7 @@ public static class AnalysisRunner
     /// Detects format from file extension and parses the file accordingly.
     /// Uses the parser registry in FileParsers (IFileParser pattern).
     /// </summary>
-    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options)
+    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(AnalysisOptions options, IReadOnlyList<ValueParserConfig>? valueParsers = null)
     {
         string? format = options.Format;
 
@@ -105,7 +112,11 @@ public static class AnalysisRunner
         var parseOptions = new ParseOptions
         {
             Flatten = options.Flatten,
-            ExcelJsonColumn = options.ExcelJsonColumn ?? "A",
+            ExcelJsonColumn = !string.IsNullOrWhiteSpace(options.ExcelJsonColumn)
+                ? options.ExcelJsonColumn
+                : "A",
+            ExcelJsonColumns = Array.Empty<string>(),
+            ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
             SampleReservoir = options.SampleReservoir,
             SampleStep = options.SampleStep
         };
@@ -207,14 +218,11 @@ public static class AnalysisRunner
     private static AnalysisResult ProcessAndReport(
         IEnumerable<Dictionary<string, object?>> parsedObjects,
         AnalysisOptions options,
+        AnalysisRules? rules = null,
         CancellationToken cancellationToken = default)
     {
-        // 加载规则文件
-        AnalysisRules? rules = null;
-        if (!string.IsNullOrEmpty(options.RulesFile))
-        {
-            rules = LoadRules(options.RulesFile);
-        }
+        // 规则已在 Run() 中提前加载；如调用方未提供，则按需加载
+        rules ??= !string.IsNullOrEmpty(options.RulesFile) ? LoadRules(options.RulesFile) : null;
 
         // 过滤条件：--where 优先，其次规则文件 filter
         string? effectiveFilter = !string.IsNullOrWhiteSpace(options.Filter)
@@ -222,7 +230,7 @@ public static class AnalysisRunner
             : !string.IsNullOrWhiteSpace(rules?.Filter) ? rules.Filter : null;
 
         // 字段选择 + 值转换 + 过滤（--fields / 规则文件 selectedFields / transform / --where / 规则文件 filter）
-        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields), options.Filter);
+        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields), effectiveFilter);
         if (effectiveFilter != null)
         {
             AnsiConsole.MarkupLine($"[grey][[过滤]][/] 已应用过滤条件: [blue]{Markup.Escape(effectiveFilter)}[/]");
@@ -337,6 +345,59 @@ public static class AnalysisRunner
         }
         AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;
+    }
+
+    private static IReadOnlyList<ValueParserConfig> ResolveValueParsers(AnalysisOptions options, AnalysisRules? rules)
+    {
+        if (rules?.ValueParsers is { Count: > 0 })
+        {
+            return rules.ValueParsers
+                .Where(p => !string.IsNullOrWhiteSpace(p.Source))
+                .Select(p => new ValueParserConfig { Source = p.Source.Trim(), ParseType = string.IsNullOrWhiteSpace(p.ParseType) ? "auto" : p.ParseType.Trim() })
+                .ToList();
+        }
+
+        var legacyColumns = new List<string>();
+        if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumns))
+        {
+            legacyColumns.AddRange(ParseColumnList(options.ExcelJsonColumns));
+        }
+        else if (!string.IsNullOrWhiteSpace(options.ExcelJsonColumn))
+        {
+            legacyColumns.Add(options.ExcelJsonColumn.Trim());
+        }
+
+        if (legacyColumns.Count == 0 && rules != null)
+        {
+            if (rules.ExcelJsonColumns is { Count: > 0 })
+            {
+                legacyColumns.AddRange(rules.ExcelJsonColumns.Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()));
+            }
+            else if (!string.IsNullOrWhiteSpace(rules.ExcelJsonColumn))
+            {
+                legacyColumns.Add(rules.ExcelJsonColumn.Trim());
+            }
+        }
+
+        if (legacyColumns.Count == 0)
+        {
+            return Array.Empty<ValueParserConfig>();
+        }
+
+        return legacyColumns
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(c => new ValueParserConfig { Source = c, ParseType = "json" })
+            .ToList();
+    }
+
+    private static List<string> ParseColumnList(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return new();
+
+        return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static List<string>? SplitFields(string? fields)

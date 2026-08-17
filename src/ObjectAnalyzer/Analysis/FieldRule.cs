@@ -69,6 +69,20 @@ public class FieldTransform
 }
 
 /// <summary>
+/// 值解析规则：针对字段/列内容按 parseType 决定是否和如何解析 JSON，适用于 Excel / CSV / 其他来源的值级解析。
+/// </summary>
+public class ValueParserConfig
+{
+    /// <summary>来源字段/列名（如 "A"、"payload"）。</summary>
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = "";
+
+    /// <summary>解析类型：none / auto / json / json-string。</summary>
+    [JsonPropertyName("parseType")]
+    public string ParseType { get; set; } = "auto";
+}
+
+/// <summary>
 /// 分析规则配置，包含所有字段规则的集合。
 /// </summary>
 public class AnalysisRules
@@ -83,4 +97,16 @@ public class AnalysisRules
     /// <summary>全局过滤条件表达式（如 "Age &gt; 18 AND Gender in ['男','女']"）。优先级低于 CLI 的 --where 选项。</summary>
     [JsonPropertyName("filter")]
     public string? Filter { get; set; }
+
+    /// <summary>通用值解析器：按 source + parseType 决定是否解析值，适用于 Excel / JSON / 任意输入来源。</summary>
+    [JsonPropertyName("valueParsers")]
+    public List<ValueParserConfig>? ValueParsers { get; set; }
+
+    /// <summary>兼容旧写法：Excel-JSON 单列。</summary>
+    [JsonPropertyName("excelJsonColumn")]
+    public string? ExcelJsonColumn { get; set; }
+
+    /// <summary>兼容旧写法：Excel-JSON 多列。</summary>
+    [JsonPropertyName("excelJsonColumns")]
+    public List<string>? ExcelJsonColumns { get; set; }
 }
