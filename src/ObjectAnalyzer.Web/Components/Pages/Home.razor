@@ -167,7 +167,8 @@
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("csharp")'>C#</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("typescript")'>TS</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("json-schema")'>JSON Schema</button>
-                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("openapi")'>OpenAPI</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("openapi")'>OpenAPI (YAML)</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("openapi-json")'>OpenAPI (JSON)</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("protobuf")'>Protobuf</button>
                         <select class="select-sm" @bind="SchemaSqlDialect" aria-label="SQL dialect">
                             <option value="postgres">PostgreSQL</option>
