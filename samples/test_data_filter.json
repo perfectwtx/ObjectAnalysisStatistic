@@ -1,0 +1,32 @@
+[
+    {
+        "name":  "Alice",
+        "age":  30,
+        "status":  "active"
+    },
+    {
+        "name":  "Bob",
+        "age":  24,
+        "status":  "active"
+    },
+    {
+        "name":  "Carol",
+        "age":  35,
+        "status":  "disabled"
+    },
+    {
+        "name":  "Dave",
+        "age":  40,
+        "status":  "vip"
+    },
+    {
+        "name":  "Eve",
+        "age":  30,
+        "status":  "pending"
+    },
+    {
+        "name":  "Frank",
+        "age":  18,
+        "status":  "active"
+    }
+]

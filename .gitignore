@@ -1,0 +1,26 @@
+# .gitignore for .NET
+
+# Build folders
+bin/
+obj/
+
+# 打包产物
+artifacts/
+
+# 测试覆盖率结果
+TestResults/
+
+# Visual Studio / Rider / VS Code cache
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# System files
+.DS_Store
+Thumbs.db
+
+# 只忽略 samples 下生成的报告输出文件，输入样本数据需入库
+samples/report*

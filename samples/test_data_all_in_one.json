@@ -1,0 +1,37 @@
+[
+    {
+        "id":  "550e8400-e29b-41d4-a716-446655440000",
+        "email":  "zhangsan@example.com",
+        "payload":  "eyJjaXR5Ijoi5LiK5rW3IiwiYWdlIjozMCwidmlwIjp0cnVlfQ==",
+        "status":  "active",
+        "score":  88
+    },
+    {
+        "id":  "1f0e8a2b-7c3d-4e5f-9a6b-7c8d9e0f1a2b",
+        "email":  "lisi@corp.cn",
+        "payload":  "eyJjaXR5Ijoi5LiK5rW3IiwiYWdlIjoyNCwidmlwIjpmYWxzZX0=",
+        "status":  "active",
+        "score":  72
+    },
+    {
+        "id":  "8a9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d",
+        "email":  "wangwu@test.net",
+        "payload":  "eyJjaXR5Ijoi5YyX5LqsIiwiYWdlIjozNSwidmlwIjp0cnVlfQ==",
+        "status":  "disabled",
+        "score":  95
+    },
+    {
+        "id":  "c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
+        "email":  "zhaoliu@example.org",
+        "payload":  "eyJjaXR5Ijoi5bm/5beeIiwiYWdlIjo0MCwidmlwIjp0cnVlfQ==",
+        "status":  "pending",
+        "score":  60
+    },
+    {
+        "id":  "a1b2c3d4-e5f6-4a5b-8c7d-1a2b3c4d5e6f",
+        "email":  "sunqi@example.com",
+        "payload":  "eyJjaXR5Ijoi5rex5ZyzIiwiYWdlIjoyOCwidmlwIjpmYWxzZX0=",
+        "status":  "active",
+        "score":  81
+    }
+]

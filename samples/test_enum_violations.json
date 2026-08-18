@@ -1,0 +1,6 @@
+[
+  {"id": 1, "gender": "Male", "age": 25},
+  {"id": 2, "gender": "Female", "age": 30},
+  {"id": 3, "gender": "Other", "age": 28},
+  {"id": 4, "gender": "Unknown", "age": -5}
+]

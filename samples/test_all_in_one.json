@@ -1,0 +1,25 @@
+{
+  "selectedFields": ["id", "email", "payload", "status", "score"],
+  "filter": "status in ['active'] AND payload.age >= 25",
+  "fields": {
+    "id": {
+      "primaryType": "String"
+    },
+    "email": {
+      "primaryType": "String"
+    },
+    "payload": {
+      "transform": {
+        "type": "base64",
+        "parse": "json"
+      }
+    },
+    "status": {
+      "defaultValue": "active",
+      "enumValues": ["active", "disabled", "pending"]
+    },
+    "score": {
+      "primaryType": "Number"
+    }
+  }
+}

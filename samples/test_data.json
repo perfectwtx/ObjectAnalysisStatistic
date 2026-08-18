@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "name": "张三",
+    "age": 28,
+    "gender": "Male",
+    "address": {
+      "city": "北京",
+      "district": "海淀区"
+    },
+    "tags": ["C#", "Developer"]
+  },
+  {
+    "id": 2,
+    "name": "李四",
+    "age": 32,
+    "gender": "Male",
+    "address": {
+      "city": "上海"
+    },
+    "tags": ["Java", "Manager"]
+  },
+  {
+    "id": 3,
+    "name": "王五",
+    "gender": "Female",
+    "address": {
+      "city": "北京",
+      "district": "朝阳区"
+    },
+    "skills": {
+      "primary": "Python"
+    }
+  }
+]

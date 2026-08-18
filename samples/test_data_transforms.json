@@ -1,0 +1,20 @@
+﻿[
+    {
+        "age":  28,
+        "encryptedPhone":  "Dupb7dRj4yIcM52aLHD6hg==",
+        "encodedName":  "5byg5LiJ",
+        "token":  "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTQyIiwicm9sZSI6ImFkbWluIn0.sig"
+    },
+    {
+        "age":  32,
+        "encryptedPhone":  "Dupb7dRj4yIcM52aLHD6hg==",
+        "encodedName":  "5byg5LiJ",
+        "token":  "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTQyIiwicm9sZSI6ImFkbWluIn0.sig"
+    },
+    {
+        "age":  28,
+        "encryptedPhone":  "!!!bad-cipher!!!",
+        "encodedName":  "5byg5LiJ",
+        "token":  "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTQyIiwicm9sZSI6ImFkbWluIn0.sig"
+    }
+]
