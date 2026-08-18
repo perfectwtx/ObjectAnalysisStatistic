@@ -104,6 +104,23 @@ public class FullRoadmapFeaturesTests
         Assert.Contains("\"$schema\": \"https://json-schema.org/draft/2020-12/schema\"", jsonSchema);
         Assert.Contains("\"Id\"", jsonSchema);
         Assert.Contains("\"Email\"", jsonSchema);
+
+        // OpenAPI 3.0 (JSON & YAML)
+        string openApiJson = SchemaExporter.GenerateOpenApiJson(result, "TestEntity");
+        Assert.Contains("\"openapi\": \"3.0.3\"", openApiJson);
+        Assert.Contains("\"TestEntity\"", openApiJson);
+
+        string openApiYaml = SchemaExporter.GenerateOpenApiYaml(result, "TestEntity");
+        Assert.Contains("openapi: 3.0.3", openApiYaml);
+        Assert.Contains("TestEntity:", openApiYaml);
+
+        // Protobuf 3 (.proto)
+        string proto = SchemaExporter.GenerateProtobuf(result, "TestEntity");
+        Assert.Contains("syntax = \"proto3\";", proto);
+        Assert.Contains("message TestEntity {", proto);
+        Assert.Contains("int64 Id =", proto);
+        Assert.Contains("string Email =", proto);
+        Assert.Contains("bool IsActive =", proto);
     }
 
     [Fact]

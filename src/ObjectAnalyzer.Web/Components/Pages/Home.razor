@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using Core = global::ObjectAnalyzer
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Text.Json
@@ -167,6 +167,9 @@
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("csharp")'>C#</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("typescript")'>TS</button>
                         <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("json-schema")'>JSON Schema</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("openapi")'>OpenAPI (YAML)</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("openapi-json")'>OpenAPI (JSON)</button>
+                        <button class="btn btn-outline btn-sm" @onclick='() => DownloadSchema("protobuf")'>Protobuf</button>
                         <select class="select-sm" @bind="SchemaSqlDialect" aria-label="SQL dialect">
                             <option value="postgres">PostgreSQL</option>
                             <option value="mysql">MySQL</option>
@@ -924,6 +927,9 @@
         {
             "csharp" => ($"schema-{stamp}.cs", Core.Reporting.SchemaExporter.GenerateCSharp(State.Result), "text/plain;charset=utf-8"),
             "typescript" => ($"schema-{stamp}.d.ts", Core.Reporting.SchemaExporter.GenerateTypeScript(State.Result), "text/plain;charset=utf-8"),
+            "openapi" => ($"schema-{stamp}.openapi.yaml", Core.Reporting.SchemaExporter.GenerateOpenApiYaml(State.Result), "application/x-yaml;charset=utf-8"),
+            "openapi-json" => ($"schema-{stamp}.openapi.json", Core.Reporting.SchemaExporter.GenerateOpenApiJson(State.Result), "application/json;charset=utf-8"),
+            "protobuf" or "proto" => ($"schema-{stamp}.proto", Core.Reporting.SchemaExporter.GenerateProtobuf(State.Result), "text/plain;charset=utf-8"),
             "sql" => SchemaSqlDialect switch
             {
                 "mysql" => ($"schema-{stamp}.mysql.sql", Core.Reporting.SchemaExporter.GenerateSql(State.Result, "mysql"), "application/sql;charset=utf-8"),
