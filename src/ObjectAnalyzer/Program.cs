@@ -77,8 +77,8 @@ var failOnViolationsOption = new Option<bool>(
 
 var exportSchemaOption = new Option<string?>(
     aliases: CliAliases.ExportSchema,
-    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema, sql (postgres/mysql/sqlite/sqlserver)；可带输出路径: \"csharp:out.cs\"（缺省自动推导）。");
-exportSchemaOption.AddCompletions("csharp", "typescript", "json-schema", "sql", "mysql", "sqlite", "sqlserver");
+    description: "将推断出的数据结构自动导出为代码定义: csharp, typescript, json-schema, openapi, openapi-yaml, proto, sql (postgres/mysql/sqlite/sqlserver)；可带输出路径: \"csharp:out.cs\"（缺省自动推导）。");
+exportSchemaOption.AddCompletions("csharp", "typescript", "json-schema", "openapi", "openapi-yaml", "proto", "sql", "mysql", "sqlite", "sqlserver");
 
 var connectionOption = new Option<string?>(
     name: "--connection",
