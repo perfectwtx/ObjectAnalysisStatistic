@@ -174,6 +174,13 @@ public class FileParsersTests
     }
 
    [Fact]
+   public void DetectFormat_Xlsx_UsesExcelBranch()
+   {
+       string tempFile = Path.ChangeExtension(Path.GetTempFileName(), ".xlsx");
+       Assert.Equal("excel", FileParsers.DetectFormat(tempFile));
+   }
+
+   [Fact]
    public void ParseExcelJson_MultipleColumns_PreservesSeparateBuckets()
    {
        string tempFile = Path.ChangeExtension(Path.GetTempFileName(), ".xlsx");

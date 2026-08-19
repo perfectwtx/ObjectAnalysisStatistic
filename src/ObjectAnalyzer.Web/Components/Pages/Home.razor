@@ -1,6 +1,7 @@
 @page "/"
 @using Core = global::ObjectAnalyzer
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Net
 @using System.Text.Json
 @inject AnalysisState State
 @inject IJSRuntime Js
@@ -251,7 +252,7 @@
                                         <tr>
                                             @foreach (var f in selectedFields)
                                             {
-                                                <td>@FormatPreviewCell(row, f)</td>
+                                                <td>@((MarkupString)FormatPreviewCell(row, f))</td>
                                             }
                                         </tr>
                                     }
@@ -867,15 +868,20 @@
     internal static string FormatPreviewValue(object? value)
     {
         if (value == null) return "null";
-        if (value is string s) return s.Length <= 80 ? s : s[..77] + "...";
 
-        // 非标量（嵌套对象/数组/强类型集合）以原始值的 JSON 展示，而不是类型名
+        var jsonTree = TryRenderJsonTree(value);
+        if (jsonTree != null)
+            return jsonTree;
+
+        if (value is string s)
+            return WebUtility.HtmlEncode(s.Length <= 80 ? s : s[..77] + "...");
+
         if (!IsScalar(value))
         {
             try
             {
                 string json = JsonSerializer.Serialize(value, PreviewJsonOptions);
-                return json.Length <= 80 ? json : json[..77] + "...";
+                return json.Length <= 80 ? WebUtility.HtmlEncode(json) : WebUtility.HtmlEncode(json[..77] + "...");
             }
             catch
             {
@@ -883,7 +889,123 @@
             }
         }
 
-        return value.ToString() ?? "null";
+        return WebUtility.HtmlEncode(value.ToString() ?? "null");
+    }
+
+    private static string? TryRenderJsonTree(object? value)
+    {
+        if (value is not string s)
+        {
+            if (value is IDictionary<string, object?> dict)
+                return BuildObjectTreeHtml(dict);
+
+            if (value is System.Collections.IEnumerable enumerable && value is not string)
+            {
+                var list = new List<object?>();
+                foreach (var item in enumerable) list.Add(item);
+                return BuildArrayTreeHtml(list);
+            }
+
+            return null;
+        }
+
+        var trimmed = s.Trim();
+        if (trimmed.Length == 0)
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(trimmed);
+            string summary = SummarizeJson(doc.RootElement);
+            return $"<span class=\"json-preview\" data-tooltip=\"{WebUtility.HtmlEncode(trimmed)}\"><span class=\"json-pill\">JSON</span>{WebUtility.HtmlEncode(summary)}</span>";
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string SummarizeJson(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            var props = element.EnumerateObject().Take(3).Select(p => $"{p.Name}: {SummarizeScalar(p.Value)}").ToArray();
+            var content = props.Length > 0 ? string.Join(", ", props) : "{}";
+            return props.Length == 3 && element.EnumerateObject().Count() > 3 ? $"{{ {content}, ... }}" : $"{{ {content} }}";
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            var items = element.EnumerateArray().Take(3).Select(SummarizeScalar).ToArray();
+            var content = items.Length > 0 ? string.Join(", ", items) : "";
+            return items.Length == 3 && element.GetArrayLength() > 3 ? $"[{content}, ...]" : $"[{content}]";
+        }
+
+        return JsonSerializer.Serialize(element);
+    }
+
+    private static string SummarizeScalar(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => $"\"{element.GetString()}\"",
+            JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null => element.GetRawText(),
+            JsonValueKind.Object => "{...}",
+            JsonValueKind.Array => "[...]",
+            _ => element.GetRawText()
+        };
+    }
+
+    private static string BuildObjectTreeHtml(IDictionary<string, object?> dict)
+    {
+        var items = new List<string>();
+        foreach (var kvp in dict)
+        {
+            items.Add($"<div class=\"json-item\"><span class=\"json-key\">{WebUtility.HtmlEncode(kvp.Key)}</span><span class=\"json-colon\">:</span>{BuildObjectValueHtml(kvp.Value)}</div>");
+        }
+        return $"<div class=\"json-tree\">{string.Join(string.Empty, items)}</div>";
+    }
+
+    private static string BuildArrayTreeHtml(List<object?> items)
+    {
+        var rendered = new List<string>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            rendered.Add($"<div class=\"json-item\"><span class=\"json-index\">[{i}]</span><span class=\"json-colon\">:</span>{BuildObjectValueHtml(items[i])}</div>");
+        }
+        return $"<div class=\"json-tree\">{string.Join(string.Empty, rendered)}</div>";
+    }
+
+    private static string BuildObjectValueHtml(object? value)
+    {
+        if (value == null)
+            return "<span class=\"json-value json-null\">null</span>";
+
+        if (value is string s)
+        {
+            var trimmed = s.Trim();
+            try
+            {
+                using var doc = JsonDocument.Parse(trimmed);
+                return $"<span class=\"json-preview\" data-tooltip=\"{WebUtility.HtmlEncode(trimmed)}\"><span class=\"json-pill\">JSON</span>{WebUtility.HtmlEncode(SummarizeJson(doc.RootElement))}</span>";
+            }
+            catch (JsonException)
+            {
+                return $"<span class=\"json-value json-string\">\"{WebUtility.HtmlEncode(s)}\"</span>";
+            }
+        }
+
+        if (value is IDictionary<string, object?> dict)
+            return BuildObjectTreeHtml(dict);
+
+        if (value is System.Collections.IEnumerable enumerable && value is not string)
+        {
+            var list = new List<object?>();
+            foreach (var item in enumerable) list.Add(item);
+            return BuildArrayTreeHtml(list);
+        }
+
+        return $"<span class=\"json-value json-scalar\">{WebUtility.HtmlEncode(value.ToString() ?? "null")}</span>";
     }
 
     private static bool IsScalar(object value)

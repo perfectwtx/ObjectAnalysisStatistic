@@ -39,6 +39,11 @@ public static class FileParsers
     public static string DetectFormat(string path)
     {
         string ext = Path.GetExtension(path).ToLowerInvariant();
+
+        // 明确优先返回 Excel（.xlsx）而不是 CSV；CSV 与 Excel 共享同一解析器，但 .xlsx 的语义应走 excel 分支。
+        if (ext == ".xlsx")
+            return "excel";
+
         foreach (var parser in _parsers)
         {
             if (parser.SupportedExtensions.Contains(ext))
@@ -320,7 +325,7 @@ public static class FileParsers
 
     private sealed class ExcelCsvFileParser : IFileParser
     {
-        public IReadOnlyList<string> SupportedFormats => new[] { "csv", "excel" };
+        public IReadOnlyList<string> SupportedFormats => new[] { "excel", "csv" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".csv", ".xlsx" };
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
