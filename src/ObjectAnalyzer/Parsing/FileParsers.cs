@@ -334,7 +334,7 @@ public static class FileParsers
 
         private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
         {
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            foreach (var row in QueryRowsWithHeaderFallback(path))
             {
                 var dict = ToRowDict(row);
                 if (dict != null)
@@ -345,7 +345,7 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            foreach (var row in QueryRowsWithHeaderFallback(path))
             {
                 int slot = sampler.NextSlot();
                 if (slot < 0)
@@ -360,7 +360,7 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
         {
             long recordIndex = 0;
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            foreach (var row in QueryRowsWithHeaderFallback(path))
             {
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
@@ -368,6 +368,15 @@ public static class FileParsers
                 if (dict != null)
                     yield return dict;
             }
+        }
+
+        private static IEnumerable<object?> QueryRowsWithHeaderFallback(string path)
+        {
+            var headerRows = MiniExcel.Query(path, useHeaderRow: true).ToList();
+            if (headerRows.Count > 0)
+                return headerRows;
+
+            return MiniExcel.Query(path, useHeaderRow: false);
         }
 
         private static Dictionary<string, object?>? ToRowDict(object? row)
