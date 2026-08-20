@@ -337,10 +337,26 @@ public static class FileParsers
             return ParseAll(path, options);
         }
 
+        // 表头模式：header=0 无表头（列以字母 A/B/C 命名，首行是表头需跳过）；header=1（默认）首行值为列名。
+        private static bool UseHeaderRow(ParseOptions options)
+        {
+            foreach (var source in options.ValueParsers)
+            {
+                if (source.Header is int header)
+                    return header == 1;
+            }
+            return true;
+        }
+
         private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
         {
-            foreach (var row in QueryRowsWithHeaderFallback(path))
+            long rowIndex = 0;
+            bool useHeaderRow = UseHeaderRow(options);
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
+                rowIndex++;
+                if (!useHeaderRow && rowIndex == 1)
+                    continue; // 表头模式 0：首行是表头，跳过
                 var dict = ToRowDict(row);
                 if (dict != null)
                     yield return dict;
@@ -350,8 +366,13 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-            foreach (var row in QueryRowsWithHeaderFallback(path))
+            bool useHeaderRow = UseHeaderRow(options);
+            long rowIndex = 0;
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
+                rowIndex++;
+                if (!useHeaderRow && rowIndex == 1)
+                    continue;
                 int slot = sampler.NextSlot();
                 if (slot < 0)
                     continue;
@@ -365,23 +386,19 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
         {
             long recordIndex = 0;
-            foreach (var row in QueryRowsWithHeaderFallback(path))
+            bool useHeaderRow = UseHeaderRow(options);
+            long rowIndex = 0;
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
+                rowIndex++;
+                if (!useHeaderRow && rowIndex == 1)
+                    continue;
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
                 var dict = ToRowDict(row);
                 if (dict != null)
                     yield return dict;
             }
-        }
-
-        private static IEnumerable<object?> QueryRowsWithHeaderFallback(string path)
-        {
-            var headerRows = MiniExcel.Query(path, useHeaderRow: true).ToList();
-            if (headerRows.Count > 0)
-                return headerRows;
-
-            return MiniExcel.Query(path, useHeaderRow: false);
         }
 
         private static Dictionary<string, object?>? ToRowDict(object? row)

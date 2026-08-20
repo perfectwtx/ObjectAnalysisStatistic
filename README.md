@@ -228,7 +228,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `valueParsers` 用于声明”值读取时如何解析”，不属于 `fields` 的字段分析配置。`source` 表示来源字段/列名（如 `A` / `B` / `Line` / `payload`），`parseType` 控制是否与如何解析内容：`none` 保持原值、`auto` 自动识别并解析 JSON、`json` 要求值必须是合法 JSON、`json-string` 允许值本身是 JSON 字符串或嵌套字符串 JSON，最终解析出真实对象/数组/值。
 
-`header` 控制 Excel 表头模式（仅 `excel-json` 生效）：`1`（默认）首行值为列名，`source` 与字段前缀用表头文字（如 `Line.body.AcctId`）；`0` 无表头，列以字母 `A`/`B`/`C` 命名，`source` 用列字母，首行即数据。
+`header` 控制 Excel/CSV 表头模式：`1`（默认）首行值为列名，`source` 与字段前缀用表头文字（如 `Line.body.AcctId`）；`0` 无表头，列以字母 `A`/`B`/`C` 命名，`source` 用列字母，首行作为表头跳过。
 
 `flatten` 可以放在顶层规则，也可以直接写在单个 `valueParsers` 项里：顶层值作为全局默认，单项的 `flatten` 允许对某个 source 做单独覆盖；`--no-flatten` 仍然优先级最高。
 
