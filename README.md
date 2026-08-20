@@ -1,9 +1,10 @@
 # ObjectAnalyzer
 
 对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入，自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验及重复对象。
+对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML / OpenAPI / Protobuf 输入，自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验及重复对象。
 
 - CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)
-- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML
+- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML、OpenAPI (JSON/YAML)、Protobuf (Binary)
 - 规则驱动值解析：通过规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串，适用于 Excel 多列 JSON 及其他值级解析场景
 - 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)
 - 字段统计：每个字段的出现频次、覆盖率、主导数据类型
@@ -15,7 +16,7 @@
 - 多种报告导出：结构化 JSON、富文本 HTML、Markdown、CSV 报告
 - 枚举违规独立导出：通过 `--violations` 输出结构化违规清单，便于 CI 断言
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
-- Schema 代码导出：`--export-schema csharp|typescript|json-schema|sql` 生成数据结构定义（SQL 支持 postgres / mysql / sqlite / sqlserver 方言）
+- Schema 代码导出：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义（支持 C# Record, TypeScript, JSON Schema, OpenAPI 3.0 YAML/JSON, gRPC Protobuf 3 `.proto`, 以及 SQL postgres/mysql/sqlite/sqlserver 方言）
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界

@@ -1,0 +1,13 @@
+{
+  "flatten": true,
+  "valueParsers": [
+    { "source": "A", "parseType": "json" }
+  ],
+  "fields": {
+    "A.body": {
+      "transform": {
+        "parse": "json"
+      }
+    }
+  }
+}

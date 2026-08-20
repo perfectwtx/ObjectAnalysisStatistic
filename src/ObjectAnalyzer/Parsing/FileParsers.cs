@@ -39,6 +39,11 @@ public static class FileParsers
     public static string DetectFormat(string path)
     {
         string ext = Path.GetExtension(path).ToLowerInvariant();
+
+        // 明确优先返回 Excel（.xlsx）而不是 CSV；CSV 与 Excel 共享同一解析器，但 .xlsx 的语义应走 excel 分支。
+        if (ext == ".xlsx")
+            return "excel";
+
         foreach (var parser in _parsers)
         {
             if (parser.SupportedExtensions.Contains(ext))
@@ -320,7 +325,7 @@ public static class FileParsers
 
     private sealed class ExcelCsvFileParser : IFileParser
     {
-        public IReadOnlyList<string> SupportedFormats => new[] { "csv", "excel" };
+        public IReadOnlyList<string> SupportedFormats => new[] { "excel", "csv" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".csv", ".xlsx" };
 
         public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
@@ -334,7 +339,7 @@ public static class FileParsers
 
         private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
         {
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            foreach (var row in QueryRowsWithHeaderFallback(path))
             {
                 var dict = ToRowDict(row);
                 if (dict != null)
@@ -345,7 +350,7 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            foreach (var row in QueryRowsWithHeaderFallback(path))
             {
                 int slot = sampler.NextSlot();
                 if (slot < 0)
@@ -360,7 +365,7 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
         {
             long recordIndex = 0;
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: true))
+            foreach (var row in QueryRowsWithHeaderFallback(path))
             {
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
@@ -368,6 +373,15 @@ public static class FileParsers
                 if (dict != null)
                     yield return dict;
             }
+        }
+
+        private static IEnumerable<object?> QueryRowsWithHeaderFallback(string path)
+        {
+            var headerRows = MiniExcel.Query(path, useHeaderRow: true).ToList();
+            if (headerRows.Count > 0)
+                return headerRows;
+
+            return MiniExcel.Query(path, useHeaderRow: false);
         }
 
         private static Dictionary<string, object?>? ToRowDict(object? row)

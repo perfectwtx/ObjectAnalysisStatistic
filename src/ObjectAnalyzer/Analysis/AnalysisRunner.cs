@@ -321,6 +321,9 @@ public static class AnalysisRunner
             {
                 "csharp" or "cs" => ".schema.cs",
                 "typescript" or "ts" => ".schema.d.ts",
+                "openapi" or "swagger" or "openapi-json" => ".openapi.json",
+                "openapi-yaml" or "yaml-schema" => ".openapi.yaml",
+                "protobuf" or "proto" or "proto3" => ".schema.proto",
                 "sql" or "postgres" or "postgresql" or "pg" or "mysql" or "sqlite" or "sqlserver" or "mssql" => ".schema.sql",
                 _ => ".schema.json"
             };

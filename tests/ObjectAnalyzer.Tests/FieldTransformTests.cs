@@ -498,6 +498,35 @@ public class FieldTransformTests
     }
 
     [Fact]
+    public void ParseJson_SelectionCanTargetNestedFieldAfterOuterParse()
+    {
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new()
+            {
+                {
+                    "A",
+                    "{\"body\":\"{\\\"mountain\\\":\\\"bear\\\",\\\"mill\\\":\\\"difficulty\\\"}\"}"
+                }
+            }
+        };
+
+        var rules = new AnalysisRules();
+        rules.Fields["A"] = new FieldRule
+        {
+            Transform = new FieldTransform { Parse = "json" }
+        };
+        rules.SelectedFields = new List<string> { "A.body.mountain" };
+
+        var processor = new FieldTransformProcessor(rules);
+        var result = Analyze(processor.Wrap(objects), rules);
+        processor.ApplyFailures(result);
+
+        var field = result.FieldStatistics.First(f => f.FieldName == "A.body.mountain");
+        Assert.Equal("bear", field.ValueCounts.Keys.Single());
+    }
+
+    [Fact]
     public void ParseJson_FilterAppliesToExpandedField()
     {
         var objects = new List<Dictionary<string, object?>>

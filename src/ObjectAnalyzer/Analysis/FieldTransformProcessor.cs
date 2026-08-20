@@ -68,6 +68,26 @@ public sealed class FieldTransformProcessor
         return TransformAndSelect(objects);
     }
 
+    private bool IsSelectedKey(string key)
+    {
+        if (_selectedFields == null)
+            return true;
+
+        foreach (var selected in _selectedFields)
+        {
+            if (string.Equals(selected, key, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (selected.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase)
+                || selected.StartsWith(key + "[", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private IEnumerable<Dictionary<string, object?>> TransformAndSelect(
         IEnumerable<Dictionary<string, object?>> objects)
     {
@@ -76,14 +96,14 @@ public sealed class FieldTransformProcessor
             var result = new Dictionary<string, object?>(obj.Count);
             foreach (var kv in obj)
             {
-                if (_selectedFields != null && !_selectedFields.Contains(kv.Key))
+                if (_selectedFields != null && !IsSelectedKey(kv.Key))
                     continue;
 
                 if (_transforms.TryGetValue(kv.Key, out var transform)
                     && TryApply(transform, kv.Value, out var newValue))
                 {
                     // parse: 将转换结果解析为 JSON 并展开为嵌套字段（如 payload.city / payload[0]）
-                    if (TryUnwrapJson(kv.Key, transform, newValue, result))
+                    if (TryUnwrapJson(kv.Key, transform, newValue, result, _selectedFields))
                         continue;
                     result[kv.Key] = newValue;
                 }
@@ -159,7 +179,7 @@ public sealed class FieldTransformProcessor
     /// 成功（含解析失败回退）返回 true；无 parse 配置或值非字符串时返回 false 由调用方原样保留。
     /// </summary>
     private static bool TryUnwrapJson(
-        string field, FieldTransform transform, object? value, Dictionary<string, object?> target)
+        string field, FieldTransform transform, object? value, Dictionary<string, object?> target, HashSet<string>? selectedFields)
     {
         if (value is not string text
             || !string.Equals(transform.Parse?.Trim(), "json", StringComparison.OrdinalIgnoreCase))
@@ -168,14 +188,142 @@ public sealed class FieldTransformProcessor
         try
         {
             using var doc = JsonDocument.Parse(text);
-            FileParsers.FlattenJson(doc.RootElement, field, target);
+            FlattenJsonWithSelection(doc.RootElement, field, target, selectedFields);
             return true;
         }
         catch (JsonException)
         {
             // 非合法 JSON：保留原始转换结果字符串
-            target[field] = text;
+            if (selectedFields == null || IsSelectedKey(selectedFields, field))
+                target[field] = text;
             return true;
+        }
+    }
+
+    private static void FlattenJsonWithSelection(JsonElement element, string prefix, Dictionary<string, object?> target, HashSet<string>? selectedFields)
+    {
+        if (selectedFields != null && !IsSelectedKey(selectedFields, prefix))
+            return;
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    string name = string.IsNullOrEmpty(prefix) ? property.Name : $"{prefix}.{property.Name}";
+                    FlattenJsonWithSelection(property.Value, name, target, selectedFields);
+                }
+                break;
+
+            case JsonValueKind.Array:
+                int index = 0;
+                foreach (var item in element.EnumerateArray())
+                {
+                    string name = $"{prefix}[{index}]";
+                    FlattenJsonWithSelection(item, name, target, selectedFields);
+                    index++;
+                }
+                break;
+
+            case JsonValueKind.String:
+                if (selectedFields != null && HasNestedSelection(selectedFields, prefix))
+                {
+                    string text = element.GetString() ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        try
+                        {
+                            using var nestedDoc = JsonDocument.Parse(text);
+                            FlattenJsonWithSelection(nestedDoc.RootElement, prefix, target, selectedFields);
+                            return;
+                        }
+                        catch (JsonException)
+                        {
+                            // 不是合法嵌套 JSON，保留原始字符串
+                        }
+                    }
+                }
+
+                if (selectedFields == null || IsSelectedKey(selectedFields, prefix))
+                    target[prefix] = element.GetString();
+                break;
+
+            default:
+                if (selectedFields == null || IsSelectedKey(selectedFields, prefix))
+                    target[prefix] = ConvertJsonElementValue(element);
+                break;
+        }
+    }
+
+    private static bool IsSelectedKey(HashSet<string>? selectedFields, string key)
+    {
+        if (selectedFields == null)
+            return true;
+
+        foreach (var selected in selectedFields)
+        {
+            if (string.Equals(selected, key, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (selected.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase)
+                || selected.StartsWith(key + "[", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasNestedSelection(HashSet<string> selectedFields, string key)
+    {
+        foreach (var selected in selectedFields)
+        {
+            if (selected.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase)
+                || selected.StartsWith(key + "[", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static object? ConvertJsonElementValue(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                var dict = new Dictionary<string, object?>();
+                foreach (var property in element.EnumerateObject())
+                    dict[property.Name] = ConvertJsonElementValue(property.Value);
+                return dict;
+
+            case JsonValueKind.Array:
+                var list = new List<object?>();
+                foreach (var item in element.EnumerateArray())
+                    list.Add(ConvertJsonElementValue(item));
+                return list;
+
+            case JsonValueKind.String:
+                return element.GetString();
+
+            case JsonValueKind.Number:
+                if (element.TryGetInt64(out long l)) return l;
+                if (element.TryGetDouble(out double d)) return d;
+                return element.GetRawText();
+
+            case JsonValueKind.True:
+                return true;
+
+            case JsonValueKind.False:
+                return false;
+
+            case JsonValueKind.Null:
+                return null;
+
+            default:
+                return element.GetRawText();
         }
     }
 
