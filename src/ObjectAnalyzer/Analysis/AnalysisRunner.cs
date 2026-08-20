@@ -387,7 +387,8 @@ public static class AnalysisRunner
                 {
                     Source = p.Source.Trim(),
                     ParseType = string.IsNullOrWhiteSpace(p.ParseType) ? "auto" : p.ParseType.Trim(),
-                    Flatten = p.Flatten
+                    Flatten = p.Flatten,
+                    Header = p.Header
                 })
                 .ToList();
         }

@@ -203,9 +203,9 @@ public class FileParsersTests
                Flatten = true,
                ValueParsers = new[]
                {
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json" },
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json" },
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "C", ParseType = "json" }
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Header = 0 },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Header = 0 },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "C", ParseType = "json", Header = 0 }
                }
            }).ToList();
 
@@ -247,8 +247,8 @@ public class FileParsersTests
                Flatten = false,
                ValueParsers = new[]
                {
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Flatten = true },
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Flatten = false }
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Flatten = true, Header = 0 },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Flatten = false, Header = 0 }
                }
            }).ToList();
 
