@@ -609,6 +609,120 @@ h1:focus {
     top: 0;
 }
 
+.json-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 280px;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #eef5ff 0%, #f6f8ff 100%);
+    border: 1px solid #dbeafe;
+    color: #1f2937;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.76rem;
+    line-height: 1.4;
+    cursor: help;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.json-preview::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.5rem);
+    transform: translateX(-50%);
+    background: rgba(17, 24, 39, 0.96);
+    color: #f8fafc;
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-width: min(420px, 70vw);
+    word-break: break-word;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.2);
+    z-index: 10;
+}
+
+.json-preview:hover::after {
+    opacity: 1;
+}
+
+.json-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    padding: 0.12rem 0.42rem;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.json-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.35rem 0.5rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    min-width: 220px;
+    max-width: 420px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    line-height: 1.5;
+}
+
+.json-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    word-break: break-word;
+}
+
+.json-key {
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+.json-index {
+    color: #6f42c1;
+    font-weight: 600;
+}
+
+.json-colon {
+    color: #6c757d;
+}
+
+.json-value {
+    display: inline-block;
+    color: #212529;
+}
+
+.json-scalar {
+    color: #198754;
+}
+
+.json-string {
+    color: #d63384;
+}
+
+.json-null {
+    color: #6c757d;
+    font-style: italic;
+}
+
 /* Toolbar */
 .toolbar {
     display: flex;
