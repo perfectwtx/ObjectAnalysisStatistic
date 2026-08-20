@@ -24,3 +24,4 @@ Thumbs.db
 
 # 只忽略 samples 下生成的报告输出文件，输入样本数据需入库
 samples/report*
+nuget.config
