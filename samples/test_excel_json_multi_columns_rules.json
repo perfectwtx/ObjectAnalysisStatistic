@@ -1,9 +1,9 @@
 {
   "flatten": true,
   "valueParsers": [
-    { "source": "A", "parseType": "json", "flatten": true },
-    { "source": "B", "parseType": "json", "flatten": false },
-    { "source": "C", "parseType": "json" }
+    { "source": "A", "parseType": "json", "flatten": true, "header": 0 },
+    { "source": "B", "parseType": "json", "flatten": false, "header": 0 },
+    { "source": "C", "parseType": "json", "header": 0 }
   ],
   "fields": {
     "A.id": {

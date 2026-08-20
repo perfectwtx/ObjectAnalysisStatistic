@@ -337,10 +337,26 @@ public static class FileParsers
             return ParseAll(path, options);
         }
 
+        // 表头模式：header=0 无表头（列以字母 A/B/C 命名，首行是表头需跳过）；header=1（默认）首行值为列名。
+        private static bool UseHeaderRow(ParseOptions options)
+        {
+            foreach (var source in options.ValueParsers)
+            {
+                if (source.Header is int header)
+                    return header == 1;
+            }
+            return true;
+        }
+
         private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
         {
-            foreach (var row in QueryRowsWithHeaderFallback(path))
+            long rowIndex = 0;
+            bool useHeaderRow = UseHeaderRow(options);
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
+                rowIndex++;
+                if (!useHeaderRow && rowIndex == 1)
+                    continue; // 表头模式 0：首行是表头，跳过
                 var dict = ToRowDict(row);
                 if (dict != null)
                     yield return dict;
@@ -350,8 +366,13 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-            foreach (var row in QueryRowsWithHeaderFallback(path))
+            bool useHeaderRow = UseHeaderRow(options);
+            long rowIndex = 0;
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
+                rowIndex++;
+                if (!useHeaderRow && rowIndex == 1)
+                    continue;
                 int slot = sampler.NextSlot();
                 if (slot < 0)
                     continue;
@@ -365,23 +386,19 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
         {
             long recordIndex = 0;
-            foreach (var row in QueryRowsWithHeaderFallback(path))
+            bool useHeaderRow = UseHeaderRow(options);
+            long rowIndex = 0;
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
+                rowIndex++;
+                if (!useHeaderRow && rowIndex == 1)
+                    continue;
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
                 var dict = ToRowDict(row);
                 if (dict != null)
                     yield return dict;
             }
-        }
-
-        private static IEnumerable<object?> QueryRowsWithHeaderFallback(string path)
-        {
-            var headerRows = MiniExcel.Query(path, useHeaderRow: true).ToList();
-            if (headerRows.Count > 0)
-                return headerRows;
-
-            return MiniExcel.Query(path, useHeaderRow: false);
         }
 
         private static Dictionary<string, object?>? ToRowDict(object? row)
@@ -487,10 +504,11 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             long rowIndex = 0;
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: false))
+            bool useHeaderRow = UseHeaderRow(sources);
+            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
             {
                 rowIndex++;
-                var dict = TryParseValueSources(row, sources, rowIndex, options);
+                var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
                 if (dict != null)
                     yield return dict;
             }
@@ -500,12 +518,13 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: false)))
+            bool useHeaderRow = UseHeaderRow(sources);
+            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: useHeaderRow)))
             {
                 int slot = sampler.NextSlot();
                 if (slot < 0)
                     continue;
-                var dict = TryParseValueSources(row, sources, rowIndex, options);
+                var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
                 if (dict != null)
                     sampler.SetSlot(slot, dict);
             }
@@ -515,22 +534,35 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             long recordIndex = 0;
-            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: false)))
+            bool useHeaderRow = UseHeaderRow(sources);
+            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: useHeaderRow)))
             {
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
-                var dict = TryParseValueSources(row, sources, rowIndex, options);
+                var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
                 if (dict != null)
                     yield return dict;
             }
         }
 
-        private static Dictionary<string, object?>? TryParseValueSources(object? row, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, long rowIndex, ParseOptions options)
+        // 表头模式：header=0 无表头（列以字母 A/B/C 命名，首行为数据）；header=1（默认）首行值为列名。
+        private static bool UseHeaderRow(IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources)
+        {
+            foreach (var source in sources)
+            {
+                if (source.Header is int header)
+                    return header == 1;
+            }
+            return true;
+        }
+
+        private static Dictionary<string, object?>? TryParseValueSources(object? row, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, long rowIndex, ParseOptions options, bool useHeaderRow)
         {
             if (row is not IDictionary<string, object?> rowDict)
                 return null;
 
-            if (LooksLikeHeaderRow(rowDict, sources))
+            // 表头模式 0：MiniExcel 无表头读取（列键为 A/B/C），首行是表头，手动跳过
+            if (!useHeaderRow && rowIndex == 1)
                 return null;
 
             var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
@@ -682,30 +714,6 @@ public static class FileParsers
                 JsonValueKind.Null => null,
                 _ => element.GetRawText()
             };
-        }
-
-        private static bool LooksLikeHeaderRow(IDictionary<string, object?> rowDict, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources)
-        {
-            if (sources.Count == 0)
-                return false;
-
-            foreach (var source in sources)
-            {
-                string sourceKey = source.Source?.Trim() ?? "";
-                if (string.IsNullOrWhiteSpace(sourceKey))
-                    continue;
-
-                if (!rowDict.TryGetValue(sourceKey, out var value) && !TryFindKey(rowDict, sourceKey, out value))
-                    return false;
-
-                if (value is null)
-                    return false;
-
-                if (!string.Equals(value.ToString(), sourceKey, StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            return true;
         }
 
         private static bool TryFindKey(IDictionary<string, object?> rowDict, string sourceKey, out object? value)

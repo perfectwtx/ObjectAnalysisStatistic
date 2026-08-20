@@ -187,8 +187,9 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 {
   "flatten": true,
   "valueParsers": [
-    { "source": "A", "parseType": "json" },
-    { "source": "B", "parseType": "auto" },
+    { "source": "A", "parseType": "json", "header": 0 },
+    { "source": "B", "parseType": "auto", "header": 0 },
+    { "source": "Line", "parseType": "json" },
     { "source": "payload", "parseType": "json-string" }
   ],
   "selectedFields": ["token"],
@@ -225,11 +226,13 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 }
 ```
 
-`valueParsers` 用于声明“值读取时如何解析”，不属于 `fields` 的字段分析配置。`source` 表示来源字段/列名（如 `A` / `B` / `payload`），`parseType` 控制是否与如何解析内容：`none` 保持原值、`auto` 自动识别并解析 JSON、`json` 要求值必须是合法 JSON、`json-string` 允许值本身是 JSON 字符串或嵌套字符串 JSON，最终解析出真实对象/数组/值。
+`valueParsers` 用于声明”值读取时如何解析”，不属于 `fields` 的字段分析配置。`source` 表示来源字段/列名（如 `A` / `B` / `Line` / `payload`），`parseType` 控制是否与如何解析内容：`none` 保持原值、`auto` 自动识别并解析 JSON、`json` 要求值必须是合法 JSON、`json-string` 允许值本身是 JSON 字符串或嵌套字符串 JSON，最终解析出真实对象/数组/值。
+
+`header` 控制 Excel/CSV 表头模式：`1`（默认）首行值为列名，`source` 与字段前缀用表头文字（如 `Line.body.AcctId`）；`0` 无表头，列以字母 `A`/`B`/`C` 命名，`source` 用列字母，首行作为表头跳过。
 
 `flatten` 可以放在顶层规则，也可以直接写在单个 `valueParsers` 项里：顶层值作为全局默认，单项的 `flatten` 允许对某个 source 做单独覆盖；`--no-flatten` 仍然优先级最高。
 
-对于 Excel JSON 多列场景，多个 `valueParsers` 会保持独立对象桶，不会被合并成同一个对象；在 `flatten: true` 时，会展开成 `A.id` / `A.name` / `B.age` 这类字段，结果形态类似 `{"A.id": 1, "A.name": "张三", "B.age": 28}`。
+对于 Excel JSON 多列场景，多个 `valueParsers` 会保持独立对象桶，不会被合并成同一个对象；在 `flatten: true` 时，会展开成 `A.id` / `A.name` / `B.age` 这类字段，结果形态类似 `{“A.id”: 1, “A.name”: “张三”, “B.age”: 28}`。
 
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
 

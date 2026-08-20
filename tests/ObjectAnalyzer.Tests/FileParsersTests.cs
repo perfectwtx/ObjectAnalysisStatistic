@@ -10,6 +10,33 @@ namespace ObjectAnalyzer.Tests;
 public class FileParsersTests
 {
     [Fact]
+    public void ParseCsv_HeaderModes_RespectConfig()
+    {
+        // 首行为表头；header=1 用表头文字，header=0 用列字母并跳过首行
+        string tempFile = Path.ChangeExtension(Path.GetTempFileName(), ".csv");
+        File.WriteAllText(tempFile, "Name,Age,City\r\nAlice,30,Beijing\r\nBob,25,Shanghai\r\n");
+        try
+        {
+            var byName = FileParsers.ParseByFormat(tempFile, "csv", new ParseOptions
+            {
+                ValueParsers = new[] { new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "Name", ParseType = "auto", Header = 1 } }
+            }).ToList();
+            Assert.Equal(2, byName.Count);
+            Assert.Equal("Alice", byName[0]["Name"]);
+
+            var byLetter = FileParsers.ParseByFormat(tempFile, "csv", new ParseOptions
+            {
+                ValueParsers = new[] { new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "auto", Header = 0 } }
+            }).ToList();
+            Assert.Equal(2, byLetter.Count);
+            Assert.Equal("30", byLetter[0].GetValueOrDefault("B"));
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+    [Fact]
     public void ParseJson_ArrayOfObjects_ParsesCorrectly()
     {
         // Arrange
@@ -203,9 +230,9 @@ public class FileParsersTests
                Flatten = true,
                ValueParsers = new[]
                {
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json" },
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json" },
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "C", ParseType = "json" }
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Header = 0 },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Header = 0 },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "C", ParseType = "json", Header = 0 }
                }
            }).ToList();
 
@@ -247,8 +274,8 @@ public class FileParsersTests
                Flatten = false,
                ValueParsers = new[]
                {
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Flatten = true },
-                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Flatten = false }
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "A", ParseType = "json", Flatten = true, Header = 0 },
+                   new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "json", Flatten = false, Header = 0 }
                }
            }).ToList();
 

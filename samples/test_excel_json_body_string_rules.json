@@ -1,7 +1,7 @@
 {
   "flatten": true,
   "valueParsers": [
-    { "source": "A", "parseType": "json" }
+    { "source": "A", "parseType": "json", "header": 0 }
   ],
   "fields": {
     "A.body": {

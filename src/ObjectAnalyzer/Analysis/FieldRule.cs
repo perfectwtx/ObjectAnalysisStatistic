@@ -84,6 +84,10 @@ public class ValueParserConfig
     /// <summary>是否对该来源解析出的对象/数组做扁平化。null 表示沿用全局 flatten 配置。</summary>
     [JsonPropertyName("flatten")]
     public bool? Flatten { get; set; }
+
+    /// <summary>表头模式：1（默认）首行值为列名，source/字段前缀用表头文字；0 无表头，列以字母 A/B/C 命名，source/字段前缀用列字母。</summary>
+    [JsonPropertyName("header")]
+    public int? Header { get; set; }
 }
 
 /// <summary>
