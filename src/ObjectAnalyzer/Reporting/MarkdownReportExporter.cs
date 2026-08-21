@@ -75,28 +75,39 @@ public static class MarkdownReportExporter
 
         writer.WriteLine("## 字段详情");
         writer.WriteLine();
-        writer.WriteLine("| 字段名 | 频次 | 覆盖率 | 主导类型 | 默认值 | 唯一值数量 | 转换 | 枚举违规 |");
-        writer.WriteLine("|-------|------|--------|---------|-------|-------|--------|---------|");
+        writer.WriteLine("| 字段名 | 语义 | 频次/覆盖率 | 主导类型 | 默认值 | 类型分布 | 数值范围 | 长度范围 | 转换 | 枚举违规 | 高频值 |");
+        writer.WriteLine("|-------|-----|------------|---------|-------|---------|---------|---------|--------|---------|--------|");
         foreach (var stat in result.FieldStatistics)
         {
-            string coverage = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
+            string coverage = stat.Count + "/" + result.TotalObjects + " (" + (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture) + "%)";
+            string semantic = !string.IsNullOrEmpty(stat.SemanticType) ? EscapeMd(stat.SemanticType) : "—";
             string defaultVal = stat.DefaultValueRepresentation ?? "—";
-            string unique = stat.ValueCountsTruncated
-                ? stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture) + "+"
-                : stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
+            if (stat.NullAppeared && stat.DefaultValueRepresentation == null)
+                defaultVal = "null";
+            string types = string.Join("<br>", stat.TypeCounts.Select(t => $"{EscapeMd(t.Key)}({t.Value})"));
+            if (string.IsNullOrEmpty(types)) types = "—";
+            string numeric = stat.MinNumber.HasValue && stat.MaxNumber.HasValue
+                ? $"{stat.MinNumber:G4} ~ {stat.MaxNumber:G4}<br>均值 {stat.AvgNumber:G4}"
+                : "—";
+            string length = stat.MinLength.HasValue && stat.MaxLength.HasValue
+                ? $"{stat.MinLength} ~ {stat.MaxLength} 字符"
+                : "—";
             string transform = stat.TransformType != null
                 ? (stat.TransformFailureCount > 0
                     ? $"{EscapeMd(stat.TransformType)} (失败 {stat.TransformFailureCount})"
                     : EscapeMd(stat.TransformType))
-                : "";
+                : "—";
             string violations = stat.EnumViolations.Count > 0
                 ? string.Join(", ", stat.EnumViolations.Select(v => $"`{EscapeMd(v)}`"))
-                : "";
+                : "—";
+            string topValues = string.Join("<br>", stat.ValueCounts
+                .OrderByDescending(v => v.Value).Take(5)
+                .Select(v => $"`{EscapeMd(Truncate(v.Key, 40))}` ×{v.Value}"));
 
             writer.Write("| `");
             writer.Write(EscapeMd(stat.FieldName));
             writer.Write("` | ");
-            writer.Write(stat.Count.ToString(CultureInfo.InvariantCulture));
+            writer.Write(semantic);
             writer.Write(" | ");
             writer.Write(coverage);
             writer.Write(" | ");
@@ -104,11 +115,17 @@ public static class MarkdownReportExporter
             writer.Write(" | ");
             writer.Write(EscapeMd(defaultVal));
             writer.Write(" | ");
-            writer.Write(unique);
+            writer.Write(types);
+            writer.Write(" | ");
+            writer.Write(numeric);
+            writer.Write(" | ");
+            writer.Write(length);
             writer.Write(" | ");
             writer.Write(transform);
             writer.Write(" | ");
             writer.Write(violations);
+            writer.Write(" | ");
+            writer.Write(topValues);
             writer.WriteLine(" |");
         }
         writer.WriteLine();
@@ -119,5 +136,10 @@ public static class MarkdownReportExporter
         // 先转义 < > 防止行内 HTML 注入，再插入换行 <br>
         return s.Replace("<", "&lt;").Replace(">", "&gt;")
             .Replace("|", "\\|").Replace("\r", " ").Replace("\n", "<br>");
+    }
+
+    private static string Truncate(string s, int maxLen)
+    {
+        return s.Length <= maxLen ? s : s[..(maxLen - 3)] + "...";
     }
 }

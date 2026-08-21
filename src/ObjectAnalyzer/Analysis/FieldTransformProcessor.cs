@@ -226,7 +226,7 @@ public sealed class FieldTransformProcessor
                 break;
 
             case JsonValueKind.String:
-                if (selectedFields != null && HasNestedSelection(selectedFields, prefix))
+                if (selectedFields == null || HasNestedSelection(selectedFields, prefix))
                 {
                     string text = element.GetString() ?? string.Empty;
                     if (!string.IsNullOrWhiteSpace(text))
