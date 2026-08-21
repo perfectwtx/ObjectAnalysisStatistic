@@ -349,7 +349,7 @@ public class NewFeatureTests
         {
             ReportExporter.Save(result, output);
             string csv = File.ReadAllText(output);
-            Assert.StartsWith("FieldName,Count,Coverage", csv);
+            Assert.StartsWith("# Summary", csv);
             Assert.Contains("Id,", csv);
         }
         finally

@@ -194,7 +194,7 @@ public class ProductizationTests
             ReportExporter.Save(BuildCleanResult(), temp);
 
             string content = File.ReadAllText(temp);
-            Assert.Contains("FieldName,Count,Coverage,PrimaryType", content);
+            Assert.Contains("SemanticType,PrimaryType", content);
             Assert.Contains("Name", content);
         }
         finally

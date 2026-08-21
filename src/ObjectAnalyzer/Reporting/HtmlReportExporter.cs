@@ -142,6 +142,10 @@ public static class HtmlReportExporter
             if (stat.MinNumber.HasValue && stat.MaxNumber.HasValue)
             {
                 metricInfo += $"<div>数值: {stat.MinNumber:G4} ~ {stat.MaxNumber:G4}</div>";
+                if (stat.AvgNumber.HasValue)
+                    metricInfo += $"<div>均值: {stat.AvgNumber:G4}</div>";
+                if (stat.SumNumber.HasValue)
+                    metricInfo += $"<div>总和: {stat.SumNumber:G4}</div>";
             }
             if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
             {
@@ -170,6 +174,10 @@ public static class HtmlReportExporter
                 var violations = string.Join(", ", stat.EnumViolations.Select(v => $"<span class=\"violation\">{Escape(v)}</span>"));
                 ruleInfo += $"<div class=\"violations\">枚举违规: {violations}</div>";
             }
+            if (stat.NullAppeared)
+                ruleInfo += "<span class=\"null-badge\">含 null</span>";
+            if (stat.ValueCountsTruncated)
+                ruleInfo += "<span class=\"trunc-badge\">值已截断</span>";
 
             writer.Write("<tr>");
             writer.Write("<td><code>"); writer.Write(Escape(stat.FieldName)); writer.Write("</code></td>");
@@ -294,5 +302,7 @@ public static class HtmlReportExporter
         .violation { background: #f8d7da; color: #842029; padding: 1px 4px; border-radius: 3px; margin: 0 2px; }
         .quality-pass { color: #15803d; font-weight: 600; }
         .quality-fail { color: #b91c1c; font-weight: 600; }
+        .null-badge { display: inline-block; background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 4px; }
+        .trunc-badge { display: inline-block; background: #ffe0b2; color: #e65100; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 4px; }
         """;
 }
