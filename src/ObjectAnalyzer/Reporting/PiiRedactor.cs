@@ -17,12 +17,12 @@ public static class PiiRedactor
     /// <summary>打码副本。若结果不含任何 PII 字段，则直接返回原引用。</summary>
     public static AnalysisResult Redact(AnalysisResult result)
     {
-        var masksByField = new Dictionary<string, PiiCategory>(StringComparer.Ordinal);
+        var masksByField = new Dictionary<string, PiiMaskFormat>(StringComparer.Ordinal);
         foreach (var stat in result.FieldStatistics)
         {
-            var category = PiiDetector.FromSemanticType(stat.SemanticType);
-            if (category != PiiCategory.None)
-                masksByField[stat.FieldName] = category;
+            var mask = PiiDetector.TryGetMaskFormat(stat.SemanticType, stat.AppliedRule);
+            if (mask != null)
+                masksByField[stat.FieldName] = mask;
         }
 
         if (masksByField.Count == 0)
@@ -31,9 +31,9 @@ public static class PiiRedactor
         var maskedStats = new List<FieldStatistic>(result.FieldStatistics.Count);
         foreach (var stat in result.FieldStatistics)
         {
-            if (masksByField.TryGetValue(stat.FieldName, out var category))
+            if (masksByField.TryGetValue(stat.FieldName, out var mask))
             {
-                maskedStats.Add(CloneWithMask(stat, category));
+                maskedStats.Add(CloneWithMask(stat, mask));
             }
             else
             {
@@ -64,9 +64,9 @@ public static class PiiRedactor
         };
     }
 
-    private static FieldStatistic CloneWithMask(FieldStatistic source, PiiCategory category)
+    private static FieldStatistic CloneWithMask(FieldStatistic source, PiiMaskFormat mask)
     {
-        string MaskKey(string key) => PiiDetector.Mask(key, category);
+        string MaskKey(string key) => mask.Apply(key);
 
         var clone = new FieldStatistic
         {
@@ -111,7 +111,7 @@ public static class PiiRedactor
         return clone;
     }
 
-    private static string MaskDuplicateJson(string json, Dictionary<string, PiiCategory> masksByField)
+    private static string MaskDuplicateJson(string json, Dictionary<string, PiiMaskFormat> masksByField)
     {
         try
         {
@@ -123,10 +123,10 @@ public static class PiiRedactor
             var redacted = new Dictionary<string, object?>(root.EnumerateObject().Count());
             foreach (var property in root.EnumerateObject())
             {
-                if (masksByField.TryGetValue(property.Name, out var category) &&
+                if (masksByField.TryGetValue(property.Name, out var mask) &&
                     property.Value.ValueKind == JsonValueKind.String)
                 {
-                    redacted[property.Name] = PiiDetector.Mask(property.Value.GetString()!, category);
+                    redacted[property.Name] = mask.Apply(property.Value.GetString()!);
                 }
                 else
                 {

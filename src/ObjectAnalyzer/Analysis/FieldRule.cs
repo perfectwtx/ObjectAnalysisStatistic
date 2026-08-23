@@ -24,6 +24,63 @@ public class FieldRule
     /// <summary>字段值转换配置（如解密、JWT 转明文、Base64/URL 解码）。</summary>
     [JsonPropertyName("transform")]
     public FieldTransform? Transform { get; set; }
+
+    /// <summary>
+    /// 自定义 PII 规则：将业务敏感字段（即使语义类型未被内置识别，如 internalId / authToken）
+    /// 声明为敏感字段，并指定打码格式。命中后该字段在一切报告输出前都会被自动打码。
+    /// </summary>
+    [JsonPropertyName("pii")]
+    public PiiRule? Pii { get; set; }
+}
+
+/// <summary>
+/// 自定义 PII 规则：声明业务敏感字段及其打码格式。
+/// 示例：
+/// <code>
+/// "fields": {
+///   "internalId": {
+///     "pii": { "label": "内部标识", "highSeverity": false, "mask": { "keepPrefix": 2, "keepSuffix": 2 } }
+///   },
+///   "authToken": { "pii": { "mask": { "maskAll": true } } }
+/// }
+/// </code>
+/// </summary>
+public class PiiRule
+{
+    /// <summary>敏感分类标签，用于合规报告展示（如 "内部标识"）。缺省为 "业务敏感字段"。</summary>
+    [JsonPropertyName("label")]
+    public string? Label { get; set; }
+
+    /// <summary>是否属于高敏感（默认 true），影响合规报告中的字段排序。</summary>
+    [JsonPropertyName("highSeverity")]
+    public bool HighSeverity { get; set; } = true;
+
+    /// <summary>打码格式；缺省时使用全量打码（maskAll=true）。</summary>
+    [JsonPropertyName("mask")]
+    public PiiMaskConfig? Mask { get; set; }
+}
+
+/// <summary>
+/// 自定义打码格式：保留前缀/后缀字符，其余以 maskChar 打码；或整值打码。
+/// 规则：优先 maskAll（整值打码）；否则按 keepPrefix/keepSuffix 保留前后缀，中间用 maskChar 填充。
+/// </summary>
+public class PiiMaskConfig
+{
+    /// <summary>保留前缀字符数（默认 0）。</summary>
+    [JsonPropertyName("keepPrefix")]
+    public int KeepPrefix { get; set; }
+
+    /// <summary>保留后缀字符数（默认 0）。</summary>
+    [JsonPropertyName("keepSuffix")]
+    public int KeepSuffix { get; set; }
+
+    /// <summary>打码字符（默认 *）。</summary>
+    [JsonPropertyName("maskChar")]
+    public string MaskChar { get; set; } = "*";
+
+    /// <summary>是否整值打码（忽略 keepPrefix/keepSuffix，整个值替换为 maskChar）。</summary>
+    [JsonPropertyName("maskAll")]
+    public bool MaskAll { get; set; }
 }
 
 /// <summary>

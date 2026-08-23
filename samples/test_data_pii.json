@@ -1,0 +1,20 @@
+[
+  {
+    "internalId": "ID-1001",
+    "authToken": "s3cr3t-abc",
+    "fullName": "张三",
+    "email": "alice@example.com"
+  },
+  {
+    "internalId": "ID-2002",
+    "authToken": "hunter2-xyz",
+    "fullName": "欧阳娜娜",
+    "email": "bob@example.org"
+  },
+  {
+    "internalId": "ID-3003",
+    "authToken": "letmein-99",
+    "fullName": "李四",
+    "email": "carol@example.net"
+  }
+]

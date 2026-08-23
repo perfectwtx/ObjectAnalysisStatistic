@@ -239,6 +239,127 @@ public class PiiTests
     }
 
     // ──────────────────────────────────────────────
+    // 自定义 PII 规则（rules 声明业务敏感字段 + 打码格式）
+    // ──────────────────────────────────────────────
+
+    private static (AnalysisRules rules, List<Dictionary<string, object?>> objects) CustomPiiSample()
+    {
+        var rules = new AnalysisRules();
+        rules.Fields["internalId"] = new FieldRule
+        {
+            Pii = new PiiRule
+            {
+                Label = "内部标识",
+                HighSeverity = false,
+                Mask = new PiiMaskConfig { KeepPrefix = 2, KeepSuffix = 2 }
+            }
+        };
+        rules.Fields["authToken"] = new FieldRule
+        {
+            Pii = new PiiRule { Mask = new PiiMaskConfig { MaskAll = true } }
+        };
+
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "internalId", "ID-1001" }, { "authToken", "s3cr3t" } },
+            new() { { "internalId", "ID-2002" }, { "authToken", "hunter2" } }
+        };
+        return (rules, objects);
+    }
+
+    [Fact]
+    public void PiiRedactor_MasksCustomRuleFields()
+    {
+        var (rules, objects) = CustomPiiSample();
+        var result = Analyze(objects, rules);
+
+        Assert.True(Stat(result, "internalId").ValueCounts.ContainsKey("ID-1001"));
+        Assert.True(Stat(result, "authToken").ValueCounts.ContainsKey("s3cr3t"));
+
+        var redacted = PiiRedactor.Redact(result);
+
+        var internalId = Stat(redacted, "internalId");
+        Assert.Contains("ID***01", internalId.ValueCounts.Keys);
+        Assert.DoesNotContain("ID-1001", internalId.ValueCounts.Keys);
+        Assert.DoesNotContain("ID-2002", internalId.ValueCounts.Keys);
+
+        var token = Stat(redacted, "authToken");
+        Assert.Contains("******", token.ValueCounts.Keys); // s3cr3t (长度 6)
+        Assert.DoesNotContain("s3cr3t", token.ValueCounts.Keys);
+        Assert.DoesNotContain("hunter2", token.ValueCounts.Keys);
+    }
+
+    [Fact]
+    public void PiiDetector_TryGetMaskFormat_CustomRuleWinsOverBuiltin()
+    {
+        // 即使字段语义恰好匹配内置分类，规则声明的自定义格式也应优先
+        var rule = new FieldRule
+        {
+            Pii = new PiiRule
+            {
+                Label = "内部标识",
+                Mask = new PiiMaskConfig { KeepPrefix = 1, KeepSuffix = 1 }
+            }
+        };
+        var mask = PiiDetector.TryGetMaskFormat("Phone", rule);
+        Assert.NotNull(mask);
+        Assert.True(mask!.IsCustom);
+        Assert.Equal("内部标识", mask.Label);
+        Assert.Equal("1*3", mask.Apply("123")); // keep 前缀 1 + 后缀 1 → "1*3"
+
+        // 无规则时回退到内置分类
+        var builtin = PiiDetector.TryGetMaskFormat("Phone", null);
+        Assert.NotNull(builtin);
+        Assert.False(builtin!.IsCustom);
+        Assert.Equal("138****1234", builtin.Apply("13812341234"));
+
+        // 非敏感字段（无规则、无语义）返回 null
+        Assert.Null(PiiDetector.TryGetMaskFormat(null, null));
+        Assert.Null(PiiDetector.TryGetMaskFormat("UUID", new FieldRule()));
+    }
+
+    [Fact]
+    public void PiiReport_Build_IncludesCustomRuleFields()
+    {
+        var (rules, objects) = CustomPiiSample();
+        var report = PiiReport.Build(Analyze(objects, rules));
+
+        Assert.Equal(2, report.PiiFieldCount);
+        Assert.Equal("B", report.ComplianceLevel);
+        Assert.True(report.MaskingApplied);
+
+        var internalId = report.Fields.First(f => f.Field == "internalId");
+        Assert.Equal("内部标识", internalId.CategoryLabel);
+        Assert.False(internalId.HighSeverity);
+        Assert.Equal("ID***01", internalId.MaskedSample);
+
+        var token = report.Fields.First(f => f.Field == "authToken");
+        Assert.Equal("业务敏感字段", token.CategoryLabel);
+        Assert.True(token.HighSeverity);
+        Assert.Equal("******", token.MaskedSample);
+    }
+
+    [Fact]
+    public void ReportExporter_SaveJson_MasksCustomRuleFields()
+    {
+        var (rules, objects) = CustomPiiSample();
+        string output = Path.ChangeExtension(Path.GetTempFileName(), ".json");
+        try
+        {
+            ReportExporter.Save(Analyze(objects, rules), output);
+            string json = File.ReadAllText(output);
+            Assert.Contains("ID***01", json);
+            Assert.DoesNotContain("ID-1001", json);
+            Assert.DoesNotContain("s3cr3t", json);
+            Assert.DoesNotContain("hunter2", json);
+        }
+        finally
+        {
+            if (File.Exists(output)) File.Delete(output);
+        }
+    }
+
+    // ──────────────────────────────────────────────
     // 工具方法
     // ──────────────────────────────────────────────
 

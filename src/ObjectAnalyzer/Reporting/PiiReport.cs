@@ -46,8 +46,8 @@ public sealed class PiiReport
 
         foreach (var stat in result.FieldStatistics)
         {
-            var category = PiiDetector.FromSemanticType(stat.SemanticType);
-            if (category == PiiCategory.None)
+            var mask = PiiDetector.TryGetMaskFormat(stat.SemanticType, stat.AppliedRule);
+            if (mask == null)
                 continue;
 
             string? sample = stat.ValueCounts
@@ -56,20 +56,20 @@ public sealed class PiiReport
                 .Select(kv => kv.Key)
                 .FirstOrDefault();
 
-            categoryCounts[category.ToString().ToLowerInvariant()] =
-                categoryCounts.GetValueOrDefault(category.ToString().ToLowerInvariant()) + 1;
+            string categoryKey = mask.Category.ToString().ToLowerInvariant();
+            categoryCounts[categoryKey] = categoryCounts.GetValueOrDefault(categoryKey) + 1;
             piiValueCount += stat.Count;
 
             fields.Add(new PiiFieldReport
             {
                 Field = stat.FieldName,
-                Category = category.ToString().ToLowerInvariant(),
-                CategoryLabel = PiiDetector.CategoryLabel(category),
-                HighSeverity = PiiDetector.IsHighSeverity(category),
+                Category = categoryKey,
+                CategoryLabel = mask.Label,
+                HighSeverity = mask.HighSeverity,
                 Count = stat.Count,
                 Coverage = stat.Coverage,
                 DistinctValues = stat.ValueCounts.Keys.Count(k => k != "[Other values]"),
-                MaskedSample = sample != null ? PiiDetector.Mask(sample, category) : null
+                MaskedSample = sample != null ? mask.Apply(sample) : null
             });
         }
 
@@ -120,22 +120,12 @@ public sealed class PiiReport
             return;
         }
 
-        string categories = string.Join("/", report.CategoryCounts
-            .OrderBy(kv => kv.Key)
-            .Select(kv => PiiDetector.CategoryLabel(ParseCategory(kv.Key))));
+        string categories = string.Join("/", report.Fields
+            .Select(f => f.CategoryLabel)
+            .Distinct());
         AnsiConsole.MarkupLine(
             $"[yellow]数据安全合规: 发现 [bold]{report.PiiFieldCount}[/] 个敏感字段（{Markup.Escape(categories)}），"
             + $"共约 {report.PiiValueCount} 个敏感值，报告输出将自动打码。"
             + "推出合规等级报告请用 --pii-report。[/]");
-    }
-
-    private static PiiCategory ParseCategory(string key)
-    {
-        foreach (PiiCategory category in Enum.GetValues<PiiCategory>())
-        {
-            if (string.Equals(category.ToString(), key, StringComparison.OrdinalIgnoreCase))
-                return category;
-        }
-        return PiiCategory.None;
     }
 }
