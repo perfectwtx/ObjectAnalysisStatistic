@@ -97,6 +97,15 @@ var piiReportOption = new Option<FileInfo?>(
     name: "--pii-report",
     description: "导出数据安全合规等级报告 JSON 文件路径（合规等级 A/B/C + 敏感字段清单 + 打码样本）。");
 
+var piiOffOption = new Option<bool>(
+    name: "--pii-off",
+    description: "全局关闭 PII 识别与打码：报告输出原始值（已知数据不含敏感信息或需完整原文时使用）。");
+
+var failOnPiiLevelOption = new Option<string?>(
+    name: "--fail-on-pii-level",
+    description: "CI 合规门禁：合规等级达到或劣于指定级别时以非零退出码结束（C=仅 C 级失败；B=发现任何敏感字段即失败）。与 --fail-on-violations 对称。");
+failOnPiiLevelOption.AddCompletions("A", "B", "C");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -118,6 +127,8 @@ rootCommand.AddOption(connectionOption);
 rootCommand.AddOption(queryOption);
 rootCommand.AddOption(providerOption);
 rootCommand.AddOption(piiReportOption);
+rootCommand.AddOption(piiOffOption);
+rootCommand.AddOption(failOnPiiLevelOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -142,6 +153,8 @@ rootCommand.SetHandler((InvocationContext context) =>
     var query = parseResult.GetValueForOption(queryOption);
     var provider = parseResult.GetValueForOption(providerOption);
     var piiReport = parseResult.GetValueForOption(piiReportOption);
+    var piiOff = parseResult.GetValueForOption(piiOffOption);
+    var failOnPiiLevel = parseResult.GetValueForOption(failOnPiiLevelOption);
 
     if (generateTestExcel)
     {
@@ -172,6 +185,31 @@ rootCommand.SetHandler((InvocationContext context) =>
         AnsiConsole.MarkupLine("[red]错误: 使用 --query 时必须同时提供 --connection。[/]");
         context.ExitCode = 1;
         return;
+    }
+
+    if (!string.IsNullOrWhiteSpace(failOnPiiLevel))
+    {
+        string normalized = failOnPiiLevel.Trim().ToUpperInvariant();
+        if (normalized is not ("A" or "B" or "C"))
+        {
+            AnsiConsole.MarkupLine("[red]错误: --fail-on-pii-level 只接受 A / B / C。[/]");
+            context.ExitCode = 1;
+            return;
+        }
+        failOnPiiLevel = normalized;
+    }
+
+    if (piiOff && !string.IsNullOrWhiteSpace(failOnPiiLevel))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --pii-off 与 --fail-on-pii-level 互斥（关闭 PII 识别后无法评估合规等级）。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
+    if (piiOff && piiReport != null)
+    {
+        AnsiConsole.MarkupLine("[yellow]警告: 已指定 --pii-off，忽略 --pii-report。[/]");
+        piiReport = null;
     }
 
     if (input == null && string.IsNullOrEmpty(connection))
@@ -207,7 +245,9 @@ rootCommand.SetHandler((InvocationContext context) =>
         ConnectionString = connection,
         Query = query,
         DbProvider = provider,
-        PiiPath = piiReport?.FullName
+        PiiPath = piiReport?.FullName,
+        PiiOff = piiOff,
+        FailOnPiiLevel = failOnPiiLevel
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

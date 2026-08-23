@@ -12,9 +12,9 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class ViolationExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
-        result = PiiRedactor.Redact(result);
+        result = PiiRedactor.Redact(result, redactPii);
 
         var violations = result.FieldStatistics
             .Where(f => f.EnumViolations.Count > 0)

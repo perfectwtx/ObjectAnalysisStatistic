@@ -31,6 +31,14 @@ public class FieldRule
     /// </summary>
     [JsonPropertyName("pii")]
     public PiiRule? Pii { get; set; }
+
+    /// <summary>
+    /// 误报逃生口（PII 白名单）：false 时该字段即使命中敏感语义/字段名启发式
+    /// （如 name 列存的是产品名）也不打码、不进合规报告。缺省 null = 自动打码。
+    /// 优先级高于 pii 自定义规则。
+    /// </summary>
+    [JsonPropertyName("redact")]
+    public bool? Redact { get; set; }
 }
 
 /// <summary>

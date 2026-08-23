@@ -6,7 +6,8 @@ using ObjectAnalyzer.Web.Components.Pages;
 namespace ObjectAnalyzer.Web.Tests;
 
 /// <summary>
-/// 数据预览单元格格式化的回归测试：嵌套对象/数组应以 JSON 展示，而不是类型名。
+/// 数据预览单元格格式化的回归测试：嵌套对象/数组应以 JSON 树（HTML）展示，
+/// JSON 文本字符串以悬停预览胶囊展示——任何情况下都不得出现 .NET 类型名。
 /// </summary>
 public class PreviewFormattingTests
 {
@@ -26,44 +27,62 @@ public class PreviewFormattingTests
     }
 
     [Fact]
-    public void NestedObject_FormatsAsJson()
+    public void NestedObject_FormatsAsJsonTree()
     {
         var rows = ParseNested("[{\"profile\":{\"name\":\"张三\",\"age\":30}},{\"profile\":{\"name\":\"李四\",\"age\":25}}]");
         var row = rows[0];
 
         string rendered = Home.FormatPreviewValue(row["profile"]);
 
-        Assert.StartsWith("{", rendered);
+        // 嵌套对象渲染为 json-tree（键值对），而非类型名兜底
+        Assert.StartsWith("<div class=\"json-tree\">", rendered);
+        Assert.Contains("json-key", rendered);
         Assert.Contains("张三", rendered);
         Assert.DoesNotContain("Dictionary", rendered);
         Assert.DoesNotContain("System.Collections", rendered);
     }
 
     [Fact]
-    public void NestedList_FormatsAsJson()
+    public void NestedList_FormatsAsJsonTree()
     {
         var rows = ParseNested("[{\"tags\":[\"a\",\"b\",\"c\"]},{\"tags\":[\"x\",\"y\"]}]");
         var row = rows[0];
 
         string rendered = Home.FormatPreviewValue(row["tags"]);
 
-        Assert.StartsWith("[", rendered);
-        Assert.Contains("a", rendered);
+        // 数组渲染为带下标的 json-tree，元素值以带引号字符串呈现
+        Assert.StartsWith("<div class=\"json-tree\">", rendered);
+        Assert.Contains("json-index", rendered);
+        Assert.Contains("[0]", rendered);
+        Assert.Contains("\"a\"", rendered);
         Assert.DoesNotContain("List", rendered);
         Assert.DoesNotContain("System.Collections", rendered);
     }
 
     [Fact]
-    public void ListOfObjects_FormatsAsJson()
+    public void ListOfObjects_FormatsAsJsonTree()
     {
         var rows = ParseNested("[{\"items\":[{\"id\":1},{\"id\":2}]},{\"items\":[{\"id\":3}]}]");
         var row = rows[0];
 
         string rendered = Home.FormatPreviewValue(row["items"]);
 
-        Assert.StartsWith("[", rendered);
+        Assert.StartsWith("<div class=\"json-tree\">", rendered);
+        Assert.Contains("json-item", rendered);
         Assert.DoesNotContain("List", rendered);
         Assert.DoesNotContain("System.Collections", rendered);
+    }
+
+    [Fact]
+    public void JsonTextString_RendersHoverPill()
+    {
+        string rendered = Home.FormatPreviewValue("{\"city\":\"上海\",\"age\":30}");
+
+        // JSON 文本字符串 → 悬停预览胶囊（pill + data-tooltip 原文）
+        Assert.Contains("json-preview", rendered);
+        Assert.Contains("json-pill", rendered);
+        Assert.Contains("data-tooltip=", rendered);
+        Assert.Contains("{ city: &quot;上海&quot;, age: 30 }", rendered);
     }
 
     [Fact]
@@ -74,10 +93,16 @@ public class PreviewFormattingTests
         Assert.Equal("True", Home.FormatPreviewValue(true));
         Assert.Equal("hello", Home.FormatPreviewValue("hello"));
 
-        // 长字符串/长 JSON 截断到 80 字符
+        // 长字符串截断到 80 字符
         Assert.Equal(80, Home.FormatPreviewValue(new string('x', 90)).Length);
+
+        // 长标量列表渲染为 json-tree（含末尾下标），不出现类型名
         var bigList = new List<object?>(Enumerable.Range(0, 40).Select(i => (object)i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        Assert.Equal(80, Home.FormatPreviewValue(bigList).Length);
+        string rendered = Home.FormatPreviewValue(bigList);
+        Assert.StartsWith("<div class=\"json-tree\">", rendered);
+        Assert.Contains("[39]", rendered);
+        Assert.DoesNotContain("List", rendered);
+        Assert.DoesNotContain("System.Collections", rendered);
     }
 
     [Fact]

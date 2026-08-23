@@ -5,9 +5,16 @@
 ## [Unreleased]
 
 ### Added
+- **数值/语义统计深度补齐**：数值列新增样本标准差（Welford 在线算法，O(1) 内存）、近似分位数 P50/P90/P95/P99（简化 t-digest 质心草图，容量有界且支持多线程合并）、2 的幂对数直方图分桶（负数/零/正数桶按值域升序，单遍流式无需预知范围）；字符串列新增平均长度；全部标量字段新增 distinct 值计数——唯一值未超过跟踪阈值时为精确计数，超出时自动退化为 HyperLogLog 近似估计（p=14，稀疏→稠密渐进存储 + LinearCounting 校正消除 n≈m 过渡区正偏差，标准误差 ≈0.8%），以 `DistinctApproximate` 标志区分。JSON / 控制台 / HTML / Markdown / CSV 报告同步展示；CSV 表头新增 `StdDevNumber`/`MedianNumber`/`P90Number`/`P95Number`/`P99Number`/`Histogram`/`AvgLength`/`DistinctApproximate` 列，`UniqueValues` 列升级为真实 distinct 计数。
+- **测试**：Welford 均值/样本标准差闭式解对比、t-digest 分位数均匀/重尾分布容差与"合并 ≈ 单遍"等价性、直方图桶计数总和与区间顺序、HyperLogLog 多样本平均精度（<2%）与稀疏合并一致性、并行分析深度指标稳定性、JSON 序列化往返、脱敏克隆保留新字段、CSV 新列冒烟，共 17 个新用例。
+- **PII 误报逃生口**：规则文件字段级 `redact: false` 白名单——字段名启发式误伤合法值时（如 name 列存产品名），声明后该字段不打码、不进合规报告；优先级高于 `pii` 自定义规则。新增 `--pii-off` 全局关闭 PII 识别与打码，报告输出原始值（与 `--fail-on-pii-level` 互斥、同用 `--pii-report` 时忽略后者）。
+- **PII 国际类型**：新增 SSN（`ddd-dd-dddd`）、IBAN（紧凑/带空格分组格式 + ISO 7064 MOD 97-10 校验位验证）、护照号（1-2 位字母 + 6-9 位数字，需 passport/护照 字段名提示）三类语义识别与确定性打码（`***-**-6789`、`DE89***************000`、`E*****678`），全部归入高危敏感类别。
+- **PII 校验位验证降低误报**：18 位身份证号需通过 GB 11643 MOD 11-2 校验位（15 位一代证仅形态匹配）；16-19 位银行卡号需通过 Luhn 校验。随机数字串不再被误判为身份证/银行卡；形态命中但校验失败的值不再进入 PII 报告与打码流程。
+- **CI 合规门禁 `--fail-on-pii-level <A|B|C>`**：分析完成后计算合规等级，达到或劣于阈值时以退出码 `4` 结束（`C`=仅 C 级失败；`B`=发现任何敏感字段即失败），与 `--fail-on-violations`（退出码 `3`）对称；非法级别值与互斥参数组合在启动时报错。
 - **敏感数据识别 (PII) 与报告打码**：自动识别手机号（`1[3-9]\d{9}`）、身份证号（15/18 位）、银行卡号（16-19 位）、姓名（字段名提示 + 纯字母/CJK 值形态）与邮箱字段，并写入 `FieldStatistic.SemanticType`（新增 `Phone` / `IdCard` / `BankCard` / `Name` 语义类别）。所有报告输出（控制台、JSON、HTML、Markdown、CSV、数据质量/违规清单导出，含 Web 下载链接）在导出前经 `PiiRedactor.Redact` 统一打码——值频次键、枚举违规值与重复对象 JSON 中的敏感值按语义打码（`138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），打码确定性且幂等；无敏感字段时零开销原样返回。
 - **数据安全合规等级报告**：`--pii-report <FILE>` 输出结构化 JSON（`PiiReport` / `PiiExporter`）——合规等级 A/B/C（A=未发现敏感字段；B=存在敏感字段且已全部自动打码；C=样本无法完全打码需人工复核）+ 敏感字段清单（字段名/类别/高危标记/覆盖率/打码样本）+ 各类别统计；控制台在每次分析后同步输出一行"数据安全合规"摘要。
 - **测试**：PII 语义识别（手机号/身份证/银行卡/姓名/邮箱）、打码规则（10 组掩码样例）、`PiiRedactor` 打码不改动原始结果、重复对象 JSON 脱敏、JSON 报告无原始 PII 泄漏、`PiiReport` 等级 A/B 构建、`PiiExporter` 合规快照回读，共 21 个新用例。
+- **测试（PII 补强）**：校验位验证器（GB 11643 / Luhn / IBAN MOD 97 各合法与非法样例）、非法校验位值不再误判、15 位一代证兼容、SSN/IBAN/护照识别与打码掩码、护照字段名提示必要性、`redact: false` 白名单（含覆盖 `pii` 自定义规则、报告排除）、`--pii-off` 导出原始值、`--fail-on-pii-level` 退出码 0/4 集成用例，共 33 个新用例。
 - **Web：浅色/深色主题切换**：顶部新增主题按钮（🌙/☀️），基于 Bootstrap 5.3 `data-bs-theme` 全站切换；选择持久化到 `localStorage`，`App.razor` 内联脚本在首次绘制前套用已保存主题（无闪烁）；`app.css` 为自定义组件（配置面板/上传区/图表盒/字段表/覆盖率条/预览等）补齐深色覆盖（复用 Bootstrap CSS 变量）；新增 i18n 键 `ThemeDarkTitle`/`ThemeLightTitle`。
 - **Web：覆盖率/类型分布图表**（Chart.js，`Home.razor` + `interop.js` 渲染函数）。
 - **Web：数据预览**（前 8 行 x 前 8 列，`AnalysisState.Preview`）。
@@ -38,6 +45,7 @@
 - `SchemaExporter` 反扁平化还原嵌套 DTO 与强类型数组；`EndsWith` 编译错误；计数器升级为 `long`。
 
 ### Changed
+- **PII 识别更严格（潜在行为变化）**：18 位身份证号与 16-19 位银行卡号现在需通过校验位验证才被判定为敏感语义；此前仅凭数字形态即判定的随机串不再触发打码。显式规则声明（`semanticType` 规则 / `pii` 自定义规则）不受影响。
 - `Hash128` 替代 MD5，流式 JSON 解析，Web 懒管道 + 取消，XML 防护。
 
 ## [2026-08-08]

@@ -10,9 +10,9 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class QualityExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
-        result = PiiRedactor.Redact(result);
+        result = PiiRedactor.Redact(result, redactPii);
 
         var report = DataQualityReport.Build(result);
 

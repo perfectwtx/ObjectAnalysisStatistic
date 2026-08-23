@@ -42,4 +42,13 @@ public sealed class AnalysisOptions
 
     /// <summary>导出数据安全合规等级报告 JSON 路径（--pii-report）。</summary>
     public string? PiiPath { get; set; }
+
+    /// <summary>全局关闭 PII 识别与打码（--pii-off），报告输出原始值。</summary>
+    public bool PiiOff { get; set; }
+
+    /// <summary>
+    /// CI 合规门禁阈值（--fail-on-pii-level：A/B/C）。合规等级达到或劣于该等级时以退出码 4 结束。
+    /// C=仅 C 级失败；B=B/C 级失败（发现任何敏感字段即失败）；A=同 B（数据干净时 A 级不触发）。
+    /// </summary>
+    public string? FailOnPiiLevel { get; set; }
 }

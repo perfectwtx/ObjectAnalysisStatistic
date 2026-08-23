@@ -92,7 +92,7 @@ public sealed class PiiReport
         string summary = any
             ? $"发现 {fields.Count} 个敏感字段 / 共 {piiValueCount} 个敏感值："
               + string.Join("、", fields.Select(f => $"{f.CategoryLabel}({f.Field})"))
-            : "未在字段语义中检测到手机号、身份证号、银行卡号、姓名或邮箱。";
+            : "未在字段语义中检测到手机号、身份证号、银行卡号、姓名、邮箱、SSN、IBAN 或护照号。";
 
         return new PiiReport
         {
@@ -116,7 +116,7 @@ public sealed class PiiReport
 
         if (report.PiiFieldCount == 0)
         {
-            AnsiConsole.MarkupLine("[green]数据安全合规: 未发现敏感字段（手机号/身份证号/银行卡号/姓名/邮箱）。[/]");
+            AnsiConsole.MarkupLine("[green]数据安全合规: 未发现敏感字段（手机号/身份证号/银行卡号/姓名/邮箱/SSN/IBAN/护照号）。[/]");
             return;
         }
 
