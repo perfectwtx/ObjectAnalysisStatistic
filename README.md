@@ -21,7 +21,7 @@
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
 - 数据库直连 (Live DB Ingestion)：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，无需先导出为 CSV/JSON 即可进行实时结构与质量分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
-- 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱字段，所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄
+- 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱字段，所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄；规则文件 `fields.<name>.pii` 可将业务敏感字段（如 `internalId`、`authToken`）声明为敏感字段并自定义打码格式
 - 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
@@ -263,6 +263,45 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 所有类型都支持可选参数 `parse`（当前仅 `"json"`）：转换完成后把结果当作 JSON 文本解析并**展开为嵌套字段**再统计——对象按键展开（`payload.city`、`payload.age`）、数组按下标展开（`payload[0]`）；非合法 JSON 时保留转换后的原文。`parse` 也可单独使用（不写 `type`，仅把已是 JSON 文本的字段值展开）。例如一个 base64 加密的 `{"city":"上海","age":30}`，展开后会得到 `payload.city` 与 `payload.age` 两个字段参与统计与过滤。
 
+### 自定义 PII 规则（业务敏感字段 + 打码格式）
+
+默认 PII 识别依赖字段语义类型（手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱）。若你的业务字段（如 `internalId`、`authToken`）不含这些语义，可在规则文件的 `fields` 里通过 `pii` 声明其为敏感字段，并自定义打码格式。声明后，该字段在所有报告输出（JSON / HTML / MD / CSV / 控制台 / `--pii-report`）前都会按规则自动打码。
+
+```json
+{
+  "fields": {
+    "internalId": {
+      "pii": {
+        "label": "内部标识",
+        "highSeverity": false,
+        "mask": { "keepPrefix": 2, "keepSuffix": 2 }
+      }
+    },
+    "authToken": {
+      "pii": {
+        "label": "访问令牌",
+        "mask": { "maskAll": true }
+      }
+    },
+    "fullName": {
+      "pii": { "mask": { "keepPrefix": 1, "keepSuffix": 1, "maskChar": "#" } }
+    }
+  }
+}
+```
+
+字段规则 `pii` 支持：
+
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `label` | 合规报告中的分类标签 | `业务敏感字段` |
+| `highSeverity` | 是否按高危敏感字段排序 | `true` |
+| `mask.keepPrefix` / `mask.keepSuffix` | 保留的前 / 后缀字符数，中间用 `maskChar` 打码 | `0` / `0` |
+| `mask.maskChar` | 打码字符 | `*` |
+| `mask.maskAll` | 整值打码（忽略 keep 前缀后缀） | `false` |
+
+> 命中自定义规则时优先于内置语义分类；未配置 `mask` 时默认整值打码（`maskAll: true`）。示例见 `samples/test_pii_rules.json`。
+
 ## Web 界面
 
 Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换、浅色/深色主题切换。
@@ -332,6 +371,7 @@ ObjectAnalysisStatistic/
 │   ├── test_data_unwrap.json         # 解密后对象展开示例数据
 │   ├── test_filter_rules.json        # 字段过滤规则示例 (filter)
 │   ├── test_data_filter.json         # 字段过滤示例数据
+│   ├── test_pii_rules.json           # 自定义 PII 规则示例 (业务敏感字段 + 打码格式)
 │   ├── test_data_semantic.json       # 语义推断示例数据 (Email/UUID/IPv4/URL/DateTime)
 │   ├── test_all_in_one.json          # 单文件整合示例（选择+过滤+枚举+转换+展开）
 │   └── test_data_all_in_one.json     # 整合示例数据

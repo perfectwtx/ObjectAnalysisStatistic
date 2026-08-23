@@ -1,0 +1,23 @@
+{
+  "fields": {
+    "internalId": {
+      "pii": {
+        "label": "内部标识",
+        "highSeverity": false,
+        "mask": { "keepPrefix": 2, "keepSuffix": 2 }
+      }
+    },
+    "authToken": {
+      "pii": {
+        "label": "访问令牌",
+        "mask": { "maskAll": true }
+      }
+    },
+    "fullName": {
+      "pii": {
+        "label": "姓名",
+        "mask": { "keepPrefix": 1, "keepSuffix": 1 }
+      }
+    }
+  }
+}
