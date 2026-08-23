@@ -1,10 +1,9 @@
 # ObjectAnalyzer
 
-对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入，自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验及重复对象。
-对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML / OpenAPI / Protobuf 输入，自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验及重复对象。
+对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入，自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验、多维度质量检查（模式/范围/必填/唯一/null 率 + 数据集期望）及重复对象。
 
 - CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)
-- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML、OpenAPI (JSON/YAML)、Protobuf (Binary)
+- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML；另支持数据库直连（PostgreSQL / MySQL / SQLite / SQL Server）
 - 规则驱动值解析：通过规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串，适用于 Excel 多列 JSON 及其他值级解析场景
 - 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)
 - 字段统计：每个字段的出现频次、覆盖率、主导数据类型
@@ -12,10 +11,10 @@
 - 数值/文本深度剖析：数值列输出均值、样本标准差（Welford 流式算法）、近似分位数 P50/P90/P95/P99（可合并 t-digest 草图）与 2 的幂对数直方图；文本列输出平均长度；所有标量字段提供 distinct 值计数（唯一值超阈值时自动切换 HyperLogLog 近似，内存有界）
 - 默认值推断：自动推断字段可能的默认值 (`null` / `0` / `false`)
 - 枚举约束校验：通过规则文件声明合法枚举值，自动校验并报告违规值
-- 重复对象检测：识别并统计完全相同的重复对象（128 位 MD5 哈希）
+- 重复对象检测：识别并统计完全相同的重复对象（128 位非密码学哈希去重，快于 MD5）
 - 嵌套扁平化：可选将嵌套 JSON 结构扁平化为 `a.b.c` 路径形式
 - 多种报告导出：结构化 JSON、富文本 HTML、Markdown、CSV 报告
-- 枚举违规独立导出：通过 `--violations` 输出结构化违规清单，便于 CI 断言
+- 质量违规独立导出：通过 `--violations` 输出结构化违规清单（枚举/范围/模式/必填/唯一/null 率 + 数据集期望），便于 CI 断言
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
 - Schema 代码导出：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义（支持 C# Record, TypeScript, JSON Schema, OpenAPI 3.0 YAML/JSON, gRPC Protobuf 3 `.proto`, 以及 SQL postgres/mysql/sqlite/sqlserver 方言）
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
@@ -80,15 +79,15 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
 | `--type <FILE>[:<CLASS>]` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象）；.cs 含多个类时用冒号指定类名，如 `-t "samples/UserInfo.cs:UserInfo"` | 类名自动检测 |
-| `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束、字段值转换及值解析规则 | 无 |
+| `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举与质量检查约束（pattern/范围/必填/唯一/null率 + 数据集期望）、字段值转换及值解析规则 | 无 |
 | `--fields <NAMES>` | `-F` | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
 | `--where <EXPR>` | `-w` | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
-| `--violations <FILE>` | `-v` | 将枚举违规导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
+| `--violations <FILE>` | `-v` | 将质量检查违规（枚举/范围/模式/必填/唯一/null 率 + 数据集期望）导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
 | `--quality <FILE>` | `-q` | 导出结构化数据质量报告 JSON（Pass/Fail 摘要 + 违规率 + 逐字段明细） | 无 |
-| `--fail-on-violations` | — | 存在枚举违规时以退出码 `3` 结束（质量门禁） | `false` |
+| `--fail-on-violations` | — | 存在任何质量检查违规（含数据集期望未达标）时以退出码 `3` 结束（质量门禁） | `false` |
 | `--sample-reservoir <N>` | — | 蓄水池随机抽样：均匀随机抽取最多 N 个对象分析，快速预估 Schema（如 `--sample-reservoir 50000`）；与 `--sample-step` 互斥 | `0`（关闭） |
 | `--sample-step <K>` | — | 等距系统抽样：每 K 条记录取 1 条分析，快速预估 Schema（如 `--sample-step 100`）；与 `--sample-reservoir` 互斥 | `0`（关闭） |
-| `--export-schema <FORMAT>[:<FILE>]` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema`，或 SQL `sql`（默认 PostgreSQL）/`postgres`/`mysql`/`sqlite`/`sqlserver`；可带输出路径，如 `-s "csharp:out.cs"`（缺省自动推导） | 无 |
+| `--export-schema <FORMAT>[:<FILE>]` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema`、`openapi`、`openapi-yaml`、`proto`，或 SQL `sql`（默认 PostgreSQL）/`postgres`/`mysql`/`sqlite`/`sqlserver`；可带输出路径，如 `-s "csharp:out.cs"`（缺省自动推导） | 无 |
 | `--connection <CONN_STR>` | — | 数据库直连：输入连接字符串（如 `"Host=localhost;Database=mydb"`），配合 `--query` 流式读取查询结果，无需先导出为文件 | 无 |
 | `--query <SQL>` | — | 数据库直连时执行的 SQL 查询（如 `"SELECT * FROM users"`） | 无 |
 | `--provider <DB>` | — | 数据库类型：`postgres`、`mysql`、`sqlite`、`sqlserver`；缺省按连接字符串关键字自动推断（建议显式指定） | 自动推断 |
@@ -488,10 +487,12 @@ ObjectAnalysisStatistic/
 │   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
 │   │   │   ├── AnalysisResult.cs     # 分析结果数据模型
 │   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)
+│   │   │   ├── QualityChecks.cs      # 质量检查 v2（模式/范围/必填/唯一/null率 + 数据集期望）
 │   │   │   ├── PiiDetector.cs        # PII 分类与打码规则
 │   │   │   └── DuplicateObjectStatistic.cs
 │   │   ├── Parsing/                  # 多格式解析器
 │   │   │   ├── FileParsers.cs        # IFileParser 注册表模式
+│   │   │   ├── DatabaseReader.cs     # 数据库直连流式读取 (--connection/--query)
 │   │   │   ├── IFileParser.cs        # 解析器接口
 │   │   │   ├── JsonSharedOptions.cs  # 共享 JsonSerializerOptions
 │   │   │   ├── TestFileGenerator.cs  # 测试数据生成
