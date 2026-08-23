@@ -24,7 +24,16 @@ public static class AnalysisRunner
         AnalysisRules? rules = null;
         if (!string.IsNullOrEmpty(options.RulesFile))
         {
-            rules = LoadRules(options.RulesFile);
+            try
+            {
+                rules = LoadRules(options.RulesFile);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // 规则文件解析/预验证失败（含无效 pattern）快速失败，避免带病分析
+                AnsiConsole.MarkupLine($"[red]错误: 规则文件加载失败: {Markup.Escape(ex.Message)}[/]");
+                return 1;
+            }
         }
 
         // 采样参数提前校验，避免解析到一半才发现配置非法
@@ -73,11 +82,25 @@ public static class AnalysisRunner
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
             AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, cancellationToken);
 
-            // CI 数据质量门禁：存在枚举违规时以非零退出码结束
-            if (options.FailOnViolations && result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
+            // CI 数据质量门禁：存在任一质量违规（枚举/范围/模式/必填/唯一/null 率/数据集期望）时以非零退出码结束
+            if (options.FailOnViolations && result.QualityViolations.Count > 0)
             {
-                int violationCount = result.FieldStatistics.Sum(f => f.EnumViolations.Count);
-                AnsiConsole.MarkupLine($"[red]数据质量未通过（共 {violationCount} 条枚举违规），退出码 3。[/]");
+                long occurrenceCount = result.QualityViolations.Sum(v => v.Count);
+                AnsiConsole.MarkupLine(
+                    $"[red]数据质量未通过（{result.QualityViolations.Count} 条质量违规 / 涉及 {occurrenceCount} 行或值），退出码 3。[/]");
+                foreach (var violation in result.QualityViolations.Take(5))
+                {
+                    string scope = string.IsNullOrEmpty(violation.Field)
+                        ? QualityCheckTypes.Label(violation.Check)
+                        : $"{violation.Field}: {QualityCheckTypes.Label(violation.Check)}";
+                    AnsiConsole.MarkupLine($"  [red]·[/] {Markup.Escape(scope)} — {Markup.Escape(violation.Message)}");
+                }
+
+                if (result.QualityViolations.Count > 5)
+                {
+                    AnsiConsole.MarkupLine($"  [grey]... 还有 {result.QualityViolations.Count - 5} 条，详见 --violations 导出[/]");
+                }
+
                 return 3;
             }
 
@@ -388,6 +411,23 @@ public static class AnalysisRunner
         {
             throw new InvalidOperationException($"规则文件解析失败: {rulesPath}");
         }
+
+        // 质量检查 v2：pattern 预编译验证，无效正则 fail-fast（而非分析完成后才报错）
+        foreach (var field in rules.Fields)
+        {
+            if (string.IsNullOrEmpty(field.Value.Pattern))
+                continue;
+            try
+            {
+                QualityChecks.CompilePattern(field.Value.Pattern!);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new InvalidOperationException(
+                    $"字段 [blue]{field.Key}[/] 的 pattern 正则无效: {ex.Message}");
+            }
+        }
+
         AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;
     }

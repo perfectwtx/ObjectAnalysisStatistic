@@ -123,6 +123,11 @@ public static partial class ObjectAnalyzer
             LengthSum += length;
         }
 
+        /// <summary>规则 minValue/maxValue 越界计数（热路径精确统计，不受唯一值截断影响）。</summary>
+        public void AddRangeViolation() => RangeViolationCount++;
+
+        public long RangeViolationCount { get; private set; }
+
         public void AddDistinct(string formattedValue)
         {
             (DistinctHll ??= new HyperLogLog()).Add(formattedValue);
@@ -157,6 +162,7 @@ public static partial class ObjectAnalyzer
             LengthSum += other.LengthSum;
             StringCount += other.StringCount;
             ZeroCount += other.ZeroCount;
+            RangeViolationCount += other.RangeViolationCount;
 
             foreach (var sc in other.SemanticCounts)
             {
@@ -323,6 +329,19 @@ public static partial class ObjectAnalyzer
 
                         // 收集数值与字符串度量指标
                         RecordValueMetrics(value, valStr, fieldName, metrics);
+
+                        // 质量检查 v2：minValue/maxValue 越界精确计数（热路径，不受唯一值截断影响）
+                        if (rules != null && rules.Fields.TryGetValue(fieldName, out FieldRule? qualityRule))
+                        {
+                            if (value != null
+                                && (qualityRule.MinValue.HasValue || qualityRule.MaxValue.HasValue)
+                                && TryGetDoubleValue(value, out double rangeVal)
+                                && (rangeVal < qualityRule.MinValue.GetValueOrDefault(double.NegativeInfinity)
+                                    || rangeVal > qualityRule.MaxValue.GetValueOrDefault(double.PositiveInfinity)))
+                            {
+                                metrics.AddRangeViolation();
+                            }
+                        }
                     }
 
                     // 128 位非密码学哈希去重（替代慢速 MD5 + 十六进制字符串）
@@ -442,6 +461,7 @@ public static partial class ObjectAnalyzer
                 }
 
                 // distinct 值计数：未截断时用精确值；截断时退化为 HyperLogLog 近似估计
+                stat.RangeViolationCount = metrics.RangeViolationCount;
                 long exactDistinct = stat.ValueCounts.Keys.Count(k => k != "[Other values]");
                 if (!stat.ValueCountsTruncated)
                 {
@@ -505,13 +525,19 @@ public static partial class ObjectAnalyzer
         long totalUniqueObjects = globalSeenHashes.Count;
         long totalDuplicateGroups = globalDuplicateCounts.Count(kv => kv.Value > 1);
 
+        // 质量检查 v2：枚举/范围/模式/必填/唯一/null 率 + 数据集期望，统一评估
+        var qualityViolations = rules == null
+            ? new List<FieldViolation>()
+            : QualityChecks.Evaluate(globalTotalObjects, totalUniqueObjects, results, rules);
+
         return new AnalysisResult
         {
             TotalObjects = globalTotalObjects,
             TotalUniqueObjects = totalUniqueObjects,
             TotalDuplicateGroups = totalDuplicateGroups,
             DuplicateObjects = duplicates,
-            FieldStatistics = results
+            FieldStatistics = results,
+            QualityViolations = qualityViolations
         };
     }
 

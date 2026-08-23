@@ -186,6 +186,17 @@ public static class HtmlReportExporter
                 var violations = string.Join(", ", stat.EnumViolations.Select(v => $"<span class=\"violation\">{Escape(v)}</span>"));
                 ruleInfo += $"<div class=\"violations\">枚举违规: {violations}</div>";
             }
+            foreach (var check in result.QualityViolations)
+            {
+                if (check.Check == QualityCheckTypes.EnumValues ||
+                    !string.Equals(check.Field, stat.FieldName, StringComparison.Ordinal))
+                    continue;
+                string approxMark = check.Approximate ? "（近似）" : "";
+                string samples = check.Samples.Count > 0
+                    ? " — " + string.Join(", ", check.Samples.Select(s => $"<span class=\"violation\">{Escape(Truncate(s, 40))}</span>"))
+                    : "";
+                ruleInfo += $"<div class=\"violations\">{Escape(QualityCheckTypes.Label(check.Check))}{approxMark}: {Escape(check.Message)}{samples}</div>";
+            }
             if (stat.NullAppeared)
                 ruleInfo += "<span class=\"null-badge\">含 null</span>";
             if (stat.ValueCountsTruncated)

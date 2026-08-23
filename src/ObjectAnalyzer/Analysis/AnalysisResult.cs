@@ -16,4 +16,10 @@ public class AnalysisResult
 
     public List<DuplicateObjectStatistic> DuplicateObjects { get; set; } = new();
     public List<FieldStatistic> FieldStatistics { get; set; } = new();
+
+    /// <summary>
+    /// 质量检查违规清单（规则文件 v2：枚举/范围/模式/必填/唯一/null 率 + 数据集期望）。
+    /// 未配置规则时为空列表。
+    /// </summary>
+    public List<FieldViolation> QualityViolations { get; set; } = new();
 }

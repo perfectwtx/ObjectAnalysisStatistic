@@ -39,6 +39,52 @@ public class FieldRule
     /// </summary>
     [JsonPropertyName("redact")]
     public bool? Redact { get; set; }
+
+    // ── 质量检查 v2（复用 --violations 导出与 --fail-on-violations 门禁）──
+
+    /// <summary>数值下界（含）：数值出现次数中低于该值的计入范围违规（热路径精确计数）。</summary>
+    [JsonPropertyName("minValue")]
+    public double? MinValue { get; set; }
+
+    /// <summary>数值上界（含）：高于该值计入范围违规。</summary>
+    [JsonPropertyName("maxValue")]
+    public double? MaxValue { get; set; }
+
+    /// <summary>必填检查：true 时字段缺失（对象中不出现）或值为 null 均计为违规。</summary>
+    [JsonPropertyName("required")]
+    public bool? Required { get; set; }
+
+    /// <summary>正则模式：非空值的字符串形态需整体匹配该表达式，不匹配计入违规（基于跟踪的唯一值评估，截断时近似）。</summary>
+    [JsonPropertyName("pattern")]
+    public string? Pattern { get; set; }
+
+    /// <summary>唯一性检查：非空值出现重复时报告重复次数（未截断时精确；截断时用 HyperLogLog 近似并标记）。</summary>
+    [JsonPropertyName("unique")]
+    public bool? Unique { get; set; }
+
+    /// <summary>null 率上限（0.0~1.0）：null 与字段缺失合计占比超过该值时违规。</summary>
+    [JsonPropertyName("nullRateMax")]
+    public double? NullRateMax { get; set; }
+
+    /// <summary>是否配置了任一质量检查维度（用于跳过无关开销）。</summary>
+    [JsonIgnore]
+    public bool HasQualityChecks =>
+        MinValue.HasValue || MaxValue.HasValue || Required == true
+        || !string.IsNullOrEmpty(Pattern) || Unique == true || NullRateMax.HasValue;
+}
+
+/// <summary>
+/// 数据集级质量期望：对分析结果整体（而非单字段）的约束。
+/// </summary>
+public class AnalysisExpectations
+{
+    /// <summary>最少对象行数：分析总行数低于该值时违规。</summary>
+    [JsonPropertyName("minRowCount")]
+    public long? MinRowCount { get; set; }
+
+    /// <summary>最大重复率（0.0~1.0）：完全相同的重复对象占比超过该值时违规。</summary>
+    [JsonPropertyName("maxDuplicateRate")]
+    public double? MaxDuplicateRate { get; set; }
 }
 
 /// <summary>
@@ -178,4 +224,8 @@ public class AnalysisRules
     /// <summary>通用值解析器：按 source + parseType 决定是否解析值，适用于 Excel / JSON / 任意输入来源。</summary>
     [JsonPropertyName("valueParsers")]
     public List<ValueParserConfig>? ValueParsers { get; set; }
+
+    /// <summary>数据集级质量期望（行数下限、最大重复率等）。违规进入 --violations 导出并触发 --fail-on-violations 门禁。</summary>
+    [JsonPropertyName("expectations")]
+    public AnalysisExpectations? Expectations { get; set; }
 }

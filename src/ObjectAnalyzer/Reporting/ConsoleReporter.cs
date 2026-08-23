@@ -118,6 +118,20 @@ public static class ConsoleReporter
                 AnsiConsole.MarkupLine($"  [red]枚举违规:[/] {violations}");
             }
 
+            // 质量检查 v2：范围/模式/必填/唯一/null 率违规条目（枚举聚合条目已由上方逐值列表覆盖）
+            foreach (var check in result.QualityViolations)
+            {
+                if (check.Check == QualityCheckTypes.EnumValues ||
+                    !string.Equals(check.Field, stat.FieldName, StringComparison.Ordinal))
+                    continue;
+                string approxMark = check.Approximate ? " [grey](近似)[/]" : "";
+                string samples = check.Samples.Count > 0
+                    ? $" [grey]样本:[/] {string.Join(", ", check.Samples.Select(s => $"[red]{Markup.Escape(s)}[/]"))}"
+                    : "";
+                AnsiConsole.MarkupLine(
+                    $"  [red]{Markup.Escape(QualityCheckTypes.Label(check.Check))}:[/] {Markup.Escape(check.Message)}{approxMark}{samples}");
+            }
+
             // 值频次表格
             var valueTable = new Table()
                 .Border(TableBorder.Simple)

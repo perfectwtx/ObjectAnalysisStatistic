@@ -28,6 +28,30 @@
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
+## 快速开始
+
+仓库代码**无需预先安装**即可从源码直接运行；也可安装为全局 `dotnet tool`，使用 `objectanalyzer` 命令。下面以内置示例数据演示最小可运行流程。
+
+**方式一：从源码运行（推荐首次体验）**
+
+```bash
+# 在仓库根目录执行，分析内置示例（首次会自动还原依赖并构建）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json
+
+# 导出 HTML 可视化报告
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -o report.html
+```
+
+**方式二：安装为 dotnet tool（全局可用）**
+
+```bash
+dotnet pack src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release
+dotnet tool install --global --add-source artifacts/packages ObjectAnalyzer.Tool
+objectanalyzer -i samples/test_data.json -o report.html
+```
+
+更多安装方式（Docker、Web 界面）见下文「安装」一节；完整命令行选项与各场景示例见「CLI 使用方式」一节。
+
 ## 环境要求
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) 或更高版本
@@ -35,8 +59,11 @@
 ## 构建
 
 ```bash
-dotnet build
+# 还原并构建整个解决方案（CLI + Web + 测试），Release 配置（与 CI 一致）
+dotnet build ObjectAnalyzer.sln -c Release
 ```
+
+构建产物位于各项目的 `bin/` 与 `obj/`，已被 `.gitignore` 忽略。
 
 ## CLI 使用方式
 
@@ -157,9 +184,19 @@ dotnet run --project src/ObjectAnalyzer -- --provider sqlserver --connection "Se
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -o report.html --pii-report compliance.json
 ```
 
-## 安装与分发
+## 安装
 
-**dotnet tool（NuGet 本地/远端包）**
+> 前置条件：安装 [.NET 10 SDK](#环境要求)。仓库代码无需安装即可通过 `dotnet run` 直接运行（见「快速开始」）；以下为将工具分发给本机或团队的方式。
+
+### 1. 从源码运行（开发 / 一次性分析）
+
+无需安装，在仓库根目录直接运行（首次会自动还原依赖并构建）：
+
+```bash
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -o report.html
+```
+
+### 2. 作为 dotnet tool 安装（本机全局）
 
 ```bash
 dotnet pack src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release   # 产出 artifacts/packages/ObjectAnalyzer.Tool.*.nupkg
@@ -167,7 +204,9 @@ dotnet tool install --global --add-source artifacts/packages ObjectAnalyzer.Tool
 objectanalyzer -i samples/test_data.json -o report.html
 ```
 
-**Docker**
+> 已安装后可用 `dotnet tool uninstall ObjectAnalyzer.Tool` 卸载，`--add-source` 指向本地 `artifacts/packages`；如需发布到 NuGet，将包推送到远端源后省略 `--add-source` 即可。
+
+### 3. Docker 镜像（环境隔离 / 流水线）
 
 ```bash
 docker build -t objectanalyzer .
@@ -175,7 +214,7 @@ docker build -t objectanalyzer .
 docker run --rm -v "$(pwd)/samples:/data" objectanalyzer -i /data/test_data.json -o /data/report.html
 ```
 
-**Web 界面**
+### 4. Web 界面（本地交互式）
 
 ```bash
 cd src/ObjectAnalyzer.Web
@@ -240,6 +279,38 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 `selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
 
 `primaryType` 可省略：仅配置 `enumValues` 时自动推导——全部为数值 → `Number`、全部为布尔 → `Boolean`，否则（含混合）→ `String`；显式 `primaryType` 优先。
+
+### 质量检查（规则文件 v2）
+
+除 `enumValues` 枚举约束外，`fields` 中每条字段规则还支持以下质量检查维度：
+
+| 键 | 类型 | 说明 |
+|----|------|------|
+| `pattern` | string | 正则模式，值不匹配时计为违规（唯一值截断时近似计数并标记） |
+| `minValue` / `maxValue` | number | 数值范围越界检查，逐行精确计数，不受唯一值截断影响 |
+| `required` | bool | 值为 null 或整行缺失该字段时违规 |
+| `unique` | bool | 唯一性检查：未截断时精确统计重复值，截断时基于 HyperLogLog 近似并标记 |
+| `nullRateMax` | number | null 率上限（0~1），分子含显式 null 与整行缺失 |
+
+数据集级期望写在顶层 `expectations`：
+
+| 键 | 类型 | 说明 |
+|----|------|------|
+| `minRowCount` | number | 分析对象总数下限 |
+| `maxDuplicateRate` | number | 重复对象占比上限（0~1） |
+
+```json
+{
+  "fields": {
+    "age":    { "minValue": 0, "maxValue": 150, "required": true },
+    "email":  { "pattern": "^[^@]+@[^@]+$" },
+    "userId": { "unique": true, "nullRateMax": 0.05 }
+  },
+  "expectations": { "minRowCount": 1000, "maxDuplicateRate": 0.01 }
+}
+```
+
+所有违规统一汇总到数据质量报告与 `--violations` 导出（含数据集期望条目，枚举违规仍按逐值列出）；配置 `--fail-on-violations` 后存在任一违规即以退出码 3 结束。无效正则会在加载规则文件时立即报错退出（退出码 1）。
 
 `filter` 为全局过滤条件（等价于 CLI `--where`，后者优先级更高），字段名大小写不敏感，应用于字段选择与值转换之后。支持的运算符：
 
@@ -463,6 +534,57 @@ ObjectAnalysisStatistic/
 - **YAML 解析**：[YamlDotNet](https://github.com/aaubry/YamlDotNet)
 - **运行时编译**：[Roslyn](https://github.com/dotnet/roslyn)（Microsoft.CodeAnalysis.CSharp）
 - **Web 界面**：Blazor Server (.NET 10)
+
+## 贡献指南
+
+欢迎贡献代码、文档与示例！请先阅读以下约定，确保 PR 能顺利通过 CI。
+
+### 1. 环境准备
+
+- 安装 [.NET 10 SDK](https://dotnet.microsoft.com/download)。
+- 克隆仓库并还原依赖：`dotnet restore ObjectAnalyzer.sln`。
+
+### 2. 本地开发与验证
+
+```bash
+# 构建（Release；与 CI 同配置）
+dotnet build ObjectAnalyzer.sln -c Release
+
+# 运行 CLI（选项详见「CLI 使用方式」）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json
+
+# 运行全部测试（含覆盖率收集，与 CI 一致）
+dotnet test ObjectAnalyzer.sln -c Release --collect:"XPlat Code Coverage"
+```
+
+### 3. 代码规范
+
+- **可空引用类型**：`Nullable` 全局启用，新代码必须正确处理 `null`。
+- **警告即错误**：`TreatWarningsAsErrors=true`，编译器警告（含未使用变量、可空疏忽）会导致构建失败，请保持零警告。
+- **分析级别**：`AnalysisLevel=latest-recommended`，建议开启 IDE 的代码分析提示并修复。
+- **格式**：遵循 C# 常规风格（4 空格缩进、文件作用域命名空间、合理使用 `var`），避免与本次改动无关的大规模重构。
+
+### 4. 测试要求
+
+- 测试框架为 **xUnit**，核心用例位于 `tests/ObjectAnalyzer.Tests/`，Web 冒烟用例位于 `tests/ObjectAnalyzer.Web.Tests/`。
+- 行为与报告变更应配套**快照 / 回读测试**（现有 `QualityChecksTests`、`PiiTests`、`SamplingTests`、`*ReportExporter` 快照等可作范本）。
+- CI 会执行 `dotnet test` + CodeQL 安全扫描，**未通过测试或存在高危告警的 PR 不会被合并**。
+- 新增 / 修改功能请在对应 `*Tests.cs` 中补用例；若新增解析器、报告导出器或字段转换，请同步补充单元测试与（如适用）快照数据。
+
+### 5. 提交与变更记录
+
+- **提交信息**使用约定式前缀：`feat:`（新功能）、`fix:`（缺陷修复）、`docs:`、`refactor:`、`test:`、`chore:` 等，正文用中文简述。
+- **变更必须同步更新 `CHANGELOG.md`**：在 `[Unreleased]` 下按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 规范归类到 `Added` / `Changed` / `Fixed`（中文撰写）。
+- **示例数据**：仅 `samples/report*` 被忽略，其余示例输入应随 PR 一并入库（新增功能建议配套样例文件）。
+
+### 6. Pull Request 流程
+
+1. 从主分支切出特性分支（如 `feat/xxx`、`fix/xxx`）。
+2. 完成开发与测试，确保本地 `dotnet build` / `dotnet test` 全绿。
+3. 推送并发起 PR，描述变更动机、要点与验证方式。
+4. 通过 CI（构建、测试、CodeQL）后由维护者评审合并。
+
+> 路线图与产品化优先级见 `ROADMAP.md`；重大设计变更建议先在 Issue / PR 中讨论。
 
 ## 许可证
 

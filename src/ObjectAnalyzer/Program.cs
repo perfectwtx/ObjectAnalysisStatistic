@@ -55,7 +55,7 @@ var parallelOption = new Option<int>(
 
 var violationsOption = new Option<FileInfo?>(
     aliases: CliAliases.Violations,
-    description: "将枚举违规导出为独立的结构化 JSON 文件路径。");
+    description: "将质量检查违规（枚举/范围/模式/必填/唯一/null 率 + 数据集期望）导出为独立的结构化 JSON 文件路径。");
 
 var qualityOption = new Option<FileInfo?>(
     aliases: CliAliases.Quality,

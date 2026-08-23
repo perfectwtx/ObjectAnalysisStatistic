@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- **质量检查 v2（Great Expectations 风格）**：规则文件字段级新增 5 个检查维度——`pattern`（正则模式，截断时近似计数并标记）、`minValue`/`maxValue`（数值范围越界，逐行精确计数、不受唯一值截断影响）、`required`（null 或整行缺失）、`unique`（唯一性：未截断精确统计，截断时 HyperLogLog 近似并标记）、`nullRateMax`（null 率上限，分子含显式 null 与缺失）；顶层新增 `expectations` 数据集期望——`minRowCount`（最少对象数）与 `maxDuplicateRate`（重复对象占比上限）。所有违规统一汇总至 `AnalysisResult.QualityViolations` 并接入 `--fail-on-violations` 门禁（退出码 3）、`--violations` 导出（升级为 `{ summary, fieldViolations, datasetViolations }` 对象结构，枚举条目保留旧版逐值 `values` 键向后兼容）与数据质量报告（`Checks` 字段级条目 + 顶层 `DatasetViolations`）；无效正则在加载规则文件时立即报错退出；PII 打码同步作用于违规样本。
+- **测试**：范围越界截断场景精确计数、required 缺失+null 合计、nullRateMax 边界通过/超出、pattern 命中与截断近似标志、unique 精确重复样本与 HLL 近似区间、minRowCount/maxDuplicateRate 通过与失败、`--fail-on-violations` 退出码 3 / 干净数据退出 0 / 无效正则退出 1 集成、`--violations` v2 结构回读、数据质量报告新维度与旧枚举语义兼容、PII 掩码传播到违规样本、纯枚举旧规则向后兼容聚合、JSON 往返，共 19 个新用例。
 - **数值/语义统计深度补齐**：数值列新增样本标准差（Welford 在线算法，O(1) 内存）、近似分位数 P50/P90/P95/P99（简化 t-digest 质心草图，容量有界且支持多线程合并）、2 的幂对数直方图分桶（负数/零/正数桶按值域升序，单遍流式无需预知范围）；字符串列新增平均长度；全部标量字段新增 distinct 值计数——唯一值未超过跟踪阈值时为精确计数，超出时自动退化为 HyperLogLog 近似估计（p=14，稀疏→稠密渐进存储 + LinearCounting 校正消除 n≈m 过渡区正偏差，标准误差 ≈0.8%），以 `DistinctApproximate` 标志区分。JSON / 控制台 / HTML / Markdown / CSV 报告同步展示；CSV 表头新增 `StdDevNumber`/`MedianNumber`/`P90Number`/`P95Number`/`P99Number`/`Histogram`/`AvgLength`/`DistinctApproximate` 列，`UniqueValues` 列升级为真实 distinct 计数。
 - **测试**：Welford 均值/样本标准差闭式解对比、t-digest 分位数均匀/重尾分布容差与"合并 ≈ 单遍"等价性、直方图桶计数总和与区间顺序、HyperLogLog 多样本平均精度（<2%）与稀疏合并一致性、并行分析深度指标稳定性、JSON 序列化往返、脱敏克隆保留新字段、CSV 新列冒烟，共 17 个新用例。
 - **PII 误报逃生口**：规则文件字段级 `redact: false` 白名单——字段名启发式误伤合法值时（如 name 列存产品名），声明后该字段不打码、不进合规报告；优先级高于 `pii` 自定义规则。新增 `--pii-off` 全局关闭 PII 识别与打码，报告输出原始值（与 `--fail-on-pii-level` 互斥、同用 `--pii-report` 时忽略后者）。

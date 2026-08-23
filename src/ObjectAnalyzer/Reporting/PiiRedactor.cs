@@ -59,6 +59,21 @@ public static class PiiRedactor
                 .ToList();
         }
 
+        // 质量检查 v2：违规样本可能包含原始敏感值，同步打码后传播
+        var maskedQuality = result.QualityViolations.Count == 0
+            ? result.QualityViolations
+            : result.QualityViolations
+                .Select(v =>
+                {
+                    if (string.IsNullOrEmpty(v.Field) || !masksByField.TryGetValue(v.Field, out var violationMask))
+                        return v;
+                    return v with
+                    {
+                        Samples = v.Samples.Select(s => violationMask.Apply(s) ?? s).ToArray()
+                    };
+                })
+                .ToList();
+
         return new AnalysisResult
         {
             TotalObjects = result.TotalObjects,
@@ -66,7 +81,8 @@ public static class PiiRedactor
             TotalDuplicateGroups = result.TotalDuplicateGroups,
             FilterExpression = result.FilterExpression,
             DuplicateObjects = maskedDuplicates,
-            FieldStatistics = maskedStats
+            FieldStatistics = maskedStats,
+            QualityViolations = maskedQuality
         };
     }
 

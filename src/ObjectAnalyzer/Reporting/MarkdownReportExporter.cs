@@ -128,6 +128,18 @@ public static class MarkdownReportExporter
             string violations = stat.EnumViolations.Count > 0
                 ? string.Join(", ", stat.EnumViolations.Select(v => $"`{EscapeMd(v)}`"))
                 : "—";
+            foreach (var check in result.QualityViolations)
+            {
+                if (check.Check == QualityCheckTypes.EnumValues ||
+                    !string.Equals(check.Field, stat.FieldName, StringComparison.Ordinal))
+                    continue;
+                string approxMark = check.Approximate ? "(近似)" : "";
+                violations += $"<br>{EscapeMd(QualityCheckTypes.Label(check.Check))}{approxMark}: {EscapeMd(check.Message)}";
+                if (check.Samples.Count > 0)
+                {
+                    violations += "<br>" + string.Join(", ", check.Samples.Select(s => $"`{EscapeMd(Truncate(s, 40))}`"));
+                }
+            }
             string topValues = string.Join("<br>", stat.ValueCounts
                 .OrderByDescending(v => v.Value).Take(5)
                 .Select(v => $"`{EscapeMd(Truncate(v.Key, 40))}` ×{v.Value}"));

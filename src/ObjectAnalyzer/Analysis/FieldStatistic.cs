@@ -92,6 +92,10 @@ public class FieldStatistic
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? TransformType { get; set; }
 
+    /// <summary>数值越界出现次数（规则 minValue/maxValue，热路径精确计数，不受唯一值截断影响）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public long RangeViolationCount { get; set; }
+
     // Fix #8: EnumViolations 封装为只读接口，防止外部调用者意外修改分析结果
     private readonly List<string> _enumViolations = new();
 
