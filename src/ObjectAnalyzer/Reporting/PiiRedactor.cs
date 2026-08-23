@@ -14,9 +14,15 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class PiiRedactor
 {
-    /// <summary>打码副本。若结果不含任何 PII 字段，则直接返回原引用。</summary>
-    public static AnalysisResult Redact(AnalysisResult result)
+    /// <summary>
+    /// 打码副本。若结果不含任何 PII 字段，则直接返回原引用。
+    /// enabled=false（--pii-off）时跳过打码原样返回，供用户显式导出原始值。
+    /// </summary>
+    public static AnalysisResult Redact(AnalysisResult result, bool enabled = true)
     {
+        if (!enabled)
+            return result;
+
         var masksByField = new Dictionary<string, PiiMaskFormat>(StringComparer.Ordinal);
         foreach (var stat in result.FieldStatistics)
         {

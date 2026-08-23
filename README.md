@@ -21,8 +21,8 @@
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
 - 数据库直连 (Live DB Ingestion)：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，无需先导出为 CSV/JSON 即可进行实时结构与质量分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
-- 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱字段，所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄；规则文件 `fields.<name>.pii` 可将业务敏感字段（如 `internalId`、`authToken`）声明为敏感字段并自定义打码格式
-- 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险
+- 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱 / SSN / IBAN / 护照号字段（身份证按 GB 11643 校验位、银行卡按 Luhn、IBAN 按 MOD 97 验证，降低纯形态误报），所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄；规则文件 `fields.<name>.pii` 可将业务敏感字段（如 `internalId`、`authToken`）声明为敏感字段并自定义打码格式，`fields.<name>.redact: false` 白名单可为误报字段（如存产品名的 name 列）豁免打码，`--pii-off` 全局关闭
+- 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险；`--fail-on-pii-level <A|B|C>` 提供与 `--fail-on-violations` 对称的 CI 合规门禁
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
@@ -65,10 +65,12 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--query <SQL>` | — | 数据库直连时执行的 SQL 查询（如 `"SELECT * FROM users"`） | 无 |
 | `--provider <DB>` | — | 数据库类型：`postgres`、`mysql`、`sqlite`、`sqlserver`；缺省按连接字符串关键字自动推断（建议显式指定） | 自动推断 |
 | `--pii-report <FILE>` | — | 导出数据安全合规等级报告 JSON（合规等级 A/B/C + 敏感字段清单 + 打码样本 + 各类别统计） | 无 |
+| `--pii-off` | — | 全局关闭 PII 识别与打码：报告输出原始值（数据确认不含敏感信息或需要完整原文时使用）；与 `--pii-report` 同用时忽略后者，与 `--fail-on-pii-level` 互斥 | `false` |
+| `--fail-on-pii-level <A\|B\|C>` | — | CI 合规门禁：合规等级达到或劣于指定级别时以退出码 `4` 结束（`C`=仅 C 级失败；`B`=发现任何敏感字段即失败），与 `--fail-on-violations` 对称 | 无 |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
-> 提示：使用 `-h` 或 `--help` 查看完整帮助。退出码：`0` 成功，`1` 输入/解析错误，`2` 已取消，`3` 质量门禁未通过（`--fail-on-violations`）。
+> 提示：使用 `-h` 或 `--help` 查看完整帮助。退出码：`0` 成功，`1` 输入/解析错误，`2` 已取消，`3` 质量门禁未通过（`--fail-on-violations`），`4` 合规门禁未通过（`--fail-on-pii-level`）。
 
 ### 示例
 
@@ -301,6 +303,33 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 | `mask.maskAll` | 整值打码（忽略 keep 前缀后缀） | `false` |
 
 > 命中自定义规则时优先于内置语义分类；未配置 `mask` 时默认整值打码（`maskAll: true`）。示例见 `samples/test_pii_rules.json`。
+
+### PII 误报逃生口与全局开关
+
+- **字段级白名单 `redact: false`**：字段名启发式可能误伤合法值（如 name 列存的是产品名）。在规则文件中为该字段声明 `"redact": false` 后，即使命中敏感语义/启发式也不打码、不进合规报告。优先级高于 `pii` 自定义规则：
+
+```json
+{
+  "fields": {
+    "name": { "redact": false }
+  }
+}
+```
+
+- **全局开关 `--pii-off`**：数据确认不含敏感信息或需要完整原文时，跳过所有 PII 打码直接输出原始值；与 `--pii-report` 同用时后者被忽略。
+- **校验位验证降低误报**：18 位身份证号需通过 GB 11643 MOD 11-2 校验位（15 位一代证仅形态匹配）；16-19 位银行卡号需通过 Luhn 校验；IBAN 需通过 ISO 7064 MOD 97-10 校验。随机数字串不再被误判为敏感证件号。
+
+### CI 合规门禁
+
+`--fail-on-pii-level <A|B|C>` 与 `--fail-on-violations` 对称：分析完成后计算合规等级（A=未发现敏感字段；B=存在敏感字段且已全部打码；C=样本无法完全打码需人工复核），达到或劣于阈值时以退出码 `4` 结束：
+
+```bash
+# 仅 C 级（存在未打码泄漏风险）阻断
+dotnet run --project src/ObjectAnalyzer -- -i data.json --fail-on-pii-level C
+
+# 发现任何敏感字段即阻断（阈值 B 时 B/C 级均失败）
+dotnet run --project src/ObjectAnalyzer -- -i data.json --fail-on-pii-level B
+```
 
 ## Web 界面
 

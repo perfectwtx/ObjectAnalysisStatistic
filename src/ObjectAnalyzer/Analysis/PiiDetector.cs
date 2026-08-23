@@ -13,6 +13,12 @@ public enum PiiCategory
     BankCard,
     Name,
     Email,
+    /// <summary>美国社会安全号（SSN，ddd-dd-dddd）。</summary>
+    Ssn,
+    /// <summary>国际银行账号（IBAN，MOD 97 校验通过）。</summary>
+    Iban,
+    /// <summary>护照号（字段名提示 + 值形态）。</summary>
+    Passport,
     /// <summary>自定义业务敏感字段（由规则文件 field.pii 声明），打码格式由规则指定。</summary>
     Custom
 }
@@ -38,6 +44,9 @@ public static class PiiDetector
             "BankCard" => PiiCategory.BankCard,
             "Name" => PiiCategory.Name,
             "Email" => PiiCategory.Email,
+            "Ssn" => PiiCategory.Ssn,
+            "Iban" => PiiCategory.Iban,
+            "Passport" => PiiCategory.Passport,
             _ => PiiCategory.None
         };
     }
@@ -45,9 +54,10 @@ public static class PiiDetector
     /// <summary>该语义类型是否属于个人敏感信息。</summary>
     public static bool IsPii(string? semanticType) => FromSemanticType(semanticType) != PiiCategory.None;
 
-    /// <summary>高敏感分类（手机号 / 身份证 / 银行卡）。自定义分类的高危标记由规则决定。</summary>
+    /// <summary>高敏感分类（手机号 / 身份证 / 银行卡 / SSN / IBAN / 护照）。自定义分类的高危标记由规则决定。</summary>
     public static bool IsHighSeverity(PiiCategory category) =>
-        category is PiiCategory.Phone or PiiCategory.IdCard or PiiCategory.BankCard;
+        category is PiiCategory.Phone or PiiCategory.IdCard or PiiCategory.BankCard
+            or PiiCategory.Ssn or PiiCategory.Iban or PiiCategory.Passport;
 
     /// <summary>敏感分类的中文标签。</summary>
     public static string CategoryLabel(PiiCategory category)
@@ -59,17 +69,24 @@ public static class PiiDetector
             PiiCategory.BankCard => "银行卡号",
             PiiCategory.Name => "姓名",
             PiiCategory.Email => "邮箱",
+            PiiCategory.Ssn => "社会保障号",
+            PiiCategory.Iban => "国际银行账号",
+            PiiCategory.Passport => "护照号",
             PiiCategory.Custom => "业务敏感字段",
             _ => "无"
         };
     }
 
     /// <summary>
-    /// 解析某字段应使用的打码格式：先看规则文件声明的自定义 PII 规则（优先级最高），
-    /// 否则回退到语义类型映射的内置分类。两者皆未命中返回 null（非敏感字段）。
+    /// 解析某字段应使用的打码格式：规则文件 redact: false 白名单（误报逃生口）优先返回 null；
+    /// 其次看规则文件声明的自定义 PII 规则；否则回退到语义类型映射的内置分类。
+    /// 皆未命中返回 null（非敏感字段）。
     /// </summary>
     public static PiiMaskFormat? TryGetMaskFormat(string? semanticType, FieldRule? appliedRule)
     {
+        if (appliedRule is { Redact: false })
+            return null; // 字段级白名单：即使命中敏感语义/启发式也不打码
+
         if (appliedRule?.Pii is { } pii)
         {
             var mask = pii.Mask ?? new PiiMaskConfig { MaskAll = true };
@@ -117,8 +134,19 @@ public static class PiiDetector
             PiiCategory.BankCard => MaskDigits(value, 4, 4),
             PiiCategory.Name => MaskName(value),
             PiiCategory.Email => MaskEmail(value),
+            PiiCategory.Ssn => MaskSsn(value),
+            PiiCategory.Iban => MaskDigits(value, 4, 3),
+            PiiCategory.Passport => MaskDigits(value, 1, 3),
             _ => value
         };
+    }
+
+    /// <summary>SSN 打码：保留末 4 位，前缀固定掩码（123-45-6789 → ***-**-6789）。</summary>
+    private static string MaskSsn(string value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= 4)
+            return new string('*', value.Length);
+        return "***-**-" + value[^4..];
     }
 
     private static string MaskDigits(string value, int prefixKeep, int suffixKeep)
@@ -236,13 +264,16 @@ public sealed class PiiMaskFormat
                 PiiCategory.BankCard => PiiDetector.Mask(value, PiiCategory.BankCard),
                 PiiCategory.Name => PiiDetector.Mask(value, PiiCategory.Name),
                 PiiCategory.Email => PiiDetector.Mask(value, PiiCategory.Email),
+                PiiCategory.Ssn => PiiDetector.Mask(value, PiiCategory.Ssn),
+                PiiCategory.Iban => PiiDetector.Mask(value, PiiCategory.Iban),
+                PiiCategory.Passport => PiiDetector.Mask(value, PiiCategory.Passport),
                 _ => value
             };
         }
 
         if (MaskAll)
             return MaskAllChars(value, MaskChar);
-        return PiiDetector.MaskDigits(value, KeepPrefix, KeepSuffix, MaskChar);
+        return PiiDetector.MaskDigits(value, Math.Max(0, KeepPrefix), Math.Max(0, KeepSuffix), MaskChar);
     }
 
     private static string MaskAllChars(string value, string maskChar)
@@ -251,6 +282,13 @@ public sealed class PiiMaskFormat
             return value;
         if (string.IsNullOrEmpty(maskChar))
             maskChar = "*";
-        return new string(maskChar[0], value.Length);
+
+        var buffer = new System.Text.StringBuilder(value.Length);
+        while (buffer.Length < value.Length)
+        {
+            buffer.Append(maskChar);
+        }
+        buffer.Length = value.Length;
+        return buffer.ToString();
     }
 }

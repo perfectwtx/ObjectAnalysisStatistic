@@ -6,9 +6,9 @@ namespace ObjectAnalyzer.Reporting;
 
 public static class ConsoleReporter
 {
-    public static void Print(AnalysisResult result, int maxValuesToShow)
+    public static void Print(AnalysisResult result, int maxValuesToShow, bool redactPii = true)
     {
-        result = PiiRedactor.Redact(result);
+        result = PiiRedactor.Redact(result, redactPii);
 
         // ── 摘要面板 ──
         var summaryTable = new Table()

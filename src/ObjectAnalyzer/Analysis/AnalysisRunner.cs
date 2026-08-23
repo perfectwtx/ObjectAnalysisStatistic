@@ -71,12 +71,27 @@ public static class AnalysisRunner
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, cancellationToken); // CI 数据质量门禁：存在枚举违规时以非零退出码结束
+            AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, cancellationToken);
+
+            // CI 数据质量门禁：存在枚举违规时以非零退出码结束
             if (options.FailOnViolations && result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
             {
                 int violationCount = result.FieldStatistics.Sum(f => f.EnumViolations.Count);
                 AnsiConsole.MarkupLine($"[red]数据质量未通过（共 {violationCount} 条枚举违规），退出码 3。[/]");
                 return 3;
+            }
+
+            // CI 数据安全合规门禁：合规等级达到或劣于阈值时以非零退出码结束（与 --fail-on-violations 对称）
+            if (!string.IsNullOrWhiteSpace(options.FailOnPiiLevel))
+            {
+                var piiReport = PiiReport.Build(result);
+                if (piiReport.PiiFieldCount > 0 &&
+                    PiiSeverityRank(piiReport.ComplianceLevel) >= PiiSeverityRank(options.FailOnPiiLevel))
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[red]数据安全合规未通过（合规等级 {piiReport.ComplianceLevel}，发现 {piiReport.PiiFieldCount} 个敏感字段 / {piiReport.PiiValueCount} 个敏感值），退出码 4。[/]");
+                    return 4;
+                }
             }
 
             return 0;
@@ -277,34 +292,37 @@ public static class AnalysisRunner
 
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
-        // 输出控制台统计结果
-        ConsoleReporter.Print(result, options.MaxValuesToShow);
+        // 输出控制台统计结果（--pii-off 时保留原始值）
+        ConsoleReporter.Print(result, options.MaxValuesToShow, redactPii: !options.PiiOff);
 
-        // 输出数据安全合规摘要（发现敏感字段时提示打码与合规导出）
-        PiiReport.PrintSummary(result);
+        // 输出数据安全合规摘要（发现敏感字段时提示打码与合规导出；--pii-off 时跳过）
+        if (!options.PiiOff)
+        {
+            PiiReport.PrintSummary(result);
+        }
 
         // 如果指定了输出路径，则保存详细报告
         if (!string.IsNullOrEmpty(options.OutputPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ReportExporter.Save(result, options.OutputPath);
+            ReportExporter.Save(result, options.OutputPath, redactPii: !options.PiiOff);
         }
 
         // 如果指定了违规导出路径，则单独导出枚举违规清单
         if (!string.IsNullOrEmpty(options.ViolationsPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ViolationExporter.Save(result, options.ViolationsPath);
+            ViolationExporter.Save(result, options.ViolationsPath, redactPii: !options.PiiOff);
         }
 
         // 如果指定了数据质量报告路径，导出结构化 Pass/Fail 质量报告
         if (!string.IsNullOrEmpty(options.QualityPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            QualityExporter.Save(result, options.QualityPath);
+            QualityExporter.Save(result, options.QualityPath, redactPii: !options.PiiOff);
         }
 
-        // 如果指定了数据安全合规报告路径，导出合规等级 + 敏感字段清单
+        // 如果指定了数据安全合规报告路径，导出合规等级 + 敏感字段清单（--pii-off 时跳过）
         if (!string.IsNullOrEmpty(options.PiiPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -347,6 +365,14 @@ public static class AnalysisRunner
             AnsiConsole.MarkupLine($"[red]内部错误: {Markup.Escape(ex.InnerException.Message)}[/]");
         }
     }
+
+    /// <summary>合规等级严重度排序：A=0（干净）&lt; B=1（敏感已打码）&lt; C=2（需人工复核）。</summary>
+    private static int PiiSeverityRank(string level) => level switch
+    {
+        "C" => 2,
+        "B" => 1,
+        _ => 0
+    };
 
     private static AnalysisRules LoadRules(string rulesPath)
     {

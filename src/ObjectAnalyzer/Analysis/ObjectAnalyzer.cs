@@ -35,6 +35,12 @@ public static partial class ObjectAnalyzer
         @"^\d{15}$|^\d{17}[\dXx]$", RegexOptions.Compiled); // 中国大陆身份证（15/18 位）
     private static readonly Regex RegexBankCard = new(
         @"^\d{16,19}$", RegexOptions.Compiled); // 银行卡号
+    private static readonly Regex RegexSsn = new(
+        @"^\d{3}-\d{2}-\d{4}$", RegexOptions.Compiled); // 美国社会安全号 SSN（ddd-dd-dddd）
+    private static readonly Regex RegexIban = new(
+        @"^[A-Za-z]{2}\d{2}[A-Za-z0-9]{10,30}$", RegexOptions.Compiled); // IBAN（紧凑格式，去除空格后匹配）
+    private static readonly Regex RegexPassport = new(
+        @"^[A-Za-z]{1,2}\d{6,9}$", RegexOptions.Compiled); // 护照号（1-2 位字母 + 6-9 位数字，需字段名提示）
 
     // 字段名强提示：用于在值形态上辅助判别"姓名"语义（避免仅凭形态误判普通文本）
     private static readonly string[] NameFieldHints =
@@ -42,6 +48,13 @@ public static partial class ObjectAnalyzer
         "name", "fullname", "realname", "username", "nickname", "displayname",
         "firstname", "lastname", "familyname", "givenname", "surname",
         "姓名", "用户名", "昵称", "联系人", "真实姓名"
+    };
+
+    // 护照号字段名提示（护照值形态较宽泛，必须字段名佐证以降低误报）
+    private static readonly string[] PassportFieldHints =
+    {
+        "passport", "passportno", "passportnumber",
+        "护照", "护照号"
     };
 
     // 内部使用的线程局部扩展指标集
@@ -400,12 +413,18 @@ public static partial class ObjectAnalyzer
                 metrics.SemanticCounts["Email"] = metrics.SemanticCounts.GetValueOrDefault("Email") + 1;
             else if (RegexDateTime.IsMatch(strVal))
                 metrics.SemanticCounts["DateTime"] = metrics.SemanticCounts.GetValueOrDefault("DateTime") + 1;
-            else if (RegexIdCard.IsMatch(strVal))
+            else if (RegexIdCard.IsMatch(strVal) && PiiValidators.IsValidChineseIdCard(strVal))
                 metrics.SemanticCounts["IdCard"] = metrics.SemanticCounts.GetValueOrDefault("IdCard") + 1;
             else if (RegexPhone.IsMatch(strVal))
                 metrics.SemanticCounts["Phone"] = metrics.SemanticCounts.GetValueOrDefault("Phone") + 1;
-            else if (RegexBankCard.IsMatch(strVal))
+            else if (RegexBankCard.IsMatch(strVal) && PiiValidators.IsValidBankCardLuhn(strVal))
                 metrics.SemanticCounts["BankCard"] = metrics.SemanticCounts.GetValueOrDefault("BankCard") + 1;
+            else if (RegexSsn.IsMatch(strVal))
+                metrics.SemanticCounts["Ssn"] = metrics.SemanticCounts.GetValueOrDefault("Ssn") + 1;
+            else if (IsIbanValue(strVal))
+                metrics.SemanticCounts["Iban"] = metrics.SemanticCounts.GetValueOrDefault("Iban") + 1;
+            else if (RegexPassport.IsMatch(strVal) && ContainsFieldHint(fieldName, PassportFieldHints))
+                metrics.SemanticCounts["Passport"] = metrics.SemanticCounts.GetValueOrDefault("Passport") + 1;
             else if (RegexIPv4.IsMatch(strVal))
                 metrics.SemanticCounts["IPv4"] = metrics.SemanticCounts.GetValueOrDefault("IPv4") + 1;
             else if (RegexUrl.IsMatch(strVal))
@@ -413,6 +432,49 @@ public static partial class ObjectAnalyzer
             else if (LooksLikeHumanName(strVal, fieldName))
                 metrics.SemanticCounts["Name"] = metrics.SemanticCounts.GetValueOrDefault("Name") + 1;
         }
+    }
+
+    /// <summary>IBAN 判定：去除空格后匹配紧凑形态，再按 MOD 97-10 验证校验位。</summary>
+    private static bool IsIbanValue(string value)
+    {
+        if (value.Length < 15 || value.Length > 39)
+            return false;
+
+        string compact = value.Replace(" ", "");
+        return RegexIban.IsMatch(compact) && PiiValidators.IsValidIbanMod97(compact);
+    }
+
+    /// <summary>字段名提示匹配：字段名等于提示词或以 ".分隔符+提示词" 结尾（大小写不敏感）。</summary>
+    private static bool MatchesFieldHint(string fieldName, string[] hints)
+    {
+        foreach (string hint in hints)
+        {
+            int hintLength = hint.Length;
+            if (fieldName.Length < hintLength)
+                continue;
+            if (!fieldName.EndsWith(hint, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (fieldName.Length == hintLength)
+                return true;
+            char before = fieldName[fieldName.Length - hintLength - 1];
+            if (before is '.' or '_' or '-' or ' ')
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 字段名包含提示词即命中（大小写不敏感）。用于 passport 等前后缀皆常见的字段
+    /// （passport_no / myPassport / 护照号），提示词本身语义足够明确，无误报风险。
+    /// </summary>
+    private static bool ContainsFieldHint(string fieldName, string[] hints)
+    {
+        foreach (string hint in hints)
+        {
+            if (fieldName.Contains(hint, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     private static bool LooksLikeHumanName(string value, string fieldName)
