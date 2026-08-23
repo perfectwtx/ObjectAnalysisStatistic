@@ -80,18 +80,46 @@ public static class MarkdownReportExporter
         foreach (var stat in result.FieldStatistics)
         {
             string coverage = stat.Count + "/" + result.TotalObjects + " (" + (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture) + "%)";
+            if (stat.DistinctCount.HasValue)
+            {
+                coverage += stat.DistinctApproximate
+                    ? "<br>唯一≈" + stat.DistinctCount.Value.ToString(CultureInfo.InvariantCulture)
+                    : "<br>唯一" + stat.DistinctCount.Value.ToString(CultureInfo.InvariantCulture);
+            }
             string semantic = !string.IsNullOrEmpty(stat.SemanticType) ? EscapeMd(stat.SemanticType) : "—";
             string defaultVal = stat.DefaultValueRepresentation ?? "—";
             if (stat.NullAppeared && stat.DefaultValueRepresentation == null)
                 defaultVal = "null";
             string types = string.Join("<br>", stat.TypeCounts.Select(t => $"{EscapeMd(t.Key)}({t.Value})"));
             if (string.IsNullOrEmpty(types)) types = "—";
-            string numeric = stat.MinNumber.HasValue && stat.MaxNumber.HasValue
-                ? $"{stat.MinNumber:G4} ~ {stat.MaxNumber:G4}<br>均值 {stat.AvgNumber:G4}"
-                : "—";
-            string length = stat.MinLength.HasValue && stat.MaxLength.HasValue
-                ? $"{stat.MinLength} ~ {stat.MaxLength} 字符"
-                : "—";
+            string numeric = "—";
+            if (stat.MinNumber.HasValue && stat.MaxNumber.HasValue)
+            {
+                numeric = $"{stat.MinNumber:G4} ~ {stat.MaxNumber:G4}<br>均值 {stat.AvgNumber:G4}";
+                if (stat.StdDevNumber.HasValue)
+                {
+                    numeric += $" σ {stat.StdDevNumber:G3}";
+                }
+
+                if (stat.FormatQuantiles() is { } quantiles)
+                {
+                    numeric += $"<br>{EscapeMd(quantiles)}";
+                }
+
+                if (stat.Histogram is { Count: > 0 })
+                {
+                    numeric += "<br>" + EscapeMd(string.Join(" ", stat.Histogram.Select(b => $"{b}×{b.Count}")));
+                }
+            }
+            string length = "—";
+            if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
+            {
+                length = $"{stat.MinLength} ~ {stat.MaxLength} 字符";
+                if (stat.AvgLength.HasValue)
+                {
+                    length += $"<br>平均 {stat.AvgLength:G3}";
+                }
+            }
             string transform = stat.TransformType != null
                 ? (stat.TransformFailureCount > 0
                     ? $"{EscapeMd(stat.TransformType)} (失败 {stat.TransformFailureCount})"

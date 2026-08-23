@@ -80,11 +80,35 @@ public static class ConsoleReporter
             // 数值极值与长度指标
             if (stat.MinNumber.HasValue && stat.MaxNumber.HasValue)
             {
-                AnsiConsole.MarkupLine($"  数值范围: [magenta]{stat.MinNumber:G5}[/] ~ [magenta]{stat.MaxNumber:G5}[/] (均值: [magenta]{stat.AvgNumber:G5}[/])");
+                string stdDevInfo = stat.StdDevNumber.HasValue ? $", 标准差: [magenta]{stat.StdDevNumber:G5}[/]" : "";
+                AnsiConsole.MarkupLine($"  数值范围: [magenta]{stat.MinNumber:G5}[/] ~ [magenta]{stat.MaxNumber:G5}[/] (均值: [magenta]{stat.AvgNumber:G5}[/]{stdDevInfo})");
+
+                if (stat.FormatQuantiles() is { } quantiles)
+                {
+                    AnsiConsole.MarkupLine($"  分位数: [cyan]{Markup.Escape(quantiles)}[/]");
+                }
+
+                if (stat.Histogram is { Count: > 0 })
+                {
+                    // 直方图按计数降序取前几桶，避免窄屏溢出
+                    var topBuckets = stat.Histogram
+                        .OrderByDescending(b => b.Count)
+                        .Take(6)
+                        .OrderBy(b => b.From);
+                    string histogram = string.Join("  ", topBuckets.Select(b => $"{b}×{b.Count}"));
+                    AnsiConsole.MarkupLine($"  直方图: [grey]{Markup.Escape(histogram)}[/]");
+                }
             }
             if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
             {
-                AnsiConsole.MarkupLine($"  文本长度: [grey]{stat.MinLength}[/] ~ [grey]{stat.MaxLength}[/] 字符");
+                string avgLenInfo = stat.AvgLength.HasValue ? $" (平均: [grey]{stat.AvgLength:G4}[/])" : "";
+                AnsiConsole.MarkupLine($"  文本长度: [grey]{stat.MinLength}[/] ~ [grey]{stat.MaxLength}[/] 字符{avgLenInfo}");
+            }
+
+            if (stat.DistinctCount.HasValue)
+            {
+                string distinctNote = stat.DistinctApproximate ? " (HyperLogLog 近似)" : "";
+                AnsiConsole.MarkupLine($"  唯一值: [teal]{stat.DistinctCount}[/][grey]{distinctNote}[/]");
             }
 
             // 枚举违规值

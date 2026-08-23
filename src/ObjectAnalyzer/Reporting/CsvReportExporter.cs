@@ -61,7 +61,7 @@ public static class CsvReportExporter
         // ── 字段详情 ──
         // Coverage 输出 0.0~1.0 的机器可读小数，方便 CI/表格直接做数值计算
         writer.WriteLine("# FieldDetails");
-        writer.WriteLine("FieldName,Count,Coverage,SemanticType,PrimaryType,DefaultValue,NullAppeared,UniqueValues,Truncated,TypeCounts,MinNumber,MaxNumber,AvgNumber,SumNumber,MinLength,MaxLength,TransformType,TransformFailures,EnumViolations,TopValues");
+        writer.WriteLine("FieldName,Count,Coverage,SemanticType,PrimaryType,DefaultValue,NullAppeared,UniqueValues,DistinctApproximate,Truncated,TypeCounts,MinNumber,MaxNumber,AvgNumber,SumNumber,StdDevNumber,MedianNumber,P90Number,P95Number,P99Number,Histogram,MinLength,MaxLength,AvgLength,TransformType,TransformFailures,EnumViolations,TopValues");
 
         foreach (var stat in result.FieldStatistics)
         {
@@ -69,15 +69,26 @@ public static class CsvReportExporter
             string semantic = CsvField(stat.SemanticType ?? "");
             string defaultVal = stat.DefaultValueRepresentation ?? "";
             string nullAppeared = stat.NullAppeared ? "true" : "false";
-            string unique = stat.ValueCounts.Count.ToString(CultureInfo.InvariantCulture);
+            // UniqueValues：优先真实 distinct 计数（截断时为 HyperLogLog 近似），退化为跟踪的唯一值数
+            string unique = (stat.DistinctCount ?? stat.ValueCounts.Count).ToString(CultureInfo.InvariantCulture);
+            string distinctApproximate = stat.DistinctApproximate ? "true" : "false";
             string truncated = stat.ValueCountsTruncated ? "true" : "false";
             string typeCounts = CsvField(string.Join(";", stat.TypeCounts.Select(t => $"{t.Key}={t.Value}")));
             string minNum = stat.MinNumber?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
             string maxNum = stat.MaxNumber?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
             string avgNum = stat.AvgNumber?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
             string sumNum = stat.SumNumber?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
+            string stdDev = stat.StdDevNumber?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
+            string median = stat.MedianNumber?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
+            string p90 = stat.P90Number?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
+            string p95 = stat.P95Number?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
+            string p99 = stat.P99Number?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
+            string histogram = stat.Histogram is { Count: > 0 }
+                ? CsvField(string.Join(";", stat.Histogram.Select(b => $"{b.ToString()}:{b.Count.ToString(CultureInfo.InvariantCulture)}")))
+                : "";
             string minLen = stat.MinLength?.ToString(CultureInfo.InvariantCulture) ?? "";
             string maxLen = stat.MaxLength?.ToString(CultureInfo.InvariantCulture) ?? "";
+            string avgLen = stat.AvgLength?.ToString("G4", CultureInfo.InvariantCulture) ?? "";
             string transformType = stat.TransformType ?? "";
             string transformFailures = stat.TransformFailureCount.ToString(CultureInfo.InvariantCulture);
             string violations = CsvField(string.Join(";", stat.EnumViolations));
@@ -93,14 +104,22 @@ public static class CsvReportExporter
             writer.Write(CsvField(defaultVal)); writer.Write(',');
             writer.Write(nullAppeared); writer.Write(',');
             writer.Write(unique); writer.Write(',');
+            writer.Write(distinctApproximate); writer.Write(',');
             writer.Write(truncated); writer.Write(',');
             writer.Write(typeCounts); writer.Write(',');
             writer.Write(minNum); writer.Write(',');
             writer.Write(maxNum); writer.Write(',');
             writer.Write(avgNum); writer.Write(',');
             writer.Write(sumNum); writer.Write(',');
+            writer.Write(stdDev); writer.Write(',');
+            writer.Write(median); writer.Write(',');
+            writer.Write(p90); writer.Write(',');
+            writer.Write(p95); writer.Write(',');
+            writer.Write(p99); writer.Write(',');
+            writer.Write(histogram); writer.Write(',');
             writer.Write(minLen); writer.Write(',');
             writer.Write(maxLen); writer.Write(',');
+            writer.Write(avgLen); writer.Write(',');
             writer.Write(CsvField(transformType)); writer.Write(',');
             writer.Write(transformFailures); writer.Write(',');
             writer.Write(violations); writer.Write(',');

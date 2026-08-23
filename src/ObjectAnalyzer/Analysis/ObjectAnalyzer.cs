@@ -65,11 +65,123 @@ public static partial class ObjectAnalyzer
         public double SumNumber { get; set; }
         public int NumberCount { get; set; }
 
+        /// <summary>Welford 在线均值（流式，数值稳定）。</summary>
+        public double NumMean { get; private set; }
+
+        /// <summary>Welford 累积平方偏差 Σ(x-mean)²，用于样本标准差。</summary>
+        public double NumM2 { get; private set; }
+
         public int MinLength { get; set; } = int.MaxValue;
         public int MaxLength { get; set; } = int.MinValue;
+
+        /// <summary>字符串长度总和（配合 StringCount 得平均长度）。</summary>
+        public long LengthSum { get; private set; }
+
         public int StringCount { get; set; }
 
+        /// <summary>零值出现次数（对数直方图中零单独成桶）。</summary>
+        public long ZeroCount { get; private set; }
+
         public Dictionary<string, int> SemanticCounts { get; } = new();
+
+        // 深度剖析草图（懒创建：仅该字段真的出现对应类型值时分配）
+        public MergeableQuantileSketch? Quantiles { get; private set; }
+        public Dictionary<int, long>? Histogram { get; private set; } // 非零数值的 log2 桶 → 计数
+        public HyperLogLog? DistinctHll { get; private set; }
+
+        public void AddNumber(double value)
+        {
+            if (!double.IsFinite(value))
+                return;
+
+            if (value < MinNumber) MinNumber = value;
+            if (value > MaxNumber) MaxNumber = value;
+            SumNumber += value;
+            NumberCount++;
+
+            // Welford-Knuth 在线更新
+            double delta = value - NumMean;
+            NumMean += delta / NumberCount;
+            NumM2 += delta * (value - NumMean);
+
+            // 分位数草图与直方图
+            (Quantiles ??= new MergeableQuantileSketch()).Add(value);
+            if (value == 0)
+            {
+                ZeroCount++;
+            }
+            else
+            {
+                int bucket = NumericSketch.LogBucket(value);
+                var hist = Histogram ??= new Dictionary<int, long>();
+                hist[bucket] = hist.GetValueOrDefault(bucket) + 1;
+            }
+        }
+
+        public void AddLength(int length)
+        {
+            LengthSum += length;
+        }
+
+        public void AddDistinct(string formattedValue)
+        {
+            (DistinctHll ??= new HyperLogLog()).Add(formattedValue);
+        }
+
+        /// <summary>线程局部指标合并（Welford 并行合并公式 + 草图逐项合并）。</summary>
+        public void MergeFrom(InternalFieldMetrics other)
+        {
+            if (other.MinNumber < MinNumber) MinNumber = other.MinNumber;
+            if (other.MaxNumber > MaxNumber) MaxNumber = other.MaxNumber;
+
+            if (other.NumberCount > 0)
+            {
+                int newCount = NumberCount + other.NumberCount;
+                double deltaMean = other.NumMean - NumMean;
+                if (NumberCount > 0)
+                {
+                    NumM2 += other.NumM2 + deltaMean * deltaMean * NumberCount * other.NumberCount / newCount;
+                    NumMean += deltaMean * other.NumberCount / newCount;
+                }
+                else
+                {
+                    NumM2 += other.NumM2;
+                    NumMean = other.NumMean;
+                }
+                SumNumber += other.SumNumber;
+                NumberCount = newCount;
+            }
+
+            if (other.MinLength < MinLength) MinLength = other.MinLength;
+            if (other.MaxLength > MaxLength) MaxLength = other.MaxLength;
+            LengthSum += other.LengthSum;
+            StringCount += other.StringCount;
+            ZeroCount += other.ZeroCount;
+
+            foreach (var sc in other.SemanticCounts)
+            {
+                SemanticCounts[sc.Key] = SemanticCounts.GetValueOrDefault(sc.Key) + sc.Value;
+            }
+
+            if (other.Quantiles != null)
+            {
+                (Quantiles ??= new MergeableQuantileSketch()).Merge(other.Quantiles);
+            }
+
+            if (other.Histogram != null)
+            {
+                var hist = Histogram ??= new Dictionary<int, long>();
+                foreach (var kv in other.Histogram)
+                {
+                    hist[kv.Key] = hist.GetValueOrDefault(kv.Key) + kv.Value;
+                }
+            }
+
+            if (other.DistinctHll != null)
+            {
+                (DistinctHll ??= new HyperLogLog()).Merge(other.DistinctHll);
+            }
+        }
     }
 
     private sealed class ThreadLocalState
@@ -146,25 +258,7 @@ public static partial class ObjectAnalyzer
                         globalMetricsMap[fName] = globalMetrics;
                     }
 
-                    if (localMetrics.NumberCount > 0)
-                    {
-                        globalMetrics.MinNumber = Math.Min(globalMetrics.MinNumber, localMetrics.MinNumber);
-                        globalMetrics.MaxNumber = Math.Max(globalMetrics.MaxNumber, localMetrics.MaxNumber);
-                        globalMetrics.SumNumber += localMetrics.SumNumber;
-                        globalMetrics.NumberCount += localMetrics.NumberCount;
-                    }
-
-                    if (localMetrics.StringCount > 0)
-                    {
-                        globalMetrics.MinLength = Math.Min(globalMetrics.MinLength, localMetrics.MinLength);
-                        globalMetrics.MaxLength = Math.Max(globalMetrics.MaxLength, localMetrics.MaxLength);
-                        globalMetrics.StringCount += localMetrics.StringCount;
-
-                        foreach (var sc in localMetrics.SemanticCounts)
-                        {
-                            globalMetrics.SemanticCounts[sc.Key] = globalMetrics.SemanticCounts.GetValueOrDefault(sc.Key) + sc.Value;
-                        }
-                    }
+                    globalMetrics.MergeFrom(localMetrics);
                 }
             }
         }
@@ -307,12 +401,34 @@ public static partial class ObjectAnalyzer
                     stat.MaxNumber = metrics.MaxNumber;
                     stat.SumNumber = metrics.SumNumber;
                     stat.AvgNumber = metrics.SumNumber / metrics.NumberCount;
+
+                    // Welford 样本标准差（n-1 分母）
+                    if (metrics.NumberCount >= 2)
+                    {
+                        stat.StdDevNumber = Math.Sqrt(metrics.NumM2 / (metrics.NumberCount - 1));
+                    }
+
+                    // 近似分位数（可合并 t-digest 草图）
+                    if (metrics.Quantiles != null && metrics.Quantiles.TotalWeight > 0)
+                    {
+                        stat.MedianNumber = metrics.Quantiles.Quantile(0.50);
+                        stat.P90Number = metrics.Quantiles.Quantile(0.90);
+                        stat.P95Number = metrics.Quantiles.Quantile(0.95);
+                        stat.P99Number = metrics.Quantiles.Quantile(0.99);
+                    }
+
+                    // 对数定宽直方图：负数桶升序 → 零桶 → 正数桶升序
+                    if (metrics.Histogram != null || metrics.ZeroCount > 0)
+                    {
+                        stat.Histogram = BuildHistogram(metrics);
+                    }
                 }
 
                 if (metrics.StringCount > 0)
                 {
                     stat.MinLength = metrics.MinLength;
                     stat.MaxLength = metrics.MaxLength;
+                    stat.AvgLength = (double)metrics.LengthSum / metrics.StringCount;
 
                     // 当某语义匹配数量达到字符串总数的 80% 以上时，标注其 SemanticType
                     var topSemantic = metrics.SemanticCounts
@@ -323,6 +439,18 @@ public static partial class ObjectAnalyzer
                     {
                         stat.SemanticType = topSemantic.Key;
                     }
+                }
+
+                // distinct 值计数：未截断时用精确值；截断时退化为 HyperLogLog 近似估计
+                long exactDistinct = stat.ValueCounts.Keys.Count(k => k != "[Other values]");
+                if (!stat.ValueCountsTruncated)
+                {
+                    stat.DistinctCount = exactDistinct;
+                }
+                else if (metrics.DistinctHll != null && metrics.DistinctHll.Estimate() > 0)
+                {
+                    stat.DistinctCount = metrics.DistinctHll.Estimate();
+                    stat.DistinctApproximate = true;
                 }
             }
 
@@ -387,17 +515,57 @@ public static partial class ObjectAnalyzer
         };
     }
 
+    /// <summary>
+    /// 构建对数定宽直方图：桶边界为 2 的幂，负数桶升序、零值单独成桶（From=To=0）、正数桶升序。
+    /// </summary>
+    private static List<NumericHistogramBucket> BuildHistogram(InternalFieldMetrics metrics)
+    {
+        var buckets = new List<NumericHistogramBucket>();
+
+        if (metrics.Histogram != null)
+        {
+            foreach (var kv in metrics.Histogram.Where(h => h.Key < 0).OrderBy(h => h.Key))
+            {
+                // 负数桶 k=-e-1 表示 (-2^(e+1), -2^e]
+                double to = -Math.Pow(2, -kv.Key - 1);
+                double from = -Math.Pow(2, -kv.Key);
+                buckets.Add(new NumericHistogramBucket { From = from, To = to, Count = kv.Value });
+            }
+        }
+
+        if (metrics.ZeroCount > 0)
+        {
+            buckets.Add(new NumericHistogramBucket { From = 0, To = 0, Count = metrics.ZeroCount });
+        }
+
+        if (metrics.Histogram != null)
+        {
+            foreach (var kv in metrics.Histogram.Where(h => h.Key >= 0).OrderBy(h => h.Key))
+            {
+                // 正数桶 k 表示 [2^k, 2^(k+1))
+                buckets.Add(new NumericHistogramBucket
+                {
+                    From = Math.Pow(2, kv.Key),
+                    To = Math.Pow(2, kv.Key + 1),
+                    Count = kv.Value
+                });
+            }
+        }
+
+        return buckets;
+    }
+
     private static void RecordValueMetrics(object? value, string valStr, string fieldName, InternalFieldMetrics metrics)
     {
         if (value == null) return;
 
-        // 1. 数值统计
+        // 0. distinct 值 HyperLogLog（所有非空标量值，与 ValueCounts 同域）
+        metrics.AddDistinct(valStr);
+
+        // 1. 数值统计（Welford 均值/M2 + 分位数草图 + 对数直方图）
         if (TryGetDoubleValue(value, out double dVal))
         {
-            metrics.MinNumber = Math.Min(metrics.MinNumber, dVal);
-            metrics.MaxNumber = Math.Max(metrics.MaxNumber, dVal);
-            metrics.SumNumber += dVal;
-            metrics.NumberCount++;
+            metrics.AddNumber(dVal);
         }
 
         // 2. 字符串度量与语义测试
@@ -406,6 +574,7 @@ public static partial class ObjectAnalyzer
             metrics.MinLength = Math.Min(metrics.MinLength, strVal.Length);
             metrics.MaxLength = Math.Max(metrics.MaxLength, strVal.Length);
             metrics.StringCount++;
+            metrics.AddLength(strVal.Length);
 
             if (RegexUuid.IsMatch(strVal))
                 metrics.SemanticCounts["UUID"] = metrics.SemanticCounts.GetValueOrDefault("UUID") + 1;

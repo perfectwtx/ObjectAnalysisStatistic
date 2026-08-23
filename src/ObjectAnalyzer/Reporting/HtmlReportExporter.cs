@@ -144,12 +144,24 @@ public static class HtmlReportExporter
                 metricInfo += $"<div>数值: {stat.MinNumber:G4} ~ {stat.MaxNumber:G4}</div>";
                 if (stat.AvgNumber.HasValue)
                     metricInfo += $"<div>均值: {stat.AvgNumber:G4}</div>";
+                if (stat.StdDevNumber.HasValue)
+                    metricInfo += $"<div>标准差: {stat.StdDevNumber:G4}</div>";
                 if (stat.SumNumber.HasValue)
                     metricInfo += $"<div>总和: {stat.SumNumber:G4}</div>";
+                if (stat.FormatQuantiles() is { } quantiles)
+                    metricInfo += $"<div>{Escape(quantiles)}</div>";
+                if (stat.Histogram is { Count: > 0 })
+                    metricInfo += $"<div>直方图: {Escape(string.Join("  ", stat.Histogram.Select(b => $"{b}×{b.Count}")))}</div>";
             }
             if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
             {
-                metricInfo += $"<div>长度: {stat.MinLength} ~ {stat.MaxLength} 字符</div>";
+                string avgLen = stat.AvgLength.HasValue ? $"，平均 {stat.AvgLength:G3}" : "";
+                metricInfo += $"<div>长度: {stat.MinLength} ~ {stat.MaxLength} 字符{avgLen}</div>";
+            }
+            if (stat.DistinctCount.HasValue)
+            {
+                string approxMark = stat.DistinctApproximate ? "≈" : "";
+                metricInfo += $"<div>唯一值: {approxMark}{stat.DistinctCount.Value.ToString(CultureInfo.InvariantCulture)}</div>";
             }
             if (string.IsNullOrEmpty(metricInfo)) metricInfo = "<span class=\"na\">—</span>";
 
