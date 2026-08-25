@@ -50,9 +50,11 @@ public sealed class PiiReport
             if (mask == null)
                 continue;
 
+            // 按出现次数倒序取样本；次数相同时按字典序升序，保证多线程合并后的非确定性顺序下也能稳定复现
             string? sample = stat.ValueCounts
-                .OrderByDescending(kv => kv.Value)
                 .Where(kv => kv.Key != "[Other values]")
+                .OrderByDescending(kv => kv.Value)
+                .ThenBy(kv => kv.Key, StringComparer.Ordinal)
                 .Select(kv => kv.Key)
                 .FirstOrDefault();
 

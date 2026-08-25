@@ -9,6 +9,8 @@
 - 字段统计：每个字段的出现频次、覆盖率、主导数据类型
 - 值频率分析：展示每个字段中唯一值的出现次数与占比
 - 数值/文本深度剖析：数值列输出均值、样本标准差（Welford 流式算法）、近似分位数 P50/P90/P95/P99（可合并 t-digest 草图）与 2 的幂对数直方图；文本列输出平均长度；所有标量字段提供 distinct 值计数（唯一值超阈值时自动切换 HyperLogLog 近似，内存有界）
+- 日期/时间深度剖析：自动识别 DateTime / DateTimeOffset 字符串（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），输出最小/最大时间戳、时间桶直方图（按数据跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存
+- 异常值检测（IQR 1.5×）：数值列自动统计离群点数量与占比，列出 top-N 离群值所在字段；规则文件 `fields.<name>.maxOutlierRatio` 按字段设置阈值；`--fail-on-outlier-ratio` 提供 CI 异常值门禁（退出码 5）
 - 默认值推断：自动推断字段可能的默认值 (`null` / `0` / `false`)
 - 枚举约束校验：通过规则文件声明合法枚举值，自动校验并报告违规值
 - 重复对象检测：识别并统计完全相同的重复对象（128 位非密码学哈希去重，快于 MD5）
@@ -17,6 +19,7 @@
 - 质量违规独立导出：通过 `--violations` 输出结构化违规清单（枚举/范围/模式/必填/唯一/null 率 + 数据集期望），便于 CI 断言
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
 - Schema 代码导出：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义（支持 C# Record, TypeScript, JSON Schema, OpenAPI 3.0 YAML/JSON, gRPC Protobuf 3 `.proto`, 以及 SQL postgres/mysql/sqlite/sqlserver 方言）
+- Schema 快照 + Diff：新增 `--export-schema-snapshot <FILE>` 导出 canonical schema JSON（字段名/类型/coverage/nullable/语义/范围/枚举/异常值），独立于代码生成器；新增 `--diff-schema <BASELINE>` 与历史快照对比，识别新增/删除/类型变化/coverage 变化等；`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6），与 `--fail-on-violations` 对称；可作为下游「数据漂移对比」的字段级基础
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
@@ -88,6 +91,11 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--sample-reservoir <N>` | — | 蓄水池随机抽样：均匀随机抽取最多 N 个对象分析，快速预估 Schema（如 `--sample-reservoir 50000`）；与 `--sample-step` 互斥 | `0`（关闭） |
 | `--sample-step <K>` | — | 等距系统抽样：每 K 条记录取 1 条分析，快速预估 Schema（如 `--sample-step 100`）；与 `--sample-reservoir` 互斥 | `0`（关闭） |
 | `--export-schema <FORMAT>[:<FILE>]` | `-s` | 将推断出的数据结构导出为代码定义：`csharp`、`typescript`、`json-schema`、`openapi`、`openapi-yaml`、`proto`，或 SQL `sql`（默认 PostgreSQL）/`postgres`/`mysql`/`sqlite`/`sqlserver`；可带输出路径，如 `-s "csharp:out.cs"`（缺省自动推导） | 无 |
+| `--export-schema-snapshot <FILE>` | — | 导出 canonical Schema 快照 JSON（字段名/主导类型/语义/coverage/nullable/范围/枚举/异常值），独立于 `--export-schema` 的代码生成器；作为 schema 演进的基线 | 无 |
+| `--diff-schema <BASELINE>` | — | 与历史 Schema 快照（由 `--export-schema-snapshot` 产生）做 diff，输出新增/删除/变更字段；可与 `--schema-diff-report` 配合导出结构化结果 | 无 |
+| `--schema-diff-report <FILE>` | — | Schema diff 结果导出到 JSON 文件，便于下游消费（CI 仪表盘 / 评审报告）；未指定时仅在控制台与主报告展示 | 无 |
+| `--allow-breaking-schema-changes` | — | Schema 演进门禁：`true`（默认）= 含破坏性变更不触发非零退出码；`false` = 含破坏性变更时以退出码 `6` 结束，与 `--fail-on-violations` / `--fail-on-outlier-ratio` 对称 | `true` |
+| `--fail-on-outlier-ratio <RATIO>` | — | CI 异常值门禁：任一数值字段的 IQR 异常值比例（0.0~1.0）超过该阈值时以退出码 `5` 结束；规则文件 `fields.<name>.maxOutlierRatio` 可按字段设置更细粒度阈值 | 无 |
 | `--connection <CONN_STR>` | — | 数据库直连：输入连接字符串（如 `"Host=localhost;Database=mydb"`），配合 `--query` 流式读取查询结果，无需先导出为文件 | 无 |
 | `--query <SQL>` | — | 数据库直连时执行的 SQL 查询（如 `"SELECT * FROM users"`） | 无 |
 | `--provider <DB>` | — | 数据库类型：`postgres`、`mysql`、`sqlite`、`sqlserver`；缺省按连接字符串关键字自动推断（建议显式指定） | 自动推断 |
@@ -97,7 +105,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
-> 提示：使用 `-h` 或 `--help` 查看完整帮助。退出码：`0` 成功，`1` 输入/解析错误，`2` 已取消，`3` 质量门禁未通过（`--fail-on-violations`），`4` 合规门禁未通过（`--fail-on-pii-level`）。
+> 提示：使用 `-h` 或 `--help` 查看完整帮助。退出码：`0` 成功，`1` 输入/解析错误，`2` 已取消，`3` 质量门禁未通过（`--fail-on-violations`），`4` 合规门禁未通过（`--fail-on-pii-level`），`5` 异常值门禁未通过（`--fail-on-outlier-ratio`），`6` Schema 破坏性变更（`--allow-breaking-schema-changes false` + `--diff-schema`）。
 
 ### 示例
 
@@ -290,6 +298,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 | `required` | bool | 值为 null 或整行缺失该字段时违规 |
 | `unique` | bool | 唯一性检查：未截断时精确统计重复值，截断时基于 HyperLogLog 近似并标记 |
 | `nullRateMax` | number | null 率上限（0~1），分子含显式 null 与整行缺失 |
+| `maxOutlierRatio` | number | 异常值比例上限（0~1），超过时计为违规；与 `--fail-on-outlier-ratio` 门禁（退出码 5）联动 |
 
 数据集级期望写在顶层 `expectations`：
 
@@ -402,6 +411,56 @@ dotnet run --project src/ObjectAnalyzer -- -i data.json --fail-on-pii-level C
 dotnet run --project src/ObjectAnalyzer -- -i data.json --fail-on-pii-level B
 ```
 
+## 高级分析能力（P3）
+
+### 日期/时间深度剖析
+
+DateTime / DateTimeOffset 字符串自动归入独立统计通道（不混入数值或文本），统一按 UTC 入桶：
+
+- **解析支持**：`Z` / `+08:00` / 无时区三种形态，无时区值按 UTC 解释
+- **输出指标**：`DateTimeCount` / `MinDateTime` / `MaxDateTime` + 时间桶直方图（按数据跨度自适应切档：秒/分/时/天/周/月/年）
+- **流式内存**：热路径 O(1) 内存（1 分钟粒度收集，后处理时合并/切档）
+- 报告（JSON / HTML / Markdown / 控制台）新增「时间序列」小节
+
+```bash
+# 含 ISO-8601 时间戳的 JSONL 自动获得时间序列
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_semantic.json -o report.html
+```
+
+### 异常值检测（IQR 1.5×）
+
+数值列复用现有 t-digest 分位数草图计算 P25 / P75 → IQR，识别 1.5×IQR 区间之外的离群点（基于对数直方图近似归类，流式友好）：
+
+- **输出指标**：`OutlierCount` / `OutlierRatio` / `OutlierBounds`（区间文本，如 `[1.5, 95.0]`）
+- **小样本保护**：流式样本数 < 4 时不计算，避免抖动
+- **质量检查集成**：`fields.<name>.maxOutlierRatio` 字段级阈值；`--fail-on-outlier-ratio <RATIO>` 全局门禁（退出码 5）
+
+```bash
+# 示例数据集中混入 IQR 离群点
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_outliers.json -o report.html
+
+# 异常值比例超过 5% 阻断（CI 门禁）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_outliers.json -r samples/test_outlier_rules.json --fail-on-outlier-ratio 0.05
+```
+
+### Schema 快照 + Diff
+
+将当前数据集的 Schema 状态导出为 canonical JSON，作为后续演进的"基线"：
+
+```bash
+# 1. 首次跑：生成 schema 快照 v1
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v1.json --export-schema-snapshot schema_v1.json
+
+# 2. 数据集 v2 引入新字段、删除旧字段、改类型 —— 导出快照并与 v1 对比
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v2.json --export-schema-snapshot schema_v2.json --diff-schema schema_v1.json --schema-diff-report diff_v1_v2.json
+
+# 3. CI 严格模式：禁止破坏性变更（删除字段、类型变化、coverage 大幅下降、nullable 收紧）
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v3.json --diff-schema schema_v2.json --allow-breaking-schema-changes false
+# 含破坏性变更 → 退出码 6
+```
+
+`SchemaDiff` 区分**破坏性变更**（字段删除、主导类型变化、nullable 收紧 true→false、coverage 下降 ≥ 0.1）与**非破坏性变更**（coverage 小幅波动、min/max 变化、异常值比例变化等）。`--allow-breaking-schema-changes false` 触发 CI 门禁（退出码 6），与 `--fail-on-violations` / `--fail-on-outlier-ratio` 对称。`--schema-diff-report` 导出结构化 JSON 供仪表盘/评审报告消费。
+
 ## Web 界面
 
 Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换、浅色/深色主题切换。
@@ -499,6 +558,11 @@ ObjectAnalysisStatistic/
 │   ├── test_data_filter.json         # 字段过滤示例数据
 │   ├── test_pii_rules.json           # 自定义 PII 规则示例 (业务敏感字段 + 打码格式)
 │   ├── test_data_semantic.json       # 语义推断示例数据 (Email/UUID/IPv4/URL/DateTime)
+│   ├── test_data_outliers.json       # 异常值检测示例数据 (含 IQR 离群点)
+│   ├── test_outlier_rules.json       # 异常值规则示例 (maxOutlierRatio 阈值)
+│   ├── test_schema_v1.json           # Schema 快照示例 v1 (作为 diff 基线)
+│   ├── test_schema_v2.json           # Schema 快照示例 v2 (增/改/删字段)
+│   ├── test_schema_v3.json           # Schema 快照示例 v3 (含新增/类型变化)
 │   ├── test_all_in_one.json          # 单文件整合示例（选择+过滤+枚举+转换+展开）
 │   └── test_data_all_in_one.json     # 整合示例数据
 │   （注：samples/report* 为生成物，已被 .gitignore 忽略）
@@ -513,9 +577,13 @@ ObjectAnalysisStatistic/
 │   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
 │   │   │   ├── AnalysisResult.cs     # 分析结果数据模型
 │   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)
-│   │   │   ├── QualityChecks.cs      # 质量检查 v2（模式/范围/必填/唯一/null率 + 数据集期望）
-│   │   │   ├── PiiDetector.cs        # PII 分类与打码规则
-│   │   │   └── DuplicateObjectStatistic.cs
+│   │   │   ├── QualityChecks.cs      # 质量检查 v2（模式/范围/必填/唯一/null率 + 数据集期望 + 异常值比例）
+│   │   ├── PiiDetector.cs        # PII 分类与打码规则
+│   │   ├── DuplicateObjectStatistic.cs
+│   │   ├── SchemaSnapshot.cs     # Schema 快照数据模型 (字段名/类型/coverage/范围/枚举/异常值)
+│   │   ├── SchemaSnapshotExporter.cs # Schema 快照构建与导出
+│   │   ├── SchemaDiff.cs         # Schema diff 数据模型 (新增/删除/变更/破坏性变更)
+│   │   └── SchemaDiffer.cs       # Schema 快照比对 (CI 演进门禁)
 │   │   ├── Parsing/                  # 多格式解析器
 │   │   │   ├── FileParsers.cs        # IFileParser 注册表模式
 │   │   │   ├── DatabaseReader.cs     # 数据库直连流式读取 (--connection/--query)

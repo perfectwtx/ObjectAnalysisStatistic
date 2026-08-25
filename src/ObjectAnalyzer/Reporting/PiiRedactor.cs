@@ -82,7 +82,8 @@ public static class PiiRedactor
             FilterExpression = result.FilterExpression,
             DuplicateObjects = maskedDuplicates,
             FieldStatistics = maskedStats,
-            QualityViolations = maskedQuality
+            QualityViolations = maskedQuality,
+            SchemaDiff = result.SchemaDiff
         };
     }
 

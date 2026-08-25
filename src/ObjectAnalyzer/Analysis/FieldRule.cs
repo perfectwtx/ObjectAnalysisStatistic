@@ -66,11 +66,16 @@ public class FieldRule
     [JsonPropertyName("nullRateMax")]
     public double? NullRateMax { get; set; }
 
+    /// <summary>异常值比例上限（0.0~1.0）：IQR 1.5× 判定为异常值的样本占比超过该值时违规（基于对数直方图近似归类）。</summary>
+    [JsonPropertyName("maxOutlierRatio")]
+    public double? MaxOutlierRatio { get; set; }
+
     /// <summary>是否配置了任一质量检查维度（用于跳过无关开销）。</summary>
     [JsonIgnore]
     public bool HasQualityChecks =>
         MinValue.HasValue || MaxValue.HasValue || Required == true
-        || !string.IsNullOrEmpty(Pattern) || Unique == true || NullRateMax.HasValue;
+        || !string.IsNullOrEmpty(Pattern) || Unique == true || NullRateMax.HasValue
+        || MaxOutlierRatio.HasValue;
 }
 
 /// <summary>

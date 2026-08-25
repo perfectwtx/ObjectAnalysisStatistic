@@ -18,6 +18,7 @@ public static class QualityCheckTypes
     public const string NullRate = "nullRate";
     public const string RowCount = "rowCount";
     public const string DuplicateRate = "duplicateRate";
+    public const string OutlierRatio = "outlierRatio";
 
     /// <summary>检查类型的中文标签（控制台/报告展示用）。</summary>
     public static string Label(string check) => check switch
@@ -30,6 +31,7 @@ public static class QualityCheckTypes
         NullRate => "null 率超限",
         RowCount => "行数不足",
         DuplicateRate => "重复率超限",
+        OutlierRatio => "异常值超限",
         _ => check
     };
 }
@@ -120,6 +122,11 @@ public static class QualityChecks
             if (rule.Unique == true)
             {
                 EvaluateUnique(stat, violations);
+            }
+
+            if (rule.MaxOutlierRatio.HasValue)
+            {
+                EvaluateOutlier(stat, rule.MaxOutlierRatio.Value, violations);
             }
         }
 
@@ -306,6 +313,24 @@ public static class QualityChecks
                 ? $"约 {duplicates} 个重复非空值（唯一值已截断，HyperLogLog 近似）"
                 : $"{duplicates} 个重复非空值",
             Samples = samples
+        });
+    }
+
+    private static void EvaluateOutlier(FieldStatistic stat, double maxRatio, List<FieldViolation> violations)
+    {
+        if (!stat.OutlierCount.HasValue || !stat.OutlierRatio.HasValue)
+            return;
+        if (stat.OutlierRatio.Value <= maxRatio)
+            return;
+
+        violations.Add(new FieldViolation
+        {
+            Field = stat.FieldName,
+            Check = QualityCheckTypes.OutlierRatio,
+            Count = stat.OutlierCount.Value,
+            Approximate = true, // 基于对数直方图近似归类
+            Message = string.Create(CultureInfo.InvariantCulture,
+                $"异常值比例 {stat.OutlierRatio.Value:P1} 超过上限 {maxRatio:P1}（{stat.OutlierCount.Value} 个样本 / 区间 {stat.OutlierBounds}，{stat.OutlierMethod} 近似）")
         });
     }
 

@@ -106,6 +106,27 @@ var failOnPiiLevelOption = new Option<string?>(
     description: "CI 合规门禁：合规等级达到或劣于指定级别时以非零退出码结束（C=仅 C 级失败；B=发现任何敏感字段即失败）。与 --fail-on-violations 对称。");
 failOnPiiLevelOption.AddCompletions("A", "B", "C");
 
+var failOnOutlierRatioOption = new Option<double?>(
+    name: "--fail-on-outlier-ratio",
+    description: "CI 异常值门禁：任一数值字段的 IQR 异常值比例（0.0~1.0）超过该阈值时以退出码 5 结束。与 --fail-on-violations 对称。规则文件 fields.<name>.maxOutlierRatio 可按字段设置。");
+
+var schemaSnapshotOption = new Option<string?>(
+    name: "--export-schema-snapshot",
+    description: "导出 canonical Schema 快照到指定 JSON 路径（字段名/类型/coverage/nullable/语义/范围/枚举/异常值）。独立于 --export-schema 的代码生成器；与 --diff-schema 配合做 schema 演进对比。");
+
+var diffSchemaOption = new Option<string?>(
+    name: "--diff-schema",
+    description: "与历史 Schema 快照做 diff（指定基线 JSON 文件路径）。输出新增/删除/变更字段，破坏性变更可触发退出码 6。配合 --export-schema-snapshot 形成 CI 演进门禁。");
+
+var schemaDiffReportOption = new Option<string?>(
+    name: "--schema-diff-report",
+    description: "Schema diff 结果导出到指定 JSON 文件（结构化输出，便于下游消费）。未指定时仅在控制台与主报告展示。");
+
+var allowBreakingSchemaChangesOption = new Option<bool>(
+    name: "--allow-breaking-schema-changes",
+    description: "Schema 演进门禁：true（默认）= 允许破坏性变更；false = 含破坏性变更时以退出码 6 结束（与 --fail-on-violations 对称）。",
+    getDefaultValue: () => true);
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -129,6 +150,11 @@ rootCommand.AddOption(providerOption);
 rootCommand.AddOption(piiReportOption);
 rootCommand.AddOption(piiOffOption);
 rootCommand.AddOption(failOnPiiLevelOption);
+rootCommand.AddOption(failOnOutlierRatioOption);
+rootCommand.AddOption(schemaSnapshotOption);
+rootCommand.AddOption(diffSchemaOption);
+rootCommand.AddOption(schemaDiffReportOption);
+rootCommand.AddOption(allowBreakingSchemaChangesOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -155,6 +181,11 @@ rootCommand.SetHandler((InvocationContext context) =>
     var piiReport = parseResult.GetValueForOption(piiReportOption);
     var piiOff = parseResult.GetValueForOption(piiOffOption);
     var failOnPiiLevel = parseResult.GetValueForOption(failOnPiiLevelOption);
+    var failOnOutlierRatio = parseResult.GetValueForOption(failOnOutlierRatioOption);
+    var schemaSnapshotPath = parseResult.GetValueForOption(schemaSnapshotOption);
+    var diffSchemaBaseline = parseResult.GetValueForOption(diffSchemaOption);
+    var schemaDiffReportPath = parseResult.GetValueForOption(schemaDiffReportOption);
+    var allowBreakingSchemaChanges = parseResult.GetValueForOption(allowBreakingSchemaChangesOption);
 
     if (generateTestExcel)
     {
@@ -247,7 +278,12 @@ rootCommand.SetHandler((InvocationContext context) =>
         DbProvider = provider,
         PiiPath = piiReport?.FullName,
         PiiOff = piiOff,
-        FailOnPiiLevel = failOnPiiLevel
+        FailOnPiiLevel = failOnPiiLevel,
+        FailOnOutlierRatio = failOnOutlierRatio,
+        SchemaSnapshotPath = schemaSnapshotPath,
+        DiffSchemaBaseline = diffSchemaBaseline,
+        SchemaDiffReportPath = schemaDiffReportPath,
+        AllowBreakingSchemaChanges = allowBreakingSchemaChanges
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

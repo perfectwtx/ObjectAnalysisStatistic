@@ -1,0 +1,23 @@
+{
+  "diffVersion": "1.0",
+  "generatedAt": "2026-08-25T13:44:26.6737841+00:00",
+  "baselineSource": "E:\\Code\\MyCode\\Items\\ObjectAnalysisStatistic\\samples\\test_schema_v1.json",
+  "currentSource": "E:\\Code\\MyCode\\Items\\ObjectAnalysisStatistic\\samples\\test_schema_v2.json",
+  "hasBreakingChanges": false,
+  "addedFields": [
+    {
+      "path": "country",
+      "primaryType": "String",
+      "nullable": true,
+      "coverage": 1,
+      "typeDistribution": {
+        "Null": 1
+      },
+      "minLength": 2,
+      "maxLength": 2,
+      "distinctCount": 4
+    }
+  ],
+  "removedFields": [],
+  "changedFields": []
+}

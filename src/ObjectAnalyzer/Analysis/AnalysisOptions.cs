@@ -51,4 +51,34 @@ public sealed class AnalysisOptions
     /// C=仅 C 级失败；B=B/C 级失败（发现任何敏感字段即失败）；A=同 B（数据干净时 A 级不触发）。
     /// </summary>
     public string? FailOnPiiLevel { get; set; }
+
+    /// <summary>
+    /// 异常值比例上限（0.0~1.0，--fail-on-outlier-ratio）：任一数值字段的 IQR 异常值比例
+    /// 超过该阈值时以退出码 5 结束。规则文件的 fields.&lt;name&gt;.maxOutlierRatio 可按字段设置。
+    /// </summary>
+    public double? FailOnOutlierRatio { get; set; }
+
+    /// <summary>
+    /// 导出 canonical Schema 快照到指定 JSON 路径（--export-schema-snapshot）。
+    /// 独立于 --export-schema 的代码生成器；作为 schema 演进的基线。
+    /// </summary>
+    public string? SchemaSnapshotPath { get; set; }
+
+    /// <summary>
+    /// 与历史 Schema 快照做 diff 的基线文件路径（--diff-schema）。
+    /// 当前分析完成后会与该基线对比，输出新增/删除/变更字段。
+    /// </summary>
+    public string? DiffSchemaBaseline { get; set; }
+
+    /// <summary>
+    /// Schema diff 结果导出路径（--schema-diff-report）。若指定，结果写入该 JSON 文件；
+    /// 否则只输出到控制台与主报告。
+    /// </summary>
+    public string? SchemaDiffReportPath { get; set; }
+
+    /// <summary>
+    /// CI Schema 演进门禁（--allow-breaking-schema-changes）：
+    /// true（默认）= 破坏性变更不触发非零退出码；false = 含破坏性变更时以退出码 6 结束。
+    /// </summary>
+    public bool AllowBreakingSchemaChanges { get; set; } = true;
 }

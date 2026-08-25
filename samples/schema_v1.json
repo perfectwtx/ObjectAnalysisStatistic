@@ -1,0 +1,67 @@
+{
+  "snapshotVersion": "1.0",
+  "createdAt": "2026-08-25T13:44:18.5346871+00:00",
+  "source": "E:\\Code\\MyCode\\Items\\ObjectAnalysisStatistic\\samples\\test_schema_v1.json",
+  "totalObjects": 4,
+  "fields": [
+    {
+      "path": "age",
+      "primaryType": "Number",
+      "nullable": false,
+      "coverage": 1,
+      "typeDistribution": {},
+      "minNumber": 25,
+      "maxNumber": 35,
+      "outlierMethod": "iqr",
+      "outlierRatio": 0,
+      "distinctCount": 4
+    },
+    {
+      "path": "createdAt",
+      "primaryType": "String",
+      "semanticType": "DateTime",
+      "nullable": false,
+      "coverage": 1,
+      "typeDistribution": {},
+      "minLength": 20,
+      "maxLength": 20,
+      "minDateTime": "2025-01-15T10:30:00+00:00",
+      "maxDateTime": "2025-01-18T14:20:00+00:00",
+      "distinctCount": 4
+    },
+    {
+      "path": "email",
+      "primaryType": "String",
+      "semanticType": "Email",
+      "nullable": false,
+      "coverage": 1,
+      "typeDistribution": {},
+      "minLength": 15,
+      "maxLength": 19,
+      "distinctCount": 4
+    },
+    {
+      "path": "id",
+      "primaryType": "Number",
+      "nullable": false,
+      "coverage": 1,
+      "typeDistribution": {},
+      "minNumber": 1,
+      "maxNumber": 4,
+      "outlierMethod": "iqr",
+      "outlierRatio": 0,
+      "distinctCount": 4
+    },
+    {
+      "path": "name",
+      "primaryType": "String",
+      "semanticType": "Name",
+      "nullable": false,
+      "coverage": 1,
+      "typeDistribution": {},
+      "minLength": 3,
+      "maxLength": 7,
+      "distinctCount": 4
+    }
+  ]
+}

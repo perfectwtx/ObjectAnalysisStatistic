@@ -22,4 +22,11 @@ public class AnalysisResult
     /// 未配置规则时为空列表。
     /// </summary>
     public List<FieldViolation> QualityViolations { get; set; } = new();
+
+    /// <summary>
+    /// Schema 演进的 diff 结果（--diff-schema 指定基线时计算）。未启用时为 null。
+    /// 由 ReportExporter / ConsoleReporter 用于追加「Schema 演进」小节。
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SchemaDiff? SchemaDiff { get; set; }
 }

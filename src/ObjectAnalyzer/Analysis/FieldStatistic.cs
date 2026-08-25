@@ -53,7 +53,43 @@ public class FieldStatistic
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<NumericHistogramBucket>? Histogram { get; set; }
 
-    // 字符串长度统计
+    // ── 日期/时间深度剖析（P3）──
+
+    /// <summary>解析为 DateTimeOffset 的样本数；无数值或非时间字段时为 null。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? DateTimeCount { get; set; }
+
+    /// <summary>最小时间戳（统一为 DateTimeOffset；无时区输入按 UTC 解释）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? MinDateTime { get; set; }
+
+    /// <summary>最大时间戳。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? MaxDateTime { get; set; }
+
+    /// <summary>时间戳直方图（自动按跨度切档：秒/分/时/天/周/月/年）。无时间值时为 null。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<DateHistogramBucket>? DateHistogram { get; set; }
+
+    // ── 异常值检测（P3）──
+
+    /// <summary>异常值方法（"iqr" / "zscore" / "3sigma"）；流式样本数 &lt; 4 时不计算（避免小样本抖动）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OutlierMethod { get; set; }
+
+    /// <summary>异常值个数（流式收集，基于对数直方图近似归类）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? OutlierCount { get; set; }
+
+    /// <summary>异常值占比（0.0~1.0，相对于非空数值样本数）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? OutlierRatio { get; set; }
+
+    /// <summary>异常值判定区间（紧凑文本，如 "[1.5, 95.0]" / "z±2.58"）。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OutlierBounds { get; set; }
+
+    /// <summary>字符串长度统计</summary>
     public int? MinLength { get; set; }
     public int? MaxLength { get; set; }
 
@@ -139,5 +175,55 @@ public sealed class NumericHistogramBucket
         return From > 0
             ? string.Create(CultureInfo.InvariantCulture, $"[{From:G3},{To:G3})")
             : string.Create(CultureInfo.InvariantCulture, $"({From:G3},{To:G3}]");
+    }
+}
+
+/// <summary>时间戳直方图分桶（按跨度自动切档：秒/分/时/天/周/月/年；桶为闭区间下界、开区间上界）。</summary>
+public sealed class DateHistogramBucket
+{
+    /// <summary>桶下界（含），闭区间。</summary>
+    public DateTimeOffset From { get; init; }
+
+    /// <summary>桶上界（不含），开区间。</summary>
+    public DateTimeOffset To { get; init; }
+
+    /// <summary>落入该桶的时间戳出现次数。</summary>
+    public long Count { get; set; }
+
+    /// <summary>紧凑区间标签，按桶跨度自适应：秒级/分级/时级/天级（YYYY-MM-DD）/周级/月份（YYYY-MM）/年份（YYYY）。</summary>
+    public override string ToString()
+    {
+        TimeSpan span = To - From;
+        if (span.TotalSeconds <= 120)
+        {
+            return $"[{From:HH:mm:ss}~{To:HH:mm:ss})";
+        }
+        if (span.TotalMinutes <= 120)
+        {
+            return $"[{From:HH:mm}~{To:HH:mm})";
+        }
+        if (span.TotalHours <= 48)
+        {
+            return $"[{From:MM-dd HH:mm}~{To:MM-dd HH:mm})";
+        }
+        if (span.TotalDays <= 14)
+        {
+            return $"[{From:yyyy-MM-dd}~{To:yyyy-MM-dd})";
+        }
+        if (span.TotalDays <= 90)
+        {
+            return $"[{From:yyyy-MM-dd} W{ISOWeek(From)},{To:yyyy-MM-dd} W{ISOWeek(To)})";
+        }
+        if (span.TotalDays <= 730)
+        {
+            return $"[{From:yyyy-MM}~{To:yyyy-MM})";
+        }
+        return $"[{From:yyyy}~{To:yyyy})";
+    }
+
+    private static int ISOWeek(DateTimeOffset d)
+    {
+        var day = (System.DayOfWeek)((((int)d.DayOfWeek + 6) % 7) + 1); // Monday=1..Sunday=7
+        return System.Globalization.ISOWeek.GetWeekOfYear(d.DateTime);
     }
 }

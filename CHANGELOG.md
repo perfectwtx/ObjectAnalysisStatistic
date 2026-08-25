@@ -5,6 +5,12 @@
 ## [Unreleased]
 
 ### Added
+- **P3 高级分析能力**
+  - **日期/时间深度剖析**：`InternalFieldMetrics` 新增 `DateTimeStats` 通道（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），`FieldStatistic` 输出 `DateTimeCount` / `MinDateTime` / `MaxDateTime` + 时间桶直方图（按跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存；控制台 / JSON / HTML / Markdown 报告新增「时间序列」小节。
+  - **异常值检测（IQR 1.5×）**：复用现有 t-digest 分位数草图计算 P25 / P75 → IQR，基于对数直方图近似归类离群点；`FieldStatistic` 新增 `OutlierCount` / `OutlierRatio` / `OutlierBounds`（流式样本数 < 4 时不计算，避免小样本抖动）；`QualityChecks` 新增 `OutlierRatio` 类型，规则文件支持 `fields.<name>.maxOutlierRatio` 字段级阈值；新增 `--fail-on-outlier-ratio <RATIO>` 全局 CI 门禁（退出码 5）。
+  - **Schema 快照 + Diff**：`--export-schema-snapshot <FILE>` 导出 canonical schema JSON（字段名/主导类型/语义/coverage/nullable/范围/枚举/异常值，独立于 `--export-schema` 代码生成器）；`--diff-schema <BASELINE>` 与历史快照对比，识别新增/删除/类型变化/coverage 变化/语义变化等；`--schema-diff-report <FILE>` 导出结构化 diff JSON；`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6，破坏性变更定义：字段删除、主导类型变化、nullable 收紧、coverage 下降 ≥ 0.1）；控制台 / JSON / HTML / Markdown 报告新增「Schema 演进」小节；可作为下游「数据漂移对比」的字段级基础。
+  - **测试**：日期/时间剖析（min/max/直方图计数一致性 + UTC 归一化）、异常值检测（明显离群点被标记 + 区间文本非空 + 小样本保护）、Schema 快照构建与往返、diff 三种场景（新增/删除/破坏性变更门禁），共 12 个新用例。
+  - **测试基础设施**：新增 `AnalysisRunnerSequentialGroup` xUnit CollectionDefinition 强制 AnalysisRunner 测试串行执行，规避 Spectre.Console `AnsiConsole.Status()` 在多进程级并行时争用全局句柄的并发异常。
 - **压缩文件直读（gzip / bzip2 / zip）**：`.gz` / `.bz2` / `.zip` 压缩包可直接作为输入，无需预先解压——按扩展名识别最外层压缩并流式解包，内层格式由剥离压缩后缀的扩展名决定；扩展名不可判时按头部魔数嗅探兜底（未知扩展名的 Office Open XML 文件按 Excel 解析而非当作 zip 数据容器）；zip 自动选择数据条目（优先已知数据格式、多候选取字典序首个并在控制台提示），且支持 zip 内嵌套 gzip/bzip2 条目（如 `logs.csv.gz`）。行级流式格式（JSONL/CSV/XML/YAML）在解压流上边读边解析，超大压缩文件内存有界；仅内层为需随机访问的 `.xlsx` 时才缓冲到内存。采样与强类型 `--type` 路径照常适用。解析器入口统一改为流式契约（`IFileParser.Parse(Stream)`），由惰性枚举包装负责打开/释放解压源（句柄零泄漏）。
 - **测试**：gzip JSONL/JSON/CSV/xlsx、bzip2 JSON、zip 单/多条目确定性选择、仅目录 zip 报错、zip 嵌套 gzip 条目、无扩展名魔数识别、改名 xlsx 内容级识别为 excel、非压缩回归、句柄释放、AnalysisRunner 端到端退出码 0，共 16 个新用例。
 - **质量检查 v2（Great Expectations 风格）**：规则文件字段级新增 5 个检查维度——`pattern`（正则模式，截断时近似计数并标记）、`minValue`/`maxValue`（数值范围越界，逐行精确计数、不受唯一值截断影响）、`required`（null 或整行缺失）、`unique`（唯一性：未截断精确统计，截断时 HyperLogLog 近似并标记）、`nullRateMax`（null 率上限，分子含显式 null 与缺失）；顶层新增 `expectations` 数据集期望——`minRowCount`（最少对象数）与 `maxDuplicateRate`（重复对象占比上限）。所有违规统一汇总至 `AnalysisResult.QualityViolations` 并接入 `--fail-on-violations` 门禁（退出码 3）、`--violations` 导出（升级为 `{ summary, fieldViolations, datasetViolations }` 对象结构，枚举条目保留旧版逐值 `values` 键向后兼容）与数据质量报告（`Checks` 字段级条目 + 顶层 `DatasetViolations`）；无效正则在加载规则文件时立即报错退出；PII 打码同步作用于违规样本。

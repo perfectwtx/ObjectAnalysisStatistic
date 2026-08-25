@@ -5,6 +5,7 @@ using System.Text.Json;
 
 namespace ObjectAnalyzer.Tests;
 
+[Collection(AnalysisRunnerSequentialGroup.Name)]
 /// <summary>
 /// PII 识别 / 打码遮蔽 / 报告脱敏 / 数据安全合规等级报告测试。
 /// </summary>

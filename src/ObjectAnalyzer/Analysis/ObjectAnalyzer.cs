@@ -89,6 +89,34 @@ public static partial class ObjectAnalyzer
         public Dictionary<int, long>? Histogram { get; private set; } // 非零数值的 log2 桶 → 计数
         public HyperLogLog? DistinctHll { get; private set; }
 
+        // ── 日期/时间剖析草图（懒创建）──
+        /// <summary>DateTimeOffset 出现次数。</summary>
+        public long DateTimeCount { get; private set; }
+
+        /// <summary>最小时间戳（UTC，无时区输入按 UTC 解释）。</summary>
+        public DateTimeOffset? MinDateTime { get; private set; }
+
+        /// <summary>最大时间戳（UTC）。</summary>
+        public DateTimeOffset? MaxDateTime { get; private set; }
+
+        /// <summary>
+        /// 时间戳直方图（1 分钟固定粒度收集，post-processing 时按跨度自适应切档）。
+        /// key = 自 epoch 起的整分钟数 (long)，value = 落入该分钟桶的次数。
+        /// </summary>
+        public Dictionary<long, long>? DateHistogram { get; private set; }
+
+        public void AddDateTime(DateTimeOffset value)
+        {
+            DateTimeOffset utc = value.ToUniversalTime();
+            if (MinDateTime is null || utc < MinDateTime.Value) MinDateTime = utc;
+            if (MaxDateTime is null || utc > MaxDateTime.Value) MaxDateTime = utc;
+            DateTimeCount++;
+
+            var hist = DateHistogram ??= new Dictionary<long, long>();
+            long bucket = utc.UtcTicks / TimeSpan.TicksPerMinute;
+            hist[bucket] = hist.GetValueOrDefault(bucket) + 1;
+        }
+
         public void AddNumber(double value)
         {
             if (!double.IsFinite(value))
@@ -186,6 +214,27 @@ public static partial class ObjectAnalyzer
             if (other.DistinctHll != null)
             {
                 (DistinctHll ??= new HyperLogLog()).Merge(other.DistinctHll);
+            }
+
+            // 日期/时间统计合并
+            if (other.MinDateTime is not null)
+            {
+                if (MinDateTime is null || other.MinDateTime.Value < MinDateTime.Value)
+                    MinDateTime = other.MinDateTime;
+            }
+            if (other.MaxDateTime is not null)
+            {
+                if (MaxDateTime is null || other.MaxDateTime.Value > MaxDateTime.Value)
+                    MaxDateTime = other.MaxDateTime;
+            }
+            DateTimeCount += other.DateTimeCount;
+            if (other.DateHistogram != null)
+            {
+                var dateHist = DateHistogram ??= new Dictionary<long, long>();
+                foreach (var kv in other.DateHistogram)
+                {
+                    dateHist[kv.Key] = dateHist.GetValueOrDefault(kv.Key) + kv.Value;
+                }
             }
         }
     }
@@ -441,6 +490,25 @@ public static partial class ObjectAnalyzer
                     {
                         stat.Histogram = BuildHistogram(metrics);
                     }
+
+                    // 异常值检测（IQR 1.5×）：复用 P25/P75 + 对数直方图近似归类
+                    if (metrics.NumberCount >= 4 && metrics.Quantiles != null)
+                    {
+                        double? p25 = metrics.Quantiles.Quantile(0.25);
+                        double? p75 = metrics.Quantiles.Quantile(0.75);
+                        if (p25.HasValue && p75.HasValue)
+                        {
+                            double iqr = p75.Value - p25.Value;
+                            double lower = p25.Value - 1.5 * iqr;
+                            double upper = p75.Value + 1.5 * iqr;
+                            long outlierCount = CountOutsideHistogram(metrics.Histogram, metrics.ZeroCount, lower, upper);
+                            stat.OutlierMethod = "iqr";
+                            stat.OutlierBounds = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                                $"[{lower:G4}, {upper:G4}]");
+                            stat.OutlierCount = outlierCount;
+                            stat.OutlierRatio = metrics.NumberCount > 0 ? (double)outlierCount / metrics.NumberCount : 0;
+                        }
+                    }
                 }
 
                 if (metrics.StringCount > 0)
@@ -457,6 +525,18 @@ public static partial class ObjectAnalyzer
                     if (topSemantic.Value > 0 && (double)topSemantic.Value / metrics.StringCount >= 0.8)
                     {
                         stat.SemanticType = topSemantic.Key;
+                    }
+                }
+
+                // 日期/时间深度剖析：min/max/count + 按跨度自适应切档直方图
+                if (metrics.DateTimeCount > 0 && metrics.MinDateTime is not null && metrics.MaxDateTime is not null)
+                {
+                    stat.DateTimeCount = metrics.DateTimeCount;
+                    stat.MinDateTime = metrics.MinDateTime;
+                    stat.MaxDateTime = metrics.MaxDateTime;
+                    if (metrics.DateHistogram is { Count: > 0 })
+                    {
+                        stat.DateHistogram = BuildDateHistogram(metrics.MinDateTime.Value, metrics.MaxDateTime.Value, metrics.DateHistogram);
                     }
                 }
 
@@ -581,6 +661,85 @@ public static partial class ObjectAnalyzer
         return buckets;
     }
 
+    /// <summary>
+    /// 构建按数据跨度自适应切档的时间戳直方图：先按总跨度选定显示桶尺寸，
+    /// 再将流式阶段收集的 1 分钟粒度桶向上聚合到目标尺寸。
+    /// 目标桶数 ≤ 24。
+    /// </summary>
+    private static List<DateHistogramBucket> BuildDateHistogram(
+        DateTimeOffset min, DateTimeOffset max, Dictionary<long, long> minuteBuckets)
+    {
+        // 选定显示桶尺寸（任一桶的尺寸都用同一个值，保持等宽）
+        var sample = NumericSketch.DateBucket(min, min, max, targetBuckets: 24);
+        TimeSpan span = sample.span;
+        long spanTicks = span.Ticks;
+        long minTicks = min.UtcTicks;
+
+        // 聚合：从 1 分钟桶 → 显示桶（对 minTicks 向下取整到 spanTicks 边界）
+        long minBucketStart = (minTicks / spanTicks) * spanTicks;
+        var aggregated = new Dictionary<long, long>();
+        foreach (var (minuteKey, count) in minuteBuckets)
+        {
+            long minuteTicks = minuteKey * TimeSpan.TicksPerMinute;
+            long displayBucket = (minuteTicks / spanTicks) * spanTicks;
+            aggregated[displayBucket] = aggregated.GetValueOrDefault(displayBucket) + count;
+        }
+
+        // 补齐 [minBucketStart, max] 范围内所有空桶，便于报告看出"无活动"区间
+        long maxTicks = (max.UtcTicks / spanTicks) * spanTicks;
+        var result = new List<DateHistogramBucket>();
+        for (long t = minBucketStart; t <= maxTicks; t += spanTicks)
+        {
+            long count = aggregated.GetValueOrDefault(t);
+            var from = new DateTimeOffset(t, TimeSpan.Zero);
+            var to = new DateTimeOffset(t + spanTicks, TimeSpan.Zero);
+            result.Add(new DateHistogramBucket { From = from, To = to, Count = count });
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// 基于对数定宽直方图近似归类区间 [lower, upper] 外的样本数。
+    /// 桶整体落在区间外时按整桶计入；桶跨越边界时按整桶计入（保守策略）。
+    /// </summary>
+    private static long CountOutsideHistogram(
+        Dictionary<int, long>? histogram, long zeroCount, double lower, double upper)
+    {
+        long count = 0;
+        if (histogram != null)
+        {
+            foreach (var kv in histogram)
+            {
+                // 重建桶上下界以判定是否完全在区间外
+                double bucketLo, bucketHi;
+                if (kv.Key < 0)
+                {
+                    // 负桶 k=-e-1：(-2^(e+1), -2^e]
+                    int exp = -kv.Key - 1;
+                    bucketLo = -Math.Pow(2, exp + 1);
+                    bucketHi = -Math.Pow(2, exp);
+                }
+                else
+                {
+                    // 正桶 k：[2^k, 2^(k+1))
+                    bucketLo = Math.Pow(2, kv.Key);
+                    bucketHi = Math.Pow(2, kv.Key + 1);
+                }
+
+                // 桶完全在区间外：整桶计入；跨越边界：保守起见按整桶计入
+                if (bucketHi < lower || bucketLo > upper)
+                {
+                    count += kv.Value;
+                }
+            }
+        }
+        if (zeroCount > 0 && (0 < lower || 0 > upper))
+        {
+            count += zeroCount;
+        }
+        return count;
+    }
+
     private static void RecordValueMetrics(object? value, string valStr, string fieldName, InternalFieldMetrics metrics)
     {
         if (value == null) return;
@@ -606,8 +765,11 @@ public static partial class ObjectAnalyzer
                 metrics.SemanticCounts["UUID"] = metrics.SemanticCounts.GetValueOrDefault("UUID") + 1;
             else if (RegexEmail.IsMatch(strVal))
                 metrics.SemanticCounts["Email"] = metrics.SemanticCounts.GetValueOrDefault("Email") + 1;
-            else if (RegexDateTime.IsMatch(strVal))
+            else if (RegexDateTime.IsMatch(strVal) && TryParseDateTimeOffset(strVal, out var dateTimeValue))
+            {
                 metrics.SemanticCounts["DateTime"] = metrics.SemanticCounts.GetValueOrDefault("DateTime") + 1;
+                metrics.AddDateTime(dateTimeValue);
+            }
             else if (RegexIdCard.IsMatch(strVal) && PiiValidators.IsValidChineseIdCard(strVal))
                 metrics.SemanticCounts["IdCard"] = metrics.SemanticCounts.GetValueOrDefault("IdCard") + 1;
             else if (RegexPhone.IsMatch(strVal))
@@ -726,6 +888,31 @@ public static partial class ObjectAnalyzer
         if (val is ulong ul) { result = ul; return true; }
 
         result = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// 解析日期时间字符串为 DateTimeOffset。支持 ISO 8601 三种形态：
+    /// 带时区（"Z" / "+08:00"）、无时区（按 UTC 解释）、纯日期（按 UTC 00:00:00）。
+    /// 解析失败返回 false。
+    /// </summary>
+    private static bool TryParseDateTimeOffset(string value, out DateTimeOffset result)
+    {
+        if (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var parsed))
+        {
+            result = parsed;
+            return true;
+        }
+        if (DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var dateOnly))
+        {
+            result = new DateTimeOffset(dateOnly, TimeSpan.Zero);
+            return true;
+        }
+        result = default;
         return false;
     }
 

@@ -28,6 +28,27 @@
 - ✅ **Web 冒烟测试**：`WebApplicationFactory` 验证首页、404、静态资源。
 - ✅ **文档**：`CHANGELOG.md` + `ROADMAP.md`。
 
+## P3 — 下一版候选（待排期）
+
+> 在 5 项分析能力缺口（日期/时间剖析、异常值检测、字段间关联、数据漂移对比、Schema 演进）中，优先落地以下 3 项；剩余 2 项（字段间关联、数据漂移对比）依赖本节产出，暂留 Backlog 后续评估。
+
+- **日期/时间深度剖析**
+  - `InternalFieldMetrics` 新增 `DateTimeStats` 通道：`RegexDateTime` 命中后尝试 `DateTimeOffset.TryParse`（支持 `Z` / `+08:00` / 无时区三种形态），落入新统计分支而不走数值/文本通道
+  - `FieldStatistic` 新增 `MinDateTime` / `MaxDateTime` / `DateHistogram`（时间桶复用 `MergeableQuantileSketch` 思路，但按秒/分/时/天/周/月/年动态切档）；无时区值统一按 UTC 入桶
+  - 报告（JSON / HTML / MD）新增「时间序列」小节；样本数据在 [test_data_semantic.json](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/samples/test_data_semantic.json) `createdAt` 基础上扩展
+
+- **异常值检测（IQR / Z-Score / 3σ）**
+  - 复用现有 [NumericSketch.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/NumericSketch.cs) `MergeableQuantileSketch` 计算 P25 / P75 → IQR（1.5×IQR 离群点）；复用 [FieldStatistic.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/FieldStatistic.cs) `StdDevNumber` + 均值实现 Z-Score / 3σ 离群点
+  - `FieldStatistic` 新增 `OutlierCount` / `OutlierRatio` / `OutlierMethod`；流式热路径仅在 `NumberCount >= 4` 时启用，避免小样本抖动
+  - `QualityCheckTypes` 新增 `OutlierRatio` 类型，规则文件支持 `maxOutlierRatio` 阈值；新增 `--fail-on-outlier-ratio` 门禁与退出码 5
+  - 报告（JSON / HTML / MD）新增「异常值」小节，列出 top-N 离群值所在字段及样本
+
+- **Schema 快照 + Diff**
+  - 新增 `--export-schema-snapshot <FILE>`，输出 canonical schema JSON（字段名、推断类型、coverage、nullable、semantic、min/max/枚举值），独立于现有 `--export-schema` 的代码生成器
+  - 新增 `--diff-schema <BASELINE>`，与历史快照对比，输出新增字段 / 删除字段 / 类型变化 / coverage 变化 / 语义变化
+  - 报告（JSON / HTML / MD）新增「Schema 演进」小节；可作为下游「数据漂移对比」的字段级基础
+  - CI 门禁可延伸：新增退出码 6（schema 破坏性变更，规则文件声明 `allowBreakingSchemaChanges: false` 时触发）
+
 ## 已明确排除
 
 - **.NET 8 LTS / 双目标评估**：按项目决策不做，保持 `net10.0` 单目标。

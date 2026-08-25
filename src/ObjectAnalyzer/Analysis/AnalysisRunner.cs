@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using Spectre.Console;
 
@@ -9,6 +12,13 @@ namespace ObjectAnalyzer.Analysis;
 
 public static class AnalysisRunner
 {
+    private static readonly JsonSerializerOptions s_diffJsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     /// <summary>
     /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
     /// </summary>
@@ -57,6 +67,14 @@ public static class AnalysisRunner
                 AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
                 return 1;
             }
+        }
+
+        // Schema diff 基线文件预检
+        if (!string.IsNullOrEmpty(options.DiffSchemaBaseline) && !File.Exists(options.DiffSchemaBaseline))
+        {
+            AnsiConsole.MarkupLine(
+                $"[red]错误: --diff-schema 基线文件不存在: {Markup.Escape(options.DiffSchemaBaseline)}[/]");
+            return 1;
         }
 
         try
@@ -115,6 +133,56 @@ public static class AnalysisRunner
                         $"[red]数据安全合规未通过（合规等级 {piiReport.ComplianceLevel}，发现 {piiReport.PiiFieldCount} 个敏感字段 / {piiReport.PiiValueCount} 个敏感值），退出码 4。[/]");
                     return 4;
                 }
+            }
+
+            // CI 异常值门禁：任一数值字段异常值比例超阈值时以退出码 5 结束
+            if (options.FailOnOutlierRatio.HasValue)
+            {
+                double threshold = options.FailOnOutlierRatio.Value;
+                var offenders = result.FieldStatistics
+                    .Where(s => s.OutlierRatio.HasValue && s.OutlierRatio.Value > threshold)
+                    .ToList();
+                if (offenders.Count > 0)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[red]异常值未通过（阈值 {threshold:P1}，发现 {offenders.Count} 个字段超限），退出码 5。[/]");
+                    foreach (var s in offenders.Take(5))
+                    {
+                        AnsiConsole.MarkupLine(
+                            $"  [red]·[/] [cyan]{Markup.Escape(s.FieldName)}[/]: {s.OutlierRatio:P1} (区间 {Markup.Escape(s.OutlierBounds ?? "-")}, {s.OutlierCount} 样本, {s.OutlierMethod} 近似)");
+                    }
+                    if (offenders.Count > 5)
+                    {
+                        AnsiConsole.MarkupLine($"  [grey]... 还有 {offenders.Count - 5} 个字段，详见报告[/]");
+                    }
+                    return 5;
+                }
+            }
+
+            // CI Schema 演进门禁：--allow-breaking-schema-changes=false 时，含破坏性变更以退出码 6 结束
+            if (!options.AllowBreakingSchemaChanges && result.SchemaDiff != null && result.SchemaDiff.HasBreakingChanges)
+            {
+                int removed = result.SchemaDiff.RemovedFields.Count;
+                int breakingChanges = result.SchemaDiff.ChangedFields.Count(c => c.Breaking);
+                AnsiConsole.MarkupLine(
+                    $"[red]Schema 演进门禁未通过（--allow-breaking-schema-changes=false，发现 {removed} 个删除字段、{breakingChanges} 个破坏性变更字段），退出码 6。[/]");
+                foreach (var f in result.SchemaDiff.RemovedFields.Take(5))
+                {
+                    AnsiConsole.MarkupLine(
+                        $"  [red]-[/] [cyan]{Markup.Escape(f.Path)}[/]: {Markup.Escape(f.PrimaryType)} (coverage {f.Coverage:P1})");
+                }
+                foreach (var c in result.SchemaDiff.ChangedFields.Where(c => c.Breaking).Take(5))
+                {
+                    AnsiConsole.MarkupLine($"  [red]~[/] [cyan]{Markup.Escape(c.Path)}[/]");
+                    foreach (var item in c.Changes)
+                    {
+                        if (item.Breaking)
+                        {
+                            AnsiConsole.MarkupLine($"      [red]·[/] {Markup.Escape(item.Property)}: {Markup.Escape(item.Description)}");
+                        }
+                    }
+                }
+                return 6;
             }
 
             return 0;
@@ -338,6 +406,10 @@ public static class AnalysisRunner
 
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
 
+        // Schema 快照导出 / diff 计算（必须在 ConsoleReporter.Print 与 ReportExporter.Save 之前，
+        // 这样控制台与 HTML/MD/JSON 报告的「Schema 演进」小节才能带 diff 数据）
+        ProcessSchemaSnapshot(result, options);
+
         // 输出控制台统计结果（--pii-off 时保留原始值）
         ConsoleReporter.Print(result, options.MaxValuesToShow, redactPii: !options.PiiOff);
 
@@ -400,7 +472,69 @@ public static class AnalysisRunner
             AnsiConsole.MarkupLine("[green]Schema 定义代码成功导出！[/]");
         }
 
+        // Schema 快照导出 / diff 计算（独立于代码生成器 SchemaExporter）
+        // 已在 ProcessAndReport 前置阶段完成（见 ProcessAndReport 顶部），此处保留注释便于阅读。
         return result;
+    }
+
+    /// <summary>
+    /// 处理 Schema 快照导出（--export-schema-snapshot）与 diff 计算（--diff-schema）。
+    /// 失败抛 FileNotFoundException / InvalidDataException，由调用方转为退出码 1。
+    /// </summary>
+    private static void ProcessSchemaSnapshot(AnalysisResult result, AnalysisOptions options)
+    {
+        bool needBuildSnapshot =
+            !string.IsNullOrEmpty(options.SchemaSnapshotPath) ||
+            !string.IsNullOrEmpty(options.DiffSchemaBaseline) ||
+            !string.IsNullOrEmpty(options.SchemaDiffReportPath);
+
+        if (!needBuildSnapshot)
+            return;
+
+        // 来源标识：优先输入文件路径；其次数据库直连描述；最后空（snapshot 中省略）
+        string? source = !string.IsNullOrEmpty(options.InputPath)
+            ? options.InputPath
+            : (!string.IsNullOrEmpty(options.ConnectionString)
+                ? $"db://{(string.IsNullOrEmpty(options.DbProvider) ? "auto" : options.DbProvider)}?{options.Query ?? ""}"
+                : null);
+
+        SchemaSnapshot? currentSnapshot = null;
+        if (!string.IsNullOrEmpty(options.SchemaSnapshotPath))
+        {
+            currentSnapshot = SchemaSnapshotExporter.Build(result, source);
+            // SchemaSnapshotExporter.Save 内部已打印成功日志
+            string? dir = Path.GetDirectoryName(options.SchemaSnapshotPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            SchemaSnapshotExporter.Save(result, options.SchemaSnapshotPath, source);
+        }
+
+        if (!string.IsNullOrEmpty(options.DiffSchemaBaseline))
+        {
+            var baseline = SchemaDiffer.LoadFromFile(options.DiffSchemaBaseline!);
+            // 优先用刚导出的快照（确保与磁盘上的 baseline 比较时内容完全一致），否则现场构建
+            currentSnapshot ??= SchemaSnapshotExporter.Build(result, source);
+            var diff = SchemaDiffer.Compute(baseline, currentSnapshot);
+            result.SchemaDiff = diff;
+
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[bold]── Schema 演进（vs 基线） ──[/]");
+            SchemaDiffer.PrintSummary(diff);
+
+            if (!string.IsNullOrEmpty(options.SchemaDiffReportPath))
+            {
+                string? dir = Path.GetDirectoryName(options.SchemaDiffReportPath);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                File.WriteAllText(options.SchemaDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
+                AnsiConsole.MarkupLine(
+                    $"[green]Schema diff 已导出至[/] [blue]{Markup.Escape(options.SchemaDiffReportPath)}[/]");
+            }
+        }
     }
 
     private static void PrintError(Exception ex)

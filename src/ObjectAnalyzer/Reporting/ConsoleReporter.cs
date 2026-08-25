@@ -98,11 +98,36 @@ public static class ConsoleReporter
                     string histogram = string.Join("  ", topBuckets.Select(b => $"{b}×{b.Count}"));
                     AnsiConsole.MarkupLine($"  直方图: [grey]{Markup.Escape(histogram)}[/]");
                 }
+
+                // 异常值（IQR 1.5×）
+                if (stat.OutlierCount.HasValue && stat.OutlierRatio.HasValue)
+                {
+                    string ratioColor = stat.OutlierRatio.Value > 0.1 ? "orange1" : "grey";
+                    AnsiConsole.MarkupLine(
+                        $"  异常值: [yellow]{stat.OutlierCount}[/] 个 ({Markup.Escape($"[{ratioColor}]{stat.OutlierRatio:P1}[/]")})，区间 [cyan]{Markup.Escape(stat.OutlierBounds ?? "-")}[/] ({stat.OutlierMethod} 近似)");
+                }
             }
             if (stat.MinLength.HasValue && stat.MaxLength.HasValue)
             {
                 string avgLenInfo = stat.AvgLength.HasValue ? $" (平均: [grey]{stat.AvgLength:G4}[/])" : "";
                 AnsiConsole.MarkupLine($"  文本长度: [grey]{stat.MinLength}[/] ~ [grey]{stat.MaxLength}[/] 字符{avgLenInfo}");
+            }
+
+            // 日期/时间深度剖析
+            if (stat.MinDateTime.HasValue && stat.MaxDateTime.HasValue)
+            {
+                AnsiConsole.MarkupLine(
+                    $"  时间范围: [magenta]{stat.MinDateTime:yyyy-MM-dd HH:mm:ss}[/] ~ [magenta]{stat.MaxDateTime:yyyy-MM-dd HH:mm:ss}[/] UTC (样本 [aqua]{stat.DateTimeCount}[/])");
+
+                if (stat.DateHistogram is { Count: > 0 })
+                {
+                    var topBuckets = stat.DateHistogram
+                        .OrderByDescending(b => b.Count)
+                        .Take(6)
+                        .OrderBy(b => b.From);
+                    string histLine = string.Join("  ", topBuckets.Select(b => $"{b}×{b.Count}"));
+                    AnsiConsole.MarkupLine($"  时间直方图: [grey]{Markup.Escape(histLine)}[/]");
+                }
             }
 
             if (stat.DistinctCount.HasValue)
@@ -169,6 +194,14 @@ public static class ConsoleReporter
             }
 
             AnsiConsole.Write(valueTable);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── Schema 演进（diff） ──
+        if (result.SchemaDiff != null)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]Schema 演进（vs 基线）[/]").LeftJustified());
+            SchemaDiffer.PrintSummary(result.SchemaDiff);
             AnsiConsole.WriteLine();
         }
     }

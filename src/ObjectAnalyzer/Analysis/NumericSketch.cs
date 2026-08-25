@@ -20,6 +20,60 @@ public static class NumericSketch
         double exp = Math.Floor(Math.Log2(Math.Abs(x)));
         return x > 0 ? (int)exp : -(int)exp - 1;
     }
+
+    /// <summary>
+    /// 时间戳直方图分桶：根据数据跨度自动选择最直观的桶尺寸（秒/分/时/天/周/月/年），
+    /// 返回桶下界（UTC 对齐）与单桶跨度。目标桶数 ≤ <paramref name="targetBuckets"/>。
+    /// </summary>
+    public static (DateTimeOffset bucketStart, TimeSpan span) DateBucket(DateTimeOffset value, DateTimeOffset min, DateTimeOffset max, int targetBuckets = 24)
+    {
+        TimeSpan total = max - min;
+        if (total.Ticks <= 0)
+        {
+            // 退化：所有值都相同，落到 1 秒桶
+            return (TruncateToSecond(value), TimeSpan.FromSeconds(1));
+        }
+
+        // 候选桶跨度（按从细到粗）
+        TimeSpan[] candidates =
+        {
+            TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30),
+            TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30),
+            TimeSpan.FromHours(1), TimeSpan.FromHours(6), TimeSpan.FromHours(12),
+            TimeSpan.FromDays(1), TimeSpan.FromDays(7),
+            TimeSpan.FromDays(30), TimeSpan.FromDays(90),
+            TimeSpan.FromDays(365),
+        };
+
+        foreach (var span in candidates)
+        {
+            double bucketCount = total.Ticks / (double)span.Ticks;
+            if (bucketCount <= targetBuckets)
+            {
+                return (FloorToSpan(value, span), span);
+            }
+        }
+        // 跨度极大：回退到整年
+        return (FloorToYear(value), TimeSpan.FromDays(365));
+    }
+
+    private static DateTimeOffset TruncateToSecond(DateTimeOffset value)
+    {
+        var t = value.UtcDateTime;
+        return new DateTimeOffset(t.Year, t.Month, t.Day, t.Hour, t.Minute, t.Second, TimeSpan.Zero);
+    }
+
+    private static DateTimeOffset FloorToSpan(DateTimeOffset value, TimeSpan span)
+    {
+        long ticks = value.UtcTicks - (value.UtcTicks % span.Ticks);
+        return new DateTimeOffset(ticks, TimeSpan.Zero);
+    }
+
+    private static DateTimeOffset FloorToYear(DateTimeOffset value)
+    {
+        var t = value.UtcDateTime;
+        return new DateTimeOffset(t.Year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    }
 }
 
 /// <summary>

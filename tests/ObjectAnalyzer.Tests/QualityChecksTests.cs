@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
 
+[Collection(AnalysisRunnerSequentialGroup.Name)]
 /// <summary>
 /// 质量检查 v2 测试：minValue/maxValue、required、pattern、unique、nullRateMax
 /// 与数据集期望（minRowCount / maxDuplicateRate），以及 --violations 导出与 --fail-on-violations 门禁集成。

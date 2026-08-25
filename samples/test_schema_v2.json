@@ -1,0 +1,6 @@
+[
+  { "id": 1, "name": "Alice", "email": "alice@example.com", "age": 30, "createdAt": "2026-02-15T10:30:00Z", "country": "CN" },
+  { "id": 2, "name": "Bob", "email": "bob@example.com", "age": 25, "createdAt": "2026-02-16T11:00:00Z", "country": "US" },
+  { "id": 3, "name": "Charlie", "email": "charlie@example.com", "age": 35, "createdAt": "2026-02-17T09:15:00Z", "country": "UK" },
+  { "id": 4, "name": "David", "email": "david@example.com", "age": 28, "createdAt": "2026-02-18T14:20:00Z", "country": null }
+]
