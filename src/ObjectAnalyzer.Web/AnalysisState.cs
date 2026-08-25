@@ -51,6 +51,17 @@ public sealed class AnalysisState : IDisposable
     public string? RulesFilePath { get; set; }
     public string? RulesFileName { get; set; }
 
+    // ── P3 Schema 快照基线（--diff-schema）──
+    // 用户上传的 schema snapshot JSON，作为 diff 的 baseline。基线独立于本次分析的源数据。
+    public string? BaselineSnapshotPath { get; set; }
+    public string? BaselineSnapshotName { get; set; }
+
+    /// <summary>用户上传基线后，本地计算（不重新跑分析）的 SchemaDiff 副本；未上传基线时为 null。</summary>
+    public global::ObjectAnalyzer.Analysis.SchemaDiff? ComputedSchemaDiff { get; set; }
+
+    /// <summary>基线 JSON 解析/校验失败时的错误消息（展示给用户）。</summary>
+    public string? BaselineError { get; set; }
+
     // --fields：仅统计这些字段（逗号分隔）
     public string Fields { get; set; } = "";
 
@@ -147,6 +158,7 @@ public sealed class AnalysisState : IDisposable
         DeleteQuietly(DataFilePath);
         DeleteQuietly(TypeFilePath);
         DeleteQuietly(RulesFilePath);
+        DeleteQuietly(BaselineSnapshotPath);
     }
 
     private static void DeleteQuietly(string? path)

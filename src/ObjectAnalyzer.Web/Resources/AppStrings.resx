@@ -84,4 +84,31 @@
   <data name="ErrCancelled" xml:space="preserve"><value>分析已取消。</value></data>
   <data name="ErrTypedParse" xml:space="preserve"><value>存在 {0} 条属性读取错误: {1}</value></data>
   <data name="ErrInvalidRules" xml:space="preserve"><value>规则文件内容为空或格式无效。</value></data>
+  <data name="DateRange" xml:space="preserve"><value>时间范围</value></data>
+  <data name="Outliers" xml:space="preserve"><value>异常值</value></data>
+  <data name="OutlierCountFmt" xml:space="preserve"><value>{0} ({1:P1})</value></data>
+  <data name="OutlierBoundsHint" xml:space="preserve"><value>区间 {0}</value></data>
+  <data name="P3InsightsTitle" xml:space="preserve"><value>P3 高级分析</value></data>
+  <data name="P3InsightsHint" xml:space="preserve"><value>日期/时间深度剖析、IQR 异常值检测、Schema 演进对比</value></data>
+  <data name="TimeSeriesCard" xml:space="preserve"><value>时间序列</value></data>
+  <data name="OutliersCard" xml:space="preserve"><value>异常值 (IQR 1.5×)</value></data>
+  <data name="SchemaDiffCard" xml:space="preserve"><value>Schema 演进</value></data>
+  <data name="NoDateTimeFields" xml:space="preserve"><value>未发现 DateTime 类型字段</value></data>
+  <data name="NoOutlierFields" xml:space="preserve"><value>所有数值字段异常值比例低于 1%</value></data>
+  <data name="NoBaselineUploaded" xml:space="preserve"><value>上传一个 Schema 快照 JSON 作为基线，可与本次分析结果做 diff</value></data>
+  <data name="UploadBaseline" xml:space="preserve"><value>上传基线快照</value></data>
+  <data name="ClearBaseline" xml:space="preserve"><value>清除基线</value></data>
+  <data name="BaselineLoaded" xml:space="preserve"><value>基线已加载：{0} 个字段</value></data>
+  <data name="DiffSummary" xml:space="preserve"><value>+{0} 新增 / −{1} 删除 / ±{2} 变更</value></data>
+  <data name="DiffBreakingBadge" xml:space="preserve"><value>含破坏性变更</value></data>
+  <data name="DiffSafeBadge" xml:space="preserve"><value>无破坏性变更</value></data>
+  <data name="DiffAddedTitle" xml:space="preserve"><value>新增字段 ({0})</value></data>
+  <data name="DiffRemovedTitle" xml:space="preserve"><value>删除字段 ({0})</value></data>
+  <data name="DiffChangedTitle" xml:space="preserve"><value>变更字段 ({0})</value></data>
+  <data name="ErrInvalidBaseline" xml:space="preserve"><value>基线快照 JSON 解析失败或格式不匹配（snapshotVersion 字段缺失？）</value></data>
+  <data name="ExportCurrentSnapshot" xml:space="preserve"><value>导出当前快照</value></data>
+  <data name="ExportCurrentSnapshotHint" xml:space="preserve"><value>下载当前结果的 canonical Schema 快照 JSON，作为后续 diff 的基线</value></data>
+  <data name="HistogramBars" xml:space="preserve"><value>{0} 个时间桶</value></data>
+  <data name="DatetimeSpan" xml:space="preserve"><value>跨度 {0}</value></data>
+  <data name="OutlierZero" xml:space="preserve"><value>无离群点</value></data>
 </root>

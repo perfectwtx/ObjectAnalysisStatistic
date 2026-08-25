@@ -84,4 +84,31 @@
   <data name="ErrCancelled" xml:space="preserve"><value>Analysis cancelled.</value></data>
   <data name="ErrTypedParse" xml:space="preserve"><value>{0} property read errors: {1}</value></data>
   <data name="ErrInvalidRules" xml:space="preserve"><value>Rules file is empty or invalid.</value></data>
+  <data name="DateRange" xml:space="preserve"><value>Date range</value></data>
+  <data name="Outliers" xml:space="preserve"><value>Outliers</value></data>
+  <data name="OutlierCountFmt" xml:space="preserve"><value>{0} ({1:P1})</value></data>
+  <data name="OutlierBoundsHint" xml:space="preserve"><value>range {0}</value></data>
+  <data name="P3InsightsTitle" xml:space="preserve"><value>P3 Advanced Insights</value></data>
+  <data name="P3InsightsHint" xml:space="preserve"><value>Date/time profiling, IQR outlier detection, schema evolution diff</value></data>
+  <data name="TimeSeriesCard" xml:space="preserve"><value>Time series</value></data>
+  <data name="OutliersCard" xml:space="preserve"><value>Outliers (IQR 1.5×)</value></data>
+  <data name="SchemaDiffCard" xml:space="preserve"><value>Schema evolution</value></data>
+  <data name="NoDateTimeFields" xml:space="preserve"><value>No DateTime fields detected</value></data>
+  <data name="NoOutlierFields" xml:space="preserve"><value>All numeric fields have &lt; 1% outliers</value></data>
+  <data name="NoBaselineUploaded" xml:space="preserve"><value>Upload a Schema snapshot JSON as baseline to diff against this analysis</value></data>
+  <data name="UploadBaseline" xml:space="preserve"><value>Upload baseline</value></data>
+  <data name="ClearBaseline" xml:space="preserve"><value>Clear baseline</value></data>
+  <data name="BaselineLoaded" xml:space="preserve"><value>Baseline loaded: {0} fields</value></data>
+  <data name="DiffSummary" xml:space="preserve"><value>+{0} added / −{1} removed / ±{2} changed</value></data>
+  <data name="DiffBreakingBadge" xml:space="preserve"><value>Breaking changes</value></data>
+  <data name="DiffSafeBadge" xml:space="preserve"><value>No breaking changes</value></data>
+  <data name="DiffAddedTitle" xml:space="preserve"><value>Added fields ({0})</value></data>
+  <data name="DiffRemovedTitle" xml:space="preserve"><value>Removed fields ({0})</value></data>
+  <data name="DiffChangedTitle" xml:space="preserve"><value>Changed fields ({0})</value></data>
+  <data name="ErrInvalidBaseline" xml:space="preserve"><value>Failed to parse baseline snapshot JSON (missing snapshotVersion field?)</value></data>
+  <data name="ExportCurrentSnapshot" xml:space="preserve"><value>Export current snapshot</value></data>
+  <data name="ExportCurrentSnapshotHint" xml:space="preserve"><value>Download the current analysis as canonical Schema snapshot JSON, to use as a future baseline</value></data>
+  <data name="HistogramBars" xml:space="preserve"><value>{0} buckets</value></data>
+  <data name="DatetimeSpan" xml:space="preserve"><value>span {0}</value></data>
+  <data name="OutlierZero" xml:space="preserve"><value>No outliers</value></data>
 </root>

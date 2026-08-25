@@ -293,6 +293,8 @@
                             <th>@Loc["SemanticType"]</th>
                             <th>@Loc["Coverage"]</th>
                             <th>@Loc["PrimaryType"]</th>
+                            <th>@Loc["DateRange"]</th>
+                            <th>@Loc["Outliers"]</th>
                             <th>@Loc["DefaultValue"]</th>
                             <th>@Loc["UniqueValues"]</th>
                             <th>@Loc["Rules"]</th>
@@ -323,6 +325,51 @@
                                     @foreach (var tc in field.TypeCounts.OrderByDescending(t => t.Value))
                                     {
                                         <span class="type-badge">@tc.Key (@tc.Value)</span>
+                                    }
+                                </td>
+                                <td>
+                                    @* 时间范围 (P3)：仅当 DateTimeCount > 0 时显示 *@
+                                    @if (field.DateTimeCount is long dtCount && dtCount > 0)
+                                    {
+                                        <div class="datetime-range" title="@Loc.Get("DatetimeSpan", FormatDateTimeSpan(field.MinDateTime, field.MaxDateTime))">
+                                            <div class="datetime-min">@FormatDate(field.MinDateTime)</div>
+                                            <div class="datetime-sep">~</div>
+                                            <div class="datetime-max">@FormatDate(field.MaxDateTime)</div>
+                                            @if (field.DateHistogram is { Count: > 0 })
+                                            {
+                                                <div class="datetime-spark" aria-hidden="true">
+                                                    @((MarkupString)RenderSparkline(field.DateHistogram.Select(b => (double)b.Count).ToArray()))
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="na">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @* 异常值 (P3)：仅当 OutlierCount 存在时显示 *@
+                                    @if (field.OutlierCount is long oc)
+                                    {
+                                        @if (oc == 0)
+                                        {
+                                            <span class="outlier-clean">@Loc["OutlierZero"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="outlier-badge" title="@Loc.Get("OutlierBoundsHint", field.OutlierBounds ?? "")">
+                                                @Loc.Get("OutlierCountFmt", oc, field.OutlierRatio ?? 0)
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(field.OutlierBounds))
+                                            {
+                                                <div class="outlier-bounds">@field.OutlierBounds</div>
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="na">—</span>
                                     }
                                 </td>
                                 <td>
@@ -398,6 +445,189 @@
                     }
                 </div>
             }
+
+            @* P3 高级分析 section：时间序列 + 异常值 + Schema 演进 *@
+            <div class="p3-section">
+                <div class="p3-header">
+                    <h2>🔬 @Loc["P3InsightsTitle"]</h2>
+                    <p class="p3-hint">@Loc["P3InsightsHint"]</p>
+                </div>
+
+                <div class="p3-grid">
+                    @* 时间序列卡片 *@
+                    <div class="p3-card">
+                        <h3>📈 @Loc["TimeSeriesCard"]</h3>
+                        @{
+                            var dtFields = State.Result.FieldStatistics
+                                .Where(f => f.DateTimeCount is long c && c > 0)
+                                .ToList();
+                        }
+                        @if (dtFields.Count == 0)
+                        {
+                            <p class="p3-empty">@Loc["NoDateTimeFields"]</p>
+                        }
+                        else
+                        {
+                            <div class="p3-card-stats">
+                                <span class="p3-stat-num">@dtFields.Count</span>
+                                <span class="p3-stat-label">fields</span>
+                            </div>
+                            <ul class="p3-list">
+                                @foreach (var f in dtFields.Take(8))
+                                {
+                                    <li>
+                                        <code class="p3-field">@f.FieldName</code>
+                                        <span class="p3-meta">@FormatDate(f.MinDateTime) → @FormatDate(f.MaxDateTime)</span>
+                                        @if (f.DateHistogram is { Count: > 0 })
+                                        {
+                                            <div class="p3-spark" aria-hidden="true">
+                                                @((MarkupString)RenderSparkline(f.DateHistogram.Select(b => (double)b.Count).ToArray(), 120, 24))
+                                            </div>
+                                            <div class="p3-meta-sub">@Loc.Get("HistogramBars", f.DateHistogram.Count)</div>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+
+                    @* 异常值卡片 *@
+                    <div class="p3-card">
+                        <h3>⚠️ @Loc["OutliersCard"]</h3>
+                        @{
+                            var outlierFields = State.Result.FieldStatistics
+                                .Where(f => f.OutlierCount is long c && c > 0)
+                                .OrderByDescending(f => f.OutlierRatio ?? 0)
+                                .ToList();
+                        }
+                        @if (outlierFields.Count == 0)
+                        {
+                            <p class="p3-empty">@Loc["NoOutlierFields"]</p>
+                        }
+                        else
+                        {
+                            <div class="p3-card-stats">
+                                <span class="p3-stat-num">@outlierFields.Count</span>
+                                <span class="p3-stat-label">flagged</span>
+                            </div>
+                            <ul class="p3-list">
+                                @foreach (var f in outlierFields.Take(8))
+                                {
+                                    <li>
+                                        <code class="p3-field">@f.FieldName</code>
+                                        <span class="outlier-badge">@Loc.Get("OutlierCountFmt", f.OutlierCount ?? 0, f.OutlierRatio ?? 0)</span>
+                                        @if (!string.IsNullOrEmpty(f.OutlierBounds))
+                                        {
+                                            <div class="p3-meta-sub">@f.OutlierBounds</div>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+
+                    @* Schema 演进卡片 *@
+                    <div class="p3-card p3-card-wide">
+                        <h3>🔄 @Loc["SchemaDiffCard"]</h3>
+
+                        <div class="p3-baseline-row">
+                            <InputFile OnChange="HandleBaselineUpload" accept=".json" />
+                            @if (State.BaselineSnapshotName != null)
+                            {
+                                <span class="file-ok">✓ @State.BaselineSnapshotName</span>
+                                <button class="clear-btn" @onclick="ClearBaseline" title="@Loc["ClearBaseline"]">✕</button>
+                            }
+                            <button class="btn btn-outline btn-sm" @onclick="DownloadCurrentSnapshot" title="@Loc["ExportCurrentSnapshotHint"]">
+                                💾 @Loc["ExportCurrentSnapshot"]
+                            </button>
+                        </div>
+
+                        @if (State.BaselineError != null)
+                        {
+                            <div class="error">@State.BaselineError</div>
+                        }
+                        else if (State.BaselineSnapshotPath == null)
+                        {
+                            <p class="p3-empty">@Loc["NoBaselineUploaded"]</p>
+                        }
+                        else if (State.ComputedSchemaDiff != null)
+                        {
+                            var d = State.ComputedSchemaDiff;
+                            <div class="p3-diff-summary">
+                                <span class="p3-stat-num">@Loc.Get("DiffSummary", d.AddedFields.Count, d.RemovedFields.Count, d.ChangedFields.Count)</span>
+                                @if (d.HasBreakingChanges)
+                                {
+                                    <span class="breaking-badge">@Loc["DiffBreakingBadge"]</span>
+                                }
+                                else
+                                {
+                                    <span class="safe-badge">@Loc["DiffSafeBadge"]</span>
+                                }
+                            </div>
+
+                            @if (d.AddedFields.Count > 0)
+                            {
+                                <details class="p3-diff-group" open>
+                                    <summary>🟢 @Loc.Get("DiffAddedTitle", d.AddedFields.Count)</summary>
+                                    <ul class="p3-list">
+                                        @foreach (var f in d.AddedFields)
+                                        {
+                                            <li>
+                                                <code class="p3-field">@f.Path</code>
+                                                <span class="p3-meta">@f.PrimaryType @if (!string.IsNullOrEmpty(f.SemanticType)) { <text>(@f.SemanticType)</text> }</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </details>
+                            }
+
+                            @if (d.RemovedFields.Count > 0)
+                            {
+                                <details class="p3-diff-group" open>
+                                    <summary>🔴 @Loc.Get("DiffRemovedTitle", d.RemovedFields.Count)</summary>
+                                    <ul class="p3-list">
+                                        @foreach (var f in d.RemovedFields)
+                                        {
+                                            <li>
+                                                <code class="p3-field">@f.Path</code>
+                                                <span class="p3-meta">@f.PrimaryType</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </details>
+                            }
+
+                            @if (d.ChangedFields.Count > 0)
+                            {
+                                <details class="p3-diff-group">
+                                    <summary>🟡 @Loc.Get("DiffChangedTitle", d.ChangedFields.Count)</summary>
+                                    <ul class="p3-list p3-changes">
+                                        @foreach (var c in d.ChangedFields)
+                                        {
+                                            <li>
+                                                <code class="p3-field">@c.Path</code>
+                                                @if (c.Breaking)
+                                                {
+                                                    <span class="breaking-badge breaking-mini">break</span>
+                                                }
+                                                <ul class="p3-change-items">
+                                                    @foreach (var item in c.Changes)
+                                                    {
+                                                        <li class="@(item.Breaking ? "change-breaking" : "change-info")">
+                                                            <span class="change-prop">@item.Property</span>
+                                                            <span class="change-desc">@item.Description</span>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </li>
+                                        }
+                                    </ul>
+                                </details>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
     }
 </div>
@@ -466,6 +696,11 @@
         State.Preview = null;
         _selectedPreviewColumns.Clear();
         State.PageIndex = 0;
+        // 数据源变更 → 旧基线与 diff 不再有效
+        State.BaselineSnapshotPath = null;
+        State.BaselineSnapshotName = null;
+        State.ComputedSchemaDiff = null;
+        State.BaselineError = null;
     }
 
     private void ClearDataFile()
@@ -631,6 +866,12 @@
             SeedPreviewSelection();
             State.Result = result;
             ShowConfig = false;
+
+            // 若分析前已上传基线快照，异步计算 diff（不阻塞 UI）
+            if (State.BaselineSnapshotPath != null)
+            {
+                await ComputeBaselineDiffAsync(State.BaselineSnapshotPath);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -1150,5 +1391,144 @@
     private static string FormatPercent(double coverage)
     {
         return $"{coverage * 100:F1}%";
+    }
+
+    // ── P3：DateTime / Outlier / Schema Diff 辅助 ──
+
+    /// <summary>根据时间跨度的紧凑展示（自动切档：时分秒 / MM-dd / yyyy-MM-dd / yyyy-MM / yyyy）。</summary>
+    internal static string FormatDate(DateTimeOffset? value)
+    {
+        if (!value.HasValue) return "—";
+        var d = value.Value;
+        var span = d - DateTimeOffset.UtcNow;
+        // 接近当前时间的相对格式；否则按紧凑绝对格式
+        if (Math.Abs(span.TotalDays) < 1)
+        {
+            return d.ToString("HH:mm:ss");
+        }
+        if (Math.Abs(span.TotalDays) < 365)
+        {
+            return d.ToString("MM-dd HH:mm");
+        }
+        return d.ToString("yyyy-MM-dd");
+    }
+
+    /// <summary>格式化为人类可读的跨度字符串（如 "3 天 4 小时"、"2 个月 15 天"）。</summary>
+    internal static string FormatDateTimeSpan(DateTimeOffset? min, DateTimeOffset? max)
+    {
+        if (!min.HasValue || !max.HasValue) return "—";
+        var span = max.Value - min.Value;
+        if (span.TotalSeconds < 0) return "—";
+        if (span.TotalDays >= 365) return $"{(int)(span.TotalDays / 365)} 年 {(int)((span.TotalDays % 365) / 30)} 天";
+        if (span.TotalDays >= 30) return $"{(int)(span.TotalDays / 30)} 个月 {(int)(span.TotalDays % 30)} 天";
+        if (span.TotalDays >= 1) return $"{(int)span.TotalDays} 天 {(int)span.TotalHours % 24} 小时";
+        if (span.TotalHours >= 1) return $"{(int)span.TotalHours} 小时 {(int)span.TotalMinutes % 60} 分";
+        if (span.TotalMinutes >= 1) return $"{(int)span.TotalMinutes} 分 {(int)span.TotalSeconds % 60} 秒";
+        return $"{(int)span.TotalSeconds} 秒";
+    }
+
+    /// <summary>将一组数值渲染为内联 SVG sparkline（柱状图），用于紧凑展示时间分布。无值时返回空。</summary>
+    internal static string RenderSparkline(double[] values, int width = 80, int height = 18)
+    {
+        if (values == null || values.Length == 0) return "";
+        double max = values.Max();
+        if (max <= 0) return "";
+        int n = values.Length;
+        double barW = Math.Max(1.0, (width - (n - 1) * 1.0) / n);
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"<svg width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\" xmlns=\"http://www.w3.org/2000/svg\" preserveAspectRatio=\"none\">");
+        for (int i = 0; i < n; i++)
+        {
+            double v = values[i];
+            if (v <= 0) continue; // 跳过空桶
+            double h = Math.Max(1.0, (v / max) * height);
+            double x = i * (barW + 1.0);
+            double y = height - h;
+            sb.Append($"<rect x=\"{x:F1}\" y=\"{y:F1}\" width=\"{barW:F1}\" height=\"{h:F1}\" fill=\"currentColor\" opacity=\"0.75\"/>");
+        }
+        sb.Append("</svg>");
+        return sb.ToString();
+    }
+
+    /// <summary>上传 Schema 快照基线 → 校验 → 计算 diff（不重新跑分析）。</summary>
+    private async Task HandleBaselineUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        CancelActiveAnalysis();
+        DeleteQuietly(State.BaselineSnapshotPath);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        await using (var fs = File.Create(tempPath))
+        {
+            await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(fs);
+        }
+
+        State.BaselineSnapshotPath = tempPath;
+        State.BaselineSnapshotName = file.Name;
+        State.BaselineError = null;
+        State.ComputedSchemaDiff = null;
+
+        if (State.Result == null)
+        {
+            // 基线先于分析上传：暂存，等分析完成后再计算 diff
+            return;
+        }
+
+        await ComputeBaselineDiffAsync(tempPath);
+    }
+
+    private async Task ComputeBaselineDiffAsync(string baselinePath)
+    {
+        try
+        {
+            var json = await File.ReadAllTextAsync(baselinePath);
+            var loadOptions = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var baseline = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.SchemaSnapshot>(json, loadOptions);
+            if (baseline == null || string.IsNullOrEmpty(baseline.SnapshotVersion))
+            {
+                State.BaselineError = Loc["ErrInvalidBaseline"];
+                State.ComputedSchemaDiff = null;
+                return;
+            }
+            var current = Core.Analysis.SchemaSnapshotExporter.Build(State.Result!, State.FileName);
+            State.ComputedSchemaDiff = Core.Analysis.SchemaDiffer.Compute(baseline, current);
+            State.BaselineError = null;
+        }
+        catch (Exception ex)
+        {
+            State.BaselineError = ErrorSanitizer.Format(ex);
+            State.ComputedSchemaDiff = null;
+        }
+    }
+
+    private void ClearBaseline()
+    {
+        CancelActiveAnalysis();
+        DeleteQuietly(State.BaselineSnapshotPath);
+        State.BaselineSnapshotPath = null;
+        State.BaselineSnapshotName = null;
+        State.ComputedSchemaDiff = null;
+        State.BaselineError = null;
+    }
+
+    /// <summary>将当前分析结果导出为 canonical Schema 快照 JSON 文件（下载到浏览器）。</summary>
+    private async Task DownloadCurrentSnapshot()
+    {
+        if (State.Result == null) return;
+        var snapshot = Core.Analysis.SchemaSnapshotExporter.Build(State.Result, State.FileName);
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(snapshot, options);
+        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        await Js.InvokeVoidAsync("objectAnalyzer.downloadTextFile",
+            $"schema-snapshot-{stamp}.json", json, "application/json;charset=utf-8");
     }
 }
