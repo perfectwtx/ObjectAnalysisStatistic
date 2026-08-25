@@ -13,7 +13,7 @@ var cts = new CancellationTokenSource();
 
 var inputOption = new Option<FileInfo?>(
     aliases: CliAliases.Input,
-    description: "指定输入的 JSON、JSONL、CSV、Excel、XML、YAML 文件路径。");
+    description: "指定输入的 JSON、JSONL、CSV、Excel、XML、YAML 文件路径；支持 .gz / .bz2 / .zip 压缩包直读（含 zip 内嵌套 gzip/bzip2 条目，自动识别内层格式）。");
 
 var outputOption = new Option<FileInfo?>(
     aliases: CliAliases.Output,

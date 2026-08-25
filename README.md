@@ -1,9 +1,9 @@
 # ObjectAnalyzer
 
-对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入，自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验、多维度质量检查（模式/范围/必填/唯一/null 率 + 数据集期望）及重复对象。
+对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入（可直接读取 gzip / bzip2 / zip 压缩包），自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验、多维度质量检查（模式/范围/必填/唯一/null 率 + 数据集期望）及重复对象。
 
 - CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)
-- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML；另支持数据库直连（PostgreSQL / MySQL / SQLite / SQL Server）
+- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML；压缩包直读（gzip / bzip2 / zip，含 zip 内嵌套 gzip/bzip2 条目）；另支持数据库直连（PostgreSQL / MySQL / SQLite / SQL Server）
 - 规则驱动值解析：通过规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串，适用于 Excel 多列 JSON 及其他值级解析场景
 - 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)
 - 字段统计：每个字段的出现频次、覆盖率、主导数据类型
@@ -74,7 +74,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 
 | 选项 | 缩写 | 说明 | 默认值 |
 |------|------|------|--------|
-| `--input <FILE>` | `-i` | 输入文件路径（JSON / JSONL / CSV / Excel / XML / YAML） | 必填 |
+| `--input <FILE>` | `-i` | 输入文件路径（JSON / JSONL / CSV / Excel / XML / YAML；支持 .gz / .bz2 / .zip 压缩包直读） | 必填 |
 | `--output <FILE>` | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv`） | 无 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
@@ -434,6 +434,32 @@ dotnet run
 参数规则：两者互斥（不能同时指定）；`--sample-reservoir` ≥ 2，`--sample-step` ≥ 2；未指定时保持全量分析。
 
 实现层面：`jsonl` / `csv` / `excel` / `excel-json` 等行、记录级流式格式会在**解析前跳过未选中记录**（只付出 I/O 成本，不付出 JSON/单元格解析成本），因此巨型 JSONL 的采样剖析可做到秒级；`json` / `xml` / `yaml` 与强类型路径在整体物化后做统一采样包装。报告中的对象总数与占比均基于样本计算。
+
+## 压缩文件直读
+
+超大文件场景常伴随压缩存储，工具支持 **gzip / bzip2 / zip 压缩包直接作为输入**，无需预先解压：
+
+```bash
+# gzip 包裹的 JSONL —— 保持行级流式解压，50GB+ 级别内存有界
+objectanalyzer -i huge_export.jsonl.gz --sample-reservoir 50000 -s "csharp:schema.cs"
+
+# bzip2 包裹的 CSV
+objectanalyzer -i events.csv.bz2 -o report.html
+
+# zip 压缩包：自动选择数据条目（多数据条目时取字典序首个并在控制台提示）
+objectanalyzer -i backup.zip -o report.json
+
+# 强类型路径同样适用
+objectanalyzer -i users.json.gz -t "UserInfo.cs:User"
+```
+
+识别与处理规则：
+
+- **按扩展名识别**最外层压缩类型（`.gz` / `.gzip` 视同 gzip、`.bz2`、`.zip`），内层格式由剥离压缩后缀后的扩展名决定（如 `data.csv.gz` → CSV、`book.xlsx.gz` → Excel）。
+- **扩展名不可判时按头部魔数嗅探**兜底（`1F 8B`=gzip、`BZh`=bzip2、`PK`=zip 容器）；未知扩展名的 Office Open XML 文件（如被改名的 `.xlsx`）会按 Excel 直接解析而非当作 zip 数据容器。
+- **zip 条目选择**：跳过目录条目，优先选已知数据格式的条目；多个候选时取全名字典序首个（确定性），其余条目忽略并在控制台提示。zip 内**嵌套 gzip/bzip2 条目**（如 `logs.csv.gz`）会被继续解包。
+- **流式透传**：JSONL/CSV/XML/YAML 在解压流上边读边解析，不整体落盘不整体物化；仅内层为需要随机访问的 `.xlsx` 时才将解压内容缓冲到内存。
+- 采样（`--sample-reservoir` / `--sample-step`）在解压后的行级流上照常生效。
 
 ## 性能基准
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Xml;
@@ -35,10 +36,36 @@ public static class FileParsers
 
     /// <summary>
     /// Detects the format name from a file extension.
+    /// 支持压缩包裹：gzip/bzip2 取内层扩展名；zip 取首个数据条目的扩展名。
     /// </summary>
     public static string DetectFormat(string path)
     {
-        string ext = Path.GetExtension(path).ToLowerInvariant();
+        CompressionType ct = CompressionDetector.Detect(path);
+        if (ct == CompressionType.None)
+        {
+            // 内容级兜底：未知扩展名但实为 Office Open XML 包（如被改名的 .xlsx）→ 按 Excel 解析
+            if (!CompressionDetector.HasKnownDataExtension(path) &&
+                CompressionDetector.LooksLikeOfficeOpenXmlPackage(path))
+            {
+                return "excel";
+            }
+
+            return FormatFromExtension(Path.GetExtension(path));
+        }
+
+        if (ct == CompressionType.Zip)
+            return DetectZipFormat(path);
+
+        // gzip / bzip2：内层扩展名决定格式
+        return FormatFromExtension(Path.GetExtension(CompressionDetector.StripCompression(path)));
+    }
+
+    /// <summary>
+    /// 仅按扩展名（已剥离压缩层）推断格式名；供 <see cref="InputSource"/> 复用，也可在测试中直接校验。
+    /// </summary>
+    public static string FormatFromExtension(string ext)
+    {
+        ext = ext.ToLowerInvariant();
 
         // 明确优先返回 Excel（.xlsx）而不是 CSV；CSV 与 Excel 共享同一解析器，但 .xlsx 的语义应走 excel 分支。
         if (ext == ".xlsx")
@@ -55,8 +82,31 @@ public static class FileParsers
     }
 
     /// <summary>
+    /// 打开 zip 中央目录，按确定性规则选取数据条目并以其（剥离嵌套 gzip/bzip2 后缀的）扩展名推断格式
+    /// （探测失败则退化为 json）。
+    /// </summary>
+    private static string DetectZipFormat(string path)
+    {
+        try
+        {
+            using var fs = File.OpenRead(path);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Read, leaveOpen: false);
+            var entry = InputSource.PickZipEntry(zip, out _);
+            if (entry == null)
+                return "json";
+            string innerName = CompressionDetector.StripGzipBzip2Chain(entry.FullName);
+            return FormatFromExtension(Path.GetExtension(innerName));
+        }
+        catch
+        {
+            return "json";
+        }
+    }
+
+    /// <summary>
     /// Parses a file by format name using the parser registry.
     /// Format names are matched case-insensitively.
+    /// 自动处理 gzip / bzip2 / zip 压缩包裹：在枚举期间惰性解压并持有输入源，枚举结束后释放。
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ParseByFormat(string path, string format, ParseOptions options)
     {
@@ -67,9 +117,66 @@ public static class FileParsers
         foreach (var parser in _parsers)
         {
             if (parser.SupportedFormats.Contains(normalized))
-                return parser.Parse(path, options);
+                return new DecompressingEnumerable(path, parser, options);
         }
         throw new InvalidOperationException($"不支持的文件格式: {format}");
+    }
+
+    /// <summary>
+    /// 惰性枚举包装：在迭代开始（GetEnumerator）时才打开压缩输入源，
+    /// 并在外层枚举器释放时一并释放解压流与底层句柄，确保文件句柄不泄漏。
+    /// </summary>
+    private sealed class DecompressingEnumerable : IEnumerable<Dictionary<string, object?>>
+    {
+        private readonly string _path;
+        private readonly IFileParser _parser;
+        private readonly ParseOptions _options;
+
+        public DecompressingEnumerable(string path, IFileParser parser, ParseOptions options)
+        {
+            _path = path;
+            _parser = parser;
+            _options = options;
+        }
+
+        public IEnumerator<Dictionary<string, object?>> GetEnumerator()
+        {
+            var source = InputSource.Open(_path);
+            try
+            {
+                var inner = _parser.Parse(source.Content, _options).GetEnumerator();
+                return new DisposingEnumerator(inner, source);
+            }
+            catch
+            {
+                source.Dispose();
+                throw;
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+        private sealed class DisposingEnumerator : IEnumerator<Dictionary<string, object?>>
+        {
+            private readonly IEnumerator<Dictionary<string, object?>> _inner;
+            private readonly InputSource _source;
+
+            public DisposingEnumerator(IEnumerator<Dictionary<string, object?>> inner, InputSource source)
+            {
+                _inner = inner;
+                _source = source;
+            }
+
+            public Dictionary<string, object?> Current => _inner.Current;
+            object System.Collections.IEnumerator.Current => _inner.Current;
+            public bool MoveNext() => _inner.MoveNext();
+            public void Reset() => _inner.Reset();
+            public void Dispose()
+            {
+                _inner.Dispose();
+                _source.Dispose();
+            }
+        }
     }
 
     // ─────────────────────────────────────────────
@@ -81,11 +188,16 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "json" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".json" };
 
-        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(Stream stream, ParseOptions options)
         {
             // 流式解析：每个元素独立 JsonDocument，生命周期很短，
             // 避免整个 JSON DOM 与分析过程同时常驻内存。
-            byte[] fileBytes = File.ReadAllBytes(path);
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                stream.CopyTo(ms);
+                fileBytes = ms.ToArray();
+            }
             // 剥离 UTF-8 BOM，避免 Utf8JsonReader 将 BOM 当作非法字节
             // （Windows 工具/Excel 保存的 JSON 常带 BOM）
             fileBytes = StripUtf8Bom(fileBytes);
@@ -242,18 +354,18 @@ public static class FileParsers
         // 惰性逐行流式解析：超大 JSONL 文件无需一次性物化到内存。
         // 采样模式下（--sample-reservoir / --sample-step）仅在选中行上做 JSON 解析，
         // 未选中行直接跳过，从而在巨型文件上数秒内完成 Schema 概览。
-        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(Stream stream, ParseOptions options)
         {
             if (options.SampleReservoir > 0)
-                return ParseReservoir(path, options);
+                return ParseReservoir(stream, options);
             if (options.SampleStep > 0)
-                return ParseStep(path, options);
-            return ParseAll(path, options);
+                return ParseStep(stream, options);
+            return ParseAll(stream, options);
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(Stream stream, ParseOptions options)
         {
-            using var reader = new StreamReader(File.OpenRead(path));
+            using var reader = new StreamReader(stream);
             string? line;
             long lineNumber = 0;
             while ((line = reader.ReadLine()) != null)
@@ -265,10 +377,10 @@ public static class FileParsers
             }
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(Stream stream, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-            using var reader = new StreamReader(File.OpenRead(path));
+            using var reader = new StreamReader(stream);
             string? line;
             long lineNumber = 0;
             while ((line = reader.ReadLine()) != null)
@@ -284,9 +396,9 @@ public static class FileParsers
             return sampler.Items;
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(Stream stream, ParseOptions options)
         {
-            using var reader = new StreamReader(File.OpenRead(path));
+            using var reader = new StreamReader(stream);
             string? line;
             long lineNumber = 0;
             long recordIndex = 0;
@@ -328,13 +440,13 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "excel", "csv" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".csv", ".xlsx" };
 
-        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(Stream stream, ParseOptions options)
         {
             if (options.SampleReservoir > 0)
-                return ParseReservoir(path, options);
+                return ParseReservoir(stream, options);
             if (options.SampleStep > 0)
-                return ParseStep(path, options);
-            return ParseAll(path, options);
+                return ParseStep(stream, options);
+            return ParseAll(stream, options);
         }
 
         // 表头模式：header=0 无表头（列以字母 A/B/C 命名，首行是表头需跳过）；header=1（默认）首行值为列名。
@@ -348,11 +460,11 @@ public static class FileParsers
             return true;
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(Stream stream, ParseOptions options)
         {
             long rowIndex = 0;
             bool useHeaderRow = UseHeaderRow(options);
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
+            foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream)))
             {
                 rowIndex++;
                 if (!useHeaderRow && rowIndex == 1)
@@ -363,12 +475,12 @@ public static class FileParsers
             }
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(Stream stream, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
             bool useHeaderRow = UseHeaderRow(options);
             long rowIndex = 0;
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
+            foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream)))
             {
                 rowIndex++;
                 if (!useHeaderRow && rowIndex == 1)
@@ -383,12 +495,12 @@ public static class FileParsers
             return sampler.Items;
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(Stream stream, ParseOptions options)
         {
             long recordIndex = 0;
             bool useHeaderRow = UseHeaderRow(options);
             long rowIndex = 0;
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
+            foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream)))
             {
                 rowIndex++;
                 if (!useHeaderRow && rowIndex == 1)
@@ -420,19 +532,18 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "xml" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".xml" };
 
-        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(Stream stream, ParseOptions options)
         {
             XDocument doc;
             try
             {
-                using var fs = File.OpenRead(path);
                 // 显式禁止 DTD（防 XXE/实体炸弹）并限制文档大小，防止超大/恶意 XML 打满内存
                 var settings = new XmlReaderSettings
                 {
                     DtdProcessing = DtdProcessing.Prohibit,
                     MaxCharactersInDocument = 256 * 1024 * 1024
                 };
-                using var xmlReader = XmlReader.Create(fs, settings);
+                using var xmlReader = XmlReader.Create(stream, settings);
                 doc = XDocument.Load(xmlReader);
             }
             catch (Exception ex)
@@ -453,12 +564,11 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "yaml" };
         public IReadOnlyList<string> SupportedExtensions => new[] { ".yaml", ".yml" };
 
-        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(Stream stream, ParseOptions options)
         {
             var deserializer = new DeserializerBuilder().Build();
 
-            using var fs = File.OpenRead(path);
-            using var reader = new StreamReader(fs);
+            using var reader = new StreamReader(stream);
             object? yamlResult = deserializer.Deserialize(reader);
 
             if (yamlResult is List<object?> list)
@@ -490,22 +600,22 @@ public static class FileParsers
         public IReadOnlyList<string> SupportedFormats => new[] { "excel-json" };
         public IReadOnlyList<string> SupportedExtensions => Array.Empty<string>(); // 无自动检测扩展名，需在规则或调用方显式使用 excel-json
 
-        public IEnumerable<Dictionary<string, object?>> Parse(string path, ParseOptions options)
+        public IEnumerable<Dictionary<string, object?>> Parse(Stream stream, ParseOptions options)
         {
             var sources = options.ValueParsers;
 
             if (options.SampleReservoir > 0)
-                return ParseReservoir(path, sources, options);
+                return ParseReservoir(stream, sources, options);
             if (options.SampleStep > 0)
-                return ParseStep(path, sources, options);
-            return ParseAll(path, sources, options);
+                return ParseStep(stream, sources, options);
+            return ParseAll(stream, sources, options);
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseAll(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseAll(Stream stream, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             long rowIndex = 0;
             bool useHeaderRow = UseHeaderRow(sources);
-            foreach (var row in MiniExcel.Query(path, useHeaderRow: useHeaderRow))
+            foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream)))
             {
                 rowIndex++;
                 var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
@@ -515,11 +625,11 @@ public static class FileParsers
         }
 
         // 采样：先按记录序做准入/步长判定，未选中行连 JSON 单元格都不解析
-        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseReservoir(Stream stream, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
             bool useHeaderRow = UseHeaderRow(sources);
-            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: useHeaderRow)))
+            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream))))
             {
                 int slot = sampler.NextSlot();
                 if (slot < 0)
@@ -531,11 +641,11 @@ public static class FileParsers
             return sampler.Items;
         }
 
-        private static IEnumerable<Dictionary<string, object?>> ParseStep(string path, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
+        private static IEnumerable<Dictionary<string, object?>> ParseStep(Stream stream, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
         {
             long recordIndex = 0;
             bool useHeaderRow = UseHeaderRow(sources);
-            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(path, useHeaderRow: useHeaderRow)))
+            foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream))))
             {
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
@@ -758,6 +868,23 @@ public static class FileParsers
     // ─────────────────────────────────────────────
     //  Shared JSON helpers
     // ─────────────────────────────────────────────
+
+    /// <summary>
+    /// 从流解析 Excel/CSV 时，MiniExcel 无法从“流”推断文件类型（原实现依赖路径扩展名）。
+    /// 这里据可寻址性与 magic 字节判定：xlsx 本质为 zip（PK 头）按 Xlsx；否则按 Csv。
+    /// 非可寻址流仅出现在 gzip/bzip2 包裹的 CSV（xlsx 内层总是已缓冲到可寻址内存流），故直接判 Csv。
+    /// </summary>
+    private static ExcelType ResolveExcelType(Stream stream)
+    {
+        if (!stream.CanSeek)
+            return ExcelType.CSV;
+
+        long pos = stream.Position;
+        Span<byte> sig = stackalloc byte[2];
+        bool isZip = stream.Read(sig) == 2 && sig[0] == (byte)'P' && sig[1] == (byte)'K';
+        stream.Position = pos;
+        return isZip ? ExcelType.XLSX : ExcelType.CSV;
+    }
 
     private static Dictionary<string, object?> ParseJsonElement(JsonElement element, bool flatten)
     {

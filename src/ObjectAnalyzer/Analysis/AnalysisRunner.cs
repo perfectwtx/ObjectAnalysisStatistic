@@ -152,6 +152,28 @@ public static class AnalysisRunner
         }
 
         AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
+
+        var compression = CompressionDetector.Detect(options.InputPath);
+        if (compression != CompressionType.None)
+        {
+            string label = compression switch
+            {
+                CompressionType.GZip => "gzip",
+                CompressionType.BZip2 => "bzip2",
+                CompressionType.Zip => "zip",
+                _ => "压缩"
+            };
+            AnsiConsole.MarkupLine($"[grey][[自动解压]][/] 检测到 {label} 压缩文件，正在流式解压后解析（保持行级流式，超大文件内存有界）...");
+
+            // zip 含多个数据条目时提示确定性选择结果，避免“为什么统计的是这个文件”的困惑
+            if (compression == CompressionType.Zip &&
+                InputSource.PreviewZipEntries(options.InputPath) is { } preview &&
+                preview.Others.Count > 0)
+            {
+                AnsiConsole.MarkupLine(
+                    $"[grey][[自动解压]][/] zip 含 {preview.Others.Count + 1} 个数据条目，已选择 [blue]{Markup.Escape(preview.Chosen)}[/]（其余条目忽略）");
+            }
+        }
         var parseOptions = new ParseOptions
         {
             Flatten = ResolveFlatten(options, rules),
@@ -232,7 +254,8 @@ public static class AnalysisRunner
         AnsiConsole.MarkupLine($"编译成功。目标类型: [green]{targetType.FullName}[/]");
 
         AnsiConsole.MarkupLine($"正在使用强类型反序列化文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
-        var typedResult = TypedFileParser.ParseJson(options.InputPath, targetType);
+        using var typedInput = InputSource.Open(options.InputPath);
+        var typedResult = TypedFileParser.ParseJson(typedInput.Content, targetType);
 
         var materialized = new List<Dictionary<string, object?>>();
         try
