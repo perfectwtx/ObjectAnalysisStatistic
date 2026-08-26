@@ -1,0 +1,8 @@
+{"event":"click","timestamp":"2026-01-15T10:00:00Z","payload":{"x":100,"y":200,"button":"left"}}
+{"event":"hover","timestamp":"2026-01-15T10:00:05Z","payload":{"x":50,"y":75,"button":"none"}}
+{"event":"scroll","timestamp":"2026-01-15T10:00:10Z","payload":{"x":120,"y":300,"delta":50}}
+{"event":"click","timestamp":"2026-01-15T10:00:15Z","payload":{"x":350,"y":400,"button":"right"}}
+{"event":"keypress","timestamp":"2026-01-15T10:00:20Z","payload":{"key":"Enter","modifiers":["Ctrl"]}}
+{"event":"click","timestamp":"2026-01-15T10:00:25Z","payload":{"x":80,"y":60,"button":"left"}}
+{"event":"hover","timestamp":"2026-01-15T10:00:30Z","payload":{"x":220,"y":180,"button":"none"}}
+{"event":"scroll","timestamp":"2026-01-15T10:00:35Z","payload":{"x":90,"y":210,"delta":-30}}

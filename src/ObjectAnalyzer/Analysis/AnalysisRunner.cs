@@ -4,8 +4,10 @@ using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
+using ObjectAnalyzer.Parsing;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Analysis;
@@ -21,8 +23,45 @@ public static class AnalysisRunner
 
     /// <summary>
     /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
+    /// 当 <see cref="AnalysisOptions.AuditLogPath"/> 非空时，写入 NDJSON 审计日志。
     /// </summary>
     public static int Run(AnalysisOptions options, CancellationToken cancellationToken = default)
+    {
+        AuditLogger? audit = null;
+        string runId = AuditLogger.NewRunId();
+        var sw = new StopwatchLike();
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(options.AuditLogPath))
+            {
+                audit = new AuditLogger(options.AuditLogPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 审计日志路径不可写不应阻塞分析主流程；但要给操作者明确提示
+            AnsiConsole.MarkupLine(
+                $"[yellow]警告: 审计日志初始化失败 ({Markup.Escape(ex.Message)})；本次运行不写入审计记录。[/]");
+            audit = null;
+        }
+
+        int result = RunCore(options, audit, runId, sw, cancellationToken);
+
+        // 若 RunCore 因异常未写入 finish/error 事件，此处兜底记录
+        if (audit != null)
+        {
+            // RunCore 已负责所有正常路径的写入；此处仅在 RunCore 自身抛出未捕获异常时使用
+            audit.Dispose();
+        }
+        return result;
+    }
+
+    private static int RunCore(
+        AnalysisOptions options,
+        AuditLogger? audit,
+        string runId,
+        StopwatchLike sw,
+        CancellationToken cancellationToken)
     {
         bool dbMode = !string.IsNullOrEmpty(options.ConnectionString);
         if (!dbMode && !File.Exists(options.InputPath))
@@ -77,29 +116,103 @@ public static class AnalysisRunner
             return 1;
         }
 
+        // JSONPath 表达式语法预检（fail-fast，避免解析到一半才发现）
+        if (!string.IsNullOrWhiteSpace(options.RootPath))
+        {
+            try
+            {
+                JsonPathProjector.TryValidate(options.RootPath);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]错误: --root-path {Markup.Escape(ex.Message)}[/]");
+                return 1;
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(options.RecordPath))
+        {
+            try
+            {
+                JsonPathProjector.TryValidate(options.RecordPath);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]错误: --record-path {Markup.Escape(ex.Message)}[/]");
+                return 1;
+            }
+        }
+
+        // 输入存在性与规则加载通过后，审计可正式记录 start 事件（不计入参数校验失败等）
+        WriteAuditStart(audit, options, rules, runId);
+
         try
         {
             IEnumerable<Dictionary<string, object?>> parsedObjects;
             var effectiveValueParsers = ResolveValueParsers(options, rules);
 
-            // 数据库直连：DbDataReader 惰性流式读取查询结果
-            if (dbMode)
+            // JSONPath 投影：先在文件根应用（仅当 --root-path 存在且非数据库/类型模式），
+            // 此时跳过原解析器以避免对文件整体读两次；最后在每条记录上应用（--record-path）。
+            // 匹配空集时仅警告。
+            bool hasRootPath = !string.IsNullOrWhiteSpace(options.RootPath);
+            if (hasRootPath)
             {
-                parsedObjects = ParseFromDatabase(options);
-            }
-            // 如果指定了 --type，使用强类型反序列化路径
-            else if (!string.IsNullOrEmpty(options.TypeFile))
-            {
-                parsedObjects = RunTyped(options);
+                // 数据库直连：DbDataReader 惰性流式读取查询结果
+                if (dbMode)
+                {
+                    parsedObjects = ParseFromDatabase(options);
+                }
+                // 如果指定了 --type，使用强类型反序列化路径
+                else if (!string.IsNullOrEmpty(options.TypeFile))
+                {
+                    parsedObjects = RunTyped(options);
+                }
+                else
+                {
+                    string fmt = FileParsers.DetectFormat(options.InputPath);
+                    if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db" or "typed")
+                    {
+                        AnsiConsole.MarkupLine(
+                            $"[yellow]警告: --root-path 在 [red]{fmt}[/] 格式下没有文件根概念，将被忽略（仅 --record-path 生效）[/]");
+                        parsedObjects = ParseByFormat(options, rules, effectiveValueParsers);
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine(
+                            $"[grey][[JSONPath]][/] 正在文件根应用 [blue]{Markup.Escape(options.RootPath!)}[/] ...");
+                        parsedObjects = LoadAndApplyRootPath(options.InputPath, options.RootPath!);
+                    }
+                }
             }
             else
             {
-                parsedObjects = ParseByFormat(options, rules, effectiveValueParsers);
+                // 数据库直连：DbDataReader 惰性流式读取查询结果
+                if (dbMode)
+                {
+                    parsedObjects = ParseFromDatabase(options);
+                }
+                // 如果指定了 --type，使用强类型反序列化路径
+                else if (!string.IsNullOrEmpty(options.TypeFile))
+                {
+                    parsedObjects = RunTyped(options);
+                }
+                else
+                {
+                    parsedObjects = ParseByFormat(options, rules, effectiveValueParsers);
+                }
+            }
+
+            // record-path 始终生效（即使在 root-path 之后）
+            if (!string.IsNullOrWhiteSpace(options.RecordPath))
+            {
+                AnsiConsole.MarkupLine(
+                    $"[grey][[JSONPath]][/] 正在每条记录上应用 [blue]{Markup.Escape(options.RecordPath!)}[/] ...");
+                parsedObjects = ApplyRecordPathStream(parsedObjects, options.RecordPath!);
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
             AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, cancellationToken);
 
+            int exitCode = 0;
             // CI 数据质量门禁：存在任一质量违规（枚举/范围/模式/必填/唯一/null 率/数据集期望）时以非零退出码结束
             if (options.FailOnViolations && result.QualityViolations.Count > 0)
             {
@@ -119,11 +232,11 @@ public static class AnalysisRunner
                     AnsiConsole.MarkupLine($"  [grey]... 还有 {result.QualityViolations.Count - 5} 条，详见 --violations 导出[/]");
                 }
 
-                return 3;
+                exitCode = 3;
             }
 
             // CI 数据安全合规门禁：合规等级达到或劣于阈值时以非零退出码结束（与 --fail-on-violations 对称）
-            if (!string.IsNullOrWhiteSpace(options.FailOnPiiLevel))
+            if (exitCode == 0 && !string.IsNullOrWhiteSpace(options.FailOnPiiLevel))
             {
                 var piiReport = PiiReport.Build(result);
                 if (piiReport.PiiFieldCount > 0 &&
@@ -131,12 +244,12 @@ public static class AnalysisRunner
                 {
                     AnsiConsole.MarkupLine(
                         $"[red]数据安全合规未通过（合规等级 {piiReport.ComplianceLevel}，发现 {piiReport.PiiFieldCount} 个敏感字段 / {piiReport.PiiValueCount} 个敏感值），退出码 4。[/]");
-                    return 4;
+                    exitCode = 4;
                 }
             }
 
             // CI 异常值门禁：任一数值字段异常值比例超阈值时以退出码 5 结束
-            if (options.FailOnOutlierRatio.HasValue)
+            if (exitCode == 0 && options.FailOnOutlierRatio.HasValue)
             {
                 double threshold = options.FailOnOutlierRatio.Value;
                 var offenders = result.FieldStatistics
@@ -155,12 +268,12 @@ public static class AnalysisRunner
                     {
                         AnsiConsole.MarkupLine($"  [grey]... 还有 {offenders.Count - 5} 个字段，详见报告[/]");
                     }
-                    return 5;
+                    exitCode = 5;
                 }
             }
 
             // CI Schema 演进门禁：--allow-breaking-schema-changes=false 时，含破坏性变更以退出码 6 结束
-            if (!options.AllowBreakingSchemaChanges && result.SchemaDiff != null && result.SchemaDiff.HasBreakingChanges)
+            if (exitCode == 0 && !options.AllowBreakingSchemaChanges && result.SchemaDiff != null && result.SchemaDiff.HasBreakingChanges)
             {
                 int removed = result.SchemaDiff.RemovedFields.Count;
                 int breakingChanges = result.SchemaDiff.ChangedFields.Count(c => c.Breaking);
@@ -182,20 +295,110 @@ public static class AnalysisRunner
                         }
                     }
                 }
-                return 6;
+                exitCode = 6;
             }
 
-            return 0;
+            // 成功 / 业务门禁失败统一记录 analysis_finish（含退出码与结果摘要）
+            string finishEvent = exitCode == 0 ? "analysis_finish" : "analysis_finish";
+            string? finishMsg = exitCode == 0
+                ? null
+                : exitCode switch
+                {
+                    3 => "数据质量门禁未通过",
+                    4 => "数据安全合规门禁未通过",
+                    5 => "异常值门禁未通过",
+                    6 => "Schema 演进门禁未通过",
+                    _ => null
+                };
+            WriteAuditEvent(audit, options, rules, runId, sw, "analysis_finish", exitCode, result, finishMsg);
+            return exitCode;
         }
         catch (OperationCanceledException)
         {
             AnsiConsole.MarkupLine("[yellow]分析已取消。[/]");
+            WriteAuditEvent(audit, options, rules, runId, sw, "analysis_cancel", exitCode: 2, result: null, message: "用户取消");
             return 2;
         }
         catch (Exception ex)
         {
             PrintError(ex);
+            WriteAuditEvent(audit, options, rules, runId, sw, "analysis_error", exitCode: 1, result: null, message: ex.Message);
             return 1;
+        }
+    }
+
+    private static void WriteAuditStart(AuditLogger? audit, AnalysisOptions options, AnalysisRules? rules, string runId)
+    {
+        if (audit == null) return;
+        audit.Write(new AuditLogEntry
+        {
+            Timestamp = AuditLogger.FormatTimestamp(DateTime.UtcNow),
+            Event = "analysis_start",
+            RunId = runId,
+            Operator = string.IsNullOrWhiteSpace(options.Operator) ? "anonymous" : options.Operator,
+            ToolVersion = GetToolVersion(),
+            InputSource = BuildInputSource(options),
+            InputHash = AuditLogger.ComputeFileHash(options.InputPath),
+            InputBytes = AuditLogger.GetFileSize(options.InputPath),
+            Options = AuditLogger.Snapshot(options, rules)
+        });
+    }
+
+    private static void WriteAuditEvent(
+        AuditLogger? audit,
+        AnalysisOptions options,
+        AnalysisRules? rules,
+        string runId,
+        StopwatchLike sw,
+        string eventName,
+        int exitCode,
+        AnalysisResult? result,
+        string? message)
+    {
+        if (audit == null) return;
+        audit.Write(new AuditLogEntry
+        {
+            Timestamp = AuditLogger.FormatTimestamp(DateTime.UtcNow),
+            Event = eventName,
+            RunId = runId,
+            Operator = string.IsNullOrWhiteSpace(options.Operator) ? "anonymous" : options.Operator,
+            ToolVersion = GetToolVersion(),
+            InputSource = BuildInputSource(options),
+            InputHash = AuditLogger.ComputeFileHash(options.InputPath),
+            InputBytes = AuditLogger.GetFileSize(options.InputPath),
+            Options = AuditLogger.Snapshot(options, rules),
+            Result = result == null ? null : AuditLogger.Summarize(result, sw),
+            Message = message,
+            ExitCode = exitCode
+        });
+    }
+
+    private static string BuildInputSource(AnalysisOptions options)
+    {
+        if (!string.IsNullOrEmpty(options.ConnectionString))
+        {
+            string provider = string.IsNullOrEmpty(options.DbProvider) ? "auto" : options.DbProvider;
+            string query = options.Query ?? "";
+            return $"db://{provider}?{query}";
+        }
+        return options.InputPath;
+    }
+
+    private static string GetToolVersion()
+    {
+        try
+        {
+            var asm = typeof(AnalysisRunner).Assembly;
+            var info = asm.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false);
+            if (info.Length > 0)
+            {
+                return ((System.Reflection.AssemblyInformationalVersionAttribute)info[0]).InformationalVersion;
+            }
+            return asm.GetName().Version?.ToString() ?? "unknown";
+        }
+        catch
+        {
+            return "unknown";
         }
     }
 
@@ -591,6 +794,11 @@ public static class AnalysisRunner
 
     private static bool ResolveFlatten(AnalysisOptions options, AnalysisRules? rules)
     {
+        // --record-path 必须看到嵌套子对象才能正确投影；提前展平会让 $.foo.bar 这种路径找不到目标。
+        // 因此启用 --record-path 时，强制不展平（让 record-path 处理完后再分析，提取出的子对象本身就是平坦的）。
+        if (!string.IsNullOrWhiteSpace(options.RecordPath))
+            return false;
+
         if (!options.Flatten)
             return false;
 
@@ -626,5 +834,85 @@ public static class AnalysisRunner
         return fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static IEnumerable<Dictionary<string, object?>> LoadAndApplyRootPath(string path, string expression)
+    {
+        // 整体读入 JSON：JSONPath 投影必须访问整个文档，无法流式。
+        // 仅当输入是 JSON 整体文件时才走这条路径（其他格式已在调用方过滤）。
+        byte[] bytes;
+        using (var fs = File.OpenRead(path))
+        using (var ms = new MemoryStream())
+        {
+            fs.CopyTo(ms);
+            bytes = ms.ToArray();
+        }
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        {
+            bytes = bytes.AsSpan(3).ToArray();
+        }
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(bytes);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException("JSON 根节点解析失败。", ex);
+        }
+
+        var records = JsonPathProjector.ApplyRootPath(root, expression);
+        if (records.Count == 0)
+        {
+            AnsiConsole.MarkupLine(
+                $"[yellow]警告: --root-path 表达式 {Markup.Escape(expression)} 匹配到 0 个节点；将分析空集[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine(
+                $"[green][[JSONPath]][/] --root-path 提取了 [blue]{records.Count}[/] 条记录");
+        }
+        return records;
+    }
+
+    /// <summary>
+    /// 流式地把 record-path 应用到每条记录上：每条记录可能 fan-out 为多条，因此这里只能把 source 物化为 list；
+    /// 调用方传入的 source 在大多数解析路径上（jsonl/csv/excel/db/typed）已经是 list，因此实际成本可控。
+    /// </summary>
+    private static List<Dictionary<string, object?>> ApplyRecordPathStream(
+        IEnumerable<Dictionary<string, object?>> source,
+        string expression)
+    {
+        var materialized = source as IReadOnlyList<Dictionary<string, object?>> ?? source.ToList();
+        var projected = new List<Dictionary<string, object?>>(materialized.Count);
+        int noMatch = 0;
+        foreach (var record in materialized)
+        {
+            var matches = JsonPathProjector.ApplyRecordPath(record, expression);
+            if (matches.Count == 0)
+            {
+                noMatch++;
+                continue;
+            }
+            projected.AddRange(matches);
+        }
+
+        if (noMatch > 0)
+        {
+            AnsiConsole.MarkupLine(
+                $"[yellow]警告: --record-path 表达式 {Markup.Escape(expression)} 在 {noMatch}/{materialized.Count} 条记录上无匹配；这些记录被跳过[/]");
+        }
+        if (projected.Count == 0 && materialized.Count > 0)
+        {
+            AnsiConsole.MarkupLine(
+                $"[yellow]警告: --record-path 匹配到 0 个节点；将分析空集[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine(
+                $"[green][[JSONPath]][/] --record-path 产出 [blue]{projected.Count}[/] 条记录（输入 {materialized.Count} 条）");
+        }
+        return projected;
     }
 }

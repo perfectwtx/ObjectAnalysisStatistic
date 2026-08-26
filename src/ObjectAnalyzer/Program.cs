@@ -127,6 +127,23 @@ var allowBreakingSchemaChangesOption = new Option<bool>(
     description: "Schema 演进门禁：true（默认）= 允许破坏性变更；false = 含破坏性变更时以退出码 6 结束（与 --fail-on-violations 对称）。",
     getDefaultValue: () => true);
 
+var rootPathOption = new Option<string?>(
+    name: "--root-path",
+    description: "在文件根应用 JSONPath 表达式（RFC 9535），从整体文件中提取子节点作为分析输入（如 --root-path '$.data[*]'，从 {data:[...]} 中只分析 data 数组）。仅对整体 JSON 文件生效；语法无效时报错，匹配空集时警告后继续。");
+
+var recordPathOption = new Option<string?>(
+    name: "--record-path",
+    description: "在每条记录上应用 JSONPath 表达式（RFC 9535），提取子节点替换为新记录后再分析（如 JSONL 每行 {event,payload}，--record-path '$.payload' 只分析 payload）。对 JSON / JSONL / CSV / Excel / DB 均生效；语法无效时报错，匹配空集时警告后继续。");
+
+var auditLogOption = new Option<string?>(
+    name: "--audit-log",
+    description: "审计日志输出路径（NDJSON 格式，每行一条 JSON）。记录 analysis_start / analysis_finish / analysis_cancel / analysis_error 四类事件，仅包含输入 SHA-256 哈希 / 操作者 / 关键选项 / 结果摘要，不写入字段值。适合合规留痕。");
+
+var operatorOption = new Option<string?>(
+    name: "--operator",
+    description: "操作者标识，写入审计日志的每条事件（--audit-log 启用时生效）。推荐填入执行者 ID（如 \"[email protected]\" / \"ci-runner-12\"），便于溯源。",
+    getDefaultValue: () => "anonymous");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -155,6 +172,10 @@ rootCommand.AddOption(schemaSnapshotOption);
 rootCommand.AddOption(diffSchemaOption);
 rootCommand.AddOption(schemaDiffReportOption);
 rootCommand.AddOption(allowBreakingSchemaChangesOption);
+rootCommand.AddOption(rootPathOption);
+rootCommand.AddOption(recordPathOption);
+rootCommand.AddOption(auditLogOption);
+rootCommand.AddOption(operatorOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -186,6 +207,10 @@ rootCommand.SetHandler((InvocationContext context) =>
     var diffSchemaBaseline = parseResult.GetValueForOption(diffSchemaOption);
     var schemaDiffReportPath = parseResult.GetValueForOption(schemaDiffReportOption);
     var allowBreakingSchemaChanges = parseResult.GetValueForOption(allowBreakingSchemaChangesOption);
+    var rootPath = parseResult.GetValueForOption(rootPathOption);
+    var recordPath = parseResult.GetValueForOption(recordPathOption);
+    var auditLogPath = parseResult.GetValueForOption(auditLogOption);
+    var operatorValue = parseResult.GetValueForOption(operatorOption) ?? "anonymous";
 
     if (generateTestExcel)
     {
@@ -251,6 +276,14 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
+    if (!string.IsNullOrWhiteSpace(rootPath) && (string.Equals(Path.GetExtension(input?.FullName ?? ""), ".jsonl", StringComparison.OrdinalIgnoreCase)
+        || input?.FullName.EndsWith(".jsonl.gz", StringComparison.OrdinalIgnoreCase) == true))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --root-path 仅对整体 JSON 文件生效；JSONL 是流式逐行结构，请在每行使用 --record-path。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
     var (typeFile, typeName) = SplitColonSuffix(type);
     var (schemaFormat, schemaOutput) = SplitColonSuffix(exportSchema);
 
@@ -283,7 +316,11 @@ rootCommand.SetHandler((InvocationContext context) =>
         SchemaSnapshotPath = schemaSnapshotPath,
         DiffSchemaBaseline = diffSchemaBaseline,
         SchemaDiffReportPath = schemaDiffReportPath,
-        AllowBreakingSchemaChanges = allowBreakingSchemaChanges
+        AllowBreakingSchemaChanges = allowBreakingSchemaChanges,
+        RootPath = rootPath,
+        RecordPath = recordPath,
+        AuditLogPath = auditLogPath,
+        Operator = operatorValue
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

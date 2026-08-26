@@ -39,6 +39,18 @@
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>comma-separated, e.g. name,age</value></data>
   <data name="OptWhere" xml:space="preserve"><value>Filter</value></data>
   <data name="OptWherePlaceholder" xml:space="preserve"><value>e.g. Age &gt; 18 AND Status in ['A','B']</value></data>
+  <data name="OptRootPath" xml:space="preserve"><value>Root JSONPath</value></data>
+  <data name="OptRootPathPlaceholder" xml:space="preserve"><value>e.g. $.data[*], extract sub-nodes from whole JSON</value></data>
+  <data name="OptRecordPath" xml:space="preserve"><value>Record JSONPath</value></data>
+  <data name="OptRecordPathPlaceholder" xml:space="preserve"><value>e.g. $.payload, extract from each record</value></data>
+  <data name="OptAuditLog" xml:space="preserve"><value>Audit log (NDJSON)</value></data>
+  <data name="OptAuditLogPlaceholder" xml:space="preserve"><value>optional, server-local path e.g. C:\Logs\audit.ndjson</value></data>
+  <data name="OptOperator" xml:space="preserve"><value>Operator</value></data>
+  <data name="OptOperatorPlaceholder" xml:space="preserve"><value>e.g. [email protected] / ci-runner-12</value></data>
+  <data name="ErrRootPath" xml:space="preserve"><value>--root-path expression {0} is invalid: {1}</value></data>
+  <data name="ErrRecordPath" xml:space="preserve"><value>--record-path expression {0} is invalid: {1}</value></data>
+  <data name="WarnRootPathIgnored" xml:space="preserve"><value>--root-path only applies to whole JSON files; ignored for current format {0}.</value></data>
+  <data name="WarnRecordPathNoMatch" xml:space="preserve"><value>--record-path {2} matched 0 of {1} records; {0} skipped.</value></data>
   <data name="Analyzing" xml:space="preserve"><value>Analyzing...</value></data>
   <data name="StartAnalysis" xml:space="preserve"><value>Start Analysis</value></data>
   <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>

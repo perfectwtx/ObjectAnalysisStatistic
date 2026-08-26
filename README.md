@@ -22,10 +22,14 @@
 - Schema 快照 + Diff：新增 `--export-schema-snapshot <FILE>` 导出 canonical schema JSON（字段名/类型/coverage/nullable/语义/范围/枚举/异常值），独立于代码生成器；新增 `--diff-schema <BASELINE>` 与历史快照对比，识别新增/删除/类型变化/coverage 变化等；`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6），与 `--fail-on-violations` 对称；可作为下游「数据漂移对比」的字段级基础
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
 - 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
+- JSONPath 投影：新增 `--root-path`（在文件根应用，提取整体 JSON 的子节点，如 `$.data[*]`）与 `--record-path`（在每条记录上应用，提取子对象作为新记录后再分析，如 `$.payload`），完整支持 RFC 9535 语法（通配符/递归下降/过滤器），适用于 API 响应被外壳包裹（`{data, meta}`）或事件流每行带元数据（`{event, payload}`）等场景；语法错误硬错误快速失败（退出码 1），匹配空集时仅警告并继续；可独立使用或组合使用
 - 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
 - 数据库直连 (Live DB Ingestion)：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，无需先导出为 CSV/JSON 即可进行实时结构与质量分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
 - 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱 / SSN / IBAN / 护照号字段（身份证按 GB 11643 校验位、银行卡按 Luhn、IBAN 按 MOD 97 验证，降低纯形态误报），所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄；规则文件 `fields.<name>.pii` 可将业务敏感字段（如 `internalId`、`authToken`）声明为敏感字段并自定义打码格式，`fields.<name>.redact: false` 白名单可为误报字段（如存产品名的 name 列）豁免打码，`--pii-off` 全局关闭
 - 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险；`--fail-on-pii-level <A|B|C>` 提供与 `--fail-on-violations` 对称的 CI 合规门禁
+- 国密算法 SM4 / SM2 字段转换：规则文件 `transform.type` 新增 `sm4`（GM/T 0002-2014 对称加解密，CBC/ECB + PKCS7/None）与 `sm2`（GM/T 0003-2012 私钥解密 / 公钥验签，sm2p256v1 曲线），适配金融/政务/医疗等国内合规场景；SM2 密钥自动识别 Base64 DER / PEM / hex 多种编码
+- 数据血缘与审计日志：`--audit-log <PATH>` 输出 NDJSON 格式事件链（`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`），每条事件含 `runId` 串联、`operator` 操作者标识（`--operator`）、输入文件 SHA-256 哈希、关键选项快照、退出码与结果摘要；**绝不**记录字段值与 AES/SM4/SM2 密钥等敏感材料；同步 AutoFlush 保证进程崩溃时审计数据不丢失
+- 安全策略：见 [SECURITY.md](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/SECURITY.md) — 支持版本矩阵、数据分类、密钥管理、漏洞披露渠道（GitHub Security Advisories + 邮箱）与响应 SLA
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
@@ -102,6 +106,8 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--pii-report <FILE>` | — | 导出数据安全合规等级报告 JSON（合规等级 A/B/C + 敏感字段清单 + 打码样本 + 各类别统计） | 无 |
 | `--pii-off` | — | 全局关闭 PII 识别与打码：报告输出原始值（数据确认不含敏感信息或需要完整原文时使用）；与 `--pii-report` 同用时忽略后者，与 `--fail-on-pii-level` 互斥 | `false` |
 | `--fail-on-pii-level <A\|B\|C>` | — | CI 合规门禁：合规等级达到或劣于指定级别时以退出码 `4` 结束（`C`=仅 C 级失败；`B`=发现任何敏感字段即失败），与 `--fail-on-violations` 对称 | 无 |
+| `--audit-log <PATH>` | — | 数据血缘审计日志：输出 NDJSON 格式事件链（`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`），每条事件含 `runId` / `operator` / `inputHash` (SHA-256) / `inputBytes` / `options` / `result` / `exitCode`；**不**记录字段值与 AES/SM4/SM2 密钥等敏感材料；同步 AutoFlush 保证审计数据不丢失 | 无 |
+| `--operator <ID>` | — | 操作者标识（如 `[email protected]` / `ci-runner-12`），写入审计日志的每条事件（与 `--audit-log` 配合使用） | `anonymous` |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
@@ -169,6 +175,12 @@ dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-step 10
 
 # 超大文件采样：蓄水池随机抽样，均匀抽取最多 5W 条
 dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-reservoir 50000 -s "typescript:schema.d.ts"
+
+# JSONPath 投影：API 响应 {data: [...], meta: {...}} 只想分析 data 数组
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_wrapped.json --root-path '$.data[*]'
+
+# JSONPath 投影：JSONL 每行 {event, payload} 只想分析 payload
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_payload.jsonl --record-path '$.payload'
 
 # 导出 PostgreSQL CREATE TABLE（缺省方言；嵌套对象/数组折叠为 JSONB 列）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sql:schema.sql"
@@ -411,6 +423,78 @@ dotnet run --project src/ObjectAnalyzer -- -i data.json --fail-on-pii-level C
 dotnet run --project src/ObjectAnalyzer -- -i data.json --fail-on-pii-level B
 ```
 
+## 数据血缘与审计日志
+
+国内合规场景除"敏感数据打码"外，还需要"谁在何时分析了什么"的完整溯源链。`--audit-log` 把每次分析以 **JSON Lines (NDJSON)** 格式追加到指定文件，每行一条事件对象：
+
+| 事件 | 触发时机 | 关键字段 |
+| ---- | -------- | -------- |
+| `analysis_start` | 通过前置校验后 | `runId` / `operator` / `inputHash` (SHA-256) / `inputBytes` / `options` |
+| `analysis_finish` | 分析成功或业务门禁失败 | 上述 + `result`（totalObjects / totalFields / 质量违规 / PII 数） + `exitCode`（0/3/4/5/6） |
+| `analysis_cancel` | Ctrl+C 取消 | `exitCode: 2` |
+| `analysis_error` | 未捕获异常 | `message`（不含堆栈与字段值） |
+
+**安全设计**：
+- **不**记录任何字段值（ValueCounts / Sample / PII 明文），也**不**记录 AES/SM4/SM2 的 `key` / `iv` / `privateKey` / `publicKey` / `signature`；
+- transform 字段仅记录 `{field, type}` 摘要用于溯源；
+- 同步 AutoFlush + FileShare.Read：进程崩溃不丢数据，外部聚合器可并发读取；
+- 审计路径不可写时仅警告，不阻塞分析主流程。
+
+```bash
+# 合规留痕：每次分析都写入审计日志，配合 CI runner 标识
+dotnet run --project src/ObjectAnalyzer -- \
+  -i users-2026-08-26.jsonl \
+  --rules rules.json \
+  --audit-log /var/log/objectanalyzer/audit.ndjson \
+  --operator "[email protected]" \
+  --pii-report compliance.json
+
+# 查看最近一次运行的退出码与关键指标
+tail -n 2 /var/log/objectanalyzer/audit.ndjson | jq -r '[.event, .operator, .exitCode, .result.totalObjects, .result.piiFieldCount] | @tsv'
+```
+
+完整的支持版本、密钥管理、漏洞披露渠道与响应 SLA 见 [SECURITY.md](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/SECURITY.md)。
+
+## 国密算法（SM4 / SM2）
+
+`transform.type` 在原有 `aes` / `jwt` / `base64` / `url` 之外新增两个国密算法类型，适配金融、政务、医疗等国内合规场景：
+
+```jsonc
+{
+  "fields": {
+    // SM4 对称解密（GM/T 0002-2014），CBC + PKCS7，密钥与 IV 均 base64
+    "encryptedPayload": {
+      "transform": {
+        "type": "sm4",
+        "mode": "cbc",
+        "padding": "pkcs7",
+        "format": "base64",
+        "key": "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM=",
+        "iv":  "QUJDREVGR0hJSktMTU5PUFFSU1RVVw=="
+      }
+    },
+    // SM2 验签（GM/T 0003-2012，sm2p256v1 曲线）
+    "signedMessage": {
+      "transform": {
+        "type": "sm2",
+        "mode": "verify",
+        "format": "base64",
+        "publicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgA...\n-----END PUBLIC KEY-----",
+        "signature": "MEUCIQCx..."
+      }
+    }
+  }
+}
+```
+
+| 算法 | 模式 | 必需配置 |
+| ---- | ---- | -------- |
+| `sm4` | `cbc`（默认） / `ecb` | `key`（16 字节 / base64 或 hex）、`iv`（CBC 必需） |
+| `sm2` | `decrypt` | `privateKey`（PEM / Base64 DER / hex 32 字节裸） |
+| `sm2` | `verify` | `publicKey`（PEM / Base64 DER / hex 64-65 字节裸）、`signature` |
+
+SM4 测试使用 GM/T 0002-2014 附录 A.1 公开测试向量；SM2 使用 BouncyCastle 现生成密钥对做 round-trip。算法实现见 [FieldTransformProcessor.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/FieldTransformProcessor.cs) `ApplySm4` / `ApplySm2`。
+
 ## 高级分析能力（P3）
 
 ### 日期/时间深度剖析
@@ -468,6 +552,29 @@ Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上
 ```bash
 cd src/ObjectAnalyzer.Web
 dotnet run
+```
+
+## JSONPath 投影（仅分析指定节点下的值）
+
+很多业务数据被包在统一外壳里（API 响应 `{data: [...], meta: {...}}`、事件流每行 `{event, payload}`、上游 RPC 返回 `{code, msg, result}` 等），直接分析会被外壳字段污染，也看不到真正的业务字段。`--root-path` 与 `--record-path` 在两个层级应用 JSONPath 表达式（RFC 9535），只把匹配节点作为分析输入：
+
+- `--root-path <EXPR>`：作用于文件根，**仅对整体 JSON 文件生效**。把 `$.data[*]` 这种路径匹配到的节点作为初始记录集。
+- `--record-path <EXPR>`：作用于每条记录，**对 JSON / JSONL / CSV / Excel / DB 行均生效**（流式友好）。`$.payload` 把每条记录的 payload 子对象替换为新记录后再分析。
+- 两者可独立使用也可组合使用；语法错误硬错误快速失败（退出码 1），匹配空集时仅警告并继续（仍产出报告，便于发现路径配错）。
+- Web UI 的"配置"区有对应的两个输入框，配上即可。
+
+```bash
+# API 响应 {data: [...], meta: {...}} → 只分析 data 数组
+objectanalyzer -i api_response.json --root-path '$.data[*]'
+
+# 事件流 JSONL 每行 {event, payload} → 只分析 payload
+objectanalyzer -i events.jsonl --record-path '$.payload'
+
+# 组合：先从根提取数组，再在每条记录上提取子对象
+objectanalyzer -i complex.json --root-path '$.events[*]' --record-path '$.details'
+
+# 过滤器：仅分析 active 状态的记录
+objectanalyzer -i users.json --root-path '$[?(@.status=="active")]'
 ```
 
 ## 超大文件采样分析

@@ -98,6 +98,22 @@
                     <input type="text" value="@State.Filter" @oninput="OnFilterChange" placeholder="@Loc["OptWherePlaceholder"]" />
                 </label>
                 <label class="option-item">
+                    <span>@Loc["OptRootPath"]</span>
+                    <input type="text" value="@State.RootPath" @oninput="OnRootPathChange" placeholder="@Loc["OptRootPathPlaceholder"]" />
+                </label>
+                <label class="option-item">
+                    <span>@Loc["OptRecordPath"]</span>
+                    <input type="text" value="@State.RecordPath" @oninput="OnRecordPathChange" placeholder="@Loc["OptRecordPathPlaceholder"]" />
+                </label>
+                <label class="option-item">
+                    <span>@Loc["OptAuditLog"]</span>
+                    <input type="text" value="@State.AuditLogPath" @oninput="OnAuditLogPathChange" placeholder="@Loc["OptAuditLogPlaceholder"]" />
+                </label>
+                <label class="option-item">
+                    <span>@Loc["OptOperator"]</span>
+                    <input type="text" value="@State.Operator" @oninput="OnOperatorChange" placeholder="@Loc["OptOperatorPlaceholder"]" />
+                </label>
+                <label class="option-item">
                     <span>@Loc["OptTypeName"]</span>
                     <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="@Loc["OptTypeNamePlaceholder"]" />
                 </label>
@@ -759,10 +775,21 @@
             ? "excel-json"
             : Core.Parsing.FileParsers.DetectFormat(dataFilePath);
 
+        // 捕获 JSONPath 投影参数
+        string rootPathText = State.RootPath;
+        string recordPathText = State.RecordPath;
+        bool hasRootPath = !string.IsNullOrWhiteSpace(rootPathText);
+        bool hasRecordPath = !string.IsNullOrWhiteSpace(recordPathText);
+
         var effectiveFlatten = flatten;
         if (rules?.Flatten is bool rulesFlatten)
         {
             effectiveFlatten = rulesFlatten;
+        }
+        // record-path 必须看到嵌套子对象才能正确投影；与 CLI 行为一致
+        if (hasRecordPath)
+        {
+            effectiveFlatten = false;
         }
 
         IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = rules?.ValueParsers is { Count: > 0 }
@@ -819,6 +846,58 @@
                     {
                         objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep);
                     }
+
+                    // JSONPath 投影：仅分析指定节点下的值
+                    if (hasRootPath)
+                    {
+                        // 整体 JSON 文件才支持 root-path（其他格式无文件根概念）
+                        if (detectedFormat is "json")
+                        {
+                            try
+                            {
+                                Core.Parsing.JsonPathProjector.TryValidate(rootPathText);
+                                string json = File.ReadAllText(dataFilePath);
+                                var root = System.Text.Json.Nodes.JsonNode.Parse(json);
+                                var projected = Core.Parsing.JsonPathProjector.ApplyRootPath(root, rootPathText);
+                                objects = projected;
+                            }
+                            catch (Exception ex)
+                            {
+                                typedError = Loc.Get("ErrRootPath", rootPathText, ex.Message);
+                                objects = Array.Empty<Dictionary<string, object?>>();
+                            }
+                        }
+                        else
+                        {
+                            typedError = Loc.Get("WarnRootPathIgnored", detectedFormat);
+                        }
+                    }
+                    if (hasRecordPath)
+                    {
+                        try
+                        {
+                            Core.Parsing.JsonPathProjector.TryValidate(recordPathText);
+                            var materialized = objects as IReadOnlyList<Dictionary<string, object?>> ?? objects.ToList();
+                            var projected = new List<Dictionary<string, object?>>(materialized.Count);
+                            int noMatch = 0;
+                            foreach (var rec in materialized)
+                            {
+                                var matches = Core.Parsing.JsonPathProjector.ApplyRecordPath(rec, recordPathText);
+                                if (matches.Count == 0) noMatch++;
+                                projected.AddRange(matches);
+                            }
+                            if (noMatch > 0)
+                            {
+                                typedError = Loc.Get("WarnRecordPathNoMatch", noMatch, materialized.Count, recordPathText);
+                            }
+                            objects = projected;
+                        }
+                        catch (Exception ex)
+                        {
+                            typedError = Loc.Get("ErrRecordPath", recordPathText, ex.Message);
+                            objects = Array.Empty<Dictionary<string, object?>>();
+                        }
+                    }
                 }
 
                 var parallelOptions = new ParallelOptions
@@ -867,6 +946,11 @@
             State.Result = result;
             ShowConfig = false;
 
+            // 数据血缘审计：仅在用户填写了 --audit-log 路径时写入一条 analysis_finish 事件
+            // Web UI 不复用 AnalysisRunner.Run（其内置自有流式管道），故此处直接调用 AuditLogger。
+            // 异常被吞掉：审计失败不应阻塞 UI 反馈。
+            TryWriteWebAuditLog(result, exitCode: 0, message: null);
+
             // 若分析前已上传基线快照，异步计算 diff（不阻塞 UI）
             if (State.BaselineSnapshotPath != null)
             {
@@ -879,16 +963,86 @@
             {
                 State.ErrorMessage = Loc["ErrCancelled"];
             }
+            TryWriteWebAuditLog(State.Result, exitCode: 2, message: "用户取消");
         }
         catch (Exception ex)
         {
             State.ErrorMessage = ErrorSanitizer.Format(ex);
+            TryWriteWebAuditLog(State.Result, exitCode: 1, message: ex.Message);
         }
         finally
         {
             _analysisCts?.Dispose();
             _analysisCts = null;
             State.IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Web 端审计日志写入：用户在"配置"区填了 AuditLogPath 时，向该文件追加一行 NDJSON
+    /// 事件。内容仅含 inputHash / operator / 选项快照 / 结果摘要，不含字段值与密钥。
+    /// 失败仅记到控制台（开发可见），不影响 UI 反馈。
+    /// </summary>
+    private void TryWriteWebAuditLog(Core.Analysis.AnalysisResult? result, int exitCode, string? message)
+    {
+        if (!State.HasAuditLog) return;
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var auditOptions = new Core.Analysis.AnalysisOptions
+            {
+                InputPath = State.DataFilePath ?? "",
+                RulesFile = State.RulesFilePath,
+                Flatten = State.Flatten,
+                Fields = string.IsNullOrWhiteSpace(State.Fields) ? null : State.Fields,
+                Filter = string.IsNullOrWhiteSpace(State.Filter) ? null : State.Filter,
+                RootPath = string.IsNullOrWhiteSpace(State.RootPath) ? null : State.RootPath,
+                RecordPath = string.IsNullOrWhiteSpace(State.RecordPath) ? null : State.RecordPath,
+                MaxValuesToShow = State.MaxValuesToShow,
+                MaxDegreeOfParallelism = State.MaxDegreeOfParallelism,
+                SampleReservoir = State.SampleReservoir,
+                SampleStep = State.SampleStep
+            };
+
+            Core.Analysis.AnalysisRules? rules = null;
+            if (!string.IsNullOrEmpty(State.RulesFilePath) && File.Exists(State.RulesFilePath))
+            {
+                try
+                {
+                    rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(
+                        File.ReadAllText(State.RulesFilePath));
+                }
+                catch { /* 规则解析失败时审计仅记录无 transform 摘要 */ }
+            }
+
+            var entry = new Core.Analysis.AuditLogEntry
+            {
+                Timestamp = Core.Analysis.AuditLogger.FormatTimestamp(DateTime.UtcNow),
+                Event = exitCode switch
+                {
+                    0 => "analysis_finish",
+                    2 => "analysis_cancel",
+                    _ => "analysis_error"
+                },
+                RunId = Guid.NewGuid().ToString("N"),
+                Operator = string.IsNullOrWhiteSpace(State.Operator) ? "anonymous" : State.Operator,
+                ToolVersion = "web",
+                InputSource = State.DataFilePath ?? "",
+                InputHash = Core.Analysis.AuditLogger.ComputeFileHash(State.DataFilePath),
+                InputBytes = Core.Analysis.AuditLogger.GetFileSize(State.DataFilePath),
+                Options = Core.Analysis.AuditLogger.Snapshot(auditOptions, rules),
+                Result = result == null ? null : Core.Analysis.AuditLogger.Summarize(result, null),
+                Message = message,
+                ExitCode = exitCode
+            };
+            using var logger = new Core.Analysis.AuditLogger(State.AuditLogPath);
+            logger.Write(entry);
+            sw.Stop();
+        }
+        catch (Exception ex)
+        {
+            // 审计失败仅在服务端控制台留痕，不暴露给浏览器用户
+            Console.Error.WriteLine($"[audit] 写入审计日志失败: {ex.Message}");
         }
     }
 
@@ -947,6 +1101,28 @@
     private void OnFilterChange(ChangeEventArgs e)
     {
         State.Filter = e.Value?.ToString()?.Trim() ?? "";
+    }
+
+    private void OnRootPathChange(ChangeEventArgs e)
+    {
+        State.RootPath = e.Value?.ToString()?.Trim() ?? "";
+    }
+
+    private void OnRecordPathChange(ChangeEventArgs e)
+    {
+        State.RecordPath = e.Value?.ToString()?.Trim() ?? "";
+    }
+
+    private void OnAuditLogPathChange(ChangeEventArgs e)
+    {
+        State.AuditLogPath = e.Value?.ToString()?.Trim() ?? "";
+    }
+
+    private void OnOperatorChange(ChangeEventArgs e)
+    {
+        State.Operator = string.IsNullOrWhiteSpace(e.Value?.ToString())
+            ? "anonymous"
+            : e.Value!.ToString()!.Trim();
     }
 
     private void OnParallelChange(ChangeEventArgs e)

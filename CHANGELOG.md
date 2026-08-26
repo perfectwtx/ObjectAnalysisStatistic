@@ -5,6 +5,24 @@
 ## [Unreleased]
 
 ### Added
+- **国密算法支持（SM4 / SM2 字段转换，国内合规场景刚需）**：在 `FieldTransform.type` 中新增 `sm4` / `sm2` 两个类型，复用现有 `key` / `iv` / `mode` / `padding` / `format` 字段并扩展 SM2 专用 `privateKey` / `publicKey` / `signature` 三个配置：
+  - **SM4**（GM/T 0002-2014）：对称加解密，128-bit 块/128-bit 密钥，支持 CBC（默认）/ ECB 与 PKCS7（默认）/ None 填充；`format` 支持 base64 / hex；CBC 必须提供 `iv`。底层使用 BouncyCastle `SM4Engine` + `CbcBlockCipher` + `Pkcs7Padding`。
+  - **SM2**（GM/T 0003-2012）：基于 sm2p256v1 曲线，两种工作模式：
+    - `mode: decrypt` — 用 `privateKey` 解密 SM2 密文（公钥加密的密文）；
+    - `mode: verify` — 用 `publicKey` 校验 `signature` 是否为 `plainText` 的合法 SM2 签名，返回 `valid` / `invalid`。
+  - SM2 密钥支持多种编码自动识别：Base64 DER（PKCS#8 / X.509 SubjectPublicKeyInfo）、PEM（PEM 块带 `-----BEGIN ...-----` 头）、hex（32 字节裸私钥整数 / 64 字节裸 X||Y / 65 字节 04||X||Y 未压缩点）。
+  - 实现 `FieldTransformProcessor.ValidateTransform` 严格校验 key/IV 长度、SM2 mode 合法性、密钥与签名字段必填关系；通过 `FieldTransformProcessor.ApplySm4/ApplySm2/ApplySm2Decrypt/ApplySm2Verify` 统一入口。
+- **测试（国密）**：新增 `GuomiTransformTests` —— 11 个用例：SM4 ECB 官方测试向量（GM/T 0002-2014 附录 A.1）、SM4 CBC 随机密钥 round-trip、SM4 密文格式自动识别、SM4 失败保留原值、SM2 自生成密钥对加解密 round-trip、SM2 签名验签 round-trip、SM2 验签负例、SM2 密钥格式（hex 32/64/65、PEM、Base64 DER）兼容、SM2 错误密钥长度/格式报错、SM4/SM2 配置校验报错。
+- **数据血缘与审计日志（--audit-log / --operator）**：分析运行自动记录合规所需的"谁在何时分析了什么"事件链，以 JSON Lines (NDJSON) 格式追加到指定文件：
+  - 四类事件：`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`；
+  - 每条事件含 `runId`（串联同一运行）、`timestamp`（UTC ISO 8601）、`operator`、`toolVersion`、`inputSource`（db://provider?query / 文件路径）、`inputHash`（SHA-256 hex）、`inputBytes`、`options`（关键选项快照）、`result`（仅 finish，含 totalObjects/fields/质量违规数/PII 数/退出码等）、`exitCode`、`message`。
+  - **不写入任何敏感数据**：审计日志绝不记录字段值（ValueCounts/Sample/PII 明文），也绝不记录 AES/SM4/SM2 的 `key` / `iv` / `privateKey` / `publicKey` / `signature` 等敏感配置；transform 字段仅记录 `field` + `type` 用于溯源。
+  - 写入采用同步 AutoFlush + FileShare.Read，确保审计数据在进程崩溃/被强杀时不丢失，并允许外部日志聚合器并发读取。
+  - `AnalysisRunner` 集成：start 事件在所有前置校验通过后写入；finish / cancel / error 在所有返回点（含 0/3/4/5/6 业务门禁失败与未捕获异常）兜底记录；审计路径不可写时仅警告，不阻塞分析主流程。
+  - 配合现有 `--operator` 标识执行者（CI runner / 用户邮箱 / 调度器 ID）实现完整溯源。
+- **测试（审计日志）**：新增 `AuditLoggerTests` —— 13 个用例：NDJSON 写盘、文件追加模式、空字段默认省略、选项快照不含敏感材料（key/iv/PEM/signature 等）、SHA-256 哈希稳定且 hex、缺失文件返回 null、结果摘要不存值；`AnalysisRunner` 集成 6 个用例：成功 start+finish、runId 串联、退出码 0/3、字段值不泄漏（PII 测试数据）、未启用审计照常运行、关键选项完整记录。
+- **安全策略文档 SECURITY.md（中文）**：声明支持版本、数据分类与处理原则、密钥管理建议、审计日志最佳实践、国密算法支持范围、漏洞披露渠道（GitHub Security Advisories / 邮件）与 SLA（首次确认 3 工作日 / 严重问题 30 天修复）、致谢机制、安全特性清单。
+- **测试**：JSONPath 单元测试（根路径数组通配、对象匹配、过滤器、嵌套路径、空集、语法错误 4 类 7 个用例）+ JSONPath 集成测试（root-path+record-path 组合、JSONL record-path 提取、CSV/Excel record-path 兼容、空集告警、组合提取后展平回归 7 个用例）。
 - **P3 高级分析能力**
   - **日期/时间深度剖析**：`InternalFieldMetrics` 新增 `DateTimeStats` 通道（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），`FieldStatistic` 输出 `DateTimeCount` / `MinDateTime` / `MaxDateTime` + 时间桶直方图（按跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存；控制台 / JSON / HTML / Markdown 报告新增「时间序列」小节。
   - **异常值检测（IQR 1.5×）**：复用现有 t-digest 分位数草图计算 P25 / P75 → IQR，基于对数直方图近似归类离群点；`FieldStatistic` 新增 `OutlierCount` / `OutlierRatio` / `OutlierBounds`（流式样本数 < 4 时不计算，避免小样本抖动）；`QualityChecks` 新增 `OutlierRatio` 类型，规则文件支持 `fields.<name>.maxOutlierRatio` 字段级阈值；新增 `--fail-on-outlier-ratio <RATIO>` 全局 CI 门禁（退出码 5）。

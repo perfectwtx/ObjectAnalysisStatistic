@@ -68,6 +68,32 @@ public sealed class AnalysisState : IDisposable
     // --where：按字段值过滤对象后再统计（过滤表达式）
     public string Filter { get; set; } = "";
 
+    // ── JSONPath 投影（仅分析指定节点下的值）──
+    /// <summary>--root-path：在文件根应用 JSONPath 表达式，从整体文件中提取子节点作为分析输入。
+    /// 仅对整体 JSON 文件生效；JSONL/CSV/Excel 等流式格式会被忽略并提示。</summary>
+    public string RootPath { get; set; } = "";
+
+    /// <summary>--record-path：在每条记录上应用 JSONPath 表达式，提取子节点替换为新记录后再分析。
+    /// 对 JSON / JSONL / CSV / Excel / DB 均生效。</summary>
+    public string RecordPath { get; set; } = "";
+
+    /// <summary>是否任一 JSONPath 表达式被设置（用于 UI 提示）。</summary>
+    public bool HasJsonPath => !string.IsNullOrWhiteSpace(RootPath) || !string.IsNullOrWhiteSpace(RecordPath);
+
+    // ── 数据血缘与审计日志（--audit-log / --operator）──
+    /// <summary>
+    /// Web UI 用户填写的审计日志输出路径（--audit-log）。当非空时，分析完成后会向该文件追加
+    /// 一条 NDJSON 事件（analysis_finish，含 inputHash / operator / 选项摘要 / 结果摘要 / 退出码）。
+    /// </summary>
+    public string AuditLogPath { get; set; } = "";
+
+    /// <summary>
+    /// 操作者标识（--operator）。推荐填入邮箱或 CI runner ID；缺省 "anonymous"。
+    /// </summary>
+    public string Operator { get; set; } = "anonymous";
+
+    public bool HasAuditLog => !string.IsNullOrWhiteSpace(AuditLogPath);
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();

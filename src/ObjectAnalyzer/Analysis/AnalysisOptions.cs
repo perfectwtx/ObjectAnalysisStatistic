@@ -81,4 +81,33 @@ public sealed class AnalysisOptions
     /// true（默认）= 破坏性变更不触发非零退出码；false = 含破坏性变更时以退出码 6 结束。
     /// </summary>
     public bool AllowBreakingSchemaChanges { get; set; } = true;
+
+    /// <summary>
+    /// 在文件根应用 JSONPath 表达式（RFC 9535），从整体文件中提取子节点作为分析输入（--root-path）。
+    /// 典型场景：API 响应被包在 {data: [...], meta: {...}} 里时，只想分析 data 数组。
+    /// 仅对 JSON 整体文件生效（其他格式下报错或无效）。
+    /// 语法无效时硬错误（fail-fast）；匹配空集时仅警告并继续。
+    /// </summary>
+    public string? RootPath { get; set; }
+
+    /// <summary>
+    /// 在每条记录上应用 JSONPath 表达式（--record-path）。
+    /// 典型场景：JSONL 每行形如 {event: '...', payload: {...}}，只想分析 payload 子对象。
+    /// 对 JSON / JSONL / CSV / Excel / DB 行均生效（流式友好）。
+    /// 语法无效时硬错误；匹配空集时仅警告并继续。
+    /// </summary>
+    public string? RecordPath { get; set; }
+
+    /// <summary>
+    /// 审计日志输出路径（--audit-log）。每行一条 JSON（NDJSON 格式），
+    /// 记录 analysis_start / analysis_finish / analysis_error / analysis_cancel 四类事件。
+    /// 内容不包含字段值（仅 SHA-256 哈希 + 记录数 + 字段名 + 选项快照），适合合规留痕。
+    /// </summary>
+    public string? AuditLogPath { get; set; }
+
+    /// <summary>
+    /// 操作者标识（--operator），写入审计日志的每条事件。缺省 "anonymous"；
+    /// 推荐在 CI/调度器中传入执行者 ID（如 "[email protected]" / "ci-runner-12"）。
+    /// </summary>
+    public string Operator { get; set; } = "anonymous";
 }
