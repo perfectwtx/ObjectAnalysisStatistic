@@ -139,6 +139,14 @@
   - 修复 `FieldCorrelationCollector.MergeFrom()` 流式合并时未克隆 thread-local 数据的 bug
   - 修复 `PiiRedactor.Redact()` 丢失 `CorrelationMatrix` / `FuzzyDuplicates` 等 P4 字段的脱敏克隆 bug
 
+- ✅ **Excel / PDF 表格化报告导出**
+  - **Excel（.xlsx）**：基于 MiniExcel 的多 sheet 工作簿——基础 4 sheet（摘要 / 字段统计 / 重复对象 / 违规清单）+ P4 七项分析对应的可选 sheet（字符串模式 / Unicode 卫生 / 模糊去重 / 相关性摘要 + 强相关对 + Pearson/Spearman 矩阵 / 时间序列深度 / 分布漂移摘要 + 覆盖率变化 + 数值漂移 + Distinct 漂移 / 采样置信摘要 + 字段覆盖率区间），字段统计 sheet 含完整数值统计 / 分位数 / Top 5 值 / 类型分布列
+  - **PDF**：基于 QuestPDF 的 A4 结构化排版，包含同样的多章节结构（标题 / 摘要表 / 字段统计表 / 重复对象 / 违规清单 / 全部 P4 小节），自动分页 + 页码 + 表头重复
+  - **CLI 路由**：`ReportExporter.Save` 检测 `-o` 文件扩展名（`.xlsx` / `.pdf`）后调用 `ExcelReportExporter.Save` / `PdfReportExporter.Save`，无需新增 CLI 选项
+  - **Web 下载**：`Home.razor` 报告区新增 Excel / PDF 下载按钮；`interop.js` 新增 `downloadBinaryFile` 处理 base64 二进制流
+  - **PII 打码一致**：Excel 单元格与 PDF 表格内的敏感字段值在写入前已通过 `PiiRedactor.Redact` 处理
+  - 实现见新增 [ExcelReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/ExcelReportExporter.cs) / [PdfReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/PdfReportExporter.cs)；测试 4 个用例（`ExcelPdfReportTests`）——多 sheet / 表头列 / PDF magic number / 扩展名路由
+
 ## 已明确排除
 
 - **.NET 8 LTS / 双目标评估**：按项目决策不做，保持 `net10.0` 单目标。

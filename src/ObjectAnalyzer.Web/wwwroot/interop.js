@@ -12,6 +12,22 @@ window.objectAnalyzer = {
         URL.revokeObjectURL(url);
     },
 
+    // 二进制文件下载（Excel / PDF），从 .NET 接收 base64 字符串
+    downloadBinaryFile: function (fileName, base64, mimeType) {
+        const bin = atob(base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    },
+
     // 渲染字段覆盖率柱状图（Chart.js），重复调用时销毁旧实例避免叠加
     renderCoverageChart: function (fieldNames, coveragePercent) {
         const ctx = document.getElementById('coverageChart');

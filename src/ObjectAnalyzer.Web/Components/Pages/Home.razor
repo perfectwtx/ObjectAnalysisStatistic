@@ -174,6 +174,8 @@
                         <button class="btn btn-outline btn-sm" @onclick="DownloadHtmlReport">HTML</button>
                         <button class="btn btn-outline btn-sm" @onclick="DownloadMarkdownReport">MD</button>
                         <button class="btn btn-outline btn-sm" @onclick="DownloadCsvReport">CSV</button>
+                        <button class="btn btn-outline btn-sm" @onclick="DownloadExcelReport">Excel</button>
+                        <button class="btn btn-outline btn-sm" @onclick="DownloadPdfReport">PDF</button>
                         @if (State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
                         {
                             <button class="btn btn-outline btn-sm" @onclick="DownloadViolations">@Loc["ViolationsDownload"]</button>
@@ -1744,6 +1746,28 @@
     private async Task DownloadMarkdownReport() => await DownloadReport(".md", "text/markdown;charset=utf-8");
 
     private async Task DownloadCsvReport() => await DownloadReport(".csv", "text/csv;charset=utf-8");
+
+    private async Task DownloadExcelReport() => await DownloadBinaryReport(".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+    private async Task DownloadPdfReport() => await DownloadBinaryReport(".pdf", "application/pdf");
+
+    private async Task DownloadBinaryReport(string ext, string mime)
+    {
+        if (State.Result == null) return;
+        var temp = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{ext}");
+        try
+        {
+            await Task.Run(() => Core.Reporting.ReportExporter.Save(State.Result, temp));
+            byte[] bytes = await File.ReadAllBytesAsync(temp);
+            string base64 = Convert.ToBase64String(bytes);
+            var fileName = $"analysis-{DateTime.Now:yyyyMMdd-HHmmss}{ext}";
+            await Js.InvokeVoidAsync("objectAnalyzer.downloadBinaryFile", fileName, base64, mime);
+        }
+        finally
+        {
+            DeleteQuietly(temp);
+        }
+    }
 
     private async Task DownloadReport(string ext, string mime)
     {

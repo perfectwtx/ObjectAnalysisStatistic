@@ -16,6 +16,7 @@
 - 重复对象检测：识别并统计完全相同的重复对象（128 位非密码学哈希去重，快于 MD5）
 - 嵌套扁平化：可选将嵌套 JSON 结构扁平化为 `a.b.c` 路径形式
 - 多种报告导出：结构化 JSON、富文本 HTML、Markdown、CSV 报告
+- 表格化报告：新增 Excel（.xlsx，多 sheet 工作簿，覆盖字段统计/重复对象/违规清单/全部 P4 七项分析）与 PDF（QuestPDF 结构化排版，适合交付非技术受众）双格式导出；CLI 通过 `-o` 文件扩展名自动路由，Web 界面提供 Excel/PDF 下载按钮
 - 质量违规独立导出：通过 `--violations` 输出结构化违规清单（枚举/范围/模式/必填/唯一/null 率 + 数据集期望），便于 CI 断言
 - 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
 - Schema 代码导出：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义（支持 C# Record, TypeScript, JSON Schema, OpenAPI 3.0 YAML/JSON, gRPC Protobuf 3 `.proto`, 以及 SQL postgres/mysql/sqlite/sqlserver 方言）
@@ -83,7 +84,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | 选项 | 缩写 | 说明 | 默认值 |
 |------|------|------|--------|
 | `--input <FILE>` | `-i` | 输入文件路径（JSON / JSONL / CSV / Excel / XML / YAML；支持 .gz / .bz2 / .zip 压缩包直读） | 必填 |
-| `--output <FILE>` | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv`） | 无 |
+| `--output <FILE>` | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv` / `.xlsx` / `.pdf`） | 无 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
 | `--type <FILE>[:<CLASS>]` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象）；.cs 含多个类时用冒号指定类名，如 `-t "samples/UserInfo.cs:UserInfo"` | 类名自动检测 |
@@ -628,6 +629,29 @@ cd src/ObjectAnalyzer.Web
 dotnet run
 ```
 
+## Excel / PDF 报告导出
+
+在 JSON / HTML / Markdown / CSV 之外，报告导出新增两种表格化格式，方便把分析结果直接交付给非技术受众（业务 / 合规 / 高管），或在 Excel / WPS / LibreOffice 中进一步透视、筛选、生成图表：
+
+- **Excel（.xlsx）**：基于 MiniExcel 多 sheet 工作簿，按数据维度拆分：
+  - `摘要` — 总对象数 / 去重数 / 字段数 / 各项 P4 维度计数；
+  - `字段统计` — 每个字段的样本数 / 覆盖率 / 类型 / 数值统计 / 长度 / Top 5 值；
+  - `重复对象` + `违规清单` — 基础质量信息；
+  - `字符串模式` / `Unicode 卫生` / `模糊去重` / `相关性摘要` + `强相关对` + `Pearson 矩阵` + `Spearman 矩阵` / `时间序列深度` / `分布漂移摘要` + `覆盖率变化` + `数值漂移` + `Distinct 漂移` / `采样置信摘要` + `字段覆盖率区间` — 仅在对应 P4 维度有数据时输出对应 sheet。
+- **PDF**：基于 QuestPDF A4 排版，包含同样的多章节结构（标题 / 摘要表 / 字段统计表 / 重复对象 / 违规清单 / 全部 P4 小节），自动分页与表头重复，适合打印或邮件附件。
+
+使用方式：
+
+```bash
+# CLI：按 -o 文件扩展名自动路由
+objectanalyzer -i data.json -o report.xlsx    # → ExcelReportExporter
+objectanalyzer -i data.json -o report.pdf     # → PdfReportExporter
+
+# Web：分析完成后在报告区点击"Excel"或"PDF"按钮即时下载
+```
+
+CLI 路由在 `ReportExporter.Save` 中实现：检测扩展名后调用对应的 `ExcelReportExporter.Save` / `PdfReportExporter.Save`；Web 端通过 `interop.js` 的 `downloadBinaryFile` 把 base64 编码的二进制流触发为浏览器下载，文件名带时间戳避免冲突。PII 打码与现有所有格式一致——Excel 单元格与 PDF 表格内的敏感字段值在写入前已经过 `PiiRedactor.Redact` 处理。
+
 ## JSONPath 投影（仅分析指定节点下的值）
 
 很多业务数据被包在统一外壳里（API 响应 `{data: [...], meta: {...}}`、事件流每行 `{event, payload}`、上游 RPC 返回 `{code, msg, result}` 等），直接分析会被外壳字段污染，也看不到真正的业务字段。`--root-path` 与 `--record-path` 在两个层级应用 JSONPath 表达式（RFC 9535），只把匹配节点作为分析输入：
@@ -788,6 +812,8 @@ ObjectAnalysisStatistic/
 │   │   │   ├── HtmlReportExporter.cs # HTML 可视化报告 (含 P4 7 个小节)
 │   │   │   ├── MarkdownReportExporter.cs # Markdown 报告 (含 P4 7 个小节)
 │   │   │   ├── CsvReportExporter.cs  # CSV 报告
+│   │   │   ├── ExcelReportExporter.cs # Excel 多 sheet 工作簿 (MiniExcel)
+│   │   │   ├── PdfReportExporter.cs  # PDF 结构化排版 (QuestPDF)
 │   │   │   ├── ViolationExporter.cs  # 枚举违规结构化导出
 │   │   │   ├── QualityExporter.cs    # 数据质量报告导出 (P1)
 │   │   │   ├── PiiRedactor.cs        # 报告输出前 PII 打码 (redaction)

@@ -5,6 +5,12 @@
 ## [Unreleased]
 
 ### Added
+- **Excel / PDF 表格化报告导出**：在现有 JSON / HTML / Markdown / CSV 之外，新增两种适合交付给非技术受众的格式：
+  - **Excel（.xlsx）**：基于 [MiniExcel](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的多 sheet 工作簿，按数据维度拆分——`摘要` / `字段统计` / `重复对象` / `违规清单` 基础 4 sheet + P4 七项分析对应的可选 sheet（`字符串模式` / `Unicode 卫生` / `模糊去重` / `相关性摘要` + `强相关对` + `Pearson 矩阵` + `Spearman 矩阵` / `时间序列深度` / `分布漂移摘要` + `覆盖率变化` + `数值漂移` + `Distinct 漂移` / `采样置信摘要` + `字段覆盖率区间`），仅在该维度有数据时输出。字段统计 sheet 包含完整的样本数 / 覆盖率 / 主导类型 / 语义类型 / 数值统计 / 分位数 / 长度 / Top 5 值 / 类型分布等列。PII 打码与现有所有格式一致——敏感字段值在写入单元格前已通过 `PiiRedactor.Redact` 处理。
+  - **PDF**：基于 [QuestPDF](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的 A4 结构化排版，包含同样的多章节结构（标题 / 摘要表 / 字段统计表 / 重复对象 / 违规清单 / 全部 P4 小节），自动分页 + 页码 / 总页数 + 表头重复，适合打印或邮件附件交付。
+  - **CLI 路由**：[`ReportExporter.Save`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/ReportExporter.cs) 检测 `-o` 文件扩展名后调用 `ExcelReportExporter.Save` / `PdfReportExporter.Save`；无需新增 CLI 选项。
+  - **Web 下载**：[`Home.razor`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/Components/Pages/Home.razor) 报告区新增 Excel / PDF 下载按钮，通过 [`interop.js`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/wwwroot/interop.js) 新增的 `downloadBinaryFile` 把 base64 编码的二进制流触发为浏览器下载，文件名带时间戳避免冲突。
+- **测试**：新增 `ExcelPdfReportTests` 4 个用例——多 sheet 生成（验证 4 个基础 sheet 名称 + 文件大小 > 1KB）、字段统计 sheet 表头列（`字段名` / `样本数` / `覆盖率`）、PDF 文件头 magic number 校验（`%PDF-`）、`ReportExporter` 按扩展名路由 xlsx / pdf。
 - **P4 分析深度增强（七项深度分析能力）**：在 `AnalysisResult` 中新增七类深度分析结果，配合 `AnalysisOptions` 提供的特性开关（`EnableCorrelation` / `EnableStringPatterns` / `EnableUnicodeHygiene` / `EnableTimeSeries` / `FuzzyDedupField` / `DistributionSnapshotPath` / `DiffDistributionBaseline`）按需启用，零侵入兼容默认分析流程：
   - **字段相关性矩阵（Pearson / Spearman）**：流式蓄水池（默认 20K 行/字段）保留每字段数值样本，分析完成后输出完整的 Pearson + Spearman 系数矩阵与「强相关对」（|r| ≥ 0.7 且样本 ≥ 30），帮助发现 `age ↔ income` 这类隐式关联；见 `FieldCorrelationMatrix.cs` / `FieldCorrelationCollector.cs`。
   - **字符串模式自动归纳**：对每个字符串字段自动归纳形态模板（如 `###-####` / `[A-Z]{3}\d{6}` / `[a-z]+@[a-z]+\.[a-z]+`），输出主导模板、Top-N 模板、模板覆盖率与样本数，便于规则文件 pattern 编写与异常形态定位；见 `StringPatternProfiler.cs`。

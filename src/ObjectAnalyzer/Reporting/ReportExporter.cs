@@ -24,6 +24,14 @@ public static class ReportExporter
         {
             CsvReportExporter.Save(result, outputPath);
         }
+        else if (ext is ".xlsx")
+        {
+            ExcelReportExporter.Save(result, outputPath);
+        }
+        else if (ext is ".pdf")
+        {
+            PdfReportExporter.Save(result, outputPath);
+        }
         else
         {
             SaveJson(result, outputPath);
