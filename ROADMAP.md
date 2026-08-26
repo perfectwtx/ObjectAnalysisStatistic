@@ -147,6 +147,31 @@
   - **PII 打码一致**：Excel 单元格与 PDF 表格内的敏感字段值在写入前已通过 `PiiRedactor.Redact` 处理
   - 实现见新增 [ExcelReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/ExcelReportExporter.cs) / [PdfReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/PdfReportExporter.cs)；测试 4 个用例（`ExcelPdfReportTests`）——多 sheet / 表头列 / PDF magic number / 扩展名路由
 
+## P6 — 鲁棒性与大规模数据可用性（进行中 🚧）
+
+针对 P5 之后用户反馈的三类缺口：增量分析（断点续跑）、进度条/ETA、内存上限。每个子段独立可交付。
+
+### P6.1 — 进度条 / ETA（已完成 ✅）
+- `ObjectAnalyzer.Analyze` / `AnalyzeDetailed` 新增 `IProgress<long>?` 回调参数（位于 CancellationToken 之前，遵循 CA1068）
+- `AnalyzeCore` 在分块（10K 对象）完成后通过 `progress?.Report(globalTotalObjects)` 上报累计对象数
+- `AnalysisRunner.ProcessAndReport` 用 `AnsiConsole.Progress()` 替代 `AnsiConsole.Status()`，含 5 列：任务描述 / 进度条 / 百分比 / 剩余时间 (ETA) / spinner
+- `AnalysisOptions.ShowProgress`（默认 true）+ CLI `--no-progress` 开关
+- `EstimateTotalObjects` 辅助方法：仅在已物化列表返回 Count；不对 50GB JSONL 二次扫描数行
+- 实现见 [ObjectAnalyzer.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/ObjectAnalyzer.cs) / [AnalysisRunner.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisRunner.cs) / [AnalysisOptions.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisOptions.cs)；测试 4 个用例（`ProgressReportingTests`）——回调触发次数 / 单调性 / AnalyzeDetailed 兼容性 / 开关标志
+
+### P6.2 — 增量分析 / 断点续跑（计划中 📋）
+设计要点（用户已确认）：
+- 支持全部输入格式：JSONL/CSV/XML/YAML 按行号、JSON/Excel 按字节偏移
+- `--checkpoint <PATH>`：每 N 行（默认 100K）落盘一次；--resume 从检查点恢复
+- `--baseline <JSON>`：与历史 `AnalysisResult` 合并；FieldStatistic 级别合并（HyperLogLog 合并 + t-digest merge + Welford 合并）
+- 复用现有流式聚合器 `MergeFrom()`，避免重复造轮子
+
+### P6.3 — `--max-memory` 内存上限（计划中 📋）
+设计要点（用户已确认）：
+- 软警告 + 自动启用采样（推荐模式）
+- `--max-memory-mode <soft|hard>` 切换行为：soft = 警告 + 自动启用采样；hard = 超出即抛错退出码 7
+- 通过 `GC.GetTotalMemory(false)` 监控；与 `Sampling.IsEnabled` 联动自动推导 `--sample-reservoir`
+
 ## 已明确排除
 
 - **.NET 8 LTS / 双目标评估**：按项目决策不做，保持 `net10.0` 单目标。

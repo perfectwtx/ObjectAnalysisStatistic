@@ -263,9 +263,10 @@ public static partial class ObjectAnalyzer
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
         AnalysisFeatures? features = null,
+        IProgress<long>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken).Result;
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress).Result;
     }
 
     /// <summary>
@@ -282,9 +283,10 @@ public static partial class ObjectAnalyzer
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
         AnalysisFeatures? features = null,
+        IProgress<long>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken);
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress);
     }
 
     /// <summary>
@@ -300,7 +302,8 @@ public static partial class ObjectAnalyzer
         AnalysisRules? rules,
         ParallelOptions? parallelOptions,
         AnalysisFeatures? features,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<long>? progress = null)
     {
         var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
         var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
@@ -542,6 +545,9 @@ public static partial class ObjectAnalyzer
                 cancellationToken.ThrowIfCancellationRequested();
                 int count = Math.Min(ChunkSize, objectList.Count - offset);
                 ProcessChunk(IndexedSlice(objectList, offset, count));
+                // P6.1 进度上报：每完成一个分块（10K 对象）触发一次回调，
+                // Spectre.Console 的 Progress() 内部已合并高频上报避免闪烁
+                progress?.Report(globalTotalObjects);
             }
         }
         else
@@ -550,6 +556,8 @@ public static partial class ObjectAnalyzer
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ProcessChunk(chunk);
+                // P6.1 进度上报：未知总量的流式输入同样每分块触发一次
+                progress?.Report(globalTotalObjects);
             }
         }
 

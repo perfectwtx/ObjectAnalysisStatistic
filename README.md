@@ -111,6 +111,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--audit-log <PATH>` | — | 数据血缘审计日志：输出 NDJSON 格式事件链（`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`），每条事件含 `runId` / `operator` / `inputHash` (SHA-256) / `inputBytes` / `options` / `result` / `exitCode`；**不**记录字段值与 AES/SM4/SM2 密钥等敏感材料；同步 AutoFlush 保证审计数据不丢失 | 无 |
 | `--operator <ID>` | — | 操作者标识（如 `[email protected]` / `ci-runner-12`），写入审计日志的每条事件（与 `--audit-log` 配合使用） | `anonymous` |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
+| `--no-progress` | — | 关闭分析过程中 Spectre.Console 进度条 + ETA，回归到 spinner 行为。典型场景：CI 日志捕获、脚本管道、已重定向到文件时希望避免 ANSI 控制码污染输出 | `false` (默认开) |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
 > 提示：使用 `-h` 或 `--help` 查看完整帮助。退出码：`0` 成功，`1` 输入/解析错误，`2` 已取消，`3` 质量门禁未通过（`--fail-on-violations`），`4` 合规门禁未通过（`--fail-on-pii-level`），`5` 异常值门禁未通过（`--fail-on-outlier-ratio`），`6` Schema 破坏性变更（`--allow-breaking-schema-changes false` + `--diff-schema`）。

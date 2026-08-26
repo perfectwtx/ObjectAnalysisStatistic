@@ -139,4 +139,12 @@ public sealed class AnalysisOptions
 
     /// <summary>采样置信区间宽度阈值（覆盖区间宽度 ≥ 此值视为"低可信"，默认 0.2）。</summary>
     public double LowConfidenceWidth { get; set; } = 0.2;
+
+    // ── P6.1 进度条 / ETA ──
+
+    /// <summary>
+    /// 是否在分析过程中显示 Spectre.Console 进度条 + ETA（--no-progress 取反）。默认 true。
+    /// 关掉后回退到旧版 spinner 行为；典型场景：CI 日志捕获 / 脚本管道 / 已重定向到文件。
+    /// </summary>
+    public bool ShowProgress { get; set; } = true;
 }

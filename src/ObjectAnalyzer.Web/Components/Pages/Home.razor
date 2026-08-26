@@ -1237,7 +1237,7 @@
                     }
                     return o;
                 });
-                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: null, token);
+                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: null, progress: null, token);
                 transformProcessor.ApplyFailures(analysisResult);
                 previewedPreview = preview;
                 return analysisResult;

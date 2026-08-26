@@ -619,32 +619,85 @@ public static class AnalysisRunner
         }
 
         AnalysisResult result = null!;
-        AnsiConsole.Status()
-            .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(Style.Parse("green"))
-            .Start("正在并行计算对象字段分布、数据极值与语义模式...", ctx =>
-            {
-                var parallelOptions = new ParallelOptions
+
+        // P6.1：进度条 / ETA 集成。
+        // 优先用"已知总量"驱动 maxValue（materialized 列表直接用 Count；其余场景不强行预扫描——
+        // 50GB JSONL 再读一遍数行需要 30+ 秒，得不偿失）；
+        // 未知时退化为纯对象计数 + spinner，RemainingTimeColumn 仍可基于速率给出粗略 ETA。
+        long? expectedTotal = options.ShowProgress ? EstimateTotalObjects(materialized) : null;
+
+        if (options.ShowProgress)
+        {
+            AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn { Alignment = Justify.Left },
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new RemainingTimeColumn(),
+                    new SpinnerColumn(Spinner.Known.Dots))
+                .Start(ctx =>
                 {
-                    MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
-                        ? options.MaxDegreeOfParallelism
-                        : -1
-                };
-                var features = BuildAnalysisFeatures(options);
-                if (needDistributionSketches)
+                    string desc = string.IsNullOrEmpty(options.InputPath)
+                        ? "[green]分析中[/] [grey](数据库直连)[/]"
+                        : $"[green]分析中[/] [grey]{Markup.Escape(Path.GetFileName(options.InputPath))}[/]";
+                    var task = ctx.AddTask(desc, maxValue: expectedTotal ?? 100);
+                    var progress = new Progress<long>(objects => task.Value = objects);
+
+                    var parallelOptions = new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
+                            ? options.MaxDegreeOfParallelism
+                            : -1
+                    };
+                    var features = BuildAnalysisFeatures(options);
+                    if (needDistributionSketches)
+                    {
+                        var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
+                        result = detailed.Result;
+                        _lastQuantileSketches = detailed.QuantileSketches;
+                        _lastDistinctSketches = detailed.DistinctSketches;
+                    }
+                    else
+                    {
+                        result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress, cancellationToken);
+                        _lastQuantileSketches = null;
+                        _lastDistinctSketches = null;
+                    }
+                    // 确保 100% 收尾（未知总量时 task.Value 可能停在 < maxValue 处）
+                    if (task.Value < task.MaxValue) task.Value = task.MaxValue;
+                });
+        }
+        else
+        {
+            AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .SpinnerStyle(Style.Parse("green"))
+                .Start("正在并行计算对象字段分布、数据极值与语义模式...", ctx =>
                 {
-                    var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, cancellationToken);
-                    result = detailed.Result;
-                    _lastQuantileSketches = detailed.QuantileSketches;
-                    _lastDistinctSketches = detailed.DistinctSketches;
-                }
-                else
-                {
-                    result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, cancellationToken);
-                    _lastQuantileSketches = null;
-                    _lastDistinctSketches = null;
-                }
-            });
+                    var parallelOptions = new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
+                            ? options.MaxDegreeOfParallelism
+                            : -1
+                    };
+                    var features = BuildAnalysisFeatures(options);
+                    if (needDistributionSketches)
+                    {
+                        var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress: null, cancellationToken);
+                        result = detailed.Result;
+                        _lastQuantileSketches = detailed.QuantileSketches;
+                        _lastDistinctSketches = detailed.DistinctSketches;
+                    }
+                    else
+                    {
+                        result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress: null, cancellationToken);
+                        _lastQuantileSketches = null;
+                        _lastDistinctSketches = null;
+                    }
+                });
+        }
 
         // 模糊去重结果挂到 result 上
         if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
@@ -893,6 +946,22 @@ public static class AnalysisRunner
         {
             AnsiConsole.MarkupLine($"[red]内部错误: {Markup.Escape(ex.InnerException.Message)}[/]");
         }
+    }
+
+    /// <summary>
+    /// P6.1：估算分析对象总数（用于 Progress bar 的 maxValue / ETA）。
+    /// 策略：
+    /// 1) 已物化的列表（fuzzy dedup / distribution sketches 路径）→ 直接返回 Count；
+    /// 2) 其它路径返回 null，让 Progress 显示纯对象计数 + 速率，RemainingTimeColumn 仍可估算。
+    /// 不对 50GB JSONL 做二次扫描数行——开销得不偿失。
+    /// </summary>
+    private static long? EstimateTotalObjects(List<Dictionary<string, object?>> materialized)
+    {
+        if (materialized != null && materialized.Count > 0)
+        {
+            return materialized.Count;
+        }
+        return null;
     }
 
     /// <summary>合规等级严重度排序：A=0（干净）&lt; B=1（敏感已打码）&lt; C=2（需人工复核）。</summary>

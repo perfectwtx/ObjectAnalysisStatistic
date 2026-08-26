@@ -144,6 +144,10 @@ var operatorOption = new Option<string?>(
     description: "操作者标识，写入审计日志的每条事件（--audit-log 启用时生效）。推荐填入执行者 ID（如 \"[email protected]\" / \"ci-runner-12\"），便于溯源。",
     getDefaultValue: () => "anonymous");
 
+var noProgressOption = new Option<bool>(
+    name: "--no-progress",
+    description: "关闭分析过程中的 Spectre.Console 进度条 + ETA，回归到 spinner 行为。典型场景：CI 日志捕获、脚本管道、已重定向到文件时希望避免 ANSI 控制码污染输出。默认开启进度条。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -176,6 +180,7 @@ rootCommand.AddOption(rootPathOption);
 rootCommand.AddOption(recordPathOption);
 rootCommand.AddOption(auditLogOption);
 rootCommand.AddOption(operatorOption);
+rootCommand.AddOption(noProgressOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -211,6 +216,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var recordPath = parseResult.GetValueForOption(recordPathOption);
     var auditLogPath = parseResult.GetValueForOption(auditLogOption);
     var operatorValue = parseResult.GetValueForOption(operatorOption) ?? "anonymous";
+    var noProgress = parseResult.GetValueForOption(noProgressOption);
 
     if (generateTestExcel)
     {
@@ -320,7 +326,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         RootPath = rootPath,
         RecordPath = recordPath,
         AuditLogPath = auditLogPath,
-        Operator = operatorValue
+        Operator = operatorValue,
+        ShowProgress = !noProgress
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

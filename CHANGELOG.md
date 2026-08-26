@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- **P6.1 进度条 / ETA**：分析过程默认显示 Spectre.Console 进度条，包含 `ProgressBarColumn` / `PercentageColumn` / `RemainingTimeColumn` (ETA) / `SpinnerColumn` / `TaskDescriptionColumn` 五列。`ObjectAnalyzer.Analyze` / `AnalyzeDetailed` 新增 `IProgress<long>?` 回调参数，每分块（10K 对象）触发一次，调用方把累计对象数映射到 task.Value。`--no-progress` CLI 选项可关闭进度条回到旧版 spinner 行为（CI 日志捕获 / 脚本管道场景）。CLI 路由 `--no-progress → AnalysisOptions.ShowProgress = false`。`EstimateTotalObjects` 辅助方法：仅在已物化列表上返回 Count，不对 50GB JSONL 做二次扫描数行。`ProgressReportingTests` 4 个用例验证回调触发次数 / 单调性 / AnalyzeDetailed 兼容性 / 开关标志。
 - **Excel / PDF 表格化报告导出**：在现有 JSON / HTML / Markdown / CSV 之外，新增两种适合交付给非技术受众的格式：
   - **Excel（.xlsx）**：基于 [MiniExcel](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的多 sheet 工作簿，按数据维度拆分——`摘要` / `字段统计` / `重复对象` / `违规清单` 基础 4 sheet + P4 七项分析对应的可选 sheet（`字符串模式` / `Unicode 卫生` / `模糊去重` / `相关性摘要` + `强相关对` + `Pearson 矩阵` + `Spearman 矩阵` / `时间序列深度` / `分布漂移摘要` + `覆盖率变化` + `数值漂移` + `Distinct 漂移` / `采样置信摘要` + `字段覆盖率区间`），仅在该维度有数据时输出。字段统计 sheet 包含完整的样本数 / 覆盖率 / 主导类型 / 语义类型 / 数值统计 / 分位数 / 长度 / Top 5 值 / 类型分布等列。PII 打码与现有所有格式一致——敏感字段值在写入单元格前已通过 `PiiRedactor.Redact` 处理。
   - **PDF**：基于 [QuestPDF](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的 A4 结构化排版，包含同样的多章节结构（标题 / 摘要表 / 字段统计表 / 重复对象 / 违规清单 / 全部 P4 小节），自动分页 + 页码 / 总页数 + 表头重复，适合打印或邮件附件交付。
