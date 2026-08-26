@@ -110,4 +110,33 @@ public sealed class AnalysisOptions
     /// 推荐在 CI/调度器中传入执行者 ID（如 "[email protected]" / "ci-runner-12"）。
     /// </summary>
     public string Operator { get; set; } = "anonymous";
+
+    // ── P4 分析深度增强（CLI 开关）──
+
+    /// <summary>启用字段相关性矩阵分析（Pearson / Spearman，--correlation）。</summary>
+    public bool EnableCorrelation { get; set; }
+
+    /// <summary>启用字符串模式自动归纳（--string-patterns），发现 "###-####" 等形态模板及覆盖率。</summary>
+    public bool EnableStringPatterns { get; set; }
+
+    /// <summary>启用 Unicode 卫生检查（--unicode-hygiene），检测全/半角混用、不可见字符、控制字符等。</summary>
+    public bool EnableUnicodeHygiene { get; set; }
+
+    /// <summary>启用时间序列深度分析（--time-series），对 DateTime 字段做趋势/周期/间隙/脉冲性分析。</summary>
+    public bool EnableTimeSeries { get; set; }
+
+    /// <summary>模糊去重目标字段（--fuzzy-dedup-field &lt;FIELD&gt;）。空表示不启用模糊去重。</summary>
+    public string? FuzzyDedupField { get; set; }
+
+    /// <summary>分布快照导出路径（--export-distribution-snapshot）。</summary>
+    public string? DistributionSnapshotPath { get; set; }
+
+    /// <summary>与历史分布快照做 diff 的基线文件路径（--diff-distribution）。</summary>
+    public string? DiffDistributionBaseline { get; set; }
+
+    /// <summary>分布 diff 结果导出路径（--distribution-diff-report）。</summary>
+    public string? DistributionDiffReportPath { get; set; }
+
+    /// <summary>采样置信区间宽度阈值（覆盖区间宽度 ≥ 此值视为"低可信"，默认 0.2）。</summary>
+    public double LowConfidenceWidth { get; set; } = 0.2;
 }

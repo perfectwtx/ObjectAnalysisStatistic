@@ -83,7 +83,15 @@ public static class PiiRedactor
             DuplicateObjects = maskedDuplicates,
             FieldStatistics = maskedStats,
             QualityViolations = maskedQuality,
-            SchemaDiff = result.SchemaDiff
+            SchemaDiff = result.SchemaDiff,
+            // ── P4 字段透传：打码不影响 P4 报告内容（相关性矩阵、模糊去重、模式、Unicode 卫生等不含原始值）──
+            CorrelationMatrix = result.CorrelationMatrix,
+            FuzzyDuplicates = result.FuzzyDuplicates,
+            StringPatterns = result.StringPatterns,
+            UnicodeHygiene = result.UnicodeHygiene,
+            TimeSeriesAnalyses = result.TimeSeriesAnalyses,
+            DistributionDiff = result.DistributionDiff,
+            SamplingConfidence = result.SamplingConfidence
         };
     }
 

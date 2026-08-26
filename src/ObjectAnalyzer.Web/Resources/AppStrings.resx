@@ -123,4 +123,48 @@
   <data name="HistogramBars" xml:space="preserve"><value>{0} 个时间桶</value></data>
   <data name="DatetimeSpan" xml:space="preserve"><value>跨度 {0}</value></data>
   <data name="OutlierZero" xml:space="preserve"><value>无离群点</value></data>
+  <data name="P4InsightsTitle" xml:space="preserve"><value>P4 深度分析</value></data>
+  <data name="P4InsightsHint" xml:space="preserve"><value>字段相关性、字符串模式、Unicode 卫生、模糊去重、采样置信、分布漂移</value></data>
+  <data name="CorrelationCard" xml:space="preserve"><value>字段相关性矩阵</value></data>
+  <data name="StringPatternsCard" xml:space="preserve"><value>字符串模式归纳</value></data>
+  <data name="UnicodeHygieneCard" xml:space="preserve"><value>Unicode 卫生检查</value></data>
+  <data name="FuzzyDedupCard" xml:space="preserve"><value>模糊去重 (相似重复)</value></data>
+  <data name="TimeSeriesDeepCard" xml:space="preserve"><value>时间序列深度分析</value></data>
+  <data name="SamplingConfidenceCard" xml:space="preserve"><value>采样置信区间</value></data>
+  <data name="DistributionDiffCard" xml:space="preserve"><value>值分布漂移 (草图对比)</value></data>
+  <data name="NoCorrelation" xml:space="preserve"><value>未启用相关性分析（无 ≥2 个数值字段）</value></data>
+  <data name="NoStringPatterns" xml:space="preserve"><value>未启用字符串模式归纳</value></data>
+  <data name="NoHygieneIssues" xml:space="preserve"><value>未启用 Unicode 卫生检查</value></data>
+  <data name="HygieneAllClean" xml:space="preserve"><value>所有字段卫生评分 ≥ 90，无需关注</value></data>
+  <data name="NoFuzzyDedup" xml:space="preserve"><value>未指定模糊去重字段</value></data>
+  <data name="NoTimeSeriesDeep" xml:space="preserve"><value>无足够 DateTime 字段做趋势/周期分析</value></data>
+  <data name="NoSamplingConfidence" xml:space="preserve"><value>未启用采样（全量分析时无置信区间）</value></data>
+  <data name="NoDistributionDiff" xml:space="preserve"><value>未提供分布快照基线</value></data>
+  <data name="NoStrongPairs" xml:space="preserve"><value>无显著强相关对 (|r| &lt; 0.7 或样本 &lt; 30)</value></data>
+  <data name="FieldsLabel" xml:space="preserve"><value>字段</value></data>
+  <data name="SamplesLabel" xml:space="preserve"><value>样本</value></data>
+  <data name="HygieneDirtyLabel" xml:space="preserve"><value>脏字段</value></data>
+  <data name="FuzzyGroupsLabel" xml:space="preserve"><value>相似重复组</value></data>
+  <data name="FuzzySimLabel" xml:space="preserve"><value>相似样本</value></data>
+  <data name="EffectiveNLabel" xml:space="preserve"><value>有效样本数</value></data>
+  <data name="DriftCountLabel" xml:space="preserve"><value>显著漂移字段</value></data>
+  <data name="BaselineLabel" xml:space="preserve"><value>基线</value></data>
+  <data name="CurrentLabel" xml:space="preserve"><value>当前</value></data>
+  <data name="HygieneScoreFmt" xml:space="preserve"><value>评分 {0:F0}</value></data>
+  <data name="HygieneMixedFullHalf" xml:space="preserve"><value>全/半角混用 ({0}全 / {1}半)</value></data>
+  <data name="HygieneInvisible" xml:space="preserve"><value>不可见字符 {0}</value></data>
+  <data name="HygieneControl" xml:space="preserve"><value>控制字符 {0}</value></data>
+  <data name="HygieneSurroundingWs" xml:space="preserve"><value>前后空白 {0}</value></data>
+  <data name="HygieneMixedCase" xml:space="preserve"><value>大小写混用 {0}</value></data>
+  <data name="FuzzyGroupSizeFmt" xml:space="preserve"><value>×{0} 相似变体</value></data>
+  <data name="TimeSeriesTrendFmt" xml:space="preserve"><value>趋势: {0}</value></data>
+  <data name="TimeSeriesPeriodFmt" xml:space="preserve"><value>周期 {0} 桶</value></data>
+  <data name="TimeSeriesSpanFmt" xml:space="preserve"><value>{0} 桶 × {1}</value></data>
+  <data name="ConfidenceRangeFmt" xml:space="preserve"><value>区间 [{0:P0}, {1:P0}]</value></data>
+  <data name="PatternCountFmt" xml:space="preserve"><value>×{0} / {1}</value></data>
+  <data name="NumericDriftTitle" xml:space="preserve"><value>数值漂移 ({0})</value></data>
+  <data name="DistinctDriftTitle" xml:space="preserve"><value>枚举漂移 ({0})</value></data>
+  <data name="DriftMeanFmt" xml:space="preserve"><value>μ: {0:F2} → {1:F2}</value></data>
+  <data name="DriftSigmaFmt" xml:space="preserve"><value>{0:F2}σ</value></data>
+  <data name="DriftJaccardFmt" xml:space="preserve"><value>Jaccard = {0:F2}</value></data>
 </root>

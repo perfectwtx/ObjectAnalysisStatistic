@@ -204,5 +204,160 @@ public static class ConsoleReporter
             SchemaDiffer.PrintSummary(result.SchemaDiff);
             AnsiConsole.WriteLine();
         }
+
+        // ── 分布漂移（diff）──
+        if (result.DistributionDiff != null)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]分布漂移（vs 基线）[/]").LeftJustified());
+            DistributionDiffer.PrintSummary(result.DistributionDiff);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── 字段相关性矩阵（Pearson / Spearman）──
+        if (result.CorrelationMatrix != null)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]字段相关性矩阵[/]").LeftJustified());
+            PrintCorrelationMatrix(result.CorrelationMatrix);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── 字符串模式归纳 ──
+        if (result.StringPatterns != null && result.StringPatterns.Count > 0)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]字符串模式归纳（自动发现形态模板）[/]").LeftJustified());
+            PrintStringPatterns(result.StringPatterns);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── Unicode 卫生检查 ──
+        if (result.UnicodeHygiene != null && result.UnicodeHygiene.Count > 0)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]Unicode 卫生检查（中文场景常见脏数据）[/]").LeftJustified());
+            PrintUnicodeHygiene(result.UnicodeHygiene);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── 时间序列深度分析 ──
+        if (result.TimeSeriesAnalyses != null && result.TimeSeriesAnalyses.Count > 0)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]时间序列深度分析（趋势 / 周期 / 间隙 / 脉冲）[/]").LeftJustified());
+            PrintTimeSeries(result.TimeSeriesAnalyses);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── 模糊去重 ──
+        if (result.FuzzyDuplicates != null)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]模糊去重（形态变体聚类）[/]").LeftJustified());
+            PrintFuzzyDuplicates(result.FuzzyDuplicates);
+            AnsiConsole.WriteLine();
+        }
+
+        // ── 采样置信区间 ──
+        if (result.SamplingConfidence != null)
+        {
+            AnsiConsole.Write(new Rule("[bold yellow]采样不确定性（95% 置信区间）[/]").LeftJustified());
+            PrintSamplingConfidence(result.SamplingConfidence);
+            AnsiConsole.WriteLine();
+        }
+    }
+
+    private static void PrintCorrelationMatrix(FieldCorrelationMatrix matrix)
+    {
+        if (matrix.Fields.Count == 0)
+        {
+            AnsiConsole.MarkupLine("  [grey]无字段相关性数据[/]");
+            return;
+        }
+        AnsiConsole.MarkupLine($"  [grey]样本数 {matrix.Samples}（Pearson / Spearman）[/]");
+        if (matrix.StrongPairs.Count == 0)
+        {
+            AnsiConsole.MarkupLine("  [grey]未发现显著相关对（|r| ≥ 0.7 且样本 ≥ 30）[/]");
+            return;
+        }
+        var table = new Table()
+            .Border(TableBorder.Simple)
+            .BorderColor(Color.Grey)
+            .AddColumn(new TableColumn("[bold]字段对[/]").LeftAligned())
+            .AddColumn(new TableColumn("[bold]Pearson[/]").RightAligned())
+            .AddColumn(new TableColumn("[bold]Spearman[/]").RightAligned())
+            .AddColumn(new TableColumn("[bold]样本[/]").RightAligned());
+        foreach (var pair in matrix.StrongPairs)
+        {
+            string p = pair.Pearson.HasValue ? $"{pair.Pearson:+0.000;-0.000;0.000}" : "-";
+            string s = pair.Spearman.HasValue ? $"{pair.Spearman:+0.000;-0.000;0.000}" : "-";
+            string color = pair.Pearson is > 0.7 or < -0.7 ? "yellow" : "grey";
+            table.AddRow(
+                $"[cyan]{Markup.Escape(pair.FieldA)}[/] × [cyan]{Markup.Escape(pair.FieldB)}[/]",
+                $"[{color}]{p}[/]",
+                $"[{color}]{s}[/]",
+                $"[grey]{pair.Samples}[/]");
+        }
+        AnsiConsole.Write(table);
+    }
+
+    private static void PrintStringPatterns(Dictionary<string, StringPatternProfile> profiles)
+    {
+        foreach (var (field, profile) in profiles.Take(10))
+        {
+            string dom = profile.DominantPattern != null
+                ? $"[cyan]{Markup.Escape(profile.DominantPattern.Template)}[/] ({profile.DominantPattern.Ratio ?? 0:P1})"
+                : "[grey]-[/]";
+            AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(field)}[/]: 主导模板 {dom}；总样本 {profile.TotalSamples}");
+            foreach (var p in profile.Patterns.Take(5))
+            {
+                AnsiConsole.MarkupLine($"    [grey]·[/] [cyan]{Markup.Escape(p.Template)}[/]: {p.Count} ({(p.Ratio ?? 0):P1})");
+            }
+        }
+    }
+
+    private static void PrintUnicodeHygiene(Dictionary<string, UnicodeHygieneReport> reports)
+    {
+        foreach (var (field, r) in reports.Take(10))
+        {
+            var flags = new List<string>();
+            if (r.FullwidthCount > 0 && r.HalfwidthCount > 0) flags.Add($"全/半角混用 ({r.FullwidthCount}全 / {r.HalfwidthCount}半)");
+            if (r.InvisibleCount > 0) flags.Add($"不可见字符 {r.InvisibleCount}");
+            if (r.ControlCharCount > 0) flags.Add($"控制字符 {r.ControlCharCount}");
+            if (r.SurroundingWhitespaceCount > 0) flags.Add($"首尾空白 {r.SurroundingWhitespaceCount}");
+            if (r.MixedCaseCount > 0) flags.Add($"大小写混用 {r.MixedCaseCount}");
+            string flagStr = flags.Count > 0 ? string.Join("; ", flags) : "[green]✓ 干净[/]";
+            string score = r.HygieneScore.HasValue ? $" 评分 {r.HygieneScore:F0}/100" : "";
+            AnsiConsole.MarkupLine($"  [cyan]{Markup.Escape(field)}[/]: 样本 {r.TotalSamples} — {flagStr}{score}");
+        }
+    }
+
+    private static void PrintTimeSeries(Dictionary<string, TimeSeriesAnalysis> analyses)
+    {
+        foreach (var (field, ts) in analyses.Take(10))
+        {
+            string trendColor = ts.Trend == "rising" ? "yellow" : ts.Trend == "falling" ? "red" : "green";
+            string period = ts.DetectedPeriod.HasValue ? $"周期={ts.DetectedPeriod}({ts.PeriodicityStrength:P0})" : "无明显周期";
+            AnsiConsole.MarkupLine(
+                $"  [cyan]{Markup.Escape(field)}[/]: 趋势 [{trendColor}]{ts.Trend}[/] (slope {ts.TrendSlope:F3}/桶)，{period}，间隙 {ts.LongestGapBuckets} 桶，脉冲 {ts.Burstiness:F1}x");
+        }
+    }
+
+    private static void PrintFuzzyDuplicates(FuzzyDuplicateReport report)
+    {
+        AnsiConsole.MarkupLine(
+            $"  总样本 {report.TotalSamples}，相似重复组 {report.GroupCount}，涉及样本 {report.SimilarDuplicates}");
+        foreach (var g in report.Groups.Take(5))
+        {
+            AnsiConsole.MarkupLine($"    [yellow]·[/] 规范化键 [cyan]{Markup.Escape(g.CanonicalKey)}[/] 样本 {g.Count}");
+            foreach (var ex in g.Examples.Take(3))
+            {
+                AnsiConsole.MarkupLine($"        [grey]- {Markup.Escape(ex)}[/]");
+            }
+        }
+    }
+
+    private static void PrintSamplingConfidence(SamplingConfidence sc)
+    {
+        AnsiConsole.MarkupLine($"  {Markup.Escape(sc.Summary)}");
+        if (sc.LowConfidenceFields.Count > 0)
+        {
+            AnsiConsole.MarkupLine($"  [yellow]低可信字段:[/] {string.Join(", ", sc.LowConfidenceFields.Take(10).Select(f => $"[cyan]{Markup.Escape(f)}[/]"))}");
+        }
     }
 }

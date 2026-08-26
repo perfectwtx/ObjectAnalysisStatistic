@@ -81,6 +81,64 @@
   - 响应 SLA：首次确认 3 工作日 / 严重性评估 7 工作日 / Critical-High 修复 30 自然日
   - 安全特性清单 + 致谢机制
 
+## P5 — 分析深度增强（已完成 ✅）
+
+> P3 的"高级分析能力"补齐到数据科学常用维度：跨字段关联、形态归纳、数据卫生、相似识别、时序分析、采样可信度、分布漂移。零侵入兼容默认分析流程——任一特性按需开启，关闭时与 v1.x 行为完全一致。
+
+- ✅ **字段相关性矩阵（Pearson / Spearman）**
+  - `FieldCorrelationCollector` 在流式阶段为每个数值字段维护蓄水池（默认 20K 行/字段），并行分片在 `MergeFrom` 时克隆 thread-local 数据后合并
+  - `AnalysisResult.CorrelationMatrix` 输出完整 Pearson 矩阵 + Spearman 秩相关矩阵 + 「强相关对」速览（|r| ≥ 0.7 且样本 ≥ 30）
+  - 字段数 ≥ 2 且各字段至少 3 个非空数值样本时填充；否则为 null，零开销
+  - 实现见 [FieldCorrelationMatrix.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/FieldCorrelationMatrix.cs) / [FieldCorrelationCollector.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/FieldCorrelationCollector.cs)；测试含 `Correlation_TwoCorrelatedNumericFields_DetectsStrongPair` 等
+
+- ✅ **字符串模式自动归纳**
+  - `StringPatternProfiler` 将每个字符串值归一为形态模板（`###-####` / `[A-Z]{3}\d{6}` / `[a-z]+@[a-z]+\.[a-z]+` 等），按字段聚合并输出主导模板 + Top-N 模板 + 模板覆盖率 + 样本数
+  - 便于规则文件 `pattern` 编写与异常形态定位
+  - 实现见 [StringPatternProfiler.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/StringPatternProfiler.cs)
+
+- ✅ **Unicode 卫生检查**
+  - `UnicodeHygieneChecker` 输出 0~100 卫生评分，识别全/半角混用、零宽字符 / 双向控制符 / BOM 等不可见字符、控制字符、大小写混用、左右引号、不可见分隔符等常见脏数据来源
+  - 实现见 [UnicodeHygieneChecker.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/UnicodeHygieneChecker.cs)
+
+- ✅ **模糊去重（相似重复识别）**
+  - `FuzzyDuplicateDetector` 对指定字段（如 `name` / `title` / `address`）做归一化（去空白/标点、全半角统一、大小写折叠）+ 词袋 Jaccard 相似度
+  - 将"几乎一致"的对象分组为 `FuzzyDuplicateGroup`，输出组数、相似重复对、规范化键
+  - 通过 `AnalysisOptions.FuzzyDedupField` 指定目标字段；未指定时关闭，零开销
+  - 实现见 [FuzzyDuplicateDetector.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/FuzzyDuplicateDetector.cs)
+
+- ✅ **时间序列深度分析**
+  - `TimeSeriesAnalyzer` 在 P3「日期/时间深度剖析」时间桶基础上做趋势识别（rising / falling / flat / mixed）、周期检测（日 / 周 / 月）、间隙分析（最大间隔 / 间隔标准差）、脉冲性（孤立 burst 数）
+  - 与现有 `FieldStatistic.DateHistogram` 共用底座，无重复计算
+  - 实现见 [TimeSeriesAnalyzer.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/TimeSeriesAnalyzer.cs)
+
+- ✅ **采样置信区间**
+  - 启用 `--sample-reservoir` / `--sample-step` 时自动启用（`EnableSamplingConfidence` 默认 true）
+  - 对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段可信度评估
+  - `AnalysisOptions.LowConfidenceWidth` 控制"低可信"判定阈值（覆盖区间宽度 ≥ 此值视为低可信，默认 0.2）
+  - 实现见 [Sampling.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/Sampling.cs) `ConfidenceInterval`
+
+- ✅ **分布漂移对比（草图 vs 草图）**
+  - `DistributionSnapshot` 导出每字段的 t-digest 质心 + HyperLogLog 寄存器（约 10KB/字段，JSON 可序列化、内存有界）
+  - `--export-distribution-snapshot` / `--diff-distribution` / `--distribution-diff-report` 三段式：导出基线快照 → 与当前数据对比 → 结构化 diff JSON
+  - `DistributionDiff` 输出均值 / 分位 / null 率 / distinct / Jaccard 多维度漂移，显著漂移字段用 σ 倍数标记
+  - 与 `SchemaDiff` 互补——前者看结构、后者看分布
+  - 实现见 [DistributionSnapshot.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/DistributionSnapshot.cs)
+
+- ✅ **报告（HTML / Markdown / JSON / CSV）同步**
+  - HTML / Markdown 报告新增「字段相关性」「字符串模式」「Unicode 卫生」「模糊去重」「时间序列深度」「采样置信」「分布漂移」共 7 个 P4 专用小节
+  - 复杂结果采用"概览 + 详情"分层（如相关性矩阵先列强相关对，再给完整 Pearson / Spearman 矩阵）
+  - 实现见 [HtmlReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/HtmlReportExporter.cs) / [MarkdownReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/MarkdownReportExporter.cs) `WriteCorrelationSection` / `WriteStringPatternsSection` / `WriteUnicodeHygieneSection` / `WriteFuzzyDedupSection` / `WriteTimeSeriesSection` / `WriteSamplingConfidenceSection` / `WriteDistributionDiffSection`
+
+- ✅ **Web UI 同步**
+  - Blazor 页面新增 "🧬 P4 深度分析" 区域，以 7 张独立卡片（🔗 字段相关性矩阵 / 🔤 字符串模式归纳 / 🧹 Unicode 卫生检查 / 👥 模糊去重 / 📈 时间序列深度 / 🎯 采样置信 / 📉 分布漂移）展示
+  - [Home.razor](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/Components/Pages/Home.razor) `.p4-section` / `.p4-grid` / `.p4-card` 样式（橙色系，与 P3 蓝/绿系区分）
+  - [AppStrings.resx](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/Resources/AppStrings.resx) 同步 40+ P4 专用本地化字符串（中英文）
+
+- ✅ **测试**
+  - 18 个新增用例（`P4AnalysisDepthTests`）：模式构建、相关性识别、时间序列趋势、Unicode 卫生、模糊去重、采样置信、分布漂移等核心场景回归
+  - 修复 `FieldCorrelationCollector.MergeFrom()` 流式合并时未克隆 thread-local 数据的 bug
+  - 修复 `PiiRedactor.Redact()` 丢失 `CorrelationMatrix` / `FuzzyDuplicates` 等 P4 字段的脱敏克隆 bug
+
 ## 已明确排除
 
 - **.NET 8 LTS / 双目标评估**：按项目决策不做，保持 `net10.0` 单目标。

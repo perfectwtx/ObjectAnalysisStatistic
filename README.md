@@ -31,6 +31,7 @@
 - 数据血缘与审计日志：`--audit-log <PATH>` 输出 NDJSON 格式事件链（`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`），每条事件含 `runId` 串联、`operator` 操作者标识（`--operator`）、输入文件 SHA-256 哈希、关键选项快照、退出码与结果摘要；**绝不**记录字段值与 AES/SM4/SM2 密钥等敏感材料；同步 AutoFlush 保证进程崩溃时审计数据不丢失
 - 安全策略：见 [SECURITY.md](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/SECURITY.md) — 支持版本矩阵、数据分类、密钥管理、漏洞披露渠道（GitHub Security Advisories + 邮箱）与响应 SLA
 - 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
+- **分析深度增强（P4）**：在 `AnalysisResult` 中新增七类深度分析结果——字段相关性矩阵（Pearson/Spearman）、字符串模式归纳、Unicode 卫生检查、模糊去重、时间序列深度分析（趋势/周期/间隙）、采样置信区间、分布漂移对比（草图 vs 草图）；详见「分析深度增强（P4）」一节
 - 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
 
@@ -545,9 +546,82 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v3.json --diff
 
 `SchemaDiff` 区分**破坏性变更**（字段删除、主导类型变化、nullable 收紧 true→false、coverage 下降 ≥ 0.1）与**非破坏性变更**（coverage 小幅波动、min/max 变化、异常值比例变化等）。`--allow-breaking-schema-changes false` 触发 CI 门禁（退出码 6），与 `--fail-on-violations` / `--fail-on-outlier-ratio` 对称。`--schema-diff-report` 导出结构化 JSON 供仪表盘/评审报告消费。
 
+## 分析深度增强（P4）
+
+P3 落地后，分析能力补齐到数据科学常用维度：跨字段关联、形态归纳、数据卫生、相似识别、时序分析、采样可信度、分布漂移。**零侵入兼容**——任一特性按需开启，关闭时与 v1.x 行为完全一致。所有结果会同时出现在控制台 / JSON / HTML / Markdown 报告与 Blazor Web 界面的 "🧬 P4 深度分析" 区域。
+
+> 这些特性通过 `AnalysisOptions` 与 `AnalysisFeatures` 启用（CLI / Web UI / 库 API 三处一致）；任一开关默认关闭，无任何额外开销。
+
+### 字段相关性矩阵（Pearson / Spearman）
+
+为每个数值字段在流式阶段维护蓄水池（默认 20K 行/字段），分析完成后输出完整 Pearson + Spearman 矩阵与「强相关对」速览（|r| ≥ 0.7 且样本 ≥ 30）。字段数 ≥ 2 且各字段至少 3 个非空数值样本时填充；否则 `CorrelationMatrix` 为 `null`。
+
+```csharp
+// 库 API 示例
+var opts = new AnalysisOptions { /* ... */ EnableCorrelation = true };
+var result = await ObjectAnalyzer.AnalyzeAsync(objects, opts, features: new AnalysisFeatures
+{
+    EnableCorrelation = true,
+    CorrelationReservoir = 20_000
+});
+// result.CorrelationMatrix.Fields / .Pearson / .Spearman / .StrongPairs
+```
+
+### 字符串模式自动归纳
+
+对每个字符串字段将值归一为形态模板（`###-####` / `[A-Z]{3}\d{6}` / `[a-z]+@[a-z]+\.[a-z]+` 等），按字段聚合并输出主导模板 + Top-N 模板 + 模板覆盖率 + 样本数。便于规则文件 `pattern` 编写与异常形态定位。
+
+### Unicode 卫生检查
+
+输出 0~100 卫生评分，识别全/半角混用、零宽字符 / 双向控制符 / BOM 等不可见字符、控制字符、大小写混用、左右引号、不可见分隔符等常见脏数据来源。常见于国际化数据从外部系统灌入时的"看不见的脏"。
+
+### 模糊去重（相似重复识别）
+
+对指定字段（如 `name` / `title` / `address`）做归一化（去空白/标点、全半角统一、大小写折叠）+ 词袋 Jaccard 相似度，将"几乎一致"的对象分组为 `FuzzyDuplicateGroup`：
+
+```csharp
+var opts = new AnalysisOptions { FuzzyDedupField = "name" /* 或 title/address */ };
+```
+
+### 时间序列深度分析
+
+在 P3「日期/时间深度剖析」时间桶基础上做趋势识别（rising / falling / flat / mixed）、周期检测（日 / 周 / 月）、间隙分析（最大间隔 / 间隔标准差）、脉冲性（孤立 burst 数）。与 `FieldStatistic.DateHistogram` 共用底座，无重复计算。
+
+### 采样置信区间
+
+启用 `--sample-reservoir` / `--sample-step` 时自动启用，对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段可信度评估，提示低覆盖字段的统计不确定性。`AnalysisOptions.LowConfidenceWidth` 控制"低可信"判定阈值（默认 0.2）。
+
+### 分布漂移对比（草图 vs 草图）
+
+`DistributionSnapshot` 导出每字段的 t-digest 质心 + HyperLogLog 寄存器（约 10KB/字段，JSON 可序列化、内存有界），`--diff-distribution` 与历史快照对比输出均值 / 分位 / null 率 / distinct / Jaccard 多维度漂移，显著漂移字段用 σ 倍数标记。与 `SchemaDiff` 互补——前者看结构、后者看分布：
+
+```csharp
+// 导出基线快照
+new AnalysisOptions { DistributionSnapshotPath = "snap_v1.json" };
+// 与基线对比
+new AnalysisOptions { DiffDistributionBaseline = "snap_v1.json", DistributionDiffReportPath = "diff.json" };
+// result.DistributionDiff.SignificantDriftCount / .NumericDrifts / .CategoricalDrifts
+```
+
+### Web UI 集成
+
+Blazor 页面 `Home.razor` 的 `.p4-section` 区域以 7 张独立卡片展示（橙色系，与 P3 蓝/绿系区分）：
+
+| 卡片 | 触发条件 | 关键内容 |
+|------|----------|----------|
+| 🔗 字段相关性矩阵 | `EnableCorrelation=true` 或库调用填充 `CorrelationMatrix` | 字段数 / 样本数 + 强相关对 Top 6 |
+| 🔤 字符串模式归纳 | `EnableStringPatterns=true` 或填充 `StringPatterns` | 字段 → 主导模板 + Top 5 模板 |
+| 🧹 Unicode 卫生检查 | `EnableUnicodeHygiene=true` 或填充 `UnicodeHygiene` | 卫生评分 + 命中 flag（按字段分项） |
+| 👥 模糊去重 | `FuzzyDedupField` 已指定 | 组数 + 相似重复对 + 规范化键 |
+| 📈 时间序列深度 | `EnableTimeSeries=true` 或填充 `TimeSeriesAnalyses` | 趋势 + 周期 + 桶数 |
+| 🎯 采样置信 | 启用 sampling 时自动计算 | 有效样本量 + 各字段置信区间 |
+| 📉 分布漂移 | `DiffDistributionBaseline` 已指定 | 显著漂移字段 + 均值 / σ / Jaccard |
+
+未启用的卡片会显示"无数据"占位（保持 UI 结构稳定），分析完成后浏览器内一键完成 P4 深度分析结果的浏览与对比，无需打开 HTML 报告。
+
 ## Web 界面
 
-Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换、浅色/深色主题切换。
+Web 项目 (`src/ObjectAnalyzer.Web`) 提供浏览器交互式体验，支持上传文件、选择格式、配置所有 CLI 选项（扁平化、类型定义、规则文件、枚举列等），并在界面上展示字段统计、值分布、重复对象、枚举违规、覆盖率/类型分布图表与数据预览；支持报告与 Schema 下载、中/英文界面切换、浅色/深色主题切换。除 P1 基础分析外还内嵌 P3 高级分析（时间序列/异常值/Schema 演进）与 P4 深度分析（相关性矩阵/字符串模式/Unicode 卫生/模糊去重/采样置信/分布漂移）专用卡片小节。
 
 ```bash
 cd src/ObjectAnalyzer.Web
@@ -677,16 +751,26 @@ ObjectAnalysisStatistic/
 │   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe, dotnet tool)
 │   │   ├── Analysis/                 # 分析引擎
 │   │   │   ├── AnalysisRunner.cs     # 分析流程编排
+│   │   │   ├── AnalysisFeatures.cs   # P4 分析深度增强特性开关 (EnableCorrelation / StringPatterns / UnicodeHygiene / TimeSeries 等)
 │   │   │   ├── ObjectAnalyzer.cs     # 核心分析逻辑 (MapReduce 并行聚合)
 │   │   │   ├── FieldRule.cs          # 字段规则 & 枚举约束模型
-│   │   │   ├── FieldTransformProcessor.cs # 字段选择 & 值转换 & 过滤 (JWT/AES/Base64/URL)
+│   │   │   ├── FieldTransformProcessor.cs # 字段选择 & 值转换 & 过滤 (JWT/AES/Base64/URL + SM4/SM2)
 │   │   │   ├── FieldFilter.cs         # 字段过滤表达式引擎 (--where)
 │   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
-│   │   │   ├── AnalysisResult.cs     # 分析结果数据模型
+│   │   │   ├── AnalysisResult.cs     # 分析结果数据模型 (含 P4 CorrelationMatrix / StringPatterns / UnicodeHygiene / FuzzyDuplicates / TimeSeriesAnalyses / DistributionDiff / SamplingConfidence)
 │   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)
 │   │   │   ├── QualityChecks.cs      # 质量检查 v2（模式/范围/必填/唯一/null率 + 数据集期望 + 异常值比例）
+│   │   │   ├── AuditLogger.cs        # 数据血缘审计日志 (--audit-log, NDJSON)
 │   │   ├── PiiDetector.cs        # PII 分类与打码规则
 │   │   ├── DuplicateObjectStatistic.cs
+│   │   ├── FieldCorrelationMatrix.cs # P4 字段相关性矩阵
+│   │   ├── FieldCorrelationCollector.cs # P4 相关性流式蓄水池
+│   │   ├── StringPatternProfiler.cs  # P4 字符串模式归纳
+│   │   ├── UnicodeHygieneChecker.cs  # P4 Unicode 卫生检查
+│   │   ├── FuzzyDuplicateDetector.cs # P4 模糊去重
+│   │   ├── TimeSeriesAnalyzer.cs     # P4 时间序列深度分析 (趋势/周期/间隙/脉冲)
+│   │   ├── DistributionSnapshot.cs   # P4 分布快照与漂移对比 (草图 vs 草图)
+│   │   ├── NumericSketch.cs          # t-digest 草图 + HyperLogLog
 │   │   ├── SchemaSnapshot.cs     # Schema 快照数据模型 (字段名/类型/coverage/范围/枚举/异常值)
 │   │   ├── SchemaSnapshotExporter.cs # Schema 快照构建与导出
 │   │   ├── SchemaDiff.cs         # Schema diff 数据模型 (新增/删除/变更/破坏性变更)
@@ -695,13 +779,14 @@ ObjectAnalysisStatistic/
 │   │   │   ├── FileParsers.cs        # IFileParser 注册表模式
 │   │   │   ├── DatabaseReader.cs     # 数据库直连流式读取 (--connection/--query)
 │   │   │   ├── IFileParser.cs        # 解析器接口
+│   │   │   ├── JsonPathProjector.cs  # JSONPath 投影 (--root-path / --record-path)
 │   │   │   ├── JsonSharedOptions.cs  # 共享 JsonSerializerOptions
 │   │   │   ├── TestFileGenerator.cs  # 测试数据生成
 │   │   │   └── TypedFileParser.cs    # 强类型反序列化
 │   │   ├── Reporting/                # 报告输出
 │   │   │   ├── ConsoleReporter.cs    # Spectre.Console 控制台报告
-│   │   │   ├── HtmlReportExporter.cs # HTML 可视化报告
-│   │   │   ├── MarkdownReportExporter.cs # Markdown 报告
+│   │   │   ├── HtmlReportExporter.cs # HTML 可视化报告 (含 P4 7 个小节)
+│   │   │   ├── MarkdownReportExporter.cs # Markdown 报告 (含 P4 7 个小节)
 │   │   │   ├── CsvReportExporter.cs  # CSV 报告
 │   │   │   ├── ViolationExporter.cs  # 枚举违规结构化导出
 │   │   │   ├── QualityExporter.cs    # 数据质量报告导出 (P1)
@@ -715,7 +800,8 @@ ObjectAnalysisStatistic/
 │   └── ObjectAnalyzer.Web/           # Blazor 交互式 Web 界面 (net10.0)
 │       ├── AnalysisState.cs          # 分析状态 & UI 配置
 │       ├── LocalizationService.cs    # resx 本地化 (i18n)
-│       ├── Resources/AppStrings*.resx  # 中/英文案
+│       ├── Resources/AppStrings*.resx  # 中/英文案 (含 P3/P4 专用键)
+│       ├── wwwroot/app.css           # 自定义样式 (.p3-* / .p4-* 卡片)
 │       └── Components/Pages/
 ├── ObjectAnalyzer.sln
 ├── Directory.Build.props            # 全局属性 (nullable, warnings as errors)

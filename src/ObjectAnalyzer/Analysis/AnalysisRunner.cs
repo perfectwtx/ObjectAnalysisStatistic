@@ -21,6 +21,12 @@ public static class AnalysisRunner
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    // P4 分布快照：缓存最近一次 AnalyzeDetailed 暴露的草图，供 ProcessDistributionSnapshot 使用
+    [ThreadStatic]
+    private static Dictionary<string, MergeableQuantileSketch>? _lastQuantileSketches;
+    [ThreadStatic]
+    private static Dictionary<string, HyperLogLog>? _lastDistinctSketches;
+
     /// <summary>
     /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
     /// 当 <see cref="AnalysisOptions.AuditLogPath"/> 非空时，写入 NDJSON 审计日志。
@@ -588,6 +594,30 @@ public static class AnalysisRunner
             parsedObjects = transformProcessor.Wrap(parsedObjects);
         }
 
+        // 模糊去重需要多次枚举解析后对象（在 Analyze 之前完成）。
+        // 物化一次既保证模糊去重的随机访问、也避免 Analyzer 重复解析；
+        // 数据量 < 1MB 时物化成本可忽略；后续如需扩展可加 --fuzzy-dedup-stream 改为单遍流式。
+        bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.FuzzyDedupField);
+        bool needDistributionSketches =
+            !string.IsNullOrEmpty(options.DistributionSnapshotPath) ||
+            !string.IsNullOrEmpty(options.DiffDistributionBaseline);
+        List<Dictionary<string, object?>> materialized = (needFuzzyDedup || needDistributionSketches)
+            ? parsedObjects.ToList()
+            : new List<Dictionary<string, object?>>();
+
+        // 模糊去重（仅在 --fuzzy-dedup-field 指定时执行）
+        FuzzyDuplicateReport? fuzzyReport = null;
+        if (needFuzzyDedup)
+        {
+            string field = options.FuzzyDedupField!;
+            AnsiConsole.MarkupLine($"[grey][[模糊去重]][/] 正在对字段 [blue]{Markup.Escape(field)}[/] 做形态变体聚类...");
+            fuzzyReport = FuzzyDuplicateDetector.Detect(materialized, obj =>
+            {
+                if (obj.TryGetValue(field, out var v)) return v?.ToString();
+                return null;
+            });
+        }
+
         AnalysisResult result = null!;
         AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
@@ -600,8 +630,41 @@ public static class AnalysisRunner
                         ? options.MaxDegreeOfParallelism
                         : -1
                 };
-                result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, cancellationToken);
+                var features = BuildAnalysisFeatures(options);
+                if (needDistributionSketches)
+                {
+                    var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, cancellationToken);
+                    result = detailed.Result;
+                    _lastQuantileSketches = detailed.QuantileSketches;
+                    _lastDistinctSketches = detailed.DistinctSketches;
+                }
+                else
+                {
+                    result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, cancellationToken);
+                    _lastQuantileSketches = null;
+                    _lastDistinctSketches = null;
+                }
             });
+
+        // 模糊去重结果挂到 result 上
+        if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
+
+        // 采样置信区间：仅当启用 sampling 时计算（对每字段覆盖率做 Wilson 95% 评估）
+        if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
+        {
+            long effective = options.SampleReservoir > 0
+                ? options.SampleReservoir
+                : Math.Max(1, result.TotalObjects / Math.Max(1, options.SampleStep));
+            long estimated = result.TotalObjects;
+            var fieldCounts = result.FieldStatistics
+                .Select(s => (s.FieldName, s.Count));
+            result.SamplingConfidence = SamplingConfidenceCalculator.Build(
+                method: options.SampleReservoir > 0 ? "reservoir" : "systematic",
+                sampleSize: effective,
+                estimatedTotal: estimated,
+                fieldCounts: fieldCounts,
+                total: estimated);
+        }
 
         // 转换失败次数与转换类型回填到统计结果
         transformProcessor.ApplyFailures(result);
@@ -612,6 +675,9 @@ public static class AnalysisRunner
         // Schema 快照导出 / diff 计算（必须在 ConsoleReporter.Print 与 ReportExporter.Save 之前，
         // 这样控制台与 HTML/MD/JSON 报告的「Schema 演进」小节才能带 diff 数据）
         ProcessSchemaSnapshot(result, options);
+
+        // 分布快照导出 / diff 计算（与 SchemaSnapshot 互补：看分布变化）
+        ProcessDistributionSnapshot(result, options);
 
         // 输出控制台统计结果（--pii-off 时保留原始值）
         ConsoleReporter.Print(result, options.MaxValuesToShow, redactPii: !options.PiiOff);
@@ -681,6 +747,30 @@ public static class AnalysisRunner
     }
 
     /// <summary>
+    /// 从 CLI 选项构建 <see cref="AnalysisFeatures"/>：当用户未启用任何 P4 特性时返回 null，
+    /// 以避免默认路径上的任何额外开销（与 v1.x 行为兼容）。
+    /// </summary>
+    internal static AnalysisFeatures? BuildAnalysisFeatures(AnalysisOptions options)
+    {
+        bool anyEnabled = options.EnableCorrelation
+            || options.EnableStringPatterns
+            || options.EnableUnicodeHygiene
+            || options.EnableTimeSeries
+            || !string.IsNullOrEmpty(options.DistributionSnapshotPath)
+            || !string.IsNullOrEmpty(options.DiffDistributionBaseline);
+        if (!anyEnabled) return null;
+        return new AnalysisFeatures
+        {
+            EnableCorrelation = options.EnableCorrelation,
+            EnableStringPatterns = options.EnableStringPatterns,
+            EnableUnicodeHygiene = options.EnableUnicodeHygiene,
+            EnableTimeSeries = options.EnableTimeSeries,
+            EnableDistributionSnapshot = !string.IsNullOrEmpty(options.DistributionSnapshotPath)
+                || !string.IsNullOrEmpty(options.DiffDistributionBaseline)
+        };
+    }
+
+    /// <summary>
     /// 处理 Schema 快照导出（--export-schema-snapshot）与 diff 计算（--diff-schema）。
     /// 失败抛 FileNotFoundException / InvalidDataException，由调用方转为退出码 1。
     /// </summary>
@@ -736,6 +826,62 @@ public static class AnalysisRunner
                 File.WriteAllText(options.SchemaDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
                 AnsiConsole.MarkupLine(
                     $"[green]Schema diff 已导出至[/] [blue]{Markup.Escape(options.SchemaDiffReportPath)}[/]");
+            }
+        }
+    }
+
+    /// <summary>
+    /// 处理分布快照导出（--export-distribution-snapshot）与分布 diff 计算（--diff-distribution）。
+    /// 与 <see cref="ProcessSchemaSnapshot"/> 互补：后者看结构变化，本方法看分布变化（覆盖率 / 均值 / 分位 / distinct）。
+    /// 失败抛 FileNotFoundException / InvalidDataException，由调用方转为退出码 1。
+    /// </summary>
+    private static void ProcessDistributionSnapshot(AnalysisResult result, AnalysisOptions options)
+    {
+        bool needSnapshot =
+            !string.IsNullOrEmpty(options.DistributionSnapshotPath) ||
+            !string.IsNullOrEmpty(options.DiffDistributionBaseline) ||
+            !string.IsNullOrEmpty(options.DistributionDiffReportPath);
+
+        if (!needSnapshot)
+            return;
+
+        // 来源标识：与 SchemaSnapshot 同一口径
+        string? source = !string.IsNullOrEmpty(options.InputPath)
+            ? options.InputPath
+            : (!string.IsNullOrEmpty(options.ConnectionString)
+                ? $"db://{(string.IsNullOrEmpty(options.DbProvider) ? "auto" : options.DbProvider)}?{options.Query ?? ""}"
+                : null);
+
+        DistributionSnapshot? currentSnapshot = null;
+        if (!string.IsNullOrEmpty(options.DistributionSnapshotPath))
+        {
+            currentSnapshot = DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
+            DistributionSnapshotExporter.WriteToFile(currentSnapshot, options.DistributionSnapshotPath);
+            AnsiConsole.MarkupLine(
+                $"[green]分布快照已导出至[/] [blue]{Markup.Escape(options.DistributionSnapshotPath)}[/] [grey]({currentSnapshot.Fields.Count} 字段)[/]");
+        }
+
+        if (!string.IsNullOrEmpty(options.DiffDistributionBaseline))
+        {
+            var baseline = DistributionSnapshotExporter.LoadFromFile(options.DiffDistributionBaseline!);
+            currentSnapshot ??= DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
+            var diff = DistributionDiffer.Compute(baseline, currentSnapshot);
+            result.DistributionDiff = diff;
+
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[bold]── 分布漂移（vs 基线） ──[/]");
+            DistributionDiffer.PrintSummary(diff);
+
+            if (!string.IsNullOrEmpty(options.DistributionDiffReportPath))
+            {
+                string? dir = Path.GetDirectoryName(options.DistributionDiffReportPath);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                File.WriteAllText(options.DistributionDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
+                AnsiConsole.MarkupLine(
+                    $"[green]分布 diff 已导出至[/] [blue]{Markup.Escape(options.DistributionDiffReportPath)}[/]");
             }
         }
     }

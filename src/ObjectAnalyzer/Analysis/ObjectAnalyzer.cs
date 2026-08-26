@@ -245,13 +245,62 @@ public static partial class ObjectAnalyzer
         public Dictionary<string, InternalFieldMetrics> MetricsMap { get; } = new();
         public long TotalObjects { get; set; }
         public ArrayBufferWriter<byte> CanonicalWriter { get; } = new();
+
+        // ── P4 分析深度增强（懒创建：仅 features 启用且确有相关数据时分配）──
+        /// <summary>字段相关性收集器：每行 (field → double?) 样本，超容量时 Reservoir Sampling。</summary>
+        public FieldCorrelationCollector? CorrelationCollector { get; set; }
+        /// <summary>字符串模式归纳器：按字段索引。</summary>
+        public Dictionary<string, StringPatternProfiler>? StringPatterns { get; set; }
+        /// <summary>Unicode 卫生报告：按字段索引（线程局部累加，主线程 MergeInto）。</summary>
+        public Dictionary<string, UnicodeHygieneReport>? UnicodeHygiene { get; set; }
     }
 
+    /// <summary>
+    /// 主流分析入口（行为与 v1.x 兼容；不暴露内部草图）。
+    /// </summary>
     public static AnalysisResult Analyze(
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
+        AnalysisFeatures? features = null,
         CancellationToken cancellationToken = default)
+    {
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken).Result;
+    }
+
+    /// <summary>
+    /// P4 增强入口：在返回 <see cref="AnalysisResult"/> 的同时，暴露每字段的 t-digest 草图与 HyperLogLog 草图，
+    /// 供 <c>--export-distribution-snapshot</c> / <c>--diff-distribution</c> 做分布快照与漂移检测。
+    /// 调用方无需草图时使用 <see cref="Analyze"/> 即可。
+    /// </summary>
+    public static (
+        AnalysisResult Result,
+        Dictionary<string, MergeableQuantileSketch>? QuantileSketches,
+        Dictionary<string, HyperLogLog>? DistinctSketches
+    ) AnalyzeDetailed(
+        IEnumerable<Dictionary<string, object?>> objects,
+        AnalysisRules? rules = null,
+        ParallelOptions? parallelOptions = null,
+        AnalysisFeatures? features = null,
+        CancellationToken cancellationToken = default)
+    {
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken);
+    }
+
+    /// <summary>
+    /// 实际分析主流程：所有并行累计、合并、后置处理均在此实现。
+    /// 返回元组 (Result, QuantileSketches?, DistinctSketches?)：草图为 null 表示对应类型无数据。
+    /// </summary>
+    private static (
+        AnalysisResult Result,
+        Dictionary<string, MergeableQuantileSketch>? QuantileSketches,
+        Dictionary<string, HyperLogLog>? DistinctSketches
+    ) AnalyzeCore(
+        IEnumerable<Dictionary<string, object?>> objects,
+        AnalysisRules? rules,
+        ParallelOptions? parallelOptions,
+        AnalysisFeatures? features,
+        CancellationToken cancellationToken)
     {
         var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
         var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
@@ -261,6 +310,11 @@ public static partial class ObjectAnalyzer
         var globalDuplicateCounts = new ConcurrentDictionary<Hash128, long>();
         long globalTotalObjects = 0;
         var mergeLock = new object();
+
+        // P4 全局合并结果（MergeLocalState 持有；Analyze 末尾读取并清空）
+        FieldCorrelationCollector? globalCorrelationCollector = null;
+        Dictionary<string, StringPatternProfiler>? globalStringPatterns = null;
+        Dictionary<string, UnicodeHygieneReport>? globalUnicodeHygiene = null;
 
         var options = parallelOptions ?? new ParallelOptions();
 
@@ -315,6 +369,58 @@ public static partial class ObjectAnalyzer
 
                     globalMetrics.MergeFrom(localMetrics);
                 }
+
+                // P4 增强：合并线程局部收集器
+                // 相关性：每个线程的收集器持有该线程处理的对象的"行样本"切片；
+                // 把所有线程的收集器按"对象顺序"追加合并，保证 Pearson/Spearman 计算使用全量数据。
+                if (local.CorrelationCollector != null)
+                {
+                    if (globalCorrelationCollector == null)
+                    {
+                        globalCorrelationCollector = local.CorrelationCollector;
+                    }
+                    else if (!ReferenceEquals(local.CorrelationCollector, globalCorrelationCollector))
+                    {
+                        globalCorrelationCollector.MergeFrom(local.CorrelationCollector);
+                    }
+                }
+
+                // 字符串模式：合并到 global（按字段求和；不同线程的 patterns 互不重叠，累加即可）
+                if (local.StringPatterns != null)
+                {
+                    if (globalStringPatterns == null)
+                    {
+                        globalStringPatterns = new Dictionary<string, StringPatternProfiler>(StringComparer.Ordinal);
+                    }
+                    foreach (var (field, profiler) in local.StringPatterns)
+                    {
+                        if (!globalStringPatterns.TryGetValue(field, out var dest))
+                        {
+                            // 复制一份避免线程间共享底层数据；StringPatternProfiler 内部只持有不可变 dict / list
+                            dest = new StringPatternProfiler();
+                            globalStringPatterns[field] = dest;
+                        }
+                        dest.MergeFrom(profiler);
+                    }
+                }
+
+                // Unicode 卫生：每线程的累加直接 MergeInto 到 global
+                if (local.UnicodeHygiene != null)
+                {
+                    if (globalUnicodeHygiene == null)
+                    {
+                        globalUnicodeHygiene = new Dictionary<string, UnicodeHygieneReport>(StringComparer.Ordinal);
+                    }
+                    foreach (var (field, report) in local.UnicodeHygiene)
+                    {
+                        if (!globalUnicodeHygiene.TryGetValue(field, out var dest))
+                        {
+                            dest = new UnicodeHygieneReport();
+                            globalUnicodeHygiene[field] = dest;
+                        }
+                        UnicodeHygieneChecker.MergeInto(dest, report);
+                    }
+                }
             }
         }
 
@@ -331,6 +437,12 @@ public static partial class ObjectAnalyzer
                     // Fix #9: Array.Sort avoids LINQ lambda allocations in the per-object hot path
                     var sortedEntries = obj.ToArray();
                     Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
+
+                    // P4 相关性收集：每对象一行 (field → double?) 样本；
+                    // 仅在 features.EnableCorrelation 为 true 时分配，避免默认路径上增加 GC 压力。
+                    Dictionary<string, double?>? correlationRow = features?.EnableCorrelation == true
+                        ? new Dictionary<string, double?>(StringComparer.Ordinal)
+                        : null;
 
                     // 将字段写入线程局部可复用字节缓冲区，避免为每个对象分配规范化字符串/byte[]
                     var writer = localState.CanonicalWriter;
@@ -379,6 +491,9 @@ public static partial class ObjectAnalyzer
                         // 收集数值与字符串度量指标
                         RecordValueMetrics(value, valStr, fieldName, metrics);
 
+                        // P4 增强：相关性 / 模式 / 卫生（仅在 features 启用时执行）
+                        RecordFeatureMetrics(localState, value, valStr, fieldName, correlationRow, features);
+
                         // 质量检查 v2：minValue/maxValue 越界精确计数（热路径，不受唯一值截断影响）
                         if (rules != null && rules.Fields.TryGetValue(fieldName, out FieldRule? qualityRule))
                         {
@@ -391,6 +506,13 @@ public static partial class ObjectAnalyzer
                                 metrics.AddRangeViolation();
                             }
                         }
+                    }
+
+                    // P4 相关性：把这一行所有字段的数值样本一次性送给收集器
+                    if (correlationRow != null)
+                    {
+                        (localState.CorrelationCollector ??= new FieldCorrelationCollector(features!.CorrelationReservoir))
+                            .RecordObject(correlationRow);
                     }
 
                     // 128 位非密码学哈希去重（替代慢速 MD5 + 十六进制字符串）
@@ -610,15 +732,99 @@ public static partial class ObjectAnalyzer
             ? new List<FieldViolation>()
             : QualityChecks.Evaluate(globalTotalObjects, totalUniqueObjects, results, rules);
 
-        return new AnalysisResult
+        // P4 后置处理：构建新报告（仅 features 启用时计算，否则全部为 null）
+        FieldCorrelationMatrix? correlationMatrix = null;
+        Dictionary<string, StringPatternProfile>? stringPatterns = null;
+        Dictionary<string, UnicodeHygieneReport>? unicodeHygiene = null;
+        Dictionary<string, TimeSeriesAnalysis>? timeSeriesAnalyses = null;
+
+        if (features != null)
         {
-            TotalObjects = globalTotalObjects,
-            TotalUniqueObjects = totalUniqueObjects,
-            TotalDuplicateGroups = totalDuplicateGroups,
-            DuplicateObjects = duplicates,
-            FieldStatistics = results,
-            QualityViolations = qualityViolations
-        };
+            if (features.EnableCorrelation && globalCorrelationCollector != null && globalCorrelationCollector.Seen >= 3)
+            {
+                // 仅纳入被识别为 Number 的字段，避免对分类变量（如已被语义识别为 DateTime 的字符串）跑相关
+                var numericFields = results
+                    .Where(s => s.PrimaryType == "Number" && s.Count >= 3)
+                    .Select(s => s.FieldName)
+                    .ToList();
+                if (numericFields.Count >= 2)
+                {
+                    correlationMatrix = FieldCorrelationCalculator.Compute(globalCorrelationCollector, numericFields);
+                }
+            }
+
+            if (features.EnableStringPatterns && globalStringPatterns != null)
+            {
+                stringPatterns = new Dictionary<string, StringPatternProfile>(StringComparer.Ordinal);
+                foreach (var (field, profiler) in globalStringPatterns)
+                {
+                    var profile = profiler.Build();
+                    if (profile.TotalSamples > 0)
+                    {
+                        stringPatterns[field] = profile;
+                    }
+                }
+            }
+
+            if (features.EnableUnicodeHygiene && globalUnicodeHygiene != null)
+            {
+                unicodeHygiene = new Dictionary<string, UnicodeHygieneReport>(StringComparer.Ordinal);
+                foreach (var (field, report) in globalUnicodeHygiene)
+                {
+                    if (report.TotalSamples > 0)
+                    {
+                        unicodeHygiene[field] = report;
+                    }
+                }
+            }
+
+            if (features.EnableTimeSeries)
+            {
+                timeSeriesAnalyses = new Dictionary<string, TimeSeriesAnalysis>(StringComparer.Ordinal);
+                foreach (var stat in results)
+                {
+                    if (stat.DateTimeCount is null || stat.DateHistogram == null) continue;
+                    var ts = TimeSeriesAnalyzer.Analyze(stat);
+                    if (ts != null && ts.BucketCount >= TimeSeriesAnalyzer.MinBucketsForAnalysis)
+                    {
+                        timeSeriesAnalyses[stat.FieldName] = ts;
+                    }
+                }
+            }
+        }
+
+        // 提取每字段的 t-digest 与 HyperLogLog 草图（仅当确实有数据时），供分布快照 / diff 使用
+        Dictionary<string, MergeableQuantileSketch>? quantileSketches = null;
+        Dictionary<string, HyperLogLog>? distinctSketches = null;
+        foreach (var (field, m) in globalMetricsMap)
+        {
+            if (m.Quantiles != null && m.Quantiles.TotalWeight > 0)
+            {
+                (quantileSketches ??= new Dictionary<string, MergeableQuantileSketch>(StringComparer.Ordinal))[field] = m.Quantiles;
+            }
+            if (m.DistinctHll != null && m.DistinctHll.Estimate() > 0)
+            {
+                (distinctSketches ??= new Dictionary<string, HyperLogLog>(StringComparer.Ordinal))[field] = m.DistinctHll;
+            }
+        }
+
+        return (
+            new AnalysisResult
+            {
+                TotalObjects = globalTotalObjects,
+                TotalUniqueObjects = totalUniqueObjects,
+                TotalDuplicateGroups = totalDuplicateGroups,
+                DuplicateObjects = duplicates,
+                FieldStatistics = results,
+                QualityViolations = qualityViolations,
+                CorrelationMatrix = correlationMatrix,
+                StringPatterns = stringPatterns,
+                UnicodeHygiene = unicodeHygiene,
+                TimeSeriesAnalyses = timeSeriesAnalyses
+            },
+            quantileSketches,
+            distinctSketches
+        );
     }
 
     /// <summary>
@@ -788,6 +994,54 @@ public static partial class ObjectAnalyzer
                 metrics.SemanticCounts["URL"] = metrics.SemanticCounts.GetValueOrDefault("URL") + 1;
             else if (LooksLikeHumanName(strVal, fieldName))
                 metrics.SemanticCounts["Name"] = metrics.SemanticCounts.GetValueOrDefault("Name") + 1;
+        }
+    }
+
+    /// <summary>
+    /// P4 分析深度增强：把当前字段值登记到相应线程局部收集器中。
+    /// 仅在 <paramref name="features"/> 启用了对应特性时执行，否则直接返回。
+    /// </summary>
+    private static void RecordFeatureMetrics(
+        ThreadLocalState localState,
+        object? value,
+        string valStr,
+        string fieldName,
+        Dictionary<string, double?>? correlationRow,
+        AnalysisFeatures? features)
+    {
+        if (features == null || features.IsEmpty) return;
+
+        // 1) 相关性：收集每字段的数值样本到本对象行（循环结束后再 RecordObject）
+        if (correlationRow != null && value != null && TryGetDoubleValue(value, out double dVal))
+        {
+            correlationRow[fieldName] = dVal;
+        }
+
+        // 2) 字符串模式 / Unicode 卫生：仅对字符串值生效
+        if (value is string sVal)
+        {
+            if (features.EnableStringPatterns)
+            {
+                var patterns = localState.StringPatterns ??= new Dictionary<string, StringPatternProfiler>(StringComparer.Ordinal);
+                if (!patterns.TryGetValue(fieldName, out var profiler))
+                {
+                    profiler = new StringPatternProfiler();
+                    patterns[fieldName] = profiler;
+                }
+                profiler.Add(sVal);
+            }
+
+            if (features.EnableUnicodeHygiene)
+            {
+                var hygiene = localState.UnicodeHygiene ??= new Dictionary<string, UnicodeHygieneReport>(StringComparer.Ordinal);
+                if (!hygiene.TryGetValue(fieldName, out var report))
+                {
+                    report = new UnicodeHygieneReport();
+                    hygiene[fieldName] = report;
+                }
+                var sample = UnicodeHygieneChecker.Check(sVal);
+                UnicodeHygieneChecker.MergeInto(report, sample);
+            }
         }
     }
 

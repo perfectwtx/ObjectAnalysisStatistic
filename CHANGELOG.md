@@ -5,6 +5,17 @@
 ## [Unreleased]
 
 ### Added
+- **P4 分析深度增强（七项深度分析能力）**：在 `AnalysisResult` 中新增七类深度分析结果，配合 `AnalysisOptions` 提供的特性开关（`EnableCorrelation` / `EnableStringPatterns` / `EnableUnicodeHygiene` / `EnableTimeSeries` / `FuzzyDedupField` / `DistributionSnapshotPath` / `DiffDistributionBaseline`）按需启用，零侵入兼容默认分析流程：
+  - **字段相关性矩阵（Pearson / Spearman）**：流式蓄水池（默认 20K 行/字段）保留每字段数值样本，分析完成后输出完整的 Pearson + Spearman 系数矩阵与「强相关对」（|r| ≥ 0.7 且样本 ≥ 30），帮助发现 `age ↔ income` 这类隐式关联；见 `FieldCorrelationMatrix.cs` / `FieldCorrelationCollector.cs`。
+  - **字符串模式自动归纳**：对每个字符串字段自动归纳形态模板（如 `###-####` / `[A-Z]{3}\d{6}` / `[a-z]+@[a-z]+\.[a-z]+`），输出主导模板、Top-N 模板、模板覆盖率与样本数，便于规则文件 pattern 编写与异常形态定位；见 `StringPatternProfiler.cs`。
+  - **Unicode 卫生检查**：对每个字符串字段输出卫生评分（0~100），识别全/半角混用、不可见字符（零宽空格 / 双向控制符 / BOM 等）、控制字符、大小写混用、左右引号、不可见分隔符等常见脏数据来源；见 `UnicodeHygieneChecker.cs`。
+  - **模糊去重（相似重复识别）**：对指定字段（如 `name` / `title` / `address`）做归一化（去空格/标点/全半角/大小写）+ 词袋 Jaccard 相似度，将"几乎一致"的对象分组为 `FuzzyDuplicateGroup`，输出组数、相似重复对、规范化键；见 `FuzzyDuplicateDetector.cs`。
+  - **时间序列深度分析**：对 DateTime 字段在「日期/时间深度剖析」基础上做趋势识别（上升/下降/平稳/混合）、周期检测（日/周/月）、间隙分析（最大间隔 / 间隔标准差）、脉冲性（孤立 burst 数）；见 `TimeSeriesAnalyzer.cs`。
+  - **采样置信区间**：启用 `--sample-reservoir` / `--sample-step` 时自动计算，对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段的可信度评估，提示低覆盖字段的统计不确定性；见 `Sampling.cs` `ConfidenceInterval`。
+  - **分布漂移对比（草图 vs 草图）**：新增 `--export-distribution-snapshot` 导出每字段的 t-digest 质心 + HyperLogLog 寄存器（约 10KB/字段），`--diff-distribution` 与历史快照对比输出均值/分位/null 率/distinct/Jaccard 多维度漂移，显著漂移字段用 σ 倍数标记；与 `SchemaDiff` 互补——前者看结构、后者看分布；见 `DistributionSnapshot.cs`。
+- **报告（HTML / Markdown / CSV / JSON）同步**：HTML 与 Markdown 报告新增「字段相关性」「字符串模式」「Unicode 卫生」「模糊去重」「时间序列深度」「采样置信」「分布漂移」共 7 个 P4 专用小节，与现有小节保持一致的视觉风格与可读性。
+- **Web UI 同步**：Blazor 页面新增 "🧬 P4 深度分析" 区域，以独立卡片（🔗 字段相关性矩阵 / 🔤 字符串模式归纳 / 🧹 Unicode 卫生检查 / 👥 模糊去重 / 📈 时间序列深度 / 🎯 采样置信 / 📉 分布漂移）形式展示各深度分析结果；AppStrings.resx 同步 40+ P4 专用本地化字符串；app.css 新增 .p4-section/.p4-grid/.p4-card 等样式（橙色系，与 P3 蓝/绿系区分）。
+- **测试**：P4 分析深度增强 18 个新增用例——`StringPattern_BuildTemplate_HandlesDigitsAndLetters`、`Correlation_TwoCorrelatedNumericFields_DetectsStrongPair`、`TimeSeries_RisingTrend_DetectedAsRising`、`UnicodeHygiene_FullHalfWidthMix_DetectedAsIssue`、`FuzzyDedup_NearDuplicates_GroupedTogether`、`SamplingConfidence_Reservoir_ProducesInterval`、`DistributionDiff_FieldMeanShifted_ReportedAsDrift` 等核心场景回归；并修复 `FieldCorrelationCollector.MergeFrom()` 流式合并时未克隆 thread-local 数据的 bug 与 `PiiRedactor.Redact()` 丢失 `CorrelationMatrix` / `FuzzyDuplicates` 等 P4 字段的脱敏克隆 bug。
 - **国密算法支持（SM4 / SM2 字段转换，国内合规场景刚需）**：在 `FieldTransform.type` 中新增 `sm4` / `sm2` 两个类型，复用现有 `key` / `iv` / `mode` / `padding` / `format` 字段并扩展 SM2 专用 `privateKey` / `publicKey` / `signature` 三个配置：
   - **SM4**（GM/T 0002-2014）：对称加解密，128-bit 块/128-bit 密钥，支持 CBC（默认）/ ECB 与 PKCS7（默认）/ None 填充；`format` 支持 base64 / hex；CBC 必须提供 `iv`。底层使用 BouncyCastle `SM4Engine` + `CbcBlockCipher` + `Pkcs7Padding`。
   - **SM2**（GM/T 0003-2012）：基于 sm2p256v1 曲线，两种工作模式：
