@@ -168,4 +168,25 @@ public sealed class AnalysisOptions
     /// 与 --resume 的区别：--resume 从源文件中间续跑；--baseline 用任意已存在的 AnalysisResult JSON 合并。
     /// </summary>
     public string? BaselinePath { get; set; }
+
+    // ── P6.3 内存预算（--max-memory） ──
+
+    /// <summary>
+    /// 进程托管堆上限（MB，--max-memory &lt;MB&gt;）。0 表示不监控。
+    /// 仅监控 .NET 托管堆（GC.GetTotalMemory），不监控非托管 / 第三方 native 内存。
+    /// </summary>
+    public long MaxMemoryMB { get; set; }
+
+    /// <summary>
+    /// 超限行为（--max-memory-mode soft|hard）：
+    /// - soft（默认）：超限时打印警告并自动启用采样（蓄水池 50_000 条），让分析在有限内存下继续。
+    /// - hard：超限时立即抛 <see cref="MaxMemoryExceededException"/>，AnalysisRunner 以退出码 1 退出。
+    /// </summary>
+    public MaxMemoryMode MaxMemoryMode { get; set; } = MaxMemoryMode.Soft;
+
+    /// <summary>
+    /// soft 模式下被自动触发的采样容量（仅当用户未指定 SampleReservoir/SampleStep 时生效）。
+    /// 默认 50_000 条，足以在大多数 PII / 质量检查场景下保持统计意义，又能把堆控制在 100MB 以内。
+    /// </summary>
+    public int MemoryFallbackSampleSize { get; set; } = 50_000;
 }

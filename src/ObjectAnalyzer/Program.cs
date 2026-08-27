@@ -160,6 +160,16 @@ var baselineOption = new Option<string?>(
     name: "--baseline",
     description: "P6.2：历史 AnalysisResult JSON 路径（通常由 --output ... .json 产生）。本次结果会与基线合并（FieldStatistic 级 Welford / 直方图 / 枚举违规可增量合并），适合「只分析新增数据并与历史合并」的场景。与 --resume 的区别：--resume 是从源文件中间续跑；--baseline 是合并任意历史结果文件。");
 
+var maxMemoryOption = new Option<long>(
+    name: "--max-memory",
+    description: "P6.3：进程托管堆上限（MB）。仅监控 .NET 托管堆。默认 0（不监控）。典型场景：50GB JSONL 全量物化会 OOM，设 1024 让 --max-memory-mode soft 自动启用采样、或者 hard 立即失败。",
+    getDefaultValue: () => 0);
+
+var maxMemoryModeOption = new Option<string>(
+    name: "--max-memory-mode",
+    description: "P6.3：超限行为（需配合 --max-memory）。soft=警告并自动启用 50K 蓄水池采样；hard=立即以退出码 1 结束。默认 soft。",
+    getDefaultValue: () => "soft");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -196,6 +206,8 @@ rootCommand.AddOption(noProgressOption);
 rootCommand.AddOption(checkpointOption);
 rootCommand.AddOption(resumeOption);
 rootCommand.AddOption(baselineOption);
+rootCommand.AddOption(maxMemoryOption);
+rootCommand.AddOption(maxMemoryModeOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -235,6 +247,12 @@ rootCommand.SetHandler((InvocationContext context) =>
     var checkpointPath = parseResult.GetValueForOption(checkpointOption);
     var resumeFrom = parseResult.GetValueForOption(resumeOption);
     var baselinePath = parseResult.GetValueForOption(baselineOption);
+    var maxMemoryMB = parseResult.GetValueForOption(maxMemoryOption);
+    var maxMemoryMode = (parseResult.GetValueForOption(maxMemoryModeOption) ?? "soft").Trim().ToLowerInvariant() switch
+    {
+        "hard" => MaxMemoryMode.Hard,
+        _ => MaxMemoryMode.Soft
+    };
 
     if (generateTestExcel)
     {
@@ -370,7 +388,9 @@ rootCommand.SetHandler((InvocationContext context) =>
         ShowProgress = !noProgress,
         CheckpointPath = checkpointPath,
         ResumeFrom = resumeFrom,
-        BaselinePath = baselinePath
+        BaselinePath = baselinePath,
+        MaxMemoryMB = maxMemoryMB,
+        MaxMemoryMode = maxMemoryMode
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

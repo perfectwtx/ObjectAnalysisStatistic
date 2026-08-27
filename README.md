@@ -112,6 +112,11 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--operator <ID>` | — | 操作者标识（如 `[email protected]` / `ci-runner-12`），写入审计日志的每条事件（与 `--audit-log` 配合使用） | `anonymous` |
 | `--parallel <N>` | `-p` | 指定分析时的最大并行线程数；正整数 (>= 1) 或 `-1`（全部核心） | `-1` |
 | `--no-progress` | — | 关闭分析过程中 Spectre.Console 进度条 + ETA，回归到 spinner 行为。典型场景：CI 日志捕获、脚本管道、已重定向到文件时希望避免 ANSI 控制码污染输出 | `false` (默认开) |
+| `--checkpoint <PATH>` | — | P6.2：分析完成后将当前结果 + 已处理位置原子写入检查点文件（先 `.tmp` 再 rename），下次可用 `--resume <PATH>` 续跑 | — |
+| `--resume <PATH>` | — | P6.2：从检查点续跑。解析器从快照记录的位置之后开始读取新数据，结果与快照在 `FieldStatistic` 级合并（Welford / 直方图 / HLL distinct / 枚举违规 / 时间桶）。源文件路径不一致时拒绝续跑以防错配 | — |
+| `--baseline <PATH>` | — | P6.2：合并历史 `AnalysisResult` JSON（`--output ... .json` 产物）。与 `--resume` 互补：本次只分析新增窗口并与历史合并，不需要源文件 | — |
+| `--max-memory <MB>` | — | P6.3：进程托管堆上限（MB），仅监控 .NET 托管堆（`GC.GetTotalMemory`）。`0` 表示不监控（默认）。典型场景：50GB JSONL 全量物化会 OOM，设 `--max-memory 1024` 让 `--max-memory-mode soft` 自动启用采样、或者 `--max-memory-mode hard` 立即失败 | `0` |
+| `--max-memory-mode <soft\|hard>` | — | P6.3：超限行为（需配合 `--max-memory`）。`soft`（默认）=警告并自动启用 50K 蓄水池采样，分析继续；`hard`=立即以退出码 1 结束 | `soft` |
 | `--generate-test-excel` | — | 生成 Excel 测试文件并退出 | — |
 
 > 提示：使用 `-h` 或 `--help` 查看完整帮助。退出码：`0` 成功，`1` 输入/解析错误，`2` 已取消，`3` 质量门禁未通过（`--fail-on-violations`），`4` 合规门禁未通过（`--fail-on-pii-level`），`5` 异常值门禁未通过（`--fail-on-outlier-ratio`），`6` Schema 破坏性变更（`--allow-breaking-schema-changes false` + `--diff-schema`）。

@@ -38,6 +38,11 @@ public static class AnalysisRunner
         public string? EffectiveFormat;
     }
 
+    // P6.3：内存预算监控（--max-memory / --max-memory-mode）
+    // 在 ProcessAndReport 入口预检 + 每个分块结束后增量采样；超限时按模式软/硬失败。
+    // 软模式额外在入口处若检测已超阈值则自动启用采样，让分析在有限内存下继续。
+    private static MemoryBudget? s_activeMemoryBudget;
+
     /// <summary>
     /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
     /// 当 <see cref="AnalysisOptions.AuditLogPath"/> 非空时，写入 NDJSON 审计日志。
@@ -201,6 +206,12 @@ public static class AnalysisRunner
             EffectiveFormat = null
         };
 
+        // P6.3：实例化内存预算（--max-memory）。0 表示不监控；其余值生效。
+        MemoryBudget? memoryBudget = options.MaxMemoryMB > 0
+            ? new MemoryBudget(options.MaxMemoryMB, options.MaxMemoryMode)
+            : null;
+        s_activeMemoryBudget = memoryBudget;
+
         // JSONPath 表达式语法预检（fail-fast，避免解析到一半才发现）
         if (!string.IsNullOrWhiteSpace(options.RootPath))
         {
@@ -232,6 +243,33 @@ public static class AnalysisRunner
 
         try
         {
+            // P6.3：内存预算入口预检。在加载任何大对象前采样一次托管堆占用——
+            // 目的：1) 硬模式下若启动时已超阈值，立即以退出码 1 失败，避免分析半途才发现；
+            //       2) 软模式下若已超阈值且用户未指定采样，自动启用 50K 蓄水池兜底，
+            //          让分析在有限内存下继续推进（避免后续 GC 抖动反复触发警告）。
+            // 必须在 try 块内：硬模式抛 MaxMemoryExceededException，由下方 catch 转为退出码 1。
+            // 注意：fresh 进程刚启动时 GC.GetTotalMemory 可能仅 0.1 MB 左右（无任何分配），
+            // 因此仅靠入口预检不够；分析循环内每批 Check 后由本方法末尾的收尾检查统一抛错。
+            if (memoryBudget is { IsEnabled: true } entryBudget)
+            {
+                entryBudget.Check(0, out bool autoEnable);
+                if (autoEnable)
+                {
+                    bool userRequestedSampling = Sampling.IsEnabled(options.SampleReservoir, options.SampleStep);
+                    if (!userRequestedSampling)
+                    {
+                        options.SampleReservoir = options.MemoryFallbackSampleSize;
+                        AnsiConsole.MarkupLine(
+                            $"[grey][[内存]][/] 检测到启动时已接近 [blue]--max-memory {options.MaxMemoryMB:N0} MB[/]；已自动切换为蓄水池采样 [blue]{options.SampleReservoir:N0}[/] 条以保护进程。");
+                    }
+                }
+                // 入口已超限时（启动内存即超阈值，如 xunit 测试进程）立即拒绝
+                if (entryBudget.HardLimitExceeded)
+                {
+                    entryBudget.ThrowIfHardExceeded();
+                }
+            }
+
             IEnumerable<Dictionary<string, object?>> parsedObjects;
             var effectiveValueParsers = ResolveValueParsers(options, rules);
 
@@ -481,6 +519,14 @@ public static class AnalysisRunner
             AnsiConsole.MarkupLine("[yellow]分析已取消。[/]");
             WriteAuditEvent(audit, options, rules, runId, sw, "analysis_cancel", exitCode: 2, result: null, message: "用户取消");
             return 2;
+        }
+        catch (MaxMemoryExceededException ex)
+        {
+            // P6.3：--max-memory hard 模式超限
+            AnsiConsole.MarkupLine(
+                $"[red][[内存]] 退出码 1: {Markup.Escape(ex.Message)}[/]");
+            WriteAuditEvent(audit, options, rules, runId, sw, "analysis_error", exitCode: 1, result: null, message: ex.Message);
+            return 1;
         }
         catch (Exception ex)
         {
@@ -860,11 +906,16 @@ public static class AnalysisRunner
                     };
                     var features = BuildAnalysisFeatures(options);
                     // P6.2：即使进度条关闭，也要追踪记录数（--checkpoint 落盘依赖 LastRecordCount）
-                    IProgress<long>? progress = incremental == null
+                    IProgress<long>? progress = incremental == null && s_activeMemoryBudget is null
                         ? null
                         : new Progress<long>(objects =>
                         {
                             if (incremental != null) incremental.LastRecordCount = objects;
+                            // P6.3：spinner 模式同样周期采样内存
+                            if (s_activeMemoryBudget is { IsEnabled: true } mem)
+                            {
+                                mem.Check(objects, out _);
+                            }
                         });
                     if (needDistributionSketches)
                     {
@@ -907,6 +958,16 @@ public static class AnalysisRunner
         result.FilterExpression = effectiveFilter;
 
         AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
+
+        // P6.3：内存预算总结（仅当启用了 --max-memory 时打印）
+        if (s_activeMemoryBudget is { IsEnabled: true } finalBudget)
+        {
+            AnsiConsole.MarkupLine(
+                $"[grey][[内存]][/] 本次分析峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.MaxMemoryMB:N0} MB，模式 {options.MaxMemoryMode}）");
+            // hard 模式：分析完成后若曾触发 HardLimitExceeded（来自 progress 回调内的 Check），
+            // 此处由主流程显式抛错；不能放在 progress 回调里直接 throw——会变成"未观察异常"逃出主流程。
+            finalBudget.ThrowIfHardExceeded();
+        }
 
         // Schema 快照导出 / diff 计算（必须在 ConsoleReporter.Print 与 ReportExporter.Save 之前，
         // 这样控制台与 HTML/MD/JSON 报告的「Schema 演进」小节才能带 diff 数据）

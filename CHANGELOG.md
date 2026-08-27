@@ -5,6 +5,23 @@
 ## [Unreleased]
 
 ### Added
+- **P6.2 增量分析 / 断点续跑**：解决 50GB 数据中途失败需从头再来的问题，提供三种互补能力：
+  - `--checkpoint <PATH>`：本 run 分析完成后将「当前结果 + 已处理位置」原子写入（先 `.tmp` 再 rename，避免半写状态）。快照含 `SourcePath` / `SourceFormat` / `SourcePosition`（行号）/ `Result`（完整 AnalysisResult），schema 版本 `object-analyzer.snapshot/v1`。
+  - `--resume <PATH>`：加载快照，校验源文件一致性（防错把 A 文件的快照套到 B 文件上）后，解析器从 `SourcePosition` 跳过后续才读新数据；结果与快照在 `FieldStatistic` 级合并（Welford / 直方图 / HLL distinct / 枚举违规 / 时间桶等均兼容 `MergeFrom`）。
+  - `--baseline <PATH>`：合并任意历史 `AnalysisResult` JSON（`--output ... .json` 产物），不需要源文件——适合「本次只分析新增窗口并与历史合并」场景。
+  - 合并后报告自动重新覆写 `--output`，确保下游消费者看到 merge 后的最终聚合。
+  - 限制：仅 JSONL / CSV / Excel / Excel-JSON 走行级 skip；JSON / XML / YAML 整体物化格式不支持 `--resume`（用户启用时给黄色警告）。数据库直连 `--connection + --query` 不支持行级 skip（DbDataReader 不暴露随机访问）；启用 `--resume` 配 dbMode 时直接 `NotSupportedException` 报错。
+  - `AnalyzerSnapshot` 内部类 + `LoadFrom` / `SaveTo` 静态方法 + `AnalysisResult.MergeFrom` 增量合并实现。
+  - 10 个 `AnalyzerSnapshotTests` + 4 个 `AnalysisRunnerIncrementalTests` 覆盖：原子写入 / schema 不匹配报错 / 源文件一致性校验 / 行级 skip 实际跳行 / 数值 Welford 合并精度 / 枚举违规合并 / 退出码 0。
+- **P6.3 --max-memory 内存预算监控**：解决 50GB JSONL 全量物化 OOM 的问题，提供用户可调托管堆上限：
+  - `--max-memory <MB>`：进程托管堆上限（仅监控 .NET 托管堆 `GC.GetTotalMemory`；不监控非托管 / native 内存）。`0` 表示不监控（默认）。
+  - `--max-memory-mode soft|hard`（默认 soft）：
+    - **soft**：超限仅打印黄色警告并自动启用 50K 蓄水池采样（仅当用户未指定 `--sample-reservoir` / `--sample-step`），让分析在有限内存下继续推进。`AnalysisOptions.MemoryFallbackSampleSize` 控制兜底容量（默认 50,000，足以在 PII / 质量检查场景下保持统计意义，又能将堆控制在 100MB 以内）。
+    - **hard**：超限立即以退出码 1 结束（`MaxMemoryExceededException` → AnalysisRunner catch 转为 `analysis_error` 审计事件）。
+  - 实现 `MemoryBudget` 类：`Check(objectCount, out bool samplingAutoEnable)` 周期采样；硬模式不在 progress 回调线程上抛异常（会变成"未观察异常"逃出主流程），而是设置 `HardLimitExceeded` 标记，由主流程在分析完成后调用 `ThrowIfHardExceeded` 统一抛错。
+  - 入口预检 + spinner/progress 回调每批 Check + 分析完成后 ThrowIfHardExceeded 三重保障——fresh 进程刚启动时 `GC.GetTotalMemory` 可能仅 0.1MB（无任何分配），仅靠入口预检不够；分析循环内每批 Check 由主流程末尾统一抛错。
+  - 分析结束打印「[内存] 本次分析峰值 X.X MB（--max-memory 阈值 N MB，模式 Soft/Hard）」一行总结。
+  - 10 个 `MemoryBudgetTests` 覆盖：未启用 / soft 模式 autoEnable 单次触发 / hard 模式 ThrowIfHardExceeded 抛异常 / peak 单调非降 / 负数 MB 拒绝 / AnalysisRunner 硬模式小阈值失败 / 充裕阈值成功 / 0 MB 禁用 / 软模式自动启用采样 / 异常消息含阈值。
 - **P6.1 进度条 / ETA**：分析过程默认显示 Spectre.Console 进度条，包含 `ProgressBarColumn` / `PercentageColumn` / `RemainingTimeColumn` (ETA) / `SpinnerColumn` / `TaskDescriptionColumn` 五列。`ObjectAnalyzer.Analyze` / `AnalyzeDetailed` 新增 `IProgress<long>?` 回调参数，每分块（10K 对象）触发一次，调用方把累计对象数映射到 task.Value。`--no-progress` CLI 选项可关闭进度条回到旧版 spinner 行为（CI 日志捕获 / 脚本管道场景）。CLI 路由 `--no-progress → AnalysisOptions.ShowProgress = false`。`EstimateTotalObjects` 辅助方法：仅在已物化列表上返回 Count，不对 50GB JSONL 做二次扫描数行。`ProgressReportingTests` 4 个用例验证回调触发次数 / 单调性 / AnalyzeDetailed 兼容性 / 开关标志。
 - **Excel / PDF 表格化报告导出**：在现有 JSON / HTML / Markdown / CSV 之外，新增两种适合交付给非技术受众的格式：
   - **Excel（.xlsx）**：基于 [MiniExcel](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的多 sheet 工作簿，按数据维度拆分——`摘要` / `字段统计` / `重复对象` / `违规清单` 基础 4 sheet + P4 七项分析对应的可选 sheet（`字符串模式` / `Unicode 卫生` / `模糊去重` / `相关性摘要` + `强相关对` + `Pearson 矩阵` + `Spearman 矩阵` / `时间序列深度` / `分布漂移摘要` + `覆盖率变化` + `数值漂移` + `Distinct 漂移` / `采样置信摘要` + `字段覆盖率区间`），仅在该维度有数据时输出。字段统计 sheet 包含完整的样本数 / 覆盖率 / 主导类型 / 语义类型 / 数值统计 / 分位数 / 长度 / Top 5 值 / 类型分布等列。PII 打码与现有所有格式一致——敏感字段值在写入单元格前已通过 `PiiRedactor.Redact` 处理。

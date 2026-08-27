@@ -147,9 +147,9 @@
   - **PII 打码一致**：Excel 单元格与 PDF 表格内的敏感字段值在写入前已通过 `PiiRedactor.Redact` 处理
   - 实现见新增 [ExcelReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/ExcelReportExporter.cs) / [PdfReportExporter.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/PdfReportExporter.cs)；测试 4 个用例（`ExcelPdfReportTests`）——多 sheet / 表头列 / PDF magic number / 扩展名路由
 
-## P6 — 鲁棒性与大规模数据可用性（进行中 🚧）
+## P6 — 鲁棒性与大规模数据可用性（已完成 ✅）
 
-针对 P5 之后用户反馈的三类缺口：增量分析（断点续跑）、进度条/ETA、内存上限。每个子段独立可交付。
+针对 P5 之后用户反馈的三类缺口：增量分析（断点续跑）、进度条/ETA、内存上限。每个子段独立可交付。P6.1 / P6.2 / P6.3 均已完成。
 
 ### P6.1 — 进度条 / ETA（已完成 ✅）
 - `ObjectAnalyzer.Analyze` / `AnalyzeDetailed` 新增 `IProgress<long>?` 回调参数（位于 CancellationToken 之前，遵循 CA1068）
@@ -159,18 +159,23 @@
 - `EstimateTotalObjects` 辅助方法：仅在已物化列表返回 Count；不对 50GB JSONL 二次扫描数行
 - 实现见 [ObjectAnalyzer.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/ObjectAnalyzer.cs) / [AnalysisRunner.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisRunner.cs) / [AnalysisOptions.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisOptions.cs)；测试 4 个用例（`ProgressReportingTests`）——回调触发次数 / 单调性 / AnalyzeDetailed 兼容性 / 开关标志
 
-### P6.2 — 增量分析 / 断点续跑（计划中 📋）
-设计要点（用户已确认）：
-- 支持全部输入格式：JSONL/CSV/XML/YAML 按行号、JSON/Excel 按字节偏移
-- `--checkpoint <PATH>`：每 N 行（默认 100K）落盘一次；--resume 从检查点恢复
-- `--baseline <JSON>`：与历史 `AnalysisResult` 合并；FieldStatistic 级别合并（HyperLogLog 合并 + t-digest merge + Welford 合并）
-- 复用现有流式聚合器 `MergeFrom()`，避免重复造轮子
+### P6.2 — 增量分析 / 断点续跑（已完成 ✅）
+- `--checkpoint <PATH>`：本 run 分析完成后将「当前结果 + 已处理位置」原子写入（先 `.tmp` 再 rename，避免半写状态）。快照含 `SourcePath` / `SourceFormat` / `SourcePosition`（行号）/ `Result`，schema 版本 `object-analyzer.snapshot/v1`
+- `--resume <PATH>`：加载快照，校验源文件一致性（防错把 A 文件的快照套到 B 文件上）后，解析器从 `SourcePosition` 跳过后续才读新数据；结果与快照在 `FieldStatistic` 级合并（Welford / 直方图 / HLL distinct / 枚举违规 / 时间桶）
+- `--baseline <PATH>`：合并任意历史 `AnalysisResult` JSON（`--output ... .json` 产物），不需要源文件——适合「本次只分析新增窗口并与历史合并」场景
+- 合并后报告自动重新覆写 `--output`，确保下游消费者看到 merge 后的最终聚合
+- 限制：仅 JSONL / CSV / Excel / Excel-JSON 走行级 skip；JSON / XML / YAML 整体物化格式不支持 `--resume`（启用时给黄色警告）。数据库直连不支持行级 skip（DbDataReader 不暴露随机访问）；启用 `--resume` 配 dbMode 时直接报错
+- 实现见 [AnalyzerSnapshot.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalyzerSnapshot.cs) / [AnalysisRunner.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisRunner.cs) / [AnalysisOptions.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisOptions.cs) / [FileParsers.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Parsing/FileParsers.cs)；测试 14 个用例（`AnalyzerSnapshotTests` 10 个 + `AnalysisRunnerIncrementalTests` 4 个）——原子写入 / schema 不匹配报错 / 源文件一致性校验 / 行级 skip 实际跳行 / 数值 Welford 合并精度 / 枚举违规合并 / 退出码 0
 
-### P6.3 — `--max-memory` 内存上限（计划中 📋）
-设计要点（用户已确认）：
-- 软警告 + 自动启用采样（推荐模式）
-- `--max-memory-mode <soft|hard>` 切换行为：soft = 警告 + 自动启用采样；hard = 超出即抛错退出码 7
-- 通过 `GC.GetTotalMemory(false)` 监控；与 `Sampling.IsEnabled` 联动自动推导 `--sample-reservoir`
+### P6.3 — `--max-memory` 内存上限（已完成 ✅）
+- `--max-memory <MB>`：进程托管堆上限（仅监控 .NET 托管堆 `GC.GetTotalMemory`；不监控非托管 / native 内存）。`0` 表示不监控（默认）
+- `--max-memory-mode soft|hard`（默认 soft）：
+  - **soft**：超限仅打印黄色警告并自动启用 50K 蓄水池采样（仅当用户未指定 `--sample-reservoir` / `--sample-step`），让分析在有限内存下继续推进
+  - **hard**：超限立即以退出码 1 结束（`MaxMemoryExceededException` → AnalysisRunner catch 转为 `analysis_error` 审计事件）
+- 入口预检 + spinner/progress 回调每批 Check + 分析完成后 ThrowIfHardExceeded 三重保障——fresh 进程刚启动时 `GC.GetTotalMemory` 可能仅 0.1MB（无任何分配），仅靠入口预检不够
+- 硬模式不在 progress 回调线程上抛异常（会变成"未观察异常"逃出主流程），而是设置 `HardLimitExceeded` 标记，由主流程在分析完成后调用 `ThrowIfHardExceeded` 统一抛错
+- 分析结束打印「[内存] 本次分析峰值 X.X MB（--max-memory 阈值 N MB，模式 Soft/Hard）」一行总结
+- 实现见 [MemoryBudget.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/MemoryBudget.cs) / [AnalysisRunner.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisRunner.cs) / [AnalysisOptions.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/AnalysisOptions.cs) / [Program.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Program.cs)；测试 10 个用例（`MemoryBudgetTests`）——未启用 / soft 模式 autoEnable 单次触发 / hard 模式抛异常 / peak 单调非降 / 负数拒绝 / AnalysisRunner 硬模式小阈值失败 / 充裕阈值成功 / 0 MB 禁用 / 软模式自动启用采样 / 异常消息含阈值
 
 ## 已明确排除
 
