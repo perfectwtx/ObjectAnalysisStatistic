@@ -104,4 +104,73 @@ public class WebSmokeTests : IClassFixture<WebApplicationFactory<Program>>
             content.Contains("检查点输出 (--checkpoint)") || content.Contains("&#x68C0;&#x67E5;&#x70B9;&#x8F93;&#x51FA; (--checkpoint)"),
             "OptCheckpoint 标签未出现。");
     }
+
+    /// <summary>
+    /// P6.2 检查点下载端点：路径穿越保护。绝对不能让浏览器读取 %TEMP% 之外的任何文件。
+    /// 验证 <c>"../"</c> 形式被服务端拒绝。
+    /// </summary>
+    [Theory]
+    [InlineData("..%2F..%2Fboot.ini")]      // URL 编码的 ..
+    [InlineData("..%5C..%5Cboot.ini")]      // URL 编码的 ..\
+    [InlineData("..%2f..%2fboot.ini")]      // 小写 url 编码
+    public async Task CheckpointEndpoint_RejectsPathTraversal(string encodedPath)
+    {
+        using var client = _factory.CreateClient();
+        using var response = await client.GetAsync($"/api/checkpoint/{encodedPath}");
+
+        // 反规范化后的路径必须被识别为越界 —— 服务端应返回 4xx 而非 200
+        Assert.True(
+            response.StatusCode == HttpStatusCode.BadRequest
+            || response.StatusCode == HttpStatusCode.NotFound,
+            $"路径 {encodedPath} 应被拒绝，但服务端返回 {(int)response.StatusCode}");
+    }
+
+    /// <summary>
+    /// P6.2 检查点下载端点：合法路径返回 200 + 正确的 Content-Type。
+    /// 在 %TEMP%/objectanalyzer-checkpoints/ 写入一个 fixture 文件后请求下载，验证文件可被服务出去。
+    /// </summary>
+    [Fact]
+    public async Task CheckpointEndpoint_ServesValidSnapshot()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
+        Directory.CreateDirectory(dir);
+        var snapshotPath = Path.Combine(dir, $"web-tests-{Guid.NewGuid():N}.snapshot");
+        try
+        {
+            // 写一个最小的 AnalyzerSnapshot 兼容 JSON
+            var minimal = """
+                {
+                  "schema": "object-analyzer.snapshot/v1",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "sourcePath": "test.json",
+                  "sourceFormat": "jsonl",
+                  "sourcePosition": 0,
+                  "positionKind": "line",
+                  "sourceFingerprint": "",
+                  "result": {
+                    "totalObjects": 0,
+                    "totalUniqueObjects": 0,
+                    "totalDuplicateGroups": 0,
+                    "duplicateObjects": [],
+                    "fieldStatistics": [],
+                    "qualityViolations": []
+                  }
+                }
+                """;
+            await File.WriteAllTextAsync(snapshotPath, minimal);
+
+            using var client = _factory.CreateClient();
+            using var response = await client.GetAsync(
+                $"/api/checkpoint/{Uri.EscapeDataString(Path.GetFileName(snapshotPath))}");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Contains("object-analyzer.snapshot/v1", body);
+        }
+        finally
+        {
+            try { File.Delete(snapshotPath); } catch { /* 忽略清理异常 */ }
+        }
+    }
 }

@@ -44,6 +44,24 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+// ── P6.2 检查点下载端点：仅允许从 %TEMP%/objectanalyzer-checkpoints/ 目录下载，防止路径穿越 ──
+app.MapGet("/api/checkpoint/{*path}", (string path) =>
+{
+    // 1) 反规范化 + 边界校验
+    var checkpointsRoot = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
+    var fullPath = Path.GetFullPath(Path.Combine(checkpointsRoot, path));
+    if (!fullPath.StartsWith(checkpointsRoot, StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.BadRequest("拒绝访问：检查点路径必须在 %TEMP%/objectanalyzer-checkpoints/ 内。");
+    }
+    if (!System.IO.File.Exists(fullPath))
+    {
+        return Results.NotFound();
+    }
+    // 2) 限定 Content-Type 与文件名
+    return Results.File(fullPath, "application/json", Path.GetFileName(fullPath));
+});
+
 app.Run();
 
 /// <summary>供集成测试 (WebApplicationFactory) 引用的入口点。</summary>

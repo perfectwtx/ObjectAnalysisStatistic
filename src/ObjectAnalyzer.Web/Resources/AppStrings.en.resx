@@ -62,6 +62,14 @@
   <data name="ClearBaselineFile" xml:space="preserve"><value>Clear baseline</value></data>
   <data name="OptCheckpoint" xml:space="preserve"><value>Checkpoint output (--checkpoint)</value></data>
   <data name="ClearCheckpointFile" xml:space="preserve"><value>Clear checkpoint template</value></data>
+  <data name="ProgressAnalyzedN" xml:space="preserve"><value>Analyzed {0:N0} objects</value></data>
+  <data name="WarnMemorySoftExceeded" xml:space="preserve"><value>Soft memory limit exceeded; reservoir sampling (50,000) auto-enabled to protect the process</value></data>
+  <data name="ErrMemoryHardExceeded" xml:space="preserve"><value>Memory usage exceeded --max-memory hard limit: {0}</value></data>
+  <data name="ErrResumeFailed" xml:space="preserve"><value>Failed to merge resume snapshot: {0}</value></data>
+  <data name="ErrBaselineFailed" xml:space="preserve"><value>Failed to merge baseline result: {0}</value></data>
+  <data name="ErrCheckpointFailed" xml:space="preserve"><value>Failed to save checkpoint: {0}</value></data>
+  <data name="CheckpointReady" xml:space="preserve"><value>Checkpoint ready: {0} ({1:N0} bytes)</value></data>
+  <data name="DownloadCheckpoint" xml:space="preserve"><value>Download checkpoint</value></data>
   <data name="ErrRootPath" xml:space="preserve"><value>--root-path expression {0} is invalid: {1}</value></data>
   <data name="ErrRecordPath" xml:space="preserve"><value>--record-path expression {0} is invalid: {1}</value></data>
   <data name="WarnRootPathIgnored" xml:space="preserve"><value>--root-path only applies to whole JSON files; ignored for current format {0}.</value></data>

@@ -14,6 +14,15 @@
   - `AppStrings.resx` / `AppStrings.en.resx` 新增 14 个 P6 键（`P6GroupTitle` / `P6GroupHint` / `OptShowProgress` / `OptMaxMemory` / `OptMaxMemoryMode` + soft/hard 选项 / `OptResume` / `OptBaseline` / `OptCheckpoint` / `Clear*`）。
   - `WebSmokeTests` 新增 `HomePage_RendersP6ConfigSection` 断言：折叠区出现 + 关键控件中文标签（同时支持 HTML 实体 / UTF-8 两种编码形式）。`AppStyles_AreServed` 同步断言 `.option-group`。
   - 限制：Web 端不复用 `AnalysisRunner.Run`（其内置 `AnsiConsole.Progress` 与 SPA 浏览器无法观测），故 P6.1 进度条 / P6.3 内存预算目前仅在审计日志中记录选项；用户看到的仍是「点击开始→等待→结果返回」的黑盒体验。`ShowProgress` 字段已为未来 SignalR 实时进度推送预留。
+- **P6 选项真正落地到 Web 分析流程**：把进度条 / 增量 / 内存预算 / 检查点从「仅审计日志记录选项」推进到「实际影响本次 run」：
+  - P6.1 进度：基于 `IProgress<long>` + `Progress<T>` 自动捕获 `SynchronizationContext` 切回 Blazor UI 线程，把累计对象数写入 `State.ProgressText`（"已分析 12,345 条对象"），UI 展示 spinner + 文本（`aria-live="polite"`）。
+  - P6.2 断点续跑 / 基线合并：分析成功路径上调用 `result.MergeFrom(...)`——分别把 `AnalyzerSnapshot.Result`（`--resume`）与 `AnalysisResult` JSON（`--baseline`）合并进本次结果。Web 端不跳读源文件位置（仅合并聚合结果），如需真正从源文件中间续跑请用 CLI；此限制在代码注释中显式说明。
+  - P6.2 检查点落盘：分析成功后用 `AnalyzerSnapshot.SaveTo` 把 `Result` 写入 `%TEMP%/objectanalyzer-checkpoints/<safe-name>.snapshot`，文件名通过 `SanitizeCheckpointName` 规整（去路径分隔符 / 控字符 / 长度限制），UI 提供「下载检查点」按钮，下载走新增的 `MapGet("/api/checkpoint/{*path}")` 端点，反规范化 + 边界校验防止路径穿越。
+  - P6.3 内存预算：与进度回调同处一个闭包，构造时 `MemoryBudget(maxMemoryMB, mode)`，每个 `progress.Report(count)` 后调用 `memoryBudget.Check(count, out bool samplingAutoEnable)`——soft 模式触发时把 `WarnMemorySoftExceeded` 写到 `State.MemoryWarning`；hard 模式则在分析循环结束后 `ThrowIfHardExceeded()` 抛 `MaxMemoryExceededException`，被 `RunAnalysis` 单独捕获并展示 `ErrMemoryHardExceeded`。
+  - 新增 `AnalysisState` 运行时字段：`ProgressText` / `LastCheckpointServerPath` / `LastCheckpointSize` / `MemoryWarning`，均仅由分析循环填充，UI 只读展示；开始新一轮分析时自动重置。
+  - `AppStrings.resx` / `AppStrings.en.resx` 新增 9 个运行时键：`ProgressAnalyzedN` / `WarnMemorySoftExceeded` / `ErrMemoryHardExceeded` / `ErrResumeFailed` / `ErrBaselineFailed` / `ErrCheckpointFailed` / `CheckpointReady` / `DownloadCheckpoint`。
+  - `app.css` 新增 `.progress-status` / `.memory-warning` / `.checkpoint-info` 三个高亮区 + dark 模式覆盖。
+  - `WebSmokeTests` 新增 4 个测试：路径穿越保护（3 个 `InlineData`：URL 编码的 `..`/`..\`/小写）+ 合法路径 200 响应（含正确 `Content-Type: application/json` 与 schema 字段验证）。
 - **P6.2 增量分析 / 断点续跑**：解决 50GB 数据中途失败需从头再来的问题，提供三种互补能力：
   - `--checkpoint <PATH>`：本 run 分析完成后将「当前结果 + 已处理位置」原子写入（先 `.tmp` 再 rename，避免半写状态）。快照含 `SourcePath` / `SourceFormat` / `SourcePosition`（行号）/ `Result`（完整 AnalysisResult），schema 版本 `object-analyzer.snapshot/v1`。
   - `--resume <PATH>`：加载快照，校验源文件一致性（防错把 A 文件的快照套到 B 文件上）后，解析器从 `SourcePosition` 跳过后续才读新数据；结果与快照在 `FieldStatistic` 级合并（Welford / 直方图 / HLL distinct / 枚举违规 / 时间桶等均兼容 `MergeFrom`）。

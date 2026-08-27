@@ -123,6 +123,29 @@ public sealed class AnalysisState : IDisposable
     /// <summary>超限行为：soft（警告 + 自动采样）/ hard（立即失败）。</summary>
     public string MaxMemoryMode { get; set; } = "soft";
 
+    // ── P6 运行时状态（由分析循环填充，UI 只读展示）──
+    /// <summary>
+    /// 当前进度文本（IProgress&lt;long&gt; 回调更新）。形如 "已分析 12,345 条对象"。
+    /// 仅在 <see cref="ShowProgress"/> = true 时非空；分析结束后被清空。
+    /// </summary>
+    public string ProgressText { get; set; } = "";
+
+    /// <summary>
+    /// 最近一次分析产出的检查点文件服务器路径（%TEMP%/objectanalyzer-checkpoints/&lt;name&gt;.snapshot）。
+    /// 与 <see cref="CheckpointFileName"/> 不同：后者是用户在 UI 上输入的文件名（模板），前者是实际写入位置。
+    /// UI 可基于此字段提供「下载检查点」按钮。
+    /// </summary>
+    public string? LastCheckpointServerPath { get; set; }
+
+    /// <summary>最近一次检查点字节大小（用于展示给用户「检查点已生成（12.3 MB）」）。</summary>
+    public long LastCheckpointSize { get; set; }
+
+    /// <summary>
+    /// 内存预算触发的提示信息（soft 模式警告 / hard 模式错误）。与 <see cref="ErrorMessage"/> 区分：
+    /// 本字段专门承载 P6 运行时事件，UI 可单独高亮。
+    /// </summary>
+    public string? MemoryWarning { get; set; }
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();

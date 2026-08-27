@@ -62,6 +62,14 @@
   <data name="ClearBaselineFile" xml:space="preserve"><value>清除基线</value></data>
   <data name="OptCheckpoint" xml:space="preserve"><value>检查点输出 (--checkpoint)</value></data>
   <data name="ClearCheckpointFile" xml:space="preserve"><value>清除检查点模板</value></data>
+  <data name="ProgressAnalyzedN" xml:space="preserve"><value>已分析 {0:N0} 条对象</value></data>
+  <data name="WarnMemorySoftExceeded" xml:space="preserve"><value>已超出内存软阈值，已自动启用蓄水池采样 50,000 条以保护进程</value></data>
+  <data name="ErrMemoryHardExceeded" xml:space="preserve"><value>内存使用超出 --max-memory 硬上限：{0}</value></data>
+  <data name="ErrResumeFailed" xml:space="preserve"><value>断点续跑合并失败：{0}</value></data>
+  <data name="ErrBaselineFailed" xml:space="preserve"><value>基线合并失败：{0}</value></data>
+  <data name="ErrCheckpointFailed" xml:space="preserve"><value>检查点落盘失败：{0}</value></data>
+  <data name="CheckpointReady" xml:space="preserve"><value>检查点已生成：{0}（{1:N0} 字节）</value></data>
+  <data name="DownloadCheckpoint" xml:space="preserve"><value>下载检查点</value></data>
   <data name="ErrRootPath" xml:space="preserve"><value>--root-path 表达式 {0} 无效: {1}</value></data>
   <data name="ErrRecordPath" xml:space="preserve"><value>--record-path 表达式 {0} 无效: {1}</value></data>
   <data name="WarnRootPathIgnored" xml:space="preserve"><value>--root-path 仅对整体 JSON 文件生效，当前格式 {0} 已忽略。</value></data>

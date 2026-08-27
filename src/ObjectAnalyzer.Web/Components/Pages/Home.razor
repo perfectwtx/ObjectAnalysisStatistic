@@ -211,9 +211,35 @@
                 }
             </div>
 
+            @* P6.1 实时进度文本：仅在分析进行中且 ShowProgress=true 时显示 *@
+            @if (State.IsLoading && !string.IsNullOrEmpty(State.ProgressText))
+            {
+                <div class="progress-status" aria-live="polite">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>@State.ProgressText</span>
+                </div>
+            }
+
+            @* P6.3 内存预算告警（soft 模式警告 + hard 模式错误均会写入 MemoryWarning）*@
+            @if (!string.IsNullOrEmpty(State.MemoryWarning))
+            {
+                <div class="memory-warning">⚠ @State.MemoryWarning</div>
+            }
+
             @if (State.ErrorMessage != null)
             {
                 <div class="error">@State.ErrorMessage</div>
+            }
+
+            @* P6.2 检查点下载：分析成功且生成了检查点时显示 *@
+            @if (State.LastCheckpointServerPath != null)
+            {
+                <div class="checkpoint-info">
+                    <span>✓ @Loc.Get("CheckpointReady", Path.GetFileName(State.LastCheckpointServerPath), State.LastCheckpointSize)</span>
+                    <a class="btn btn-sm btn-outline" href="/api/checkpoint/@Uri.EscapeDataString(State.LastCheckpointServerPath!)" download>
+                        @Loc["DownloadCheckpoint"]
+                    </a>
+                </div>
             }
         </section>
     }
@@ -1113,6 +1139,10 @@
 
         State.IsLoading = true;
         State.ErrorMessage = null;
+        State.MemoryWarning = null;
+        State.ProgressText = "";
+        State.LastCheckpointServerPath = null;
+        State.LastCheckpointSize = 0;
         State.PageIndex = 0;
 
         // 取消上一次未完成的分析
@@ -1133,6 +1163,18 @@
         int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
         int sampleReservoir = State.SampleReservoir;
         int sampleStep = State.SampleStep;
+        // P6 快照：进度条 / 增量 / 内存预算
+        bool showProgress = State.ShowProgress;
+        string? resumeFromPath = State.ResumeFrom;
+        string? baselinePath = State.BaselinePath;
+        string? checkpointFileName = State.CheckpointFileName;
+        long maxMemoryMB = State.MaxMemoryMB;
+        Core.Analysis.MaxMemoryMode maxMemoryMode =
+            string.Equals(State.MaxMemoryMode, "hard", StringComparison.OrdinalIgnoreCase)
+                ? Core.Analysis.MaxMemoryMode.Hard
+                : Core.Analysis.MaxMemoryMode.Soft;
+        // 检查点目标文件名（仅在用户填写 CheckpointFileName 时使用）
+        string safeCheckpointName = SanitizeCheckpointName(checkpointFileName);
         string? typedError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
 
@@ -1172,6 +1214,25 @@
         {
             // 采样参数校验（蓄水池与等距互斥、参数合法性）
             Core.Analysis.Sampling.Validate(sampleReservoir, sampleStep);
+
+            // ── P6.1 进度回调：IProgress<long> → State.ProgressText（Progress<T> 自动捕获 SynchronizationContext 切回 UI 线程）──
+            // ── P6.3 内存预算：在每批后 Check，超 soft 阈值时输出警告；超 hard 阈值在 Analyze 结束后 ThrowIfHardExceeded 抛错 ──
+            // 注意：MemoryBudget 与 Progress 必须在 Task.Run 外构造并捕获，这样闭包共享同一实例；否则 progress 回调无法触达 memoryBudget。
+            var memoryBudget = new Core.Analysis.MemoryBudget(maxMemoryMB, maxMemoryMode);
+            var progress = new Progress<long>(count =>
+            {
+                if (showProgress)
+                {
+                    State.ProgressText = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                        Loc.Get("ProgressAnalyzedN", count), count);
+                }
+                // 内存采样（不论是否显示进度都要做：内存预算是安全护栏）
+                memoryBudget.Check(count, out bool samplingAutoEnable);
+                if (samplingAutoEnable && State.MemoryWarning == null)
+                {
+                    State.MemoryWarning = Loc["WarnMemorySoftExceeded"];
+                }
+            });
 
             var result = await Task.Run(() =>
             {
@@ -1303,8 +1364,10 @@
                     }
                     return o;
                 });
-                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: null, progress: null, token);
+                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: null, progress: progress, token);
                 transformProcessor.ApplyFailures(analysisResult);
+                // ── P6.3 内存预算 hard 模式：分析循环结束后由本机检查点统一抛错（避免在 progress 回调线程上抛）──
+                memoryBudget.ThrowIfHardExceeded();
                 previewedPreview = preview;
                 return analysisResult;
             }, token);
@@ -1316,7 +1379,12 @@
             State.Preview = previewedPreview;
             SeedPreviewSelection();
             State.Result = result;
+            State.ProgressText = "";
             ShowConfig = false;
+
+            // ── P6.2 增量分析 / 断点续跑 / 基线合并：分析成功后的合并阶段 ──
+            // 限制：Web 端不跳读源文件位置（仅合并聚合结果）；如需真正从源文件中间续跑请用 CLI。
+            ApplyP6PostAnalysis(result, resumeFromPath, baselinePath, safeCheckpointName);
 
             // 数据血缘审计：仅在用户填写了 --audit-log 路径时写入一条 analysis_finish 事件
             // Web UI 不复用 AnalysisRunner.Run（其内置自有流式管道），故此处直接调用 AuditLogger。
@@ -1335,11 +1403,21 @@
             {
                 State.ErrorMessage = Loc["ErrCancelled"];
             }
+            State.ProgressText = "";
             TryWriteWebAuditLog(State.Result, exitCode: 2, message: "用户取消");
+        }
+        catch (Core.Analysis.MaxMemoryExceededException ex)
+        {
+            // P6.3 hard 模式超限：作为单独错误类型向用户展示，提示降低数据规模或调高阈值
+            State.ErrorMessage = Loc.Get("ErrMemoryHardExceeded", ex.Message);
+            State.MemoryWarning = ex.Message;
+            State.ProgressText = "";
+            TryWriteWebAuditLog(State.Result, exitCode: 1, message: ex.Message);
         }
         catch (Exception ex)
         {
             State.ErrorMessage = ErrorSanitizer.Format(ex);
+            State.ProgressText = "";
             TryWriteWebAuditLog(State.Result, exitCode: 1, message: ex.Message);
         }
         finally
@@ -1547,6 +1625,110 @@
         State.RulesFilePath = null;
         State.RulesFileName = null;
         State.ErrorMessage = null;
+    }
+
+    // ── P6 运行时：分析后处理（断点续跑 / 基线合并 / 检查点落盘）──
+
+    /// <summary>
+    /// 把 <c>--resume</c> / <c>--baseline</c> 提供的历史结果合并到本次 <paramref name="result"/>，
+    /// 并在用户填写了 <c>--checkpoint</c> 文件名时落盘 AnalyzerSnapshot 到服务器临时目录。
+    /// 异常被吞掉并写到 <see cref="AnalysisState.ErrorMessage"/>：增量步骤失败不应阻塞本次主分析结果。
+    /// </summary>
+    private void ApplyP6PostAnalysis(
+        Core.Analysis.AnalysisResult result,
+        string? resumeFromPath,
+        string? baselinePath,
+        string? safeCheckpointName)
+    {
+        // P6.2 断点续跑：把历史 AnalyzerSnapshot.Result 合并进当前 result
+        if (!string.IsNullOrEmpty(resumeFromPath) && File.Exists(resumeFromPath))
+        {
+            try
+            {
+                var snapshot = Core.Analysis.AnalyzerSnapshot.LoadFrom(resumeFromPath);
+                result.MergeFrom(snapshot.Result);
+            }
+            catch (Exception ex)
+            {
+                State.ErrorMessage = Loc.Get("ErrResumeFailed", ex.Message);
+            }
+        }
+
+        // P6.2 基线合并：把历史 AnalysisResult JSON 合并进当前 result
+        if (!string.IsNullOrEmpty(baselinePath) && File.Exists(baselinePath))
+        {
+            try
+            {
+                var baselineJson = File.ReadAllText(baselinePath);
+                var baselineResult = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisResult>(baselineJson);
+                if (baselineResult != null)
+                {
+                    result.MergeFrom(baselineResult);
+                }
+            }
+            catch (Exception ex)
+            {
+                State.ErrorMessage = Loc.Get("ErrBaselineFailed", ex.Message);
+            }
+        }
+
+        // P6.2 检查点落盘：把当前 result 写入 %TEMP%/objectanalyzer-checkpoints/<safe-name>.snapshot
+        if (!string.IsNullOrEmpty(safeCheckpointName))
+        {
+            try
+            {
+                var dir = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
+                Directory.CreateDirectory(dir);
+                var fullPath = Path.Combine(dir, safeCheckpointName);
+                var snapshot = new Core.Analysis.AnalyzerSnapshot
+                {
+                    SourcePath = State.DataFilePath ?? "",
+                    SourceFormat = Core.Parsing.FileParsers.DetectFormat(State.DataFilePath ?? ""),
+                    Result = result
+                };
+                snapshot.SaveTo(fullPath);
+                State.LastCheckpointServerPath = fullPath;
+                State.LastCheckpointSize = new FileInfo(fullPath).Length;
+            }
+            catch (Exception ex)
+            {
+                State.ErrorMessage = Loc.Get("ErrCheckpointFailed", ex.Message);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 把用户在 UI 上填写的检查点名称规整为安全的服务器文件名：去路径分隔符、空白、引号等，
+    /// 并强制 .snapshot 后缀。失败时回退为 session-{guid}.snapshot。
+    /// </summary>
+    private static string SanitizeCheckpointName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        var name = raw.Trim();
+        // 去掉路径分隔符与控制字符，仅保留字母数字 - _ . 与 CJK
+        var invalid = Path.GetInvalidFileNameChars();
+        var sb = new System.Text.StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            if (Array.IndexOf(invalid, c) >= 0) sb.Append('_');
+            else if (c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar) sb.Append('_');
+            else sb.Append(c);
+        }
+        var cleaned = sb.ToString();
+        if (string.IsNullOrWhiteSpace(cleaned))
+        {
+            return $"session-{Guid.NewGuid():N}.snapshot";
+        }
+        if (!cleaned.EndsWith(".snapshot", StringComparison.OrdinalIgnoreCase))
+        {
+            cleaned += ".snapshot";
+        }
+        // Windows 文件名长度上限 255
+        if (cleaned.Length > 240)
+        {
+            cleaned = cleaned.Substring(0, 240) + ".snapshot";
+        }
+        return cleaned;
     }
 
     // ── P6 配置：进度条 / 内存预算 / 断点续跑 / 基线合并 ──
