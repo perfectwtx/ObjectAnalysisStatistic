@@ -24,6 +24,82 @@ public class AnalysisResult
     /// </summary>
     public List<FieldViolation> QualityViolations { get; set; } = new();
 
+    // ── P6.2 增量分析 / 断点续跑：AnalysisResult 级别合并 ──
+
+    /// <summary>
+    /// 把另一份 <see cref="AnalysisResult"/> 合并进本对象。
+    ///
+    /// 合并策略：
+    /// - <see cref="TotalObjects"/> / <see cref="TotalDuplicateGroups"/>：直接相加
+    /// - <see cref="TotalUniqueObjects"/>：取 max（HLL 未持久化时是无信息损失上界）
+    /// - <see cref="DuplicateObjects"/>：追加（去重 key 集合按对象哈希）
+    /// - <see cref="QualityViolations"/>：追加
+    /// - <see cref="FieldStatistics"/>：按 FieldName 查找已有条目并 <see cref="FieldStatistic.MergeFrom"/>
+    /// - P4 维度（CorrelationMatrix / StringPatterns / UnicodeHygiene / FuzzyDuplicates /
+    ///   TimeSeriesAnalyses / DistributionDiff / SamplingConfidence / SchemaDiff）：
+    ///   仅在 <c>this</c> 为空时采用 <c>other</c>，避免覆盖当前 run 的结果（P4 不可增量合并）
+    /// - <see cref="FilterExpression"/>：取 this（确定性优先）
+    ///
+    /// 不会抛异常——空对象合并保持幂等；用于跨多次增量 run 累积。
+    /// </summary>
+    public void MergeFrom(AnalysisResult other)
+    {
+        if (other is null) return;
+
+        TotalObjects += other.TotalObjects;
+        TotalDuplicateGroups += other.TotalDuplicateGroups;
+        TotalUniqueObjects = Math.Max(TotalUniqueObjects, other.TotalUniqueObjects);
+
+        // FieldStatistics 字典合并：按 FieldName 查找
+        if (other.FieldStatistics is { Count: > 0 })
+        {
+            var byName = new Dictionary<string, FieldStatistic>(FieldStatistics.Count);
+            foreach (var f in FieldStatistics) byName[f.FieldName] = f;
+            foreach (var incoming in other.FieldStatistics)
+            {
+                if (byName.TryGetValue(incoming.FieldName, out var existing))
+                {
+                    existing.MergeFrom(incoming);
+                }
+                else
+                {
+                    FieldStatistics.Add(incoming);
+                }
+            }
+        }
+
+        // 重复对象（追加 + 限长保留）
+        if (other.DuplicateObjects is { Count: > 0 })
+        {
+            DuplicateObjects.AddRange(other.DuplicateObjects);
+        }
+
+        // 质量违规（追加）
+        if (other.QualityViolations is { Count: > 0 })
+        {
+            QualityViolations.AddRange(other.QualityViolations);
+        }
+
+        // P4 维度：this 为空时采用 other（避免覆盖当前 run）
+        CorrelationMatrix ??= other.CorrelationMatrix;
+        FuzzyDuplicates ??= other.FuzzyDuplicates;
+        StringPatterns ??= other.StringPatterns is not null
+            ? new Dictionary<string, StringPatternProfile>(other.StringPatterns)
+            : null;
+        UnicodeHygiene ??= other.UnicodeHygiene is not null
+            ? new Dictionary<string, UnicodeHygieneReport>(other.UnicodeHygiene)
+            : null;
+        TimeSeriesAnalyses ??= other.TimeSeriesAnalyses is not null
+            ? new Dictionary<string, TimeSeriesAnalysis>(other.TimeSeriesAnalyses)
+            : null;
+        DistributionDiff ??= other.DistributionDiff;
+        SamplingConfidence ??= other.SamplingConfidence;
+        SchemaDiff ??= other.SchemaDiff;
+
+        // FilterExpression：取 this（确定性优先；other 的过滤条件只用于补充本 run 缺省值）
+        FilterExpression ??= other.FilterExpression;
+    }
+
     /// <summary>
     /// Schema 演进的 diff 结果（--diff-schema 指定基线时计算）。未启用时为 null。
     /// 由 ReportExporter / ConsoleReporter 用于追加「Schema 演进」小节。

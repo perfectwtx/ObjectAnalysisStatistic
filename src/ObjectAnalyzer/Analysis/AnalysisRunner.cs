@@ -27,6 +27,17 @@ public static class AnalysisRunner
     [ThreadStatic]
     private static Dictionary<string, HyperLogLog>? _lastDistinctSketches;
 
+    // P6.2：增量分析 / 断点续跑上下文（单次 Run 期间的状态）。
+    // - ResumeSnapshot：--resume 加载的快照，提供 SourcePosition 供 parser 跳过已处理数据
+    // - LastRecordCount：本 run 内已分析记录数（来自进度回调，闭区间等于 analyzer 的 globalTotalObjects）
+    // - EffectiveFormat：本 run 解析时实际使用的格式（写入新快照的 SourceFormat 字段）
+    private sealed class IncrementalContext
+    {
+        public AnalyzerSnapshot? ResumeSnapshot;
+        public long LastRecordCount;
+        public string? EffectiveFormat;
+    }
+
     /// <summary>
     /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
     /// 当 <see cref="AnalysisOptions.AuditLogPath"/> 非空时，写入 NDJSON 审计日志。
@@ -122,6 +133,74 @@ public static class AnalysisRunner
             return 1;
         }
 
+        // P6.2：--resume 预检：快照文件存在性 + 源文件一致性 + 防止 --resume / --baseline / --checkpoint 自相矛盾
+        if (!string.IsNullOrEmpty(options.ResumeFrom) && !File.Exists(options.ResumeFrom))
+        {
+            AnsiConsole.MarkupLine(
+                $"[red]错误: --resume 快照文件不存在: {Markup.Escape(options.ResumeFrom)}[/]");
+            return 1;
+        }
+        if (!string.IsNullOrEmpty(options.BaselinePath) && !File.Exists(options.BaselinePath))
+        {
+            AnsiConsole.MarkupLine(
+                $"[red]错误: --baseline 基线文件不存在: {Markup.Escape(options.BaselinePath)}[/]");
+            return 1;
+        }
+        if (!string.IsNullOrEmpty(options.CheckpointPath) && !string.IsNullOrEmpty(options.ResumeFrom) &&
+            string.Equals(Path.GetFullPath(options.CheckpointPath), Path.GetFullPath(options.ResumeFrom), StringComparison.OrdinalIgnoreCase))
+        {
+            AnsiConsole.MarkupLine(
+                "[red]错误: --checkpoint 与 --resume 指向同一文件；为避免相互覆盖，请使用不同路径。[/]");
+            return 1;
+        }
+        if (!string.IsNullOrEmpty(options.BaselinePath) && !string.IsNullOrEmpty(options.ResumeFrom) &&
+            string.Equals(Path.GetFullPath(options.BaselinePath), Path.GetFullPath(options.ResumeFrom), StringComparison.OrdinalIgnoreCase))
+        {
+            AnsiConsole.MarkupLine(
+                "[red]错误: --baseline 与 --resume 指向同一文件；语义冲突，请使用不同路径。[/]");
+            return 1;
+        }
+
+        // P6.2：--resume 加载快照
+        AnalyzerSnapshot? resumeSnapshot = null;
+        long startFromPosition = 0;
+        if (!string.IsNullOrEmpty(options.ResumeFrom))
+        {
+            try
+            {
+                resumeSnapshot = AnalyzerSnapshot.LoadFrom(options.ResumeFrom!);
+            }
+            catch (Exception ex)
+            {
+                AnsiConsole.MarkupLine($"[red]错误: --resume 快照解析失败: {Markup.Escape(ex.Message)}[/]");
+                return 1;
+            }
+
+            // 源文件一致性：防止用户错把 A 文件的快照套到 B 文件上（resume 的 SourcePosition 仅对 A 有意义）
+            if (!string.IsNullOrEmpty(options.InputPath))
+            {
+                string currentAbs = Path.GetFullPath(options.InputPath);
+                string snapAbs = Path.GetFullPath(resumeSnapshot.SourcePath);
+                if (!string.Equals(currentAbs, snapAbs, StringComparison.OrdinalIgnoreCase))
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[red]错误: --resume 快照的源文件与当前输入不匹配（快照: {Markup.Escape(snapAbs)}，当前: {Markup.Escape(currentAbs)}）[/]");
+                    return 1;
+                }
+            }
+
+            startFromPosition = Math.Max(0, resumeSnapshot.SourcePosition);
+            AnsiConsole.MarkupLine(
+                $"[green][[检查点]][/] 从 {Markup.Escape(options.ResumeFrom!)} 恢复分析，已处理 {startFromPosition:N0} 条记录，本次从该位置继续");
+        }
+
+        var incremental = new IncrementalContext
+        {
+            ResumeSnapshot = resumeSnapshot,
+            LastRecordCount = 0,
+            EffectiveFormat = null
+        };
+
         // JSONPath 表达式语法预检（fail-fast，避免解析到一半才发现）
         if (!string.IsNullOrWhiteSpace(options.RootPath))
         {
@@ -165,11 +244,17 @@ public static class AnalysisRunner
                 // 数据库直连：DbDataReader 惰性流式读取查询结果
                 if (dbMode)
                 {
-                    parsedObjects = ParseFromDatabase(options);
+                    parsedObjects = ParseFromDatabase(options, startFromPosition);
                 }
                 // 如果指定了 --type，使用强类型反序列化路径
                 else if (!string.IsNullOrEmpty(options.TypeFile))
                 {
+                    // 强类型路径不支持断点续跑：必须整体物化
+                    if (resumeSnapshot != null)
+                    {
+                        AnsiConsole.MarkupLine(
+                            "[yellow]警告: --type 强类型反序列化路径不支持 --resume 断点续跑；将从文件开头重新分析。[/]");
+                    }
                     parsedObjects = RunTyped(options);
                 }
                 else
@@ -179,7 +264,7 @@ public static class AnalysisRunner
                     {
                         AnsiConsole.MarkupLine(
                             $"[yellow]警告: --root-path 在 [red]{fmt}[/] 格式下没有文件根概念，将被忽略（仅 --record-path 生效）[/]");
-                        parsedObjects = ParseByFormat(options, rules, effectiveValueParsers);
+                        parsedObjects = ParseByFormat(options, rules, effectiveValueParsers, startFromPosition, incremental);
                     }
                     else
                     {
@@ -194,16 +279,21 @@ public static class AnalysisRunner
                 // 数据库直连：DbDataReader 惰性流式读取查询结果
                 if (dbMode)
                 {
-                    parsedObjects = ParseFromDatabase(options);
+                    parsedObjects = ParseFromDatabase(options, startFromPosition);
                 }
                 // 如果指定了 --type，使用强类型反序列化路径
                 else if (!string.IsNullOrEmpty(options.TypeFile))
                 {
+                    if (resumeSnapshot != null)
+                    {
+                        AnsiConsole.MarkupLine(
+                            "[yellow]警告: --type 强类型反序列化路径不支持 --resume 断点续跑；将从文件开头重新分析。[/]");
+                    }
                     parsedObjects = RunTyped(options);
                 }
                 else
                 {
-                    parsedObjects = ParseByFormat(options, rules, effectiveValueParsers);
+                    parsedObjects = ParseByFormat(options, rules, effectiveValueParsers, startFromPosition, incremental);
                 }
             }
 
@@ -216,7 +306,74 @@ public static class AnalysisRunner
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, cancellationToken);
+            AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, incremental, cancellationToken);
+
+            // P6.2：--resume 合并快照中的已聚合结果（FieldStatistic / Welford / 直方图 / 枚举违规均可增量合并）
+            if (resumeSnapshot != null)
+            {
+                AnsiConsole.MarkupLine(
+                    $"[green][[检查点]][/] 正在合并已处理的 {resumeSnapshot.Result.TotalObjects:N0} 条记录结果（含 {resumeSnapshot.Result.FieldStatistics.Count} 个字段）...");
+                result.MergeFrom(resumeSnapshot.Result);
+                AnsiConsole.MarkupLine(
+                    $"[green][[检查点]][/] 合并后共 {result.TotalObjects:N0} 条记录");
+            }
+
+            // P6.2：--baseline 合并历史 AnalysisResult JSON（与 --resume 互补：--resume 是从源文件中间续跑；--baseline 是合并任意历史结果）
+            if (!string.IsNullOrEmpty(options.BaselinePath))
+            {
+                var baseline = LoadAnalysisResultFromFile(options.BaselinePath!);
+                if (baseline != null)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[green][[基线]][/] 正在合并基线 {Markup.Escape(options.BaselinePath!)} 的 {baseline.TotalObjects:N0} 条记录结果...");
+                    result.MergeFrom(baseline);
+                    AnsiConsole.MarkupLine(
+                        $"[green][[基线]][/] 合并后共 {result.TotalObjects:N0} 条记录");
+                }
+            }
+
+            // P6.2：--checkpoint 落盘当前快照（用于下次 --resume）
+            if (!string.IsNullOrEmpty(options.CheckpointPath))
+            {
+                long totalProcessed = startFromPosition + incremental.LastRecordCount;
+                string fmt = incremental.EffectiveFormat
+                    ?? (string.IsNullOrEmpty(options.InputPath) ? "db" : FileParsers.DetectFormat(options.InputPath));
+                var snapshot = new AnalyzerSnapshot
+                {
+                    SourcePath = options.InputPath,
+                    SourceFormat = fmt,
+                    SourcePosition = totalProcessed,
+                    PositionKind = "line",
+                    Result = result
+                };
+                try
+                {
+                    snapshot.SaveTo(options.CheckpointPath!);
+                    AnsiConsole.MarkupLine(
+                        $"[green][[检查点]][/] 已落盘分析快照至 [blue]{Markup.Escape(options.CheckpointPath!)}[/]（共 {totalProcessed:N0} 条记录，{result.FieldStatistics.Count} 个字段）");
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[yellow]警告: 检查点写入失败 ({Markup.Escape(ex.Message)})；本次结果已输出但下次无法 --resume 续跑。[/]");
+                }
+            }
+
+            // P6.2：--resume / --baseline 合并后，需要把合并后的最终结果重新导出到 OutputPath。
+            // ProcessAndReport 已写过一遍（含"本 run 局部"结果），再次覆盖以反映 merge 后的最终聚合。
+            if ((resumeSnapshot != null || !string.IsNullOrEmpty(options.BaselinePath))
+                && !string.IsNullOrEmpty(options.OutputPath))
+            {
+                try
+                {
+                    ReportExporter.Save(result, options.OutputPath!, redactPii: !options.PiiOff);
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[yellow]警告: 合并后报告覆写失败 ({Markup.Escape(ex.Message)})；{Markup.Escape(options.OutputPath!)} 仍为合并前结果。[/]");
+                }
+            }
 
             int exitCode = 0;
             // CI 数据质量门禁：存在任一质量违规（枚举/范围/模式/必填/唯一/null 率/数据集期望）时以非零退出码结束
@@ -411,13 +568,17 @@ public static class AnalysisRunner
     /// <summary>
     /// Detects format from file extension and parses the file accordingly.
     /// Uses the parser registry in FileParsers (IFileParser pattern).
+    /// P6.2：startFromPosition（来自 --resume 快照）>0 时，Parser 跳过前 N 条记录后再 yield。
     /// </summary>
     private static IEnumerable<Dictionary<string, object?>> ParseByFormat(
         AnalysisOptions options,
         AnalysisRules? rules = null,
-        IReadOnlyList<ValueParserConfig>? valueParsers = null)
+        IReadOnlyList<ValueParserConfig>? valueParsers = null,
+        long startFromPosition = 0,
+        IncrementalContext? incremental = null)
     {
         string format = ResolveEffectiveFormat(options, rules);
+        if (incremental != null) incremental.EffectiveFormat = format;
 
         if (RequiresExcelJsonValueParsing(rules))
         {
@@ -456,7 +617,8 @@ public static class AnalysisRunner
             Flatten = ResolveFlatten(options, rules),
             ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
             SampleReservoir = options.SampleReservoir,
-            SampleStep = options.SampleStep
+            SampleStep = options.SampleStep,
+            StartFromLine = startFromPosition
         };
         IEnumerable<Dictionary<string, object?>> parsed = FileParsers.ParseByFormat(options.InputPath, format, parseOptions);
 
@@ -481,11 +643,19 @@ public static class AnalysisRunner
         return rules?.ValueParsers is { Count: > 0 };
     }
 
-    private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options)
+    private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options, long startFromPosition = 0)
     {
         var provider = DatabaseReader.ResolveProvider(options.DbProvider, options.ConnectionString!);
         AnsiConsole.MarkupLine($"[grey][[数据库直连]][/] 使用 [blue]{DatabaseReader.DisplayName(provider)}[/] 数据源，流式读取查询结果...");
         AnsiConsole.MarkupLine($"正在直连数据库并执行查询: [blue]{Markup.Escape(options.Query!)}[/] ...");
+
+        if (startFromPosition > 0)
+        {
+            // P6.2 限制：数据库直连目前不支持行级 skip（DbDataReader 不暴露随机访问能力）。
+            // 若用户用 --resume 加载了文件快照但却直连数据库，最安全的做法是直接报错，避免错误地合并不相关结果。
+            throw new NotSupportedException(
+                "--resume 不支持数据库直连模式（--connection + --query）；DbDataReader 不暴露行级跳过能力。");
+        }
 
         IEnumerable<Dictionary<string, object?>> parsed =
             DatabaseReader.ReadRows(options.ConnectionString!, provider, options.Query!);
@@ -568,11 +738,13 @@ public static class AnalysisRunner
 
     /// <summary>
     /// Common post-processing: analyze objects, print console report, export reports and optional schema.
+    /// P6.2：通过 <paramref name="incremental"/> 上报本 run 内已分析记录数（供 --checkpoint 落盘）。
     /// </summary>
     private static AnalysisResult ProcessAndReport(
         IEnumerable<Dictionary<string, object?>> parsedObjects,
         AnalysisOptions options,
         AnalysisRules? rules = null,
+        IncrementalContext? incremental = null,
         CancellationToken cancellationToken = default)
     {
         // 规则已在 Run() 中提前加载；如调用方未提供，则按需加载
@@ -643,7 +815,11 @@ public static class AnalysisRunner
                         ? "[green]分析中[/] [grey](数据库直连)[/]"
                         : $"[green]分析中[/] [grey]{Markup.Escape(Path.GetFileName(options.InputPath))}[/]";
                     var task = ctx.AddTask(desc, maxValue: expectedTotal ?? 100);
-                    var progress = new Progress<long>(objects => task.Value = objects);
+                    var progress = new Progress<long>(objects =>
+                    {
+                        task.Value = objects;
+                        if (incremental != null) incremental.LastRecordCount = objects;
+                    });
 
                     var parallelOptions = new ParallelOptions
                     {
@@ -683,16 +859,23 @@ public static class AnalysisRunner
                             : -1
                     };
                     var features = BuildAnalysisFeatures(options);
+                    // P6.2：即使进度条关闭，也要追踪记录数（--checkpoint 落盘依赖 LastRecordCount）
+                    IProgress<long>? progress = incremental == null
+                        ? null
+                        : new Progress<long>(objects =>
+                        {
+                            if (incremental != null) incremental.LastRecordCount = objects;
+                        });
                     if (needDistributionSketches)
                     {
-                        var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress: null, cancellationToken);
+                        var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
                         result = detailed.Result;
                         _lastQuantileSketches = detailed.QuantileSketches;
                         _lastDistinctSketches = detailed.DistinctSketches;
                     }
                     else
                     {
-                        result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress: null, cancellationToken);
+                        result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress, cancellationToken);
                         _lastQuantileSketches = null;
                         _lastDistinctSketches = null;
                     }
@@ -945,6 +1128,28 @@ public static class AnalysisRunner
         if (ex.InnerException != null)
         {
             AnsiConsole.MarkupLine($"[red]内部错误: {Markup.Escape(ex.InnerException.Message)}[/]");
+        }
+    }
+
+    /// <summary>
+    /// P6.2：从 --baseline 指定的 JSON 文件反序列化为 <see cref="AnalysisResult"/>。
+    /// 该文件可以是 <c>--output ... .json</c> 生成的标准报告（顶层即为 AnalysisResult）；
+    /// 找不到字段时不抛异常，反序列化得到的对象只含存在的字段，由 <see cref="AnalysisResult.MergeFrom"/> 容错处理。
+    /// </summary>
+    private static AnalysisResult? LoadAnalysisResultFromFile(string path)
+    {
+        try
+        {
+            string json = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            var result = JsonSerializer.Deserialize<AnalysisResult>(json, s_diffJsonOptions);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine(
+                $"[red]错误: --baseline 文件解析失败: {Markup.Escape(ex.Message)}[/]");
+            throw;
         }
     }
 

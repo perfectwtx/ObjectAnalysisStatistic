@@ -148,6 +148,18 @@ var noProgressOption = new Option<bool>(
     name: "--no-progress",
     description: "关闭分析过程中的 Spectre.Console 进度条 + ETA，回归到 spinner 行为。典型场景：CI 日志捕获、脚本管道、已重定向到文件时希望避免 ANSI 控制码污染输出。默认开启进度条。");
 
+var checkpointOption = new Option<string?>(
+    name: "--checkpoint",
+    description: "P6.2：检查点输出路径。本次分析完成后会把当前结果 + 已处理位置写入该文件，下次可用 --resume <PATH> 续跑。原子写入（先 .tmp 再 rename）避免半写状态。");
+
+var resumeOption = new Option<string?>(
+    name: "--resume",
+    description: "P6.2：从检查点续跑。指定 --resume <PATH> 加载之前 --checkpoint 写入的快照，解析器从已处理位置之后继续读取新数据，结果与快照合并后输出。源文件路径不一致时拒绝续跑。");
+
+var baselineOption = new Option<string?>(
+    name: "--baseline",
+    description: "P6.2：历史 AnalysisResult JSON 路径（通常由 --output ... .json 产生）。本次结果会与基线合并（FieldStatistic 级 Welford / 直方图 / 枚举违规可增量合并），适合「只分析新增数据并与历史合并」的场景。与 --resume 的区别：--resume 是从源文件中间续跑；--baseline 是合并任意历史结果文件。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -181,6 +193,9 @@ rootCommand.AddOption(recordPathOption);
 rootCommand.AddOption(auditLogOption);
 rootCommand.AddOption(operatorOption);
 rootCommand.AddOption(noProgressOption);
+rootCommand.AddOption(checkpointOption);
+rootCommand.AddOption(resumeOption);
+rootCommand.AddOption(baselineOption);
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -217,6 +232,9 @@ rootCommand.SetHandler((InvocationContext context) =>
     var auditLogPath = parseResult.GetValueForOption(auditLogOption);
     var operatorValue = parseResult.GetValueForOption(operatorOption) ?? "anonymous";
     var noProgress = parseResult.GetValueForOption(noProgressOption);
+    var checkpointPath = parseResult.GetValueForOption(checkpointOption);
+    var resumeFrom = parseResult.GetValueForOption(resumeOption);
+    var baselinePath = parseResult.GetValueForOption(baselineOption);
 
     if (generateTestExcel)
     {
@@ -290,6 +308,28 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
+    // P6.2 早期校验：--resume / --baseline / --checkpoint 互斥关系与输入文件存在性
+    if (!string.IsNullOrWhiteSpace(resumeFrom) && input == null)
+    {
+        AnsiConsole.MarkupLine("[red]错误: --resume 必须与 -i 输入文件同时指定（用于校验源文件一致性）。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+    if (!string.IsNullOrWhiteSpace(checkpointPath) && !string.IsNullOrWhiteSpace(resumeFrom) &&
+        string.Equals(Path.GetFullPath(checkpointPath!), Path.GetFullPath(resumeFrom!), StringComparison.OrdinalIgnoreCase))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --checkpoint 与 --resume 指向同一文件；为避免相互覆盖，请使用不同路径。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+    if (!string.IsNullOrWhiteSpace(baselinePath) && !string.IsNullOrWhiteSpace(resumeFrom) &&
+        string.Equals(Path.GetFullPath(baselinePath!), Path.GetFullPath(resumeFrom!), StringComparison.OrdinalIgnoreCase))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --baseline 与 --resume 指向同一文件；语义冲突，请使用不同路径。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
     var (typeFile, typeName) = SplitColonSuffix(type);
     var (schemaFormat, schemaOutput) = SplitColonSuffix(exportSchema);
 
@@ -327,7 +367,10 @@ rootCommand.SetHandler((InvocationContext context) =>
         RecordPath = recordPath,
         AuditLogPath = auditLogPath,
         Operator = operatorValue,
-        ShowProgress = !noProgress
+        ShowProgress = !noProgress,
+        CheckpointPath = checkpointPath,
+        ResumeFrom = resumeFrom,
+        BaselinePath = baselinePath
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

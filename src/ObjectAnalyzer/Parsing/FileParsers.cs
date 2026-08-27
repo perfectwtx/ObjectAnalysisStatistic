@@ -223,8 +223,17 @@ public static class FileParsers
                 // 先消费根 '[',否则 TryParseValue 会把整个数组当作一个元素
                 long offset = ConsumeSingleToken(fileBytes);
                 // 空数组也合法（产出 0 个对象）
+                long skip = Math.Max(0, options.StartFromLine);
+                long yielded = 0;
                 while (TryReadNextElement(fileBytes, ref offset, out var elementDoc))
                 {
+                    if (yielded < skip)
+                    {
+                        yielded++;
+                        elementDoc.Dispose();
+                        continue; // P6.2：跳过前 StartFromLine 个数组元素
+                    }
+                    yielded++;
                     using (elementDoc)
                     {
                         yield return ParseJsonElement(elementDoc.RootElement, options.Flatten);
@@ -368,9 +377,12 @@ public static class FileParsers
             using var reader = new StreamReader(stream);
             string? line;
             long lineNumber = 0;
+            // P6.2 断点续跑：跳过前 StartFromLine 行后开始 yield
+            long linesToSkip = Math.Max(0, options.StartFromLine);
             while ((line = reader.ReadLine()) != null)
             {
                 lineNumber++;
+                if (lineNumber <= linesToSkip) continue;
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
                 yield return ParseJsonLine(line, lineNumber, options);
@@ -383,9 +395,11 @@ public static class FileParsers
             using var reader = new StreamReader(stream);
             string? line;
             long lineNumber = 0;
+            long linesToSkip = Math.Max(0, options.StartFromLine);
             while ((line = reader.ReadLine()) != null)
             {
                 lineNumber++;
+                if (lineNumber <= linesToSkip) continue;
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
                 int slot = sampler.NextSlot();
@@ -402,9 +416,11 @@ public static class FileParsers
             string? line;
             long lineNumber = 0;
             long recordIndex = 0;
+            long linesToSkip = Math.Max(0, options.StartFromLine);
             while ((line = reader.ReadLine()) != null)
             {
                 lineNumber++;
+                if (lineNumber <= linesToSkip) continue;
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
                 if (recordIndex++ % options.SampleStep != 0)
@@ -480,11 +496,19 @@ public static class FileParsers
             var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
             bool useHeaderRow = UseHeaderRow(options);
             long rowIndex = 0;
+            long dataIndex = 0;
+            long skip = Math.Max(0, options.StartFromLine);
             foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream)))
             {
                 rowIndex++;
                 if (!useHeaderRow && rowIndex == 1)
                     continue;
+                if (dataIndex < skip)
+                {
+                    dataIndex++;
+                    continue; // P6.2：跳过前 StartFromLine 行
+                }
+                dataIndex++;
                 int slot = sampler.NextSlot();
                 if (slot < 0)
                     continue;
@@ -498,6 +522,8 @@ public static class FileParsers
         private static IEnumerable<Dictionary<string, object?>> ParseStep(Stream stream, ParseOptions options)
         {
             long recordIndex = 0;
+            long dataIndex = 0;
+            long skip = Math.Max(0, options.StartFromLine);
             bool useHeaderRow = UseHeaderRow(options);
             long rowIndex = 0;
             foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ResolveExcelType(stream)))
@@ -505,6 +531,12 @@ public static class FileParsers
                 rowIndex++;
                 if (!useHeaderRow && rowIndex == 1)
                     continue;
+                if (dataIndex < skip)
+                {
+                    dataIndex++;
+                    continue; // P6.2：跳过前 StartFromLine 行
+                }
+                dataIndex++;
                 if (recordIndex++ % options.SampleStep != 0)
                     continue;
                 var dict = ToRowDict(row);
@@ -554,8 +586,17 @@ public static class FileParsers
             if (doc.Root == null)
                 throw new InvalidDataException("XML 文件缺少根节点。");
 
+            long skip = Math.Max(0, options.StartFromLine);
+            long dataIndex = 0;
             foreach (var element in doc.Root.Elements())
+            {
+                if (dataIndex < skip)
+                {
+                    dataIndex++;
+                    continue; // P6.2：跳过前 StartFromLine 个根子元素
+                }
                 yield return ConvertXElement(element, 0);
+            }
         }
     }
 
@@ -573,8 +614,15 @@ public static class FileParsers
 
             if (yamlResult is List<object?> list)
             {
+                long skip = Math.Max(0, options.StartFromLine);
+                long dataIndex = 0;
                 foreach (var item in list)
                 {
+                    if (dataIndex < skip)
+                    {
+                        dataIndex++;
+                        continue; // P6.2：跳过前 StartFromLine 个列表元素
+                    }
                     if (item is Dictionary<object, object> dict)
                     {
                         var converted = ConvertYamlDict(dict, 0);

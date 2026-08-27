@@ -147,4 +147,25 @@ public sealed class AnalysisOptions
     /// 关掉后回退到旧版 spinner 行为；典型场景：CI 日志捕获 / 脚本管道 / 已重定向到文件。
     /// </summary>
     public bool ShowProgress { get; set; } = true;
+
+    // ── P6.2 增量分析 / 断点续跑 ──
+
+    /// <summary>
+    /// 检查点输出路径（--checkpoint &lt;PATH&gt;）。指定后，每处理完一个分块（10K 对象）后落盘一次 AnalyzerSnapshot，
+    /// 用于崩溃后从最近检查点恢复。原子写入（写临时文件再 rename）防止半写状态。
+    /// </summary>
+    public string? CheckpointPath { get; set; }
+
+    /// <summary>
+    /// 从检查点恢复分析（--resume &lt;PATH&gt;）。AnalyzerSnapshot 记录了源文件位置与已聚合 AnalysisResult，
+    /// 解析器会从对应位置继续读取，本 run 完成后 <c>Result.MergeFrom(snapshot.Result)</c> 累计。
+    /// </summary>
+    public string? ResumeFrom { get; set; }
+
+    /// <summary>
+    /// 历史分析结果 JSON 路径（--baseline &lt;PATH&gt;），作为本次分析的基线合并对象。
+    /// 本次 run 只分析"新数据"，完成后通过 <c>Result.MergeFrom(baseline)</c> 累加。
+    /// 与 --resume 的区别：--resume 从源文件中间续跑；--baseline 用任意已存在的 AnalysisResult JSON 合并。
+    /// </summary>
+    public string? BaselinePath { get; set; }
 }
