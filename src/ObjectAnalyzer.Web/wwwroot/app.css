@@ -233,6 +233,48 @@ h1:focus {
     gap: 1rem;
 }
 
+/* P6 子区段：details/summary 折叠样式 */
+.option-group {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    background: rgba(0, 0, 0, 0.02);
+    margin-top: 0.5rem;
+}
+.option-group > summary {
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    user-select: none;
+    list-style: none;
+    padding: 0.2rem 0;
+}
+.option-group > summary::-webkit-details-marker {
+    display: none;
+}
+.option-group > summary::before {
+    content: "▸";
+    font-size: 0.8rem;
+    color: #6c757d;
+    transition: transform 0.15s ease;
+}
+.option-group[open] > summary::before {
+    content: "▾";
+}
+.opt-group-title {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+}
+.opt-group-hint {
+    color: #6c757d;
+    font-size: 0.78rem;
+}
+.option-group > .options-grid {
+    margin-top: 0.6rem;
+}
+
 .option-item {
     display: flex;
     flex-direction: column;
@@ -1045,6 +1087,18 @@ html[data-bs-theme="dark"] {
 
 [data-bs-theme="dark"] .upload-area {
     border-color: var(--bs-secondary-border-color, #495057);
+}
+
+[data-bs-theme="dark"] .option-group {
+    border-color: var(--bs-secondary-border-color, #495057);
+    background: rgba(255, 255, 255, 0.03);
+}
+[data-bs-theme="dark"] .opt-group-title {
+    color: #dee2e6;
+}
+[data-bs-theme="dark"] .opt-group-hint,
+[data-bs-theme="dark"] .option-group > summary::before {
+    color: #adb5bd;
 }
 
 [data-bs-theme="dark"] .upload-area:hover {

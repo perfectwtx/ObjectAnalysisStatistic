@@ -5,6 +5,15 @@
 ## [Unreleased]
 
 ### Added
+- **P6 Web UI 同步**：把 P6 三块能力（进度条 / 增量分析 / 内存预算）补齐到 Blazor Web 配置面板：
+  - 新增 `P6` 可折叠子区段（默认展开），内含 `--no-progress` 取反 / `--max-memory`（MB）/ `--max-memory-mode`（soft|hard）三个数值/选择控件，以及 `--resume` / `--baseline` / `--checkpoint` 三个文件上传入口（与现有 `--type` / `--rules` 复用 `InputFile` + 临时文件模式）。
+  - `AnalysisState` 新增 `ShowProgress` / `CheckpointPath/Name` / `ResumeFrom/Name` / `BaselinePath/Name` / `MaxMemoryMB` / `MaxMemoryMode` 六个 P6 字段；`Dispose()` 同步清理新增临时文件。
+  - 审计日志 `TryWriteWebAuditLog` 同步 P6 选项到 `AnalysisOptions`（`ShowProgress` / `CheckpointPath` / `ResumeFrom` / `BaselinePath` / `MaxMemoryMB` / `MaxMemoryMode`），确保浏览器端发起的分析在审计 NDJSON 留痕里与 CLI 行为一致。
+  - 通用文件上传辅助 `SaveUploadedFileAsync` 复用 64MB 上限与异常隔离（`%TEMP%` 落盘 + 错误时清理）。
+  - `app.css` 新增 `.option-group`（details/summary 折叠 + 暗色模式覆盖），与现有 `.options-grid` 视觉对齐。
+  - `AppStrings.resx` / `AppStrings.en.resx` 新增 14 个 P6 键（`P6GroupTitle` / `P6GroupHint` / `OptShowProgress` / `OptMaxMemory` / `OptMaxMemoryMode` + soft/hard 选项 / `OptResume` / `OptBaseline` / `OptCheckpoint` / `Clear*`）。
+  - `WebSmokeTests` 新增 `HomePage_RendersP6ConfigSection` 断言：折叠区出现 + 关键控件中文标签（同时支持 HTML 实体 / UTF-8 两种编码形式）。`AppStyles_AreServed` 同步断言 `.option-group`。
+  - 限制：Web 端不复用 `AnalysisRunner.Run`（其内置 `AnsiConsole.Progress` 与 SPA 浏览器无法观测），故 P6.1 进度条 / P6.3 内存预算目前仅在审计日志中记录选项；用户看到的仍是「点击开始→等待→结果返回」的黑盒体验。`ShowProgress` 字段已为未来 SignalR 实时进度推送预留。
 - **P6.2 增量分析 / 断点续跑**：解决 50GB 数据中途失败需从头再来的问题，提供三种互补能力：
   - `--checkpoint <PATH>`：本 run 分析完成后将「当前结果 + 已处理位置」原子写入（先 `.tmp` 再 rename，避免半写状态）。快照含 `SourcePath` / `SourceFormat` / `SourcePosition`（行号）/ `Result`（完整 AnalysisResult），schema 版本 `object-analyzer.snapshot/v1`。
   - `--resume <PATH>`：加载快照，校验源文件一致性（防错把 A 文件的快照套到 B 文件上）后，解析器从 `SourcePosition` 跳过后续才读新数据；结果与快照在 `FieldStatistic` 级合并（Welford / 直方图 / HLL distinct / 枚举违规 / 时间桶等均兼容 `MergeFrom`）。

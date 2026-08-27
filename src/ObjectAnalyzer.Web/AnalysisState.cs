@@ -94,6 +94,35 @@ public sealed class AnalysisState : IDisposable
 
     public bool HasAuditLog => !string.IsNullOrWhiteSpace(AuditLogPath);
 
+    // ── P6.1 进度条 / ETA ──
+    /// <summary>
+    /// 是否在分析过程中输出进度信息（--no-progress 取反，默认 true）。
+    /// Web UI 当前只在后端分析结束时才反馈给浏览器，期间浏览器看不到进度（属于
+    /// 当前实现的限制；此处保留字段以与 AnalysisOptions 对齐，便于未来接入
+    /// SignalR 实时进度推送）。
+    /// </summary>
+    public bool ShowProgress { get; set; } = true;
+
+    // ── P6.2 增量分析 / 断点续跑 / 基线合并 ──
+    // --checkpoint：每处理完一个分块后落盘 AnalyzerSnapshot；以临时文件形式保存上传的检查点目标路径。
+    public string? CheckpointPath { get; set; }
+    public string? CheckpointFileName { get; set; }
+
+    // --resume：从历史 AnalyzerSnapshot 恢复；以临时文件形式保存用户上传的检查点。
+    public string? ResumeFrom { get; set; }
+    public string? ResumeFileName { get; set; }
+
+    // --baseline：与历史 AnalysisResult JSON 合并；以临时文件形式保存用户上传的基线。
+    public string? BaselinePath { get; set; }
+    public string? BaselineFileName { get; set; }
+
+    // ── P6.3 内存预算（--max-memory）──
+    /// <summary>进程托管堆上限（MB，0 = 不监控）。</summary>
+    public long MaxMemoryMB { get; set; }
+
+    /// <summary>超限行为：soft（警告 + 自动采样）/ hard（立即失败）。</summary>
+    public string MaxMemoryMode { get; set; } = "soft";
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();
@@ -185,6 +214,10 @@ public sealed class AnalysisState : IDisposable
         DeleteQuietly(TypeFilePath);
         DeleteQuietly(RulesFilePath);
         DeleteQuietly(BaselineSnapshotPath);
+        // P6.2 增量分析：检查点/断点/基线均为用户上传的临时文件
+        DeleteQuietly(CheckpointPath);
+        DeleteQuietly(ResumeFrom);
+        DeleteQuietly(BaselinePath);
     }
 
     private static void DeleteQuietly(string? path)

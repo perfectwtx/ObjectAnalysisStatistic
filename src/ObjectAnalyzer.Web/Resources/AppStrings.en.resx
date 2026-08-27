@@ -47,6 +47,21 @@
   <data name="OptAuditLogPlaceholder" xml:space="preserve"><value>optional, server-local path e.g. C:\Logs\audit.ndjson</value></data>
   <data name="OptOperator" xml:space="preserve"><value>Operator</value></data>
   <data name="OptOperatorPlaceholder" xml:space="preserve"><value>e.g. [email protected] / ci-runner-12</value></data>
+  <data name="P6GroupTitle" xml:space="preserve"><value>P6 — Incremental / Memory / Progress</value></data>
+  <data name="P6GroupHint" xml:space="preserve"><value>Resilience and recovery for large files</value></data>
+  <data name="OptShowProgress" xml:space="preserve"><value>Show progress bar / ETA</value></data>
+  <data name="OptMaxMemory" xml:space="preserve"><value>Memory limit (MB)</value></data>
+  <data name="OptMaxMemoryTitle" xml:space="preserve"><value>Managed heap ceiling, 0 = no monitoring</value></data>
+  <data name="OptMaxMemoryMode" xml:space="preserve"><value>On exceed</value></data>
+  <data name="OptMaxMemoryModeTitle" xml:space="preserve"><value>soft=warn+auto-sample, continue; hard=fail-fast</value></data>
+  <data name="OptMaxMemoryModeSoft" xml:space="preserve"><value>Warn and auto-sample</value></data>
+  <data name="OptMaxMemoryModeHard" xml:space="preserve"><value>Fail immediately</value></data>
+  <data name="OptResume" xml:space="preserve"><value>Resume from checkpoint (.snapshot)</value></data>
+  <data name="ClearResumeFile" xml:space="preserve"><value>Clear checkpoint</value></data>
+  <data name="OptBaseline" xml:space="preserve"><value>Baseline merge (--baseline)</value></data>
+  <data name="ClearBaselineFile" xml:space="preserve"><value>Clear baseline</value></data>
+  <data name="OptCheckpoint" xml:space="preserve"><value>Checkpoint output (--checkpoint)</value></data>
+  <data name="ClearCheckpointFile" xml:space="preserve"><value>Clear checkpoint template</value></data>
   <data name="ErrRootPath" xml:space="preserve"><value>--root-path expression {0} is invalid: {1}</value></data>
   <data name="ErrRecordPath" xml:space="preserve"><value>--record-path expression {0} is invalid: {1}</value></data>
   <data name="WarnRootPathIgnored" xml:space="preserve"><value>--root-path only applies to whole JSON files; ignored for current format {0}.</value></data>

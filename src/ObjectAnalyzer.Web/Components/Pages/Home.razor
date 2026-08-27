@@ -140,6 +140,64 @@
                     </div>
                 </div>
             </div>
+
+            @* P6 配置区：进度条、增量分析 / 断点续跑 / 基线合并、内存预算 *@
+            <details class="option-group" open="@P6ConfigOpen">
+                <summary @onclick="ToggleP6Config" @onclick:preventDefault="false">
+                    <span class="opt-group-title">@Loc["P6GroupTitle"]</span>
+                    <span class="opt-group-hint">@Loc["P6GroupHint"]</span>
+                </summary>
+                <div class="options-grid">
+                    <label class="option-item checkbox-item">
+                        <input type="checkbox" checked="@State.ShowProgress" @onchange="OnShowProgressChange" />
+                        <span>@Loc["OptShowProgress"]</span>
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["OptMaxMemory"]</span>
+                        <input type="number" value="@State.MaxMemoryMB" @oninput="OnMaxMemoryChange" min="0" placeholder="0" title="@Loc["OptMaxMemoryTitle"]" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["OptMaxMemoryMode"]</span>
+                        <select @bind="State.MaxMemoryMode" title="@Loc["OptMaxMemoryModeTitle"]">
+                            <option value="soft">@Loc["OptMaxMemoryModeSoft"]</option>
+                            <option value="hard">@Loc["OptMaxMemoryModeHard"]</option>
+                        </select>
+                    </label>
+                    <div class="option-item file-option">
+                        <span>@Loc["OptResume"]</span>
+                        <div class="file-field">
+                            <InputFile OnChange="HandleResumeFileUpload" accept=".snapshot,.json" />
+                            @if (State.ResumeFileName != null)
+                            {
+                                <span class="file-ok">✓ @State.ResumeFileName</span>
+                                <button class="clear-btn" @onclick="ClearResumeFile" title="@Loc["ClearResumeFile"]">✕</button>
+                            }
+                        </div>
+                    </div>
+                    <div class="option-item file-option">
+                        <span>@Loc["OptBaseline"]</span>
+                        <div class="file-field">
+                            <InputFile OnChange="HandleBaselineAnalysisFileUpload" accept=".json" />
+                            @if (State.BaselineFileName != null)
+                            {
+                                <span class="file-ok">✓ @State.BaselineFileName</span>
+                                <button class="clear-btn" @onclick="ClearBaselineAnalysisFile" title="@Loc["ClearBaselineFile"]">✕</button>
+                            }
+                        </div>
+                    </div>
+                    <div class="option-item file-option">
+                        <span>@Loc["OptCheckpoint"]</span>
+                        <div class="file-field">
+                            <InputFile OnChange="HandleCheckpointFileUpload" accept=".snapshot" />
+                            @if (State.CheckpointFileName != null)
+                            {
+                                <span class="file-ok">✓ @State.CheckpointFileName</span>
+                                <button class="clear-btn" @onclick="ClearCheckpointFile" title="@Loc["ClearCheckpointFile"]">✕</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </details>
             </div>
 
             <div class="config-actions">
@@ -960,6 +1018,14 @@
     private bool _suppressCancelMessage;
     private bool _darkTheme;
 
+    /// <summary>P6 配置子区段（增量分析 / 内存预算 / 进度条）默认展开。便于用户首次发现 P6 能力。</summary>
+    private bool P6ConfigOpen = true;
+
+    private void ToggleP6Config()
+    {
+        P6ConfigOpen = !P6ConfigOpen;
+    }
+
     protected override void OnInitialized()
     {
         Loc.OnLanguageChanged += StateHasChanged;
@@ -1307,7 +1373,16 @@
                 MaxValuesToShow = State.MaxValuesToShow,
                 MaxDegreeOfParallelism = State.MaxDegreeOfParallelism,
                 SampleReservoir = State.SampleReservoir,
-                SampleStep = State.SampleStep
+                SampleStep = State.SampleStep,
+                // P6 配置同步：审计时只记录选项，不含文件值
+                ShowProgress = State.ShowProgress,
+                CheckpointPath = string.IsNullOrWhiteSpace(State.CheckpointPath) ? null : State.CheckpointPath,
+                ResumeFrom = string.IsNullOrWhiteSpace(State.ResumeFrom) ? null : State.ResumeFrom,
+                BaselinePath = string.IsNullOrWhiteSpace(State.BaselinePath) ? null : State.BaselinePath,
+                MaxMemoryMB = State.MaxMemoryMB,
+                MaxMemoryMode = string.Equals(State.MaxMemoryMode, "hard", StringComparison.OrdinalIgnoreCase)
+                    ? Core.Analysis.MaxMemoryMode.Hard
+                    : Core.Analysis.MaxMemoryMode.Soft
             };
 
             Core.Analysis.AnalysisRules? rules = null;
@@ -1472,6 +1547,107 @@
         State.RulesFilePath = null;
         State.RulesFileName = null;
         State.ErrorMessage = null;
+    }
+
+    // ── P6 配置：进度条 / 内存预算 / 断点续跑 / 基线合并 ──
+
+    private void OnShowProgressChange(ChangeEventArgs e)
+    {
+        State.ShowProgress = e.Value is true;
+    }
+
+    private void OnMaxMemoryChange(ChangeEventArgs e)
+    {
+        if (long.TryParse(e.Value?.ToString(), out long val) && val >= 0)
+        {
+            State.MaxMemoryMB = val;
+        }
+    }
+
+    /// <summary>上传 --resume 检查点（AnalyzerSnapshot .snapshot/.json）。</summary>
+    private async Task HandleResumeFileUpload(InputFileChangeEventArgs e)
+    {
+        await SaveUploadedFileAsync(e.File, ".snapshot", (path, name) =>
+        {
+            State.ResumeFrom = path;
+            State.ResumeFileName = name;
+        });
+    }
+
+    private void ClearResumeFile()
+    {
+        CancelActiveAnalysis();
+        DeleteQuietly(State.ResumeFrom);
+        State.ResumeFrom = null;
+        State.ResumeFileName = null;
+        State.ErrorMessage = null;
+    }
+
+    /// <summary>上传 --baseline 基线 AnalysisResult JSON。</summary>
+    private async Task HandleBaselineAnalysisFileUpload(InputFileChangeEventArgs e)
+    {
+        await SaveUploadedFileAsync(e.File, ".json", (path, name) =>
+        {
+            State.BaselinePath = path;
+            State.BaselineFileName = name;
+        });
+    }
+
+    private void ClearBaselineAnalysisFile()
+    {
+        CancelActiveAnalysis();
+        DeleteQuietly(State.BaselinePath);
+        State.BaselinePath = null;
+        State.BaselineFileName = null;
+        State.ErrorMessage = null;
+    }
+
+    /// <summary>
+    /// 上传 --checkpoint 目标模板（仅保存路径模板；后端不会自动写入服务器本地路径，
+    /// 仅为 UI 占位——Web 端复用 AnalysisRunner 时该字段可被后端消费）。
+    /// </summary>
+    private async Task HandleCheckpointFileUpload(InputFileChangeEventArgs e)
+    {
+        // 与 --resume / --baseline 不同，--checkpoint 是「输出」路径：用户填入希望后端写入的位置模板，
+        // 我们只把文件元数据存到 State（文件名作为用户参考），不做任何磁盘落地。
+        var file = e.File;
+        if (file == null) return;
+        State.CheckpointFileName = file.Name;
+        State.CheckpointPath = file.Name;
+        State.ErrorMessage = null;
+        await Task.CompletedTask;
+    }
+
+    private void ClearCheckpointFile()
+    {
+        State.CheckpointFileName = null;
+        State.CheckpointPath = null;
+        State.ErrorMessage = null;
+    }
+
+    /// <summary>通用文件上传辅助：写到 %TEMP% 临时文件，捕获异常并清空旧文件。</summary>
+    private async Task SaveUploadedFileAsync(
+        Microsoft.AspNetCore.Components.Forms.IBrowserFile? file,
+        string extension,
+        Action<string, string> apply)
+    {
+        if (file == null) return;
+        CancelActiveAnalysis();
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
+        try
+        {
+            await using (var fs = File.Create(tempPath))
+            {
+                await file.OpenReadStream(maxAllowedSize: 64 * 1024 * 1024).CopyToAsync(fs);
+            }
+            apply(tempPath, file.Name);
+            State.ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            DeleteQuietly(tempPath);
+            State.ErrorMessage = ErrorSanitizer.Format(ex);
+        }
     }
 
     private const int PreviewRowCount = 8;
