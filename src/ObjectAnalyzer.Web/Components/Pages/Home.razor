@@ -1174,7 +1174,7 @@
                 ? Core.Analysis.MaxMemoryMode.Hard
                 : Core.Analysis.MaxMemoryMode.Soft;
         // 检查点目标文件名（仅在用户填写 CheckpointFileName 时使用）
-        string safeCheckpointName = SanitizeCheckpointName(checkpointFileName);
+        string safeCheckpointName = P6PostAnalysis.SanitizeCheckpointName(checkpointFileName);
         string? typedError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
 
@@ -1217,22 +1217,15 @@
 
             // ── P6.1 进度回调：IProgress<long> → State.ProgressText（Progress<T> 自动捕获 SynchronizationContext 切回 UI 线程）──
             // ── P6.3 内存预算：在每批后 Check，超 soft 阈值时输出警告；超 hard 阈值在 Analyze 结束后 ThrowIfHardExceeded 抛错 ──
+            // 闭包逻辑已拆到 P6ProgressReporter.Build（独立可测），此处只把 State 写入函数注入。
             // 注意：MemoryBudget 与 Progress 必须在 Task.Run 外构造并捕获，这样闭包共享同一实例；否则 progress 回调无法触达 memoryBudget。
             var memoryBudget = new Core.Analysis.MemoryBudget(maxMemoryMB, maxMemoryMode);
-            var progress = new Progress<long>(count =>
-            {
-                if (showProgress)
-                {
-                    State.ProgressText = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                        Loc.Get("ProgressAnalyzedN", count), count);
-                }
-                // 内存采样（不论是否显示进度都要做：内存预算是安全护栏）
-                memoryBudget.Check(count, out bool samplingAutoEnable);
-                if (samplingAutoEnable && State.MemoryWarning == null)
-                {
-                    State.MemoryWarning = Loc["WarnMemorySoftExceeded"];
-                }
-            });
+            var progress = new Progress<long>(P6ProgressReporter.Build(
+                showProgress: showProgress,
+                budget: memoryBudget,
+                progressTextSink: text => State.ProgressText = text,
+                memoryWarningSink: warning => State.MemoryWarning ??= warning,
+                localize: Loc.Get));
 
             var result = await Task.Run(() =>
             {
@@ -1384,7 +1377,33 @@
 
             // ── P6.2 增量分析 / 断点续跑 / 基线合并：分析成功后的合并阶段 ──
             // 限制：Web 端不跳读源文件位置（仅合并聚合结果）；如需真正从源文件中间续跑请用 CLI。
-            ApplyP6PostAnalysis(result, resumeFromPath, baselinePath, safeCheckpointName);
+            // 核心逻辑已拆到 P6PostAnalysis.Apply（独立可测），此处只负责把返回值落到 State。
+            var p6Outcome = P6PostAnalysis.Apply(new P6PostAnalysisInput
+            {
+                Result = result,
+                ResumeFromPath = resumeFromPath,
+                BaselinePath = baselinePath,
+                CheckpointFileName = safeCheckpointName,
+                SourcePath = dataFilePath,
+                SourceFormat = effectiveFormat
+            });
+            if (p6Outcome.LastCheckpointServerPath != null)
+            {
+                State.LastCheckpointServerPath = p6Outcome.LastCheckpointServerPath;
+                State.LastCheckpointSize = p6Outcome.LastCheckpointSize;
+            }
+            if (p6Outcome.ResumeErrorMessage != null)
+            {
+                State.ErrorMessage = Loc.Get("ErrResumeFailed", p6Outcome.ResumeErrorMessage);
+            }
+            if (p6Outcome.BaselineErrorMessage != null)
+            {
+                State.ErrorMessage = Loc.Get("ErrBaselineFailed", p6Outcome.BaselineErrorMessage);
+            }
+            if (p6Outcome.CheckpointErrorMessage != null)
+            {
+                State.ErrorMessage = Loc.Get("ErrCheckpointFailed", p6Outcome.CheckpointErrorMessage);
+            }
 
             // 数据血缘审计：仅在用户填写了 --audit-log 路径时写入一条 analysis_finish 事件
             // Web UI 不复用 AnalysisRunner.Run（其内置自有流式管道），故此处直接调用 AuditLogger。
@@ -1628,108 +1647,7 @@
     }
 
     // ── P6 运行时：分析后处理（断点续跑 / 基线合并 / 检查点落盘）──
-
-    /// <summary>
-    /// 把 <c>--resume</c> / <c>--baseline</c> 提供的历史结果合并到本次 <paramref name="result"/>，
-    /// 并在用户填写了 <c>--checkpoint</c> 文件名时落盘 AnalyzerSnapshot 到服务器临时目录。
-    /// 异常被吞掉并写到 <see cref="AnalysisState.ErrorMessage"/>：增量步骤失败不应阻塞本次主分析结果。
-    /// </summary>
-    private void ApplyP6PostAnalysis(
-        Core.Analysis.AnalysisResult result,
-        string? resumeFromPath,
-        string? baselinePath,
-        string? safeCheckpointName)
-    {
-        // P6.2 断点续跑：把历史 AnalyzerSnapshot.Result 合并进当前 result
-        if (!string.IsNullOrEmpty(resumeFromPath) && File.Exists(resumeFromPath))
-        {
-            try
-            {
-                var snapshot = Core.Analysis.AnalyzerSnapshot.LoadFrom(resumeFromPath);
-                result.MergeFrom(snapshot.Result);
-            }
-            catch (Exception ex)
-            {
-                State.ErrorMessage = Loc.Get("ErrResumeFailed", ex.Message);
-            }
-        }
-
-        // P6.2 基线合并：把历史 AnalysisResult JSON 合并进当前 result
-        if (!string.IsNullOrEmpty(baselinePath) && File.Exists(baselinePath))
-        {
-            try
-            {
-                var baselineJson = File.ReadAllText(baselinePath);
-                var baselineResult = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisResult>(baselineJson);
-                if (baselineResult != null)
-                {
-                    result.MergeFrom(baselineResult);
-                }
-            }
-            catch (Exception ex)
-            {
-                State.ErrorMessage = Loc.Get("ErrBaselineFailed", ex.Message);
-            }
-        }
-
-        // P6.2 检查点落盘：把当前 result 写入 %TEMP%/objectanalyzer-checkpoints/<safe-name>.snapshot
-        if (!string.IsNullOrEmpty(safeCheckpointName))
-        {
-            try
-            {
-                var dir = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
-                Directory.CreateDirectory(dir);
-                var fullPath = Path.Combine(dir, safeCheckpointName);
-                var snapshot = new Core.Analysis.AnalyzerSnapshot
-                {
-                    SourcePath = State.DataFilePath ?? "",
-                    SourceFormat = Core.Parsing.FileParsers.DetectFormat(State.DataFilePath ?? ""),
-                    Result = result
-                };
-                snapshot.SaveTo(fullPath);
-                State.LastCheckpointServerPath = fullPath;
-                State.LastCheckpointSize = new FileInfo(fullPath).Length;
-            }
-            catch (Exception ex)
-            {
-                State.ErrorMessage = Loc.Get("ErrCheckpointFailed", ex.Message);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 把用户在 UI 上填写的检查点名称规整为安全的服务器文件名：去路径分隔符、空白、引号等，
-    /// 并强制 .snapshot 后缀。失败时回退为 session-{guid}.snapshot。
-    /// </summary>
-    private static string SanitizeCheckpointName(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return "";
-        var name = raw.Trim();
-        // 去掉路径分隔符与控制字符，仅保留字母数字 - _ . 与 CJK
-        var invalid = Path.GetInvalidFileNameChars();
-        var sb = new System.Text.StringBuilder(name.Length);
-        foreach (var c in name)
-        {
-            if (Array.IndexOf(invalid, c) >= 0) sb.Append('_');
-            else if (c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar) sb.Append('_');
-            else sb.Append(c);
-        }
-        var cleaned = sb.ToString();
-        if (string.IsNullOrWhiteSpace(cleaned))
-        {
-            return $"session-{Guid.NewGuid():N}.snapshot";
-        }
-        if (!cleaned.EndsWith(".snapshot", StringComparison.OrdinalIgnoreCase))
-        {
-            cleaned += ".snapshot";
-        }
-        // Windows 文件名长度上限 255
-        if (cleaned.Length > 240)
-        {
-            cleaned = cleaned.Substring(0, 240) + ".snapshot";
-        }
-        return cleaned;
-    }
+    // 实际逻辑已拆到 src/ObjectAnalyzer.Web/P6PostAnalysis.cs（独立可测），此处只通过 Apply 调用。
 
     // ── P6 配置：进度条 / 内存预算 / 断点续跑 / 基线合并 ──
 
