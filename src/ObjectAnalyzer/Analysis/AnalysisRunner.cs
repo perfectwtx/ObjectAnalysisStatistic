@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
 using ObjectAnalyzer.Parsing;
+using ObjectAnalyzer.Security;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Analysis;
@@ -1268,6 +1269,10 @@ public static class AnalysisRunner
                     $"字段 [blue]{field.Key}[/] 的 pattern 正则无效: {ex.Message}");
             }
         }
+
+        // KMS 集成：把 transform 中以 kms: 前缀引用的敏感密钥解密为明文（key/iv/privateKey/publicKey/signature）。
+        // 明文字符串仅存在于本次进程的内存规则模型上，规则 JSON 不会被改写为明文。
+        KmsRuleResolver.Resolve(rules);
 
         AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;

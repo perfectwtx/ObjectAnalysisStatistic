@@ -307,6 +307,33 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `primaryType` 可省略：仅配置 `enumValues` 时自动推导——全部为数值 → `Number`、全部为布尔 → `Boolean`，否则（含混合）→ `String`；显式 `primaryType` 优先。
 
+### KMS 集成（规则文件敏感密钥托管）
+
+规则文件里 `transform` 的敏感密钥字段（`key` / `iv` / `privateKey` / `publicKey` / `signature`）默认需以明文写入 JSON。若不想把真实密钥明文落盘，可用 **KMS 密文引用** 替代：规则文件只存密文，运行时解密注入，明文字符串仅在本次进程内存中存活、不会被写回规则文件。
+
+**密文引用格式**：`kms:<provider>/<version>:<payload>`，例如 `kms:offline/1-base64:T0ExR++170nw+82Snuro...`。不以 `kms:` 前缀开头的值按原样返回（向后兼容既有明文规则文件）。
+
+**可插拔提供方**：工具不内置任何云 SDK 依赖，只定义 `IKmsProvider` 抽象（`ProviderName` + `Decrypt`），运行时按前缀路由到对应提供方——你可以自接任意云 KMS 或自托管实现，只需实现该接口并在启动时注册。
+
+**内置离线提供方 `offline`**（零依赖、开箱即用）：
+
+- 口令从**环境变量 `OA_KMS_PASSPHRASE`** 读取——不落在命令行参数、日志或 shell 历史里。
+- 载荷格式 `[magic(4)="OA1G"][salt(16)][nonce(12)][tag(16)][ciphertext]`，AES-256-GCM 认证加密，`SHA-256(passphrase+salt)` 派生密钥（生产可换 PBKDF2/Argon2）。
+- `version` 段的 `encoding`（`utf8` / `base64` / `hex`）声明明文字节的还原方式：`base64`/`hex` 类密钥解密后被重新编码为原始文本形式，供 `transform.format` 字段正常消费。
+
+**生成密文引用（CLI）**：
+
+```bash
+# 推荐：明文走 stdin，不落 shell 历史
+export OA_KMS_PASSPHRASE='你的强口令'
+echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project src/ObjectAnalyzer -- kms-secret --encoding base64
+
+# 或将明文放入规则文件 transform 对应字段：
+# "key": "kms:offline/1-base64:T0ExR++170nw+82Snuro..."
+```
+
+`kms-secret --value <明文> --encoding <utf8|base64|hex>` 亦支持直接传值（不推荐，因明文会出现在 shell 历史）。口令缺失或解密失败（口令错误 / 密文被篡改）时加载规则会 fail-fast。
+
 ### 质量检查（规则文件 v2）
 
 除 `enumValues` 枚举约束外，`fields` 中每条字段规则还支持以下质量检查维度：

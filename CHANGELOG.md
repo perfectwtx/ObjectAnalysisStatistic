@@ -5,6 +5,17 @@
 ## [Unreleased]
 
 ### Added
+- **KMS 集成（规则文件敏感密钥托管）**：规则文件 JSON 里 `transform` 的敏感密钥字段（`key` / `iv` / `privateKey` / `publicKey` / `signature`）不再必须以明文书写，改为存 KMS 密文引用，运行时解密注入，明文字符串只在本次进程内存中存活、不被写回规则文件：
+  - 可插拔抽象：新增 `IKmsProvider`（`ProviderName` + `Decrypt(string ciphertextBase64): byte[]`），`KmsSecretResolver` 按 `kms:<provider>/<version>:<payload>` 前缀路由到对应提供方——不引入云 SDK 依赖，用户可自接任意 KMS / 自托管实现。
+  - 内置离线提供方 `OfflineKmsProvider`：口令从环境变量 `OA_KMS_PASSPHRASE` 读取（不落 CLI 参数 / 日志 / shell 历史），载荷格式 `[magic(4)="OA1G"][salt(16)][nonce(12)][tag(16)][ciphertext]`，AES-256-GCM，`SHA-256(passphrase+salt)` 派生密钥（KDF 强度在注释中提示生产可换 PBKDF2/Argon2）。
+  - 编码语义自洽往返：`encoding`（`utf8` / `base64` / `hex`）声明明文字节还原方式——`base64`/`hex` 类密钥在解密后被重新编码为原始文本形式，供下游 `format` 字段正常消费（`RuleResolver_DecryptsTransformSensitiveFields` / `RuleResolver_AesEndToEnd_DecryptsValue` 覆盖闭环）。
+  - 规则加载自动注入：`AnalysisRunner.LoadRules` 在 pattern 预验证后统一遍历所有 field 的 transform，对敏感字段调用 `KmsRuleResolver.Resolve`；无 `kms:` 前缀的值原样返回（向后兼容既有明文规则文件）。下游 `FieldTransformProcessor.DecodeBytes` 完全无感知。
+  - 新 CLI 子命令 `kms-secret`：用 `OA_KMS_PASSPHRASE` 口令加密明文密钥，输出可直接粘贴进规则文件的 `kms:offline/1-<encoding>:<payload>` 引用；明文优先从 stdin 读取（`--value` 可选），避免明文进 shell 历史。
+  - 测试：`KmsTests.cs` 10 个用例（AES-GCM 往返、base64/hex 编码还原、salting 语义安全、错误口令 / 缺失口令、前缀解析、未知提供方、规则注入、AES 端到端解密闭环）。
+
+## [Unreleased]
+
+### Added
 - **P6 Web UI 同步**：把 P6 三块能力（进度条 / 增量分析 / 内存预算）补齐到 Blazor Web 配置面板：
   - 新增 `P6` 可折叠子区段（默认展开），内含 `--no-progress` 取反 / `--max-memory`（MB）/ `--max-memory-mode`（soft|hard）三个数值/选择控件，以及 `--resume` / `--baseline` / `--checkpoint` 三个文件上传入口（与现有 `--type` / `--rules` 复用 `InputFile` + 临时文件模式）。
   - `AnalysisState` 新增 `ShowProgress` / `CheckpointPath/Name` / `ResumeFrom/Name` / `BaselinePath/Name` / `MaxMemoryMB` / `MaxMemoryMode` 六个 P6 字段；`Dispose()` 同步清理新增临时文件。

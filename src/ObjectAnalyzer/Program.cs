@@ -4,6 +4,7 @@ using System.CommandLine.Invocation;
 using System.IO;
 using ObjectAnalyzer;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Security;
 using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -208,6 +209,48 @@ rootCommand.AddOption(resumeOption);
 rootCommand.AddOption(baselineOption);
 rootCommand.AddOption(maxMemoryOption);
 rootCommand.AddOption(maxMemoryModeOption);
+
+// ── KMS 离线密钥工具：kms-secret ──
+// 用环境变量口令对明文密钥加密，输出可直接写入规则文件 transform 的 kms:offline/... 引用。
+// 明文从 stdin 读取（不落命令行参数 / shell 历史），口令从 OA_KMS_PASSPHRASE 环境变量读取。
+var kmsEncodingOption = new Option<string?>(
+    "--encoding",
+    description: "明文密钥的编码还原方式：utf8（默认）、base64 或 hex。base64/hex 表示把解密出的字节重新编码为该形式，供 transform 的 format 字段使用。",
+    getDefaultValue: () => "utf8");
+var kmsPlainOption = new Option<string?>(
+    "--value",
+    description: "要加密的明文密钥（可选）。不指定则从 stdin 读取——推荐，避免明文出现在 shell 历史。");
+var kmsSecretCommand = new Command("kms-secret", "离线 KMS：用环境变量 OA_KMS_PASSPHRASE 的口令加密明文密钥，生成规则文件可直接引用的 kms:offline/... 密文。");
+kmsSecretCommand.AddOption(kmsEncodingOption);
+kmsSecretCommand.AddOption(kmsPlainOption);
+kmsSecretCommand.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var parseResult = context.ParseResult;
+        string? plainValue = parseResult.GetValueForOption(kmsPlainOption);
+        string? encoding = parseResult.GetValueForOption(kmsEncodingOption);
+        string plaintext = plainValue ?? Console.In.ReadToEnd().TrimEnd('\r', '\n', ' ');
+        if (string.IsNullOrEmpty(plaintext))
+        {
+            AnsiConsole.MarkupLine("[red]错误: 明文密钥为空。请通过 --value 或 stdin 提供要加密的密钥。[/]");
+            context.ExitCode = 1;
+            return;
+        }
+
+        string kmsRef = OfflineKmsProvider.Encrypt(plaintext, encoding ?? "utf8");
+        AnsiConsole.MarkupLine("[green]加密成功。将以下值粘贴到规则文件 transform 的 key/iv/privateKey 等字段即可：[/]");
+        Console.WriteLine(kmsRef);
+        context.ExitCode = 0;
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+        context.ExitCode = 1;
+    }
+});
+rootCommand.AddCommand(kmsSecretCommand);
+
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
