@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Changed
+- **源码文件按类型拆分**：将 24 个多类型源文件（共 82 个顶级类/枚举/接口/记录）拆分为「一个类型一个文件」，文件名与类型名一致，全部留在原目录；命名空间、编译单元级与命名空间级 using、XML 文档注释逐字保留，纯结构调整零行为变化（Release 构建 0 警告 0 错误，462 测试全过）。原 `CompressedInput.cs` 由 `CompressionType` / `CompressionDetector` / `InputSource` 三个文件取代，其余 23 个主类同名文件（如 `FieldStatistic.cs`）原地收敛为单类型内容。
 - **解决方案拆分：抽出核心库 `ObjectAnalyzer.Core`**：将 Analysis / Parsing / Reporting / TypeSystem / Security 五个目录从 CLI 项目（`src/ObjectAnalyzer`）整体迁移到新类库 `src/ObjectAnalyzer.Core`（程序集名 `ObjectAnalyzer.Core`，命名空间保持 `ObjectAnalyzer.*` 不变，公共 API 零变化）。CLI 瘦身为仅含 `Program.cs`（System.CommandLine 选项解析 + 入口渲染）的薄宿主，Blazor Web 与 `ObjectAnalyzer.Tests` 改为直接引用 Core，不再依赖 CLI 可执行项目：
   - Core 承接全部 NuGet 依赖（Roslyn / MiniExcel / QuestPDF / 四类数据库驱动 / BouncyCastle / YamlDotNet / Spectre.Console 等），CLI 仅保留 `System.CommandLine` + `Spectre.Console`；后续可在 Core 内抽象进度/控制台渲染回调（`AnalysisRunner` 目前直接调用 `ConsoleReporter.Print` 与 `AnsiConsole.MarkupLine`），把 Spectre 从核心层彻底剥离——本次未做，保持零行为变化。
   - Dockerfile 还原缓存层同步更新（先 COPY 两个 csproj 再 restore，否则 CLI 的 ProjectReference 还原失败）。

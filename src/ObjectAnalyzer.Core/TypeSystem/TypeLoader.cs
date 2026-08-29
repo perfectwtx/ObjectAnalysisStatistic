@@ -9,17 +9,6 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace ObjectAnalyzer.TypeSystem;
 
-public class DynamicAssemblyContext : AssemblyLoadContext, IDisposable
-{
-    public DynamicAssemblyContext() : base(name: $"DynamicType_{Guid.NewGuid():N}", isCollectible: true) { }
-
-    public void Dispose()
-    {
-        Unload();
-        GC.SuppressFinalize(this);
-    }
-}
-
 public static class TypeLoader
 {
     /// <summary>

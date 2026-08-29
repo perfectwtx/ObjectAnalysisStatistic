@@ -7,53 +7,6 @@ using System.Text.RegularExpressions;
 
 namespace ObjectAnalyzer.Analysis;
 
-/// <summary>质量检查类型常量（FieldViolation.Check 取值）。</summary>
-public static class QualityCheckTypes
-{
-    public const string EnumValues = "enum";
-    public const string Range = "range";
-    public const string Pattern = "pattern";
-    public const string Required = "required";
-    public const string Unique = "unique";
-    public const string NullRate = "nullRate";
-    public const string RowCount = "rowCount";
-    public const string DuplicateRate = "duplicateRate";
-    public const string OutlierRatio = "outlierRatio";
-
-    /// <summary>检查类型的中文标签（控制台/报告展示用）。</summary>
-    public static string Label(string check) => check switch
-    {
-        EnumValues => "枚举违规",
-        Range => "数值越界",
-        Pattern => "模式不匹配",
-        Required => "必填缺失",
-        Unique => "唯一性冲突",
-        NullRate => "null 率超限",
-        RowCount => "行数不足",
-        DuplicateRate => "重复率超限",
-        OutlierRatio => "异常值超限",
-        _ => check
-    };
-}
-
-/// <summary>
-/// 单条质量违规。字段级检查 Field 为字段名；数据集级期望（rowCount/duplicateRate）Field 为空串。
-/// Count 为违规出现次数（行数/值次数；枚举聚合条目为不同违规值个数）。
-/// </summary>
-public sealed record FieldViolation
-{
-    public string Field { get; init; } = "";
-    public string Check { get; init; } = "";
-    public long Count { get; init; }
-    public string Message { get; init; } = "";
-
-    /// <summary>计数是否为近似值（唯一性检查在唯一值截断时经 HyperLogLog 估计）。</summary>
-    public bool Approximate { get; init; }
-
-    /// <summary>违规样本（最多 {MaxSamples} 个；数据集级检查为空）。</summary>
-    public IReadOnlyList<string> Samples { get; init; } = Array.Empty<string>();
-}
-
 /// <summary>
 /// 质量检查 v2 统一评估器：pattern / min-max / required / unique / nullRateMax / 数据集期望。
 /// 在分析收尾（规则已应用、指标已聚合）后单遍评估，输出结构化违规清单；

@@ -47,35 +47,3 @@ public sealed class SchemaDiff
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public List<SchemaFieldChange> ChangedFields { get; set; } = new();
 }
-
-/// <summary>单个字段的差异描述（baseline vs current，列出发生变化的属性子项）。</summary>
-public sealed class SchemaFieldChange
-{
-    /// <summary>字段路径。</summary>
-    [JsonPropertyName("path")]
-    public string Path { get; set; } = "";
-
-    /// <summary>是否包含破坏性变更（类型变化 / nullable 收紧 / coverage 大幅下降）。</summary>
-    [JsonPropertyName("breaking")]
-    public bool Breaking { get; set; }
-
-    /// <summary>变化的属性列表（"primaryType" / "semanticType" / "nullable" / "coverage" / "minNumber" / "maxNumber" / ...）。</summary>
-    [JsonPropertyName("changes")]
-    public List<SchemaFieldChangeItem> Changes { get; set; } = new();
-}
-
-/// <summary>单个属性的 before/after 描述。</summary>
-public sealed class SchemaFieldChangeItem
-{
-    /// <summary>属性名（如 "primaryType" / "coverage" / "minNumber" / "maxNumber" / "nullable" / "semanticType"）。</summary>
-    [JsonPropertyName("property")]
-    public string Property { get; set; } = "";
-
-    /// <summary>是否破坏性变化（类型/可空性变化，coverage 大幅下降等）。</summary>
-    [JsonPropertyName("breaking")]
-    public bool Breaking { get; set; }
-
-    /// <summary>人类可读的简短描述（包含 before/after 值与判定方向）。</summary>
-    [JsonPropertyName("description")]
-    public string Description { get; set; } = "";
-}

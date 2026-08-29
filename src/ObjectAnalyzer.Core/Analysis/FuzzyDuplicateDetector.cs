@@ -7,56 +7,6 @@ using System.Text.Json.Serialization;
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
-/// 模糊去重结果：基于"规范化键 + 词袋 + 公共前缀"的近邻聚类发现的相似重复组。
-/// 与精确去重（<see cref="DuplicateObjectStatistic"/>）互补：后者检测字节级相同的对象；
-/// 本类检测"形态相似但书写差异"的对象（大小写/空格/标点/轻微错别字）。
-/// </summary>
-public sealed class FuzzyDuplicateGroup
-{
-    /// <summary>组代表的对象 JSON（首条样本）。</summary>
-    [JsonPropertyName("representativeJson")]
-    public string RepresentativeJson { get; set; } = "";
-
-    /// <summary>规范化键（NFKC + 折叠 + trim + 大小写归一）。</summary>
-    [JsonPropertyName("canonicalKey")]
-    public string CanonicalKey { get; set; } = "";
-
-    /// <summary>组内样本数（包含代表样本）。</summary>
-    [JsonPropertyName("count")]
-    public long Count { get; set; }
-
-    /// <summary>组内样本的相似度（0~1，1=完全相等）。</summary>
-    [JsonPropertyName("averageSimilarity")]
-    public double AverageSimilarity { get; set; }
-
-    /// <summary>组内最多 5 个样例值（截断自原始样本）。</summary>
-    [JsonPropertyName("examples")]
-    public List<string> Examples { get; set; } = new();
-}
-
-/// <summary>
-/// 模糊去重结果汇总。
-/// </summary>
-public sealed class FuzzyDuplicateReport
-{
-    /// <summary>被检查的样本数（按 --fuzzy-dedup-target 指定的字段汇总）。</summary>
-    [JsonPropertyName("totalSamples")]
-    public long TotalSamples { get; set; }
-
-    /// <summary>相似重复组数。</summary>
-    [JsonPropertyName("groupCount")]
-    public int GroupCount { get; set; }
-
-    /// <summary>落在相似重复组中的样本数（模糊 "重复" 样本数）。</summary>
-    [JsonPropertyName("similarDuplicates")]
-    public long SimilarDuplicates { get; set; }
-
-    /// <summary>相似重复组列表（按组样本数降序）。</summary>
-    [JsonPropertyName("groups")]
-    public List<FuzzyDuplicateGroup> Groups { get; set; } = new();
-}
-
-/// <summary>
 /// 模糊去重检测器：基于规范化键 + Jaccard 词袋相似度聚类。
 /// 策略：
 ///  1. 对每个值做 NFKC 归一化、大小写折叠、空白折叠、Unicode 卫生处理，生成"规范化键"；

@@ -11,17 +11,6 @@ using Npgsql;
 namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
-/// 支持的数据库类型。
-/// </summary>
-public enum DatabaseProvider
-{
-    Postgres,
-    MySql,
-    Sqlite,
-    SqlServer
-}
-
-/// <summary>
 /// 数据库直连 (Live DB Ingestion)：通过 Connection String + SQL 查询直连
 /// PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，
 /// 无需先将数据库导出为 CSV/JSON 文件即可进行实时结构与质量分析。

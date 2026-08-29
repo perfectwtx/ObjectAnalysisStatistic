@@ -7,52 +7,6 @@ using System.Text.Json.Serialization;
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
-/// 字符串模式自动归纳结果：对一组字符串归纳出形态模板（如 "###-####" / "1[3-9]########"），
-/// 并报告各模板的覆盖率。典型应用：手机号、邮编、订单号、身份证等。
-/// </summary>
-public sealed class StringPatternProfile
-{
-    /// <summary>被分析样本数（流式收集，无重复去重）。</summary>
-    [JsonPropertyName("totalSamples")]
-    public long TotalSamples { get; set; }
-
-    /// <summary>主导模板（覆盖样本数最多者）。无样本时为 null。</summary>
-    [JsonPropertyName("dominantPattern")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public StringPatternTemplate? DominantPattern { get; set; }
-
-    /// <summary>模板列表（按样本数降序；超过 TopN 上限仅保留前 N 个，其余合并到 "其他"）。</summary>
-    [JsonPropertyName("patterns")]
-    public List<StringPatternTemplate> Patterns { get; set; } = new();
-
-    /// <summary>未被归纳到任何 Top 模板的样本数。TotalSamples − sum(Patterns.Count)。</summary>
-    [JsonPropertyName("otherCount")]
-    public long OtherCount { get; set; }
-}
-
-/// <summary>单个字符串模板及其覆盖统计。</summary>
-public sealed class StringPatternTemplate
-{
-    /// <summary>模板字符串：# 表示数字、? 表示字母、* 表示字母数字、其余字面量保留。</summary>
-    [JsonPropertyName("template")]
-    public string Template { get; set; } = "";
-
-    /// <summary>匹配该模板的样本数。</summary>
-    [JsonPropertyName("count")]
-    public long Count { get; set; }
-
-    /// <summary>覆盖率（count / total），0.0~1.0。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public double? Ratio { get; set; }
-
-    /// <summary>匹配该模板的样例值（最多 3 个）。</summary>
-    [JsonPropertyName("examples")]
-    public List<string> Examples { get; set; } = new();
-
-    public override string ToString() => $"{Template} ×{Count}";
-}
-
-/// <summary>
 /// 字符串模式归纳器：流式 Add，最后 Build。
 /// 规则：
 ///  - 数字字符（0-9）→ "#"

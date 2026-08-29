@@ -7,19 +7,6 @@ using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
-/// <summary>合规报告中单个敏感字段的明细。</summary>
-public sealed class PiiFieldReport
-{
-    public string Field { get; init; } = "";
-    public string Category { get; init; } = "";
-    public string CategoryLabel { get; init; } = "";
-    public bool HighSeverity { get; init; }
-    public long Count { get; init; }
-    public double Coverage { get; init; }
-    public int DistinctValues { get; init; }
-    public string? MaskedSample { get; init; }
-}
-
 /// <summary>
 /// 数据安全合规等级报告：汇总分析结果中的个人敏感信息 (PII) 字段，
 /// 给出合规等级（A/B/C）、敏感字段清单（已打码样本）与各类别统计。

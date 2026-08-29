@@ -126,19 +126,3 @@ public sealed class MemoryBudget
     /// <summary>soft 模式下是否已经触发过自动采样。用于 AnalysisRunner 判断是否需要回填 SampleReservoir。</summary>
     public bool SamplingTriggered => _samplingTriggered;
 }
-
-/// <summary>--max-memory 超限模式（soft 警告 + 自动采样 / hard 立即失败）。</summary>
-public enum MaxMemoryMode
-{
-    /// <summary>超限仅警告 + 自动启用采样；分析继续。</summary>
-    Soft,
-
-    /// <summary>超限立即失败（AnalysisRunner 以退出码 1 结束）。</summary>
-    Hard
-}
-
-/// <summary>P6.3：--max-memory hard 模式超限时抛出，由 AnalysisRunner 捕获并以退出码 1 退出。</summary>
-public sealed class MaxMemoryExceededException : Exception
-{
-    public MaxMemoryExceededException(string message) : base(message) { }
-}
