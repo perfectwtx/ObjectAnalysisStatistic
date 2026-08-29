@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using ICSharpCode.SharpZipLib.BZip2;
-
 namespace ObjectAnalyzer.Parsing;
 
 /// <summary>

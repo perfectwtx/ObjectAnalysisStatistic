@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
-using ICSharpCode.SharpZipLib.BZip2;
 
 namespace ObjectAnalyzer.Parsing;
 
@@ -146,6 +142,7 @@ public static class CompressionDetector
     }
 
     /// <summary>读取文件头并按魔数判定压缩类型；文件不存在或头过短时返回 None。</summary>
+    /// <param name="path">待探测的文件路径。</param>
     /// <param name="probeZip">是否将 PK 头判定为 zip 容器（对已知数据扩展名关闭，避免误判 xlsx）。</param>
     private static CompressionType SniffByMagic(string path, bool probeZip)
     {

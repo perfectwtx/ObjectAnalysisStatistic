@@ -1,18 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using ICSharpCode.SharpZipLib.BZip2;
-using Xunit;
 
 namespace ObjectAnalyzer.Tests;
 
-[Collection(AnalysisRunnerSequentialGroup.Name)]
 /// <summary>
 /// 验证压缩文件直读：gzip / bzip2 / zip 包裹的 json / jsonl / csv 能被透明解压并正确解析。
 /// 每个用例在临时目录生成压缩包，再用 FileParsers 入口解析，断言行数/字段正确。
 /// </summary>
+[Collection(AnalysisRunnerSequentialGroup.Name)]
 public class CompressedInputTests
 {
     // ── 压缩包构造辅助 ──

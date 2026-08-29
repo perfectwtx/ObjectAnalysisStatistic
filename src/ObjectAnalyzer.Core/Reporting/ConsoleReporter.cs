@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;

@@ -1,4 +1,3 @@
-using System.IO;
 using AnalysisResult = global::ObjectAnalyzer.Analysis.AnalysisResult;
 using FieldStatistic = global::ObjectAnalyzer.Analysis.FieldStatistic;
 

@@ -1,4 +1,3 @@
-using System;
 using global::ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Web;

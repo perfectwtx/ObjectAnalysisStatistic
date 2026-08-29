@@ -1,8 +1,6 @@
 namespace ObjectAnalyzer.Analysis;
 
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text.Json.Serialization;
 
 /// <summary>数值直方图分桶（对数定宽，桶边界为 2 的幂；零值单独成桶 From=To=0）。</summary>
 public sealed class NumericHistogramBucket

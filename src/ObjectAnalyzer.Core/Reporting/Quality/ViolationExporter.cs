@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
-using ObjectAnalyzer.Analysis;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;

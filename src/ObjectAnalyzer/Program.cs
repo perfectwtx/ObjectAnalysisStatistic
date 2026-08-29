@@ -1,9 +1,5 @@
-using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.IO;
-using ObjectAnalyzer;
-using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Security;
 using Spectre.Console;
 
@@ -447,11 +443,11 @@ Console.CancelKeyPress += (_, e) =>
 
 return rootCommand.Invoke(args);
 
-/// <summary>
-/// 切分 "前缀[:后缀]"（如 "File.cs:ClassName"、"csharp:out.cs"）。
-/// 跳过 Windows 盘符冒号（如 "C:\x" 中的 'C:'），因此 "csharp:C:\out.cs" 会正确切分为 ("csharp","C:\out.cs")。
-/// 无可用冒号时原样作为路径。
-/// </summary>
+// <summary>
+// 切分 "前缀[:后缀]"（如 "File.cs:ClassName"、"csharp:out.cs"）。
+// 跳过 Windows 盘符冒号（如 "C:\x" 中的 'C:'），因此 "csharp:C:\out.cs" 会正确切分为 ("csharp","C:\out.cs")。
+// 无可用冒号时原样作为路径。
+// </summary>
 static (string? path, string? suffix) SplitColonSuffix(string? value)
 {
     if (string.IsNullOrWhiteSpace(value))

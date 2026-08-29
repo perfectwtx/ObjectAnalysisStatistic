@@ -1,5 +1,3 @@
-using System;
-using ObjectAnalyzer.Analysis;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Security;

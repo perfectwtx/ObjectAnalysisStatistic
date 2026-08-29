@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
-
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
 /// 数值剖析草图集合：流式、内存有界、可跨线程合并。
 /// - <see cref="MergeableQuantileSketch"/>：简化 t-digest 质心草图，估算分位数（P50/P90/P95/P99）。
 /// - <see cref="HyperLogLog"/>：稀疏→稠密基数估计（近似 distinct count）。
-/// - <see cref="LogHistogram"/>：以 2 为底的对数定宽桶直方图，单遍流式、无需预知数值范围。
+/// - 对数直方图：以 2 为底的对数定宽桶直方图，单遍流式、无需预知数值范围。
 /// </summary>
 public static class NumericSketch
 {

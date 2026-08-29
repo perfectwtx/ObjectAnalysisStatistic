@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using global::ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Web;

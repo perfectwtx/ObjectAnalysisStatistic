@@ -1,17 +1,10 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using global::ObjectAnalyzer.Analysis;
-
 namespace ObjectAnalyzer.Tests;
 
-[Collection(AnalysisRunnerSequentialGroup.Name)]
 /// <summary>
 /// P6.1：进度条 / ETA 集成测试。
 /// 验证 <see cref="ObjectAnalyzer.Analyze"/> 在分块处理时通过 <see cref="IProgress{T}"/> 上报对象计数。
 /// </summary>
+[Collection(AnalysisRunnerSequentialGroup.Name)]
 public class ProgressReportingTests
 {
     private static List<Dictionary<string, object?>> MakeData(int count)

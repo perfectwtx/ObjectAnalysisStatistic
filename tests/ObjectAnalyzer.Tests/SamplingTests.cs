@@ -1,11 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
-using ObjectAnalyzer.Analysis;
-using ObjectAnalyzer.Parsing;
-using Xunit;
 
 namespace ObjectAnalyzer.Tests;
 

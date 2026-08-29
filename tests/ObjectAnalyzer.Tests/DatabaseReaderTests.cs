@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Microsoft.Data.Sqlite;
-using ObjectAnalyzer.Analysis;
-using ObjectAnalyzer.Parsing;
-using Xunit;
+﻿using Microsoft.Data.Sqlite;
 
 namespace ObjectAnalyzer.Tests;
 

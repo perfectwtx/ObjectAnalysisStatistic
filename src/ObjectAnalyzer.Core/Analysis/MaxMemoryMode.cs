@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using Spectre.Console;
-
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>--max-memory 超限模式（soft 警告 + 自动采样 / hard 立即失败）。</summary>

@@ -1,12 +1,7 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using ObjectAnalyzer.Parsing;
 using Org.BouncyCastle.Asn1.X9;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
@@ -16,7 +11,6 @@ using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Crypto.Signers;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.OpenSsl;
-using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities.Encoders;
 
 namespace ObjectAnalyzer.Analysis;

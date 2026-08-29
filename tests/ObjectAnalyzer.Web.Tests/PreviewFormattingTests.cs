@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using ObjectAnalyzer.Web.Components.Pages;
 
 namespace ObjectAnalyzer.Web.Tests;

@@ -1,15 +1,5 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
-using MiniExcelLibs;
-using ObjectAnalyzer.Analysis;
-using YamlDotNet.Serialization;
 
 namespace ObjectAnalyzer.Parsing.Parsers;
 

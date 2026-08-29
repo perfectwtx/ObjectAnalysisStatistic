@@ -1,14 +1,9 @@
-using System;
 using System.Buffers;
 using System.Buffers.Text;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -864,25 +859,6 @@ public static partial class ObjectAnalyzer
 
         string compact = value.Replace(" ", "");
         return RegexIban.IsMatch(compact) && PiiValidators.IsValidIbanMod97(compact);
-    }
-
-    /// <summary>字段名提示匹配：字段名等于提示词或以 ".分隔符+提示词" 结尾（大小写不敏感）。</summary>
-    private static bool MatchesFieldHint(string fieldName, string[] hints)
-    {
-        foreach (string hint in hints)
-        {
-            int hintLength = hint.Length;
-            if (fieldName.Length < hintLength)
-                continue;
-            if (!fieldName.EndsWith(hint, StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (fieldName.Length == hintLength)
-                return true;
-            char before = fieldName[fieldName.Length - hintLength - 1];
-            if (before is '.' or '_' or '-' or ' ')
-                return true;
-        }
-        return false;
     }
 
     /// <summary>

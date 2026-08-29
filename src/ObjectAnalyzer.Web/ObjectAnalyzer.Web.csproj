@@ -8,10 +8,6 @@
     <InternalsVisibleTo Include="ObjectAnalyzer.Web.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MiniExcel" Version="1.45.0" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

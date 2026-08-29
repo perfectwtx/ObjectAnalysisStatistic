@@ -5,6 +5,13 @@
 ## [Unreleased]
 
 ### Changed
+- **死代码清理**（168 文件，净删约 780 行，零行为变化）：
+  - 未使用 using：临时开启 `GenerateDocumentationFile` + `EnforceCodeStyleInBuild` 后以 `dotnet format style --diagnostics IDE0005` 清除 167 个文件的多余 using（约 760 行），配置随后还原。
+  - 未使用私有成员（IDE0051）：删除 `ObjectAnalyzer.MatchesFieldHint`（已被 `ContainsFieldHint` 取代的旧实现）与 `PdfReportExporter.Badge`（无调用的排版助手）。
+  - 文档腐烂修复：`NumericSketch` 类注释中指向不存在成员的 `<see cref="LogHistogram"/>` 改为普通文本；`CompressionDetector.SniffByMagic` 补缺失的 `<param name="path">`；7 处悬空 XML 注释归位（CLI 顶级语句本地函数的 `///` 转普通注释，6 个测试类的 `<summary>` 移到 `[Collection]` 特性之前）。
+  - 闲置包引用：移除 Web 项目对 MiniExcel 的直接 PackageReference（0 处直接使用，Core 传递依赖仍可用）。
+  - 核实为「非死代码」而保留：全部顶级类型均有引用（ErrorSanitizer / P6ProgressReporter 由 Home.razor 使用）；Core 全部 NuGet 包在用；tests 的 SharpZipLib 在用（构造 zip 测试样本）。
+  - 验证：Release 构建 0 警告 0 错误（含临时开启的全量 IDE/文档诊断）；462 测试全过。
 - **带构造函数的类型改用 C# 12 主构造函数**（12 处转换，构造签名与公共 API 零变化）：`MaxMemoryExceededException`（body-less 简写）、`Hash128` / `FieldFilterToken`（readonly struct，字段初始化器绑定参数）、`ReservoirSampler<T>`、`DecompressingEnumerable`、`FieldCorrelationCollector`（参数 → 字段初始化器）；`HyperLogLog` / `MergeableQuantileSketch`（范围校验抽为静态 `Validate*` 助手，异常类型/消息逐字保留）、`MemoryBudget`（throw 表达式初始化器，声明顺序保证先校验后派生）、`FieldFilter`（解析管线抽为静态 `BuildRoot`）、`AuditLogger`（文件写入器创建抽为静态 `CreateWriter`，初始化器声明顺序保持「先校验路径、后打开文件」）、`DynamicAssemblyContext`（base 调用并入主构造函数）。**刻意不转**：`InputSource`（private 构造 + 静态工厂，主构造函数会放宽为 public）、`FieldTransformProcessor`（构造体为多分支规则装配逻辑）、无构造函数的 DTO 与 record（本就是主构造语义/以对象初始化器使用）。验证：Release 构建 0 警告 0 错误，462 测试全过。
 - **核心库目录按功能域重组**（87 个文件纯 `git mv`，命名空间保持不变以避免 Web 端全限定引用连锁修改，零代码改动）：
   - `Analysis/`（88 → 19 文件）：仅保留引擎与运行时（ObjectAnalyzer / AnalysisRunner / Options / Result / Snapshot / Sampling / MemoryBudget 等），新增子目录 `Fields/`（字段统计与草图：FieldStatistic、NumericSketch、HyperLogLog 等 6）、`Insights/`（P4 深度分析：时间序列/字符串模式/相关性/Unicode 卫生/模糊去重共 15）、`Drift/`（分布漂移与快照 Diff 11）、`Quality/`（质量检查 5）、`Rules/`（规则文件与值转换 8）、`Filter/`（--where 表达式解析器与 AST 8）、`Schema/`（Schema 快照与演进 7）。

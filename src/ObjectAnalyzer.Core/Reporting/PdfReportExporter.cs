@@ -1,8 +1,4 @@
-using System;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using ObjectAnalyzer.Analysis;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -249,8 +245,6 @@ public static class PdfReportExporter
     }
 
     // ────── P4 通用 ──────
-
-    private static IContainer Badge(IContainer c) => c.Background(Colors.Blue.Lighten4).Padding(2);
 
     private static void P4Header(IContainer container, string title, string subtitle)
     {

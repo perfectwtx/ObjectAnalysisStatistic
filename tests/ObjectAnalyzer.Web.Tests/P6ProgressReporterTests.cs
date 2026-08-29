@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using global::ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Web.Tests;
