@@ -76,5 +76,38 @@ window.objectAnalyzer = {
     setTheme: function (theme) {
         document.documentElement.setAttribute('data-bs-theme', theme);
         try { localStorage.setItem('oa-theme', theme); } catch (e) { }
+    },
+
+    // 侧边栏 / 主区可拖拽分隔条：拖动调整 grid 列宽并持久化到 localStorage
+    initSplitter: function (shellSelector, handleSelector, storageKey) {
+        const shell = document.querySelector(shellSelector);
+        const handle = document.querySelector(handleSelector);
+        if (!shell || !handle) return false;
+
+        const clamp = (w) => Math.min(560, Math.max(240, w));
+        const saved = parseInt(localStorage.getItem(storageKey) || '0', 10);
+        if (saved) shell.style.gridTemplateColumns = clamp(saved) + 'px minmax(0, 1fr)';
+
+        let dragging = false;
+        handle.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            handle.setPointerCapture(e.pointerId);
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+        handle.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            shell.style.gridTemplateColumns = clamp(e.clientX) + 'px minmax(0, 1fr)';
+        });
+        const stop = (e) => {
+            if (!dragging) return;
+            dragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            try { localStorage.setItem(storageKey, String(clamp(e.clientX))); } catch (err) { }
+        };
+        handle.addEventListener('pointerup', stop);
+        handle.addEventListener('pointercancel', stop);
+        return true;
     }
 };

@@ -31,6 +31,25 @@
   <data name="OptSampleStep" xml:space="preserve"><value>等距采样步长</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>超大文件采样：蓄水池随机取 N 条 / 等距每 N 条取 1 条，快速预估 Schema（两者互斥，0 = 关闭）</value></data>
   <data name="OptRulesFile" xml:space="preserve"><value>规则文件 (.json)</value></data>
+  <data name="SideSourceTitle" xml:space="preserve"><value>数据源</value></data>
+  <data name="SideOptionsTitle" xml:space="preserve"><value>分析选项</value></data>
+  <data name="TabFields" xml:space="preserve"><value>字段明细</value></data>
+  <data name="TabDeep" xml:space="preserve"><value>深度分析</value></data>
+  <data name="TabDuplicates" xml:space="preserve"><value>重复对象</value></data>
+  <data name="TabPreview" xml:space="preserve"><value>数据预览</value></data>
+  <data name="GroupParsing" xml:space="preserve"><value>解析与输出</value></data>
+  <data name="GroupFieldsFilter" xml:space="preserve"><value>字段与过滤</value></data>
+  <data name="GroupSampling" xml:space="preserve"><value>采样</value></data>
+  <data name="GroupAudit" xml:space="preserve"><value>审计</value></data>
+  <data name="SideRulesTitle" xml:space="preserve"><value>规则配置</value></data>
+  <data name="RulesPasteTitle" xml:space="preserve"><value>粘贴规则 JSON（手动输入）</value></data>
+  <data name="RulesApply" xml:space="preserve"><value>应用规则</value></data>
+  <data name="RulesApplied" xml:space="preserve"><value>规则已就绪</value></data>
+  <data name="RulesDocTitle" xml:space="preserve"><value>支持的规则字段</value></data>
+  <data name="ErrRulesEmpty" xml:space="preserve"><value>请先粘贴规则 JSON 内容再应用。</value></data>
+  <data name="RulesPastedName" xml:space="preserve"><value>手动输入的规则</value></data>
+  <data name="EmptyStateTitle" xml:space="preserve"><value>开始你的第一次分析</value></data>
+  <data name="EmptyStateHint" xml:space="preserve"><value>从左侧上传 JSON / JSONL / CSV / Excel / XML / YAML 文件（或连接数据库），配置选项后点击「开始分析」——概览统计、图表与明细将在这里展示。</value></data>
   <data name="OptFields" xml:space="preserve"><value>统计字段</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>逗号分隔，如 name,age</value></data>
   <data name="OptWhere" xml:space="preserve"><value>过滤条件</value></data>

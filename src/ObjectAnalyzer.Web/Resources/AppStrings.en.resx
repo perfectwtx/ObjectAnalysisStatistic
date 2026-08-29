@@ -31,6 +31,25 @@
   <data name="OptSampleStep" xml:space="preserve"><value>Step sample size</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>Sampling for huge files: reservoir keeps up to N random objects / step keeps 1 per N rows for fast schema overview (mutually exclusive, 0 = off)</value></data>
   <data name="OptRulesFile" xml:space="preserve"><value>Rules file (.json)</value></data>
+  <data name="SideSourceTitle" xml:space="preserve"><value>Data Source</value></data>
+  <data name="SideOptionsTitle" xml:space="preserve"><value>Analysis Options</value></data>
+  <data name="TabFields" xml:space="preserve"><value>Fields</value></data>
+  <data name="TabDeep" xml:space="preserve"><value>Deep Analysis</value></data>
+  <data name="TabDuplicates" xml:space="preserve"><value>Duplicates</value></data>
+  <data name="TabPreview" xml:space="preserve"><value>Data Preview</value></data>
+  <data name="GroupParsing" xml:space="preserve"><value>Parsing &amp; Output</value></data>
+  <data name="GroupFieldsFilter" xml:space="preserve"><value>Fields &amp; Filter</value></data>
+  <data name="GroupSampling" xml:space="preserve"><value>Sampling</value></data>
+  <data name="GroupAudit" xml:space="preserve"><value>Audit</value></data>
+  <data name="SideRulesTitle" xml:space="preserve"><value>Rules</value></data>
+  <data name="RulesPasteTitle" xml:space="preserve"><value>Paste rules JSON (manual input)</value></data>
+  <data name="RulesApply" xml:space="preserve"><value>Apply rules</value></data>
+  <data name="RulesApplied" xml:space="preserve"><value>Rules ready</value></data>
+  <data name="RulesDocTitle" xml:space="preserve"><value>Supported rule fields</value></data>
+  <data name="ErrRulesEmpty" xml:space="preserve"><value>Paste rules JSON content before applying.</value></data>
+  <data name="RulesPastedName" xml:space="preserve"><value>Pasted rules</value></data>
+  <data name="EmptyStateTitle" xml:space="preserve"><value>Start your first analysis</value></data>
+  <data name="EmptyStateHint" xml:space="preserve"><value>Upload a JSON / JSONL / CSV / Excel / XML / YAML file from the sidebar (or connect a database), configure options, then press Start Analysis — overview stats, charts and details will appear here.</value></data>
   <data name="OptFields" xml:space="preserve"><value>Fields</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>comma-separated, e.g. name,age</value></data>
   <data name="OptWhere" xml:space="preserve"><value>Filter</value></data>
