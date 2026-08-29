@@ -14,7 +14,7 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public sealed class FieldFilter
 {
-    private readonly Node _root;
+    private readonly FieldFilterNode _root;
 
     public FieldFilter(string expression)
     {
@@ -34,35 +34,10 @@ public sealed class FieldFilter
 
     public override string ToString() => _root.ToString() ?? "";
 
-    // ──────────────────────────────────────────────
-    // 词法分析
-    // ──────────────────────────────────────────────
 
-    private enum TokenKind
+    private static List<FieldFilterToken> Lex(string expr)
     {
-        Identifier, Number, String, True, False, Null,
-        OpEqual, OpNotEqual, OpGreater, OpLess, OpGreaterEqual, OpLessEqual,
-        In, Not, Like, And, Or,
-        LParen, RParen, LBracket, RBracket, Comma, End
-    }
-
-    private readonly struct Token
-    {
-        public Token(TokenKind kind, string? text = null, double? number = null)
-        {
-            Kind = kind;
-            Text = text;
-            Number = number;
-        }
-
-        public TokenKind Kind { get; }
-        public string? Text { get; }
-        public double? Number { get; }
-    }
-
-    private static List<Token> Lex(string expr)
-    {
-        var tokens = new List<Token>();
+        var tokens = new List<FieldFilterToken>();
         int i = 0;
         int len = expr.Length;
 
@@ -71,22 +46,22 @@ public sealed class FieldFilter
             char c = expr[i];
             if (char.IsWhiteSpace(c)) { i++; continue; }
 
-            if (c == '(') { tokens.Add(new Token(TokenKind.LParen)); i++; continue; }
-            if (c == ')') { tokens.Add(new Token(TokenKind.RParen)); i++; continue; }
-            if (c == '[') { tokens.Add(new Token(TokenKind.LBracket)); i++; continue; }
-            if (c == ']') { tokens.Add(new Token(TokenKind.RBracket)); i++; continue; }
-            if (c == ',') { tokens.Add(new Token(TokenKind.Comma)); i++; continue; }
+            if (c == '(') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.LParen)); i++; continue; }
+            if (c == ')') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.RParen)); i++; continue; }
+            if (c == '[') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.LBracket)); i++; continue; }
+            if (c == ']') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.RBracket)); i++; continue; }
+            if (c == ',') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.Comma)); i++; continue; }
 
             if (c == '=' && i + 1 < len && expr[i + 1] == '=')
-            { tokens.Add(new Token(TokenKind.OpEqual)); i += 2; continue; }
+            { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.OpEqual)); i += 2; continue; }
             if (c == '!' && i + 1 < len && expr[i + 1] == '=')
-            { tokens.Add(new Token(TokenKind.OpNotEqual)); i += 2; continue; }
+            { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.OpNotEqual)); i += 2; continue; }
             if (c == '>' && i + 1 < len && expr[i + 1] == '=')
-            { tokens.Add(new Token(TokenKind.OpGreaterEqual)); i += 2; continue; }
+            { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.OpGreaterEqual)); i += 2; continue; }
             if (c == '<' && i + 1 < len && expr[i + 1] == '=')
-            { tokens.Add(new Token(TokenKind.OpLessEqual)); i += 2; continue; }
-            if (c == '>') { tokens.Add(new Token(TokenKind.OpGreater)); i++; continue; }
-            if (c == '<') { tokens.Add(new Token(TokenKind.OpLess)); i++; continue; }
+            { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.OpLessEqual)); i += 2; continue; }
+            if (c == '>') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.OpGreater)); i++; continue; }
+            if (c == '<') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.OpLess)); i++; continue; }
 
             if (c == '\'' || c == '"')
             {
@@ -97,7 +72,7 @@ public sealed class FieldFilter
                     throw new FormatException($"字符串常量缺少结束引号: {expr}");
                 string value = expr[start..i];
                 i++; // 跳过结束引号
-                tokens.Add(new Token(TokenKind.String, value));
+                tokens.Add(new FieldFilterToken(FieldFilterTokenKind.String, value));
                 continue;
             }
 
@@ -109,7 +84,7 @@ public sealed class FieldFilter
                 string numText = expr[start..i];
                 if (!double.TryParse(numText, NumberStyles.Float, CultureInfo.InvariantCulture, out double num))
                     throw new FormatException($"无效的数字常量: {numText}");
-                tokens.Add(new Token(TokenKind.Number, number: num));
+                tokens.Add(new FieldFilterToken(FieldFilterTokenKind.Number, number: num));
                 continue;
             }
 
@@ -127,315 +102,151 @@ public sealed class FieldFilter
                 throw new FormatException($"无法解析的字符 '{c}' (位置 {idStart})");
 
             string ident = expr[idStart..i];
-            TokenKind kind = ident.ToLowerInvariant() switch
+            FieldFilterTokenKind kind = ident.ToLowerInvariant() switch
             {
-                "and" => TokenKind.And,
-                "or" => TokenKind.Or,
-                "in" => TokenKind.In,
-                "not" => TokenKind.Not,
-                "like" => TokenKind.Like,
-                "true" => TokenKind.True,
-                "false" => TokenKind.False,
-                "null" => TokenKind.Null,
-                _ => TokenKind.Identifier
+                "and" => FieldFilterTokenKind.And,
+                "or" => FieldFilterTokenKind.Or,
+                "in" => FieldFilterTokenKind.In,
+                "not" => FieldFilterTokenKind.Not,
+                "like" => FieldFilterTokenKind.Like,
+                "true" => FieldFilterTokenKind.True,
+                "false" => FieldFilterTokenKind.False,
+                "null" => FieldFilterTokenKind.Null,
+                _ => FieldFilterTokenKind.Identifier
             };
-            tokens.Add(kind == TokenKind.Identifier
-                ? new Token(TokenKind.Identifier, ident)
-                : new Token(kind));
+            tokens.Add(kind == FieldFilterTokenKind.Identifier
+                ? new FieldFilterToken(FieldFilterTokenKind.Identifier, ident)
+                : new FieldFilterToken(kind));
             continue;
         }
 
-        tokens.Add(new Token(TokenKind.End));
+        tokens.Add(new FieldFilterToken(FieldFilterTokenKind.End));
         return tokens;
     }
 
     private static bool IsBoundary(char c) =>
         char.IsWhiteSpace(c) || c is '(' or ')' or ',' or '=' or '!' or '<' or '>' or '\'' or '"';
 
-    // ──────────────────────────────────────────────
-    // 语法分析（递归下降）
-    // ──────────────────────────────────────────────
 
-    private abstract class Node
-    {
-        public abstract bool Evaluate(Dictionary<string, object?> obj);
-    }
-
-    private sealed class LogicalNode : Node
-    {
-        public bool IsAnd;
-        public Node Left = null!;
-        public Node Right = null!;
-
-        public override bool Evaluate(Dictionary<string, object?> obj) =>
-            IsAnd ? Left.Evaluate(obj) && Right.Evaluate(obj)
-                  : Left.Evaluate(obj) || Right.Evaluate(obj);
-
-        public override string ToString() =>
-            $"({Left} {(IsAnd ? "AND" : "OR")} {Right})";
-    }
-
-    private enum CmpOp
-    {
-        Equal, NotEqual, Greater, Less, GreaterEqual, LessEqual,
-        In, NotIn, Like, NotLike
-    }
-
-    private sealed class ComparisonNode : Node
-    {
-        public string Field = "";
-        public CmpOp Op;
-        public Operand Right = null!;
-
-        public override bool Evaluate(Dictionary<string, object?> obj)
-        {
-            bool present = TryGetValueIgnoreCase(obj, Field, out object? value);
-            if (!present) value = null;
-
-            return Op switch
-            {
-                CmpOp.Equal => WeakEqual(value, Right),
-                CmpOp.NotEqual => !WeakEqual(value, Right),
-                CmpOp.In => Right.List?.Any(item => WeakEqual(value, item)) ?? false,
-                CmpOp.NotIn => !(Right.List?.Any(item => WeakEqual(value, item)) ?? false),
-                CmpOp.Like => LikeMatch(value, Right),
-                CmpOp.NotLike => !LikeMatch(value, Right),
-                _ => NumericCompare(value, Right) switch
-                {
-                    > 0 => Op is CmpOp.Greater or CmpOp.GreaterEqual,
-                    < 0 => Op is CmpOp.Less or CmpOp.LessEqual,
-                    _ => Op is CmpOp.GreaterEqual or CmpOp.LessEqual
-                }
-            };
-        }
-
-        public override string ToString()
-        {
-            string op = Op switch
-            {
-                CmpOp.Equal => "==", CmpOp.NotEqual => "!=",
-                CmpOp.Greater => ">", CmpOp.Less => "<",
-                CmpOp.GreaterEqual => ">=", CmpOp.LessEqual => "<=",
-                CmpOp.In => "in", CmpOp.NotIn => "not in",
-                CmpOp.Like => "like", CmpOp.NotLike => "not like",
-                _ => "?"
-            };
-            return $"{Field} {op} {Right}";
-        }
-    }
-
-    private sealed class Operand
-    {
-        public double? Number;
-        public string? Text;
-        public bool? Bool;
-        public bool IsNull;
-        public List<Operand>? List;
-
-        public static Operand OfList(List<Operand> items) => new() { List = items };
-
-        public override string ToString()
-        {
-            if (List != null) return "[" + string.Join(", ", List) + "]";
-            if (IsNull) return "null";
-            if (Number.HasValue) return Number.Value.ToString(CultureInfo.InvariantCulture);
-            if (Bool.HasValue) return Bool.Value ? "true" : "false";
-            return $"'{Text}'";
-        }
-    }
-
-    private static Node Parse(string expr, List<Token> tokens, ref int pos)
+    private static FieldFilterNode Parse(string expr, List<FieldFilterToken> tokens, ref int pos)
     {
         var node = ParseOr(expr, tokens, ref pos);
-        if (tokens[pos].Kind != TokenKind.End)
+        if (tokens[pos].Kind != FieldFilterTokenKind.End)
             throw new FormatException($"存在多余的标记 '{TokenText(tokens[pos])}' (表达式: {expr})");
         return node;
     }
 
-    private static Node ParseOr(string expr, List<Token> tokens, ref int pos)
+    private static FieldFilterNode ParseOr(string expr, List<FieldFilterToken> tokens, ref int pos)
     {
         var node = ParseAnd(expr, tokens, ref pos);
-        while (tokens[pos].Kind == TokenKind.Or)
+        while (tokens[pos].Kind == FieldFilterTokenKind.Or)
         {
             pos++;
             var right = ParseAnd(expr, tokens, ref pos);
-            node = new LogicalNode { IsAnd = false, Left = node, Right = right };
+            node = new FieldFilterLogicalNode { IsAnd = false, Left = node, Right = right };
         }
         return node;
     }
 
-    private static Node ParseAnd(string expr, List<Token> tokens, ref int pos)
+    private static FieldFilterNode ParseAnd(string expr, List<FieldFilterToken> tokens, ref int pos)
     {
         var node = ParseComparison(expr, tokens, ref pos);
-        while (tokens[pos].Kind == TokenKind.And)
+        while (tokens[pos].Kind == FieldFilterTokenKind.And)
         {
             pos++;
             var right = ParseComparison(expr, tokens, ref pos);
-            node = new LogicalNode { IsAnd = true, Left = node, Right = right };
+            node = new FieldFilterLogicalNode { IsAnd = true, Left = node, Right = right };
         }
         return node;
     }
 
-    private static Node ParseComparison(string expr, List<Token> tokens, ref int pos)
+    private static FieldFilterNode ParseComparison(string expr, List<FieldFilterToken> tokens, ref int pos)
     {
-        if (tokens[pos].Kind == TokenKind.LParen)
+        if (tokens[pos].Kind == FieldFilterTokenKind.LParen)
         {
             pos++;
             var inner = ParseOr(expr, tokens, ref pos);
-            if (tokens[pos].Kind != TokenKind.RParen)
+            if (tokens[pos].Kind != FieldFilterTokenKind.RParen)
                 throw new FormatException($"期望 ')' 但遇到 '{tokens[pos].Text ?? tokens[pos].Kind.ToString()}' (表达式: {expr})");
             pos++;
             return inner;
         }
 
-        if (tokens[pos].Kind != TokenKind.Identifier)
+        if (tokens[pos].Kind != FieldFilterTokenKind.Identifier)
             throw new FormatException($"期望字段名但遇到 '{TokenText(tokens[pos])}' (表达式: {expr})");
         string field = tokens[pos].Text!;
         pos++;
 
-        CmpOp op = ParseOp(expr, tokens, ref pos);
-        Operand right = ParseOperand(expr, tokens, ref pos);
+        FieldFilterCmpOp op = ParseOp(expr, tokens, ref pos);
+        FieldFilterOperand right = ParseOperand(expr, tokens, ref pos);
 
-        return new ComparisonNode { Field = field, Op = op, Right = right };
+        return new FieldFilterComparisonNode { Field = field, Op = op, Right = right };
     }
 
-    private static CmpOp ParseOp(string expr, List<Token> tokens, ref int pos)
+    private static FieldFilterCmpOp ParseOp(string expr, List<FieldFilterToken> tokens, ref int pos)
     {
         var kind = tokens[pos].Kind;
         switch (kind)
         {
-            case TokenKind.OpEqual: pos++; return CmpOp.Equal;
-            case TokenKind.OpNotEqual: pos++; return CmpOp.NotEqual;
-            case TokenKind.OpGreater: pos++; return CmpOp.Greater;
-            case TokenKind.OpLess: pos++; return CmpOp.Less;
-            case TokenKind.OpGreaterEqual: pos++; return CmpOp.GreaterEqual;
-            case TokenKind.OpLessEqual: pos++; return CmpOp.LessEqual;
-            case TokenKind.In: pos++; return CmpOp.In;
-            case TokenKind.Like: pos++; return CmpOp.Like;
-            case TokenKind.Not:
+            case FieldFilterTokenKind.OpEqual: pos++; return FieldFilterCmpOp.Equal;
+            case FieldFilterTokenKind.OpNotEqual: pos++; return FieldFilterCmpOp.NotEqual;
+            case FieldFilterTokenKind.OpGreater: pos++; return FieldFilterCmpOp.Greater;
+            case FieldFilterTokenKind.OpLess: pos++; return FieldFilterCmpOp.Less;
+            case FieldFilterTokenKind.OpGreaterEqual: pos++; return FieldFilterCmpOp.GreaterEqual;
+            case FieldFilterTokenKind.OpLessEqual: pos++; return FieldFilterCmpOp.LessEqual;
+            case FieldFilterTokenKind.In: pos++; return FieldFilterCmpOp.In;
+            case FieldFilterTokenKind.Like: pos++; return FieldFilterCmpOp.Like;
+            case FieldFilterTokenKind.Not:
                 pos++;
-                if (tokens[pos].Kind == TokenKind.In) { pos++; return CmpOp.NotIn; }
-                if (tokens[pos].Kind == TokenKind.Like) { pos++; return CmpOp.NotLike; }
+                if (tokens[pos].Kind == FieldFilterTokenKind.In) { pos++; return FieldFilterCmpOp.NotIn; }
+                if (tokens[pos].Kind == FieldFilterTokenKind.Like) { pos++; return FieldFilterCmpOp.NotLike; }
                 throw new FormatException($"'not' 后只能接 'in' 或 'like' (表达式: {expr})");
             default:
                 throw new FormatException($"期望比较运算符但遇到 '{TokenText(tokens[pos])}' (表达式: {expr})");
         }
     }
 
-    private static Operand ParseOperand(string expr, List<Token> tokens, ref int pos)
+    private static FieldFilterOperand ParseOperand(string expr, List<FieldFilterToken> tokens, ref int pos)
     {
         var kind = tokens[pos].Kind;
         switch (kind)
         {
-            case TokenKind.Number:
+            case FieldFilterTokenKind.Number:
                 var num = tokens[pos].Number!.Value;
                 pos++;
-                return new Operand { Number = num };
-            case TokenKind.String:
+                return new FieldFilterOperand { Number = num };
+            case FieldFilterTokenKind.String:
                 var text = tokens[pos].Text!;
                 pos++;
-                return new Operand { Text = text };
-            case TokenKind.True:
+                return new FieldFilterOperand { Text = text };
+            case FieldFilterTokenKind.True:
                 pos++;
-                return new Operand { Bool = true };
-            case TokenKind.False:
+                return new FieldFilterOperand { Bool = true };
+            case FieldFilterTokenKind.False:
                 pos++;
-                return new Operand { Bool = false };
-            case TokenKind.Null:
+                return new FieldFilterOperand { Bool = false };
+            case FieldFilterTokenKind.Null:
                 pos++;
-                return new Operand { IsNull = true };
-            case TokenKind.LBracket:
+                return new FieldFilterOperand { IsNull = true };
+            case FieldFilterTokenKind.LBracket:
             {
                 pos++;
-                var items = new List<Operand>();
-                if (tokens[pos].Kind == TokenKind.RBracket) { pos++; return Operand.OfList(items); }
+                var items = new List<FieldFilterOperand>();
+                if (tokens[pos].Kind == FieldFilterTokenKind.RBracket) { pos++; return FieldFilterOperand.OfList(items); }
                 while (true)
                 {
                     items.Add(ParseOperand(expr, tokens, ref pos));
-                    if (tokens[pos].Kind == TokenKind.Comma) { pos++; continue; }
-                    if (tokens[pos].Kind == TokenKind.RBracket) { pos++; break; }
+                    if (tokens[pos].Kind == FieldFilterTokenKind.Comma) { pos++; continue; }
+                    if (tokens[pos].Kind == FieldFilterTokenKind.RBracket) { pos++; break; }
                     throw new FormatException($"列表缺少 ']' 或存在非法元素 (表达式: {expr})");
                 }
-                return Operand.OfList(items);
+                return FieldFilterOperand.OfList(items);
             }
             default:
                 throw new FormatException($"期望操作数但遇到 '{TokenText(tokens[pos])}' (表达式: {expr})");
         }
     }
 
-    private static string TokenText(Token t) => t.Text ?? t.Kind.ToString();
+    private static string TokenText(FieldFilterToken t) => t.Text ?? t.Kind.ToString();
 
-    // ──────────────────────────────────────────────
-    // 求值辅助：弱类型比较 / 数值比较 / like 匹配
-    // ──────────────────────────────────────────────
-
-    private static bool TryGetNumber(object? value, out double num)
-    {
-        num = 0;
-        if (value == null) return false;
-        if (value is double d) { num = d; return true; }
-        if (value is float f) { num = f; return true; }
-        if (value is int i) { num = i; return true; }
-        if (value is long l) { num = l; return true; }
-        if (value is short s) { num = s; return true; }
-        if (value is byte b) { num = b; return true; }
-        if (value is uint ui) { num = ui; return true; }
-        if (value is ulong ul) { num = ul; return true; }
-        if (value is decimal m) { num = (double)m; return true; }
-        if (value is string str && double.TryParse(str, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed))
-        { num = parsed; return true; }
-        return false;
-    }
-
-    private static bool WeakEqual(object? value, Operand operand)
-    {
-        if (operand.IsNull)
-            return value == null;
-        if (operand.Bool.HasValue)
-            return value is bool b && b == operand.Bool.Value;
-        if (operand.Number.HasValue)
-            return TryGetNumber(value, out double vnum)
-                && Math.Abs(vnum - operand.Number.Value) < 1e-12;
-        return value?.ToString() == operand.Text;
-    }
-
-    private static bool TryGetValueIgnoreCase(Dictionary<string, object?> obj, string field, out object? value)
-    {
-        if (obj.TryGetValue(field, out value))
-            return true;
-        foreach (var kv in obj)
-        {
-            if (string.Equals(kv.Key, field, StringComparison.OrdinalIgnoreCase))
-            {
-                value = kv.Value;
-                return true;
-            }
-        }
-        value = null;
-        return false;
-    }
-
-    /// <summary>比较结果: 正数（更大）、负数（更小）、0（相等）。数值不适用时按字符串比较。</summary>
-    private static int NumericCompare(object? value, Operand operand)
-    {
-        if (TryGetNumber(value, out double vnum)
-            && (operand.Number.HasValue || operand.IsNull))
-        {
-            if (operand.IsNull) return vnum == 0 ? 0 : (vnum > 0 ? 1 : -1);
-            return vnum.CompareTo(operand.Number!.Value);
-        }
-        string left = value?.ToString() ?? "";
-        string right = operand.Text ?? operand.Number?.ToString(CultureInfo.InvariantCulture) ?? "";
-        return string.Compare(left, right, StringComparison.Ordinal);
-    }
-
-    private static bool LikeMatch(object? value, Operand operand)
-    {
-        if (value == null || operand.Text == null)
-            return false;
-        string pattern = "^" + Regex.Escape(operand.Text)
-            .Replace("%", ".*")
-            .Replace("_", ".") + "$";
-        return Regex.IsMatch(value.ToString()!, pattern, RegexOptions.IgnoreCase);
-    }
 }
