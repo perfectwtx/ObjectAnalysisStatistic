@@ -1175,7 +1175,7 @@ public static class AnalysisRunner
 
         AnsiConsole.MarkupLine($"正在加载规则文件: [blue]{Markup.Escape(rulesPath)}[/] ...");
         var json = File.ReadAllText(rulesPath);
-        var rules = JsonSerializer.Deserialize<AnalysisRules>(json);
+        var rules = JsonSerializer.Deserialize<AnalysisRules>(json, AnalysisRules.RulesJsonOptions);
         if (rules == null)
         {
             throw new InvalidOperationException($"规则文件解析失败: {rulesPath}");

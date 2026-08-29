@@ -1202,7 +1202,7 @@
         }
         try
         {
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(_rulesText)
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(_rulesText, Core.Analysis.AnalysisRules.RulesJsonOptions)
                 ?? throw new InvalidDataException(Loc["ErrInvalidRules"]);
             _ = parsed.Fields;
         }
@@ -1322,7 +1322,7 @@
         if (rulesFilePath != null)
         {
             var rulesJson = File.ReadAllText(rulesFilePath);
-            rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson);
+            rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson, Core.Analysis.AnalysisRules.RulesJsonOptions);
         }
 
         string effectiveFormat = rules?.ValueParsers is { Count: > 0 }
@@ -1602,7 +1602,7 @@
                 try
                 {
                     rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(
-                        File.ReadAllText(State.RulesFilePath));
+                        File.ReadAllText(State.RulesFilePath), Core.Analysis.AnalysisRules.RulesJsonOptions);
                 }
                 catch { /* 规则解析失败时审计仅记录无 transform 摘要 */ }
             }

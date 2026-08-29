@@ -323,6 +323,8 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 ## 规则文件格式
 
+> **全量参考模板**：[`samples/rules_full_reference.jsonc`](samples/rules_full_reference.jsonc) 覆盖全部规则配置并逐项附带中文注释，可直接复制使用（规则加载支持 `//` 与 `/* */` 注释，会自动忽略）。
+
 ```json
 {
   "flatten": true,

@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Added
+- **全量规则参考模板 `samples/rules_full_reference.jsonc` + 规则加载支持注释**：模板覆盖全部规则配置（flatten / fields 全部 13 项字段规则 / selectedFields / filter / valueParsers / expectations），每一项配置都带中文注释说明用途与取值；AES/国密等需要 KMS 口令的示例默认以块注释给出（取消注释并设置 `OA_KMS_PASSPHRASE` 后启用）。规则加载（CLI LoadRules / Web 粘贴与上传路径 / 审计摘要）统一改用 `AnalysisRules.RulesJsonOptions`（`ReadCommentHandling = Skip` + 大小写不敏感），**带注释的规则文件可直接使用**。测试：`Rules_WithComments_LoadsViaSharedOptions`。
+
 ### Fixed
 - **检查点文件名清洗跨平台一致化（修复 CI/Linux 失败）**：`P6PostAnalysis.SanitizeCheckpointName` 原使用 `Path.GetInvalidFileNameChars()`，该集合随运行 OS 变化——Linux 上 `<>:"|?*` 与反斜杠均合法，导致同一输入在 GitHub Actions（Linux）与本地（Windows）被清洗成不同结果，并削弱路径穿越防护的一致性。改为跨平台固定字符集（Windows 非法字符 + 正/反斜杠 + 控制字符），`P6PostAnalysisTests` 4 个按 Windows 语义编写的用例现可在任意 OS 通过，并新增 `Sanitize_CrossPlatformRejectsWindowsInvalidChars` 锁定该行为；顺带合并此前误插入的重复 `[Unreleased]` 标题。
 

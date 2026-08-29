@@ -1,0 +1,132 @@
+// ═══════════════════════════════════════════════════════════════════
+// ObjectAnalyzer 规则文件 · 全量参考模板（每项配置都有注释）
+//
+// 用法（三选一）：
+//   1. 直接当规则文件使用：objectanalyzer -i 数据.json -r 本文件
+//      （// 与 /* */ 注释会被自动忽略）
+//   2. 复制需要的段落到自己的规则文件（.json），只留用得上的配置
+//   3. Web 界面：把内容粘贴到「规则配置 → 粘贴规则 JSON」→ 应用规则
+//
+// 提示：不需要的配置直接删除该行即可；字段路径支持嵌套写法（如 address.city）。
+// ═══════════════════════════════════════════════════════════════════
+{
+  // 是否把嵌套 JSON 的属性展开为 a.b.c 路径后再统计。
+  // true（默认）= 展平；false = 保留对象树。CLI 的 --no-flatten 优先级更高。
+  "flatten": true,
+
+  // ─────────────────────────────────────────────
+  //  字段规则：键 = 字段路径，值 = 该字段的规则。
+  //  分析时逐条核对，不符合的记为「违规」，
+  //  可通过 --violations 导出、--fail-on-violations 在 CI 阻断。
+  //  下面按使用场景给出示例，实际使用时换成自己的字段名。
+  // ─────────────────────────────────────────────
+  "fields": {
+
+    // 场景一：数值字段（如年龄）—— 类型 + 范围 + 必填 + 离群控制
+    "age": {
+      "primaryType": "Number",      // 期望主导类型：String 文本 / Number 数字 / Boolean 布尔 / DateTime 日期时间
+      "required": true,             // 每条记录都必须有该字段，缺失记违规
+      "minValue": 0,                // 数值下限，超出记违规
+      "maxValue": 150,              // 数值上限，超出记违规
+      "defaultValue": 0,            // 记录缺失该字段时按此值补齐（覆盖自动推断）
+      "maxOutlierRatio": 0.05,      // IQR 离群点占比上限（0~1），0.05 = 最多 5%
+      "nullRateMax": 0.1            // 空值占比上限（0~1），0.1 = 最多 10% 可为空
+    },
+
+    // 场景二：枚举字段（如性别）—— 只允许白名单里的值
+    "gender": {
+      "primaryType": "String",
+      "enumValues": ["Male", "Female", "Unknown"],  // 合法值白名单，出现之外的值记违规
+      "defaultValue": "Unknown"
+    },
+
+    // 场景三：格式 + 唯一性（如邮箱、订单号）
+    "email": {
+      "primaryType": "String",
+      "pattern": "^[^@]+@[^@]+$",   // 正则表达式，字段值必须整体匹配
+      "unique": true                // 整个字段的值不允许重复（适合订单号、编号类字段）
+    },
+
+    // 场景四：标记业务敏感字段 + 自定义打码（详见 README「自定义 PII 规则」）
+    "internalId": {
+      "pii": {
+        "label": "内部编号",        // 合规报告里显示的名称
+        "highSeverity": true,       // true = 计入高严重度（影响合规等级 A/B/C 判定）
+        "mask": {                   // 打码格式（不填则用默认格式）
+          "keepPrefix": 4,          // 保留前 4 位明文
+          "keepSuffix": 2,          // 保留后 2 位明文
+          "maskChar": "*",          // 打码使用的字符
+          "maskAll": false          // true = 整体打码（忽略 keepPrefix/keepSuffix）
+        }
+      },
+      "redact": false               // false = 豁免自动 PII 打码（字段长得像敏感信息但其实不是时用）
+    },
+
+    // 场景五：值转换（统计前先解 JWT / 解密 / 解码，转换失败自动保留原值并计数）。
+    // 注意：token 是最后一个启用的字段，故末尾没有逗号——启用更多字段时记得补回。
+    "token": {
+      "transform": {
+        "type": "jwt",              // 转换类型：jwt / aes / base64 / url / sm4 / sm2
+        "claim": "sub",             // jwt 专用：只提取 payload 中的某个 claim
+        "parse": "json"             // 可选：转换结果若为 JSON 文本，展开为内层字段再统计（如 token.userId）
+      }
+    }
+
+    // 场景六：AES 解密（密钥推荐用 kms-secret 子命令生成 kms: 密文引用，避免明文入库）。
+    // 注意：启用前需要设置环境变量 OA_KMS_PASSPHRASE，否则加载规则文件时会报错。
+    /*
+    "encryptedPhone": {
+      "transform": {
+        "type": "aes",
+        "key": "kms:offline/1-base64:...",   // kms: 密文引用（用 kms-secret 子命令生成）
+        "iv": "kms:offline/1-base64:...",    // CBC 模式必填；ECB 不需要
+        "mode": "cbc",                       // cbc / ecb
+        "padding": "pkcs7",                  // pkcs7 / none
+        "format": "base64"                   // 密文编码：base64 / hex
+      }
+    },
+
+    // 场景七：国密转换（金融 / 政务 / 医疗合规场景；同样需要 OA_KMS_PASSPHRASE）
+    "sm4Cipher": {
+      "transform": {
+        "type": "sm4",                       // 国密对称加解密（GM/T 0002-2014）
+        "key": "kms:offline/1-base64:...",
+        "mode": "cbc"                        // cbc / ecb；padding 同 aes
+      }
+    },
+    "sm2Signed": {
+      "transform": {
+        "type": "sm2",                       // 国密非对称（GM/T 0003-2012）：私钥解密 / 公钥验签
+        "privateKey": "kms:offline/1-base64:...",  // 私钥（解密用）
+        "publicKey": "kms:offline/1-base64:..."    // 公钥（验签用）
+      }
+    },
+    */
+  },
+
+  // ─────────────────────────────────────────────
+  //  顶层配置
+  // ─────────────────────────────────────────────
+
+  // 只统计这些字段（等价 CLI --fields；优先级低于命令行参数）
+  "selectedFields": ["name", "age", "email"],
+
+  // 全局过滤条件：只统计满足表达式的记录（等价 CLI --where，CLI 优先级更高）。
+  // 支持 == != > < >= <=、in / not in、like / not like、AND / OR 与括号，字段名大小写不敏感。
+  "filter": "age >= 18 AND status in ['active']",
+
+  // 值解析器：把指定 Excel 列的值按 JSON 解析后再统计（Excel 多列 JSON 专用场景）。
+  // ⚠ 注意：一旦配置 valueParsers，分析器会强制按 excel-json 格式解析——
+  //    仅适用于「单元格内含 JSON」的 Excel 文件，普通 JSON / JSONL / CSV 请勿配置（默认注释）。
+  /*
+  "valueParsers": [
+    { "source": "payload", "parseType": "auto", "flatten": true, "header": 0 }
+  ],
+  */
+
+  // 数据集级质量期望（不满足记违规，触发 --fail-on-violations 门禁）
+  "expectations": {
+    "minRowCount": 100,              // 数据集最少行数，不足记违规
+    "maxDuplicateRate": 0.05         // 完全重复对象的占比上限（0~1）
+  }
+}
