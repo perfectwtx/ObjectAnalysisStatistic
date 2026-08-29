@@ -15,16 +15,10 @@ namespace ObjectAnalyzer.Analysis;
 /// <summary>
 /// 128 位紧凑哈希键（两个 ulong），替代 32 字符十六进制字符串键，减少字典内存占用。
 /// </summary>
-internal readonly struct Hash128 : IEquatable<Hash128>
+internal readonly struct Hash128(ulong high, ulong low) : IEquatable<Hash128>
 {
-    public readonly ulong High;
-    public readonly ulong Low;
-
-    public Hash128(ulong high, ulong low)
-    {
-        High = high;
-        Low = low;
-    }
+    public readonly ulong High = high;
+    public readonly ulong Low = low;
 
     public bool Equals(Hash128 other) => High == other.High && Low == other.Low;
 

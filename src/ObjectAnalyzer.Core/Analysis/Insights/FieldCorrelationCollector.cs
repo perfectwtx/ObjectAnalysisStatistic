@@ -9,20 +9,14 @@ namespace ObjectAnalyzer.Analysis;
 /// 字段相关性收集器：分析阶段在 ObjectAnalyzer 中按需实例化，
 /// 为每个对象保留一行（字段 → 数值）样本，超出上限时 Reservoir Sampling 随机采样。
 /// </summary>
-public sealed class FieldCorrelationCollector
+public sealed class FieldCorrelationCollector(int maxRows = 20_000, int? seed = null)
 {
-    private readonly int _maxRows;
-    private readonly Random _rng;
+    private readonly int _maxRows = maxRows;
+    private readonly Random _rng = seed.HasValue ? new Random(seed.Value) : new Random();
     private long _seen;
 
     /// <summary>按字段名索引的样本（list[i] 与 list[j] 对应同一对象的两个字段值）。</summary>
     private readonly Dictionary<string, List<double?>> _samples = new(StringComparer.Ordinal);
-
-    public FieldCorrelationCollector(int maxRows = 20_000, int? seed = null)
-    {
-        _maxRows = maxRows;
-        _rng = seed.HasValue ? new Random(seed.Value) : new Random();
-    }
 
     public int MaxRows => _maxRows;
     public long Seen => _seen;

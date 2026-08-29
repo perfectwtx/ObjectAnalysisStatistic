@@ -10,7 +10,7 @@ namespace ObjectAnalyzer.Analysis;
 /// 所有写操作同步落盘（AutoFlush + Flush）以保证审计数据不会因进程崩溃而丢失。
 /// 不使用异步流是为了简化并发场景下的顺序保证：每次 Write 都立即可见于文件。
 /// </summary>
-public sealed class AuditLogger : IDisposable
+public sealed class AuditLogger(string logPath) : IDisposable
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -19,19 +19,18 @@ public sealed class AuditLogger : IDisposable
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    private readonly StreamWriter _writer;
     private readonly object _lock = new();
     private bool _disposed;
 
-    public string LogPath { get; }
+    public string LogPath { get; } = string.IsNullOrWhiteSpace(logPath)
+        ? throw new ArgumentException("审计日志路径不能为空。", nameof(logPath))
+        : logPath;
 
-    /// <summary>创建追加式 AuditLogger；若文件不存在则创建，存在则追加。</summary>
-    public AuditLogger(string logPath)
+    private readonly StreamWriter _writer = CreateWriter(logPath);
+
+    /// <summary>创建追加式写入器；若文件不存在则创建，存在则追加。</summary>
+    private static StreamWriter CreateWriter(string logPath)
     {
-        if (string.IsNullOrWhiteSpace(logPath))
-            throw new ArgumentException("审计日志路径不能为空。", nameof(logPath));
-
-        LogPath = logPath;
         string? dir = System.IO.Path.GetDirectoryName(logPath);
         if (!string.IsNullOrEmpty(dir))
         {
@@ -46,7 +45,7 @@ public sealed class AuditLogger : IDisposable
             System.IO.FileShare.Read,
             bufferSize: 4096,
             useAsync: false);
-        _writer = new StreamWriter(stream, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false))
+        return new StreamWriter(stream, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false))
         {
             AutoFlush = true
         };

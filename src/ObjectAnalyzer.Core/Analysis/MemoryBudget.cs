@@ -22,29 +22,20 @@ namespace ObjectAnalyzer.Analysis;
 /// - 一次 run 内只触发一次模式切换（soft 模式进入采样后不再退出），
 ///   避免反复抖动（启用采样 → 内存下降 → 关闭采样 → 内存上升 → ...）。
 /// </summary>
-public sealed class MemoryBudget
+public sealed class MemoryBudget(long maxMemoryMB, MaxMemoryMode mode)
 {
     /// <summary>内存上限（MB）。0 表示不启用监控。</summary>
-    public long MaxMemoryMB { get; }
+    public long MaxMemoryMB { get; } = maxMemoryMB < 0
+        ? throw new ArgumentOutOfRangeException(nameof(maxMemoryMB), "maxMemoryMB 不能为负数")
+        : maxMemoryMB;
 
     /// <summary>超限行为模式（soft / hard）。</summary>
-    public MaxMemoryMode Mode { get; }
+    public MaxMemoryMode Mode { get; } = mode;
 
-    private readonly long _thresholdBytes;
+    private readonly long _thresholdBytes = maxMemoryMB * 1024L * 1024L;
     private bool _alreadyWarned; // soft 模式下仅打印一次警告
     private bool _samplingTriggered; // soft 模式下仅触发一次自动启用采样
     private long _peakBytes; // 用于审计/报告：本 run 内存峰值
-
-    public MemoryBudget(long maxMemoryMB, MaxMemoryMode mode)
-    {
-        if (maxMemoryMB < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maxMemoryMB), "maxMemoryMB 不能为负数");
-        }
-        MaxMemoryMB = maxMemoryMB;
-        Mode = mode;
-        _thresholdBytes = maxMemoryMB * 1024L * 1024L;
-    }
 
     /// <summary>本次 run 是否启用了内存监控。</summary>
     public bool IsEnabled => MaxMemoryMB > 0;

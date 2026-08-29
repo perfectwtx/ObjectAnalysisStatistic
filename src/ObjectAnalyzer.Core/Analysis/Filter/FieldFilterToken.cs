@@ -6,16 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace ObjectAnalyzer.Analysis;
 
-internal readonly struct FieldFilterToken
+internal readonly struct FieldFilterToken(FieldFilterTokenKind kind, string? text = null, double? number = null)
 {
-    public FieldFilterToken(FieldFilterTokenKind kind, string? text = null, double? number = null)
-    {
-        Kind = kind;
-        Text = text;
-        Number = number;
-    }
-
-    public FieldFilterTokenKind Kind { get; }
-    public string? Text { get; }
-    public double? Number { get; }
+    public FieldFilterTokenKind Kind { get; } = kind;
+    public string? Text { get; } = text;
+    public double? Number { get; } = number;
 }

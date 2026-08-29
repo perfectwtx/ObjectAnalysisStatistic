@@ -12,11 +12,16 @@ namespace ObjectAnalyzer.Analysis;
 /// 组合关键字 AND / OR 与括号（大小写不敏感）。
 /// 示例: "Age > 18 AND (Gender == 'Male' OR Status in [1,2]) OR Name like '张%'"
 /// </summary>
-public sealed class FieldFilter
+public sealed class FieldFilter(string expression)
 {
-    private readonly FieldFilterNode _root;
+    private readonly FieldFilterNode _root = BuildRoot(expression);
 
-    public FieldFilter(string expression)
+    /// <summary>对单个对象求值过滤条件。</summary>
+    public bool Evaluate(Dictionary<string, object?> obj) => _root.Evaluate(obj);
+
+    public override string ToString() => _root.ToString() ?? "";
+
+    private static FieldFilterNode BuildRoot(string expression)
     {
         if (string.IsNullOrWhiteSpace(expression))
             throw new ArgumentException("过滤表达式不能为空。", nameof(expression));
@@ -26,14 +31,8 @@ public sealed class FieldFilter
             throw new FormatException($"过滤表达式无效: {expression}");
 
         int pos = 0;
-        _root = Parse(expression, tokens, ref pos);
+        return Parse(expression, tokens, ref pos);
     }
-
-    /// <summary>对单个对象求值过滤条件。</summary>
-    public bool Evaluate(Dictionary<string, object?> obj) => _root.Evaluate(obj);
-
-    public override string ToString() => _root.ToString() ?? "";
-
 
     private static List<FieldFilterToken> Lex(string expr)
     {

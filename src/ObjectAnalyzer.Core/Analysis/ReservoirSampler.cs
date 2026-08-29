@@ -9,18 +9,12 @@ namespace ObjectAnalyzer.Analysis;
 /// 仅需 O(capacity) 内存；调用方可在 NextSlot 返回 -1 时跳过昂贵的解析/转换，
 /// 从而对大流量数据（如逐行 JSONL）显著降低耗时。
 /// </summary>
-internal sealed class ReservoirSampler<T>
+internal sealed class ReservoirSampler<T>(int capacity, Random? random = null)
 {
-    private readonly int _capacity;
+    private readonly int _capacity = capacity;
     private readonly List<T> _items = new();
-    private readonly Random _random;
+    private readonly Random _random = random ?? Random.Shared;
     private long _seen;
-
-    public ReservoirSampler(int capacity, Random? random = null)
-    {
-        _capacity = capacity;
-        _random = random ?? Random.Shared;
-    }
 
     public int Count => _items.Count;
 

@@ -17,18 +17,11 @@ namespace ObjectAnalyzer.Parsing.Parsers;
 /// 惰性枚举包装：在迭代开始（GetEnumerator）时才打开压缩输入源，
 /// 并在外层枚举器释放时一并释放解压流与底层句柄，确保文件句柄不泄漏。
 /// </summary>
-internal sealed class DecompressingEnumerable : IEnumerable<Dictionary<string, object?>>
+internal sealed class DecompressingEnumerable(string path, IFileParser parser, ParseOptions options) : IEnumerable<Dictionary<string, object?>>
 {
-    private readonly string _path;
-    private readonly IFileParser _parser;
-    private readonly ParseOptions _options;
-
-    public DecompressingEnumerable(string path, IFileParser parser, ParseOptions options)
-    {
-        _path = path;
-        _parser = parser;
-        _options = options;
-    }
+    private readonly string _path = path;
+    private readonly IFileParser _parser = parser;
+    private readonly ParseOptions _options = options;
 
     public IEnumerator<Dictionary<string, object?>> GetEnumerator()
     {

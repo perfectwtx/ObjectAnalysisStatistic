@@ -10,20 +10,19 @@ namespace ObjectAnalyzer.Analysis;
 /// 估计策略：寄存器零值仍充足时优先 LinearCounting（消除原始估计在 n≈m 过渡区的系统性正偏差），
 /// 否则退回标准 HLL 原始估计。
 /// </summary>
-public sealed class HyperLogLog
+public sealed class HyperLogLog(int precision = 14)
 {
     private const int SparseThreshold = 256;
-    private readonly int _p;
-    private readonly int _m;
+    private readonly int _p = ValidatePrecision(precision);
+    private readonly int _m = 1 << precision;
     private Dictionary<int, byte>? _sparse;
     private byte[]? _dense;
 
-    public HyperLogLog(int precision = 14)
+    private static int ValidatePrecision(int precision)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(precision, 4);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(precision, 20);
-        _p = precision;
-        _m = 1 << precision;
+        return precision;
     }
 
     /// <summary>加入一个字符串值（内部做 FNV-1a 64 + murmur 终末混淆哈希）。</summary>

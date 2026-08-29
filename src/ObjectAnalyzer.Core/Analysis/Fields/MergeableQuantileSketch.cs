@@ -8,16 +8,16 @@ namespace ObjectAnalyzer.Analysis;
 /// 流式 Add、线程本地实例 Merge 后查询 P50/P90/P95/P99，内存 O(Capacity)。
 /// 结果为近似值，对连续分布中位区域误差通常 &lt;1%，尾部略大。
 /// </summary>
-public sealed class MergeableQuantileSketch
+public sealed class MergeableQuantileSketch(int capacity = 256)
 {
-    private readonly int _capacity;
+    private readonly int _capacity = ValidateCapacity(capacity);
     private List<Centroid> _centroids = new();
     private long _totalWeight;
 
-    public MergeableQuantileSketch(int capacity = 256)
+    private static int ValidateCapacity(int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 16);
-        _capacity = capacity;
+        return capacity;
     }
 
     public long TotalWeight => _totalWeight;
