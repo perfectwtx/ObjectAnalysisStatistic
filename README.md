@@ -3,38 +3,48 @@
 对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入（可直接读取 gzip / bzip2 / zip 压缩包），自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验、多维度质量检查（模式/范围/必填/唯一/null 率 + 数据集期望）及重复对象。
 
 - CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)，共用核心分析库 (`src/ObjectAnalyzer.Core`)
-- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML；压缩包直读（gzip / bzip2 / zip，含 zip 内嵌套 gzip/bzip2 条目）；另支持数据库直连（PostgreSQL / MySQL / SQLite / SQL Server）
-- 规则驱动值解析：通过规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串，适用于 Excel 多列 JSON 及其他值级解析场景
-- 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)
-- 字段统计：每个字段的出现频次、覆盖率、主导数据类型
-- 值频率分析：展示每个字段中唯一值的出现次数与占比
-- 数值/文本深度剖析：数值列输出均值、样本标准差（Welford 流式算法）、近似分位数 P50/P90/P95/P99（可合并 t-digest 草图）与 2 的幂对数直方图；文本列输出平均长度；所有标量字段提供 distinct 值计数（唯一值超阈值时自动切换 HyperLogLog 近似，内存有界）
-- 日期/时间深度剖析：自动识别 DateTime / DateTimeOffset 字符串（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），输出最小/最大时间戳、时间桶直方图（按数据跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存
-- 异常值检测（IQR 1.5×）：数值列自动统计离群点数量与占比，列出 top-N 离群值所在字段；规则文件 `fields.<name>.maxOutlierRatio` 按字段设置阈值；`--fail-on-outlier-ratio` 提供 CI 异常值门禁（退出码 5）
-- 默认值推断：自动推断字段可能的默认值 (`null` / `0` / `false`)
-- 枚举约束校验：通过规则文件声明合法枚举值，自动校验并报告违规值
-- 重复对象检测：识别并统计完全相同的重复对象（128 位非密码学哈希去重，快于 MD5）
-- 嵌套扁平化：可选将嵌套 JSON 结构扁平化为 `a.b.c` 路径形式
-- 多种报告导出：结构化 JSON、富文本 HTML、Markdown、CSV 报告
-- 表格化报告：新增 Excel（.xlsx，多 sheet 工作簿，覆盖字段统计/重复对象/违规清单/全部 P4 七项分析）与 PDF（QuestPDF 结构化排版，适合交付非技术受众）双格式导出；CLI 通过 `-o` 文件扩展名自动路由，Web 界面提供 Excel/PDF 下载按钮
-- 质量违规独立导出：通过 `--violations` 输出结构化违规清单（枚举/范围/模式/必填/唯一/null 率 + 数据集期望），便于 CI 断言
-- 数据质量报告：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细，`--fail-on-violations` 作为 CI 质量门禁
-- Schema 代码导出：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义（支持 C# Record, TypeScript, JSON Schema, OpenAPI 3.0 YAML/JSON, gRPC Protobuf 3 `.proto`, 以及 SQL postgres/mysql/sqlite/sqlserver 方言）
-- Schema 快照 + Diff：新增 `--export-schema-snapshot <FILE>` 导出 canonical schema JSON（字段名/类型/coverage/nullable/语义/范围/枚举/异常值），独立于代码生成器；新增 `--diff-schema <BASELINE>` 与历史快照对比，识别新增/删除/类型变化/coverage 变化等；`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6），与 `--fail-on-violations` 对称；可作为下游「数据漂移对比」的字段级基础
-- 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码后统计（转换失败自动保留原始值并计数）
-- 字段值过滤：`--where` 按字段值过滤对象后再统计（如只统计 `age >= 25 AND status in ['active']`）；支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤作用于字段选择与值转换之后
-- JSONPath 投影：新增 `--root-path`（在文件根应用，提取整体 JSON 的子节点，如 `$.data[*]`）与 `--record-path`（在每条记录上应用，提取子对象作为新记录后再分析，如 `$.payload`），完整支持 RFC 9535 语法（通配符/递归下降/过滤器），适用于 API 响应被外壳包裹（`{data, meta}`）或事件流每行带元数据（`{event, payload}`）等场景；语法错误硬错误快速失败（退出码 1），匹配空集时仅警告并继续；可独立使用或组合使用
-- 超大文件采样分析：`--sample-reservoir`（蓄水池随机抽样）与 `--sample-step`（等距系统抽样），在 50GB+ 级别数据导出上数秒内获取准确度达 ~99% 的 Schema 预测概览，内存占用有界
-- 数据库直连 (Live DB Ingestion)：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，无需先导出为 CSV/JSON 即可进行实时结构与质量分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
-- 敏感数据识别 (PII) 与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱 / SSN / IBAN / 护照号字段（身份证按 GB 11643 校验位、银行卡按 Luhn、IBAN 按 MOD 97 验证，降低纯形态误报），所有报告输出（JSON / HTML / MD / CSV / 控制台）在导出前按语义自动打码遮蔽（如 `138****1234`、`110101********7528`、`6222********7890`、`张*`、`al***@example.com`），杜绝原始敏感值外泄；规则文件 `fields.<name>.pii` 可将业务敏感字段（如 `internalId`、`authToken`）声明为敏感字段并自定义打码格式，`fields.<name>.redact: false` 白名单可为误报字段（如存产品名的 name 列）豁免打码，`--pii-off` 全局关闭
-- 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计，用于共享报告前快速判定合规风险；`--fail-on-pii-level <A|B|C>` 提供与 `--fail-on-violations` 对称的 CI 合规门禁
-- 国密算法 SM4 / SM2 字段转换：规则文件 `transform.type` 新增 `sm4`（GM/T 0002-2014 对称加解密，CBC/ECB + PKCS7/None）与 `sm2`（GM/T 0003-2012 私钥解密 / 公钥验签，sm2p256v1 曲线），适配金融/政务/医疗等国内合规场景；SM2 密钥自动识别 Base64 DER / PEM / hex 多种编码
-- 数据血缘与审计日志：`--audit-log <PATH>` 输出 NDJSON 格式事件链（`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`），每条事件含 `runId` 串联、`operator` 操作者标识（`--operator`）、输入文件 SHA-256 哈希、关键选项快照、退出码与结果摘要；**绝不**记录字段值与 AES/SM4/SM2 密钥等敏感材料；同步 AutoFlush 保证进程崩溃时审计数据不丢失
-- 安全策略：见 [SECURITY.md](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/SECURITY.md) — 支持版本矩阵、数据分类、密钥管理、漏洞披露渠道（GitHub Security Advisories + 邮箱）与响应 SLA
-- 转换后对象展开：规则文件 `transform` 支持 `parse: "json"`，将解密/解码结果解析为 JSON 并展开成嵌套字段再统计（如 `payload.city`、`payload[0]`），适用于"解密后对内层对象再次统计"的场景
-- **分析深度增强（P4）**：在 `AnalysisResult` 中新增七类深度分析结果——字段相关性矩阵（Pearson/Spearman）、字符串模式归纳、Unicode 卫生检查、模糊去重、时间序列深度分析（趋势/周期/间隙）、采样置信区间、分布漂移对比（草图 vs 草图）；详见「分析深度增强（P4）」一节
-- 分发方式：`dotnet tool` 打包 (`objectanalyzer`)、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
+
+**输入与解析**
+
+- 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML；压缩包直读（gzip / bzip2 / zip，含 zip 内嵌套 gzip/bzip2 条目）
+- 数据库直连：`--connection` + `--query` 直连 PostgreSQL / MySQL / SQLite / SQL Server，DbDataReader 惰性流式读取，无需先导出为文件即可分析（支持 `--sample-*` 采样与 `-s` Schema 导出）
+- 规则驱动值解析：规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串（Excel 多列 JSON 等场景）
+- JSONPath 投影：`--root-path`（文件根提取子节点，如 `$.data[*]`）与 `--record-path`（每条记录提取子对象后再分析，如 `$.payload`），完整支持 RFC 9535 语法（通配符/递归下降/过滤器）；语法错误硬错误快速失败（退出码 1），匹配空集时仅警告并继续；可独立或组合使用
 - 流式解析：JSONL 按行惰性读取 + 分块并行聚合，超大文件内存可控
+
+**统计与深度剖析**
+
+- 基础统计：字段频次/覆盖率/主导数据类型、唯一值频次与占比、默认值推断（`null` / `0` / `false`）、重复对象检测（128 位非密码学哈希去重，快于 MD5）、嵌套扁平化（`a.b.c` 路径形式，可选）
+- 数值/文本深度剖析：数值列输出均值、样本标准差（Welford 流式算法）、近似分位数 P50/P90/P95/P99（可合并 t-digest 草图）与 2 的幂对数直方图；文本列输出平均长度；所有标量字段提供 distinct 计数（超阈值自动切换 HyperLogLog 近似，内存有界）
+- 日期/时间深度剖析：自动识别 DateTime / DateTimeOffset 字符串（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），输出最小/最大时间戳与时间桶直方图（按数据跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存
+- 异常值检测（IQR 1.5×）：数值列自动统计离群点数量与占比，列出 top-N 离群值所在字段；规则文件 `fields.<name>.maxOutlierRatio` 按字段设置阈值；`--fail-on-outlier-ratio` 提供 CI 门禁（退出码 5）
+- 分析深度增强（P4）：字段相关性矩阵（Pearson/Spearman）、字符串模式归纳、Unicode 卫生检查、模糊去重、时间序列深度分析（趋势/周期/间隙）、采样置信区间、分布漂移对比（草图 vs 草图）——详见「分析深度增强（P4）」一节
+
+**质量与 CI 门禁**
+
+- 数据质量报告与门禁：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细；`--violations` 输出结构化违规清单；`--fail-on-violations` 作为 CI 质量门禁（退出码 3）；质量检查 v2 覆盖模式/范围/必填/唯一/null 率 + 数据集期望
+- 枚举约束校验：规则文件声明合法枚举值，自动校验并报告违规值
+- Schema 代码导出与演进：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义；`--export-schema-snapshot` 导出 canonical Schema 快照（字段名/类型/coverage/nullable/语义/范围/枚举/异常值），`--diff-schema <BASELINE>` 与历史快照对比，`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6）
+- 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码（失败自动保留原始值并计数），以及 `parse: "json"` 解密后对象展开（`payload.city`、`payload[0]`）
+- 字段值过滤：`--where` 支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感；亦可由规则文件 `filter` 提供（CLI 优先级更高）
+
+**安全合规**
+
+- PII 识别与打码：自动识别手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱 / SSN / IBAN / 护照号（身份证按 GB 11643、银行卡按 Luhn、IBAN 按 MOD 97 校验位验证，降低纯形态误报）；所有报告输出在导出前按语义自动遮蔽（如 `138****1234`、`110101********7528`、`张*`、`al***@example.com`），杜绝原始敏感值外泄；规则文件可声明业务敏感字段（`fields.<name>.pii`）、白名单豁免误报（`fields.<name>.redact: false`）、全局关闭（`--pii-off`）
+- 数据安全合规报告：`--pii-report` 输出合规等级（A/B/C）+ 敏感字段清单 + 打码样本 + 各类别统计；`--fail-on-pii-level <A|B|C>` 合规门禁（退出码 4）
+- 国密算法字段转换：`transform.type` 支持 `sm4`（GM/T 0002-2014 对称加解密，CBC/ECB + PKCS7/None）与 `sm2`（GM/T 0003-2012 私钥解密 / 公钥验签），适配金融/政务/医疗等国内合规场景；SM2 密钥自动识别 Base64 DER / PEM / hex
+- 数据血缘与审计日志：`--audit-log` 输出 NDJSON 事件链（`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`），含 `runId`、`--operator` 操作者、输入 SHA-256 哈希、关键选项快照与退出码；**绝不**记录字段值与 AES/SM4/SM2 密钥等敏感材料；同步 AutoFlush 保证崩溃时审计数据不丢
+- 安全策略：见 [SECURITY.md](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/SECURITY.md) — 支持版本矩阵、数据分类、密钥管理、漏洞披露渠道（GitHub Security Advisories + 邮箱）与响应 SLA
+
+**报告与交付**
+
+- 六种报告格式：结构化 JSON、富文本 HTML、Markdown、CSV、Excel（.xlsx 多 sheet，覆盖字段统计/重复对象/违规清单/全部 P4 七项分析）与 PDF（QuestPDF 结构化排版）；CLI 按 `-o` 扩展名自动路由，Web 界面提供下载按钮
+- 超大文件采样分析：`--sample-reservoir`（蓄水池随机）与 `--sample-step`（等距系统），50GB+ 级别数据数秒内获取 ~99% 准确度的 Schema 概览，内存有界
+- 分发方式：`dotnet tool` 打包（`objectanalyzer`）、Docker 镜像、Blazor Web 界面（含图表/预览/下载/i18n/主题切换）
+
+## 目录
+
+[快速开始](#快速开始) · [项目结构](#项目结构) · [构建](#构建) · [CLI 使用方式](#cli-使用方式) · [安装](#安装) · [规则文件格式](#规则文件格式) · [KMS 集成](#kms-集成规则文件敏感密钥托管) · [质量检查](#质量检查规则文件-v2) · [自定义 PII 规则](#自定义-pii-规则业务敏感字段--打码格式) · [PII 误报逃生口](#pii-误报逃生口与全局开关) · [CI 合规门禁](#ci-合规门禁) · [数据血缘与审计日志](#数据血缘与审计日志) · [国密算法](#国密算法sm4--sm2) · [高级分析能力（P3）](#高级分析能力p3) · [分析深度增强（P4）](#分析深度增强p4) · [Web 界面](#web-界面) · [Excel / PDF 报告导出](#excel--pdf-报告导出) · [JSONPath 投影](#jsonpath-投影仅分析指定节点下的值) · [超大文件采样](#超大文件采样分析) · [压缩文件直读](#压缩文件直读) · [性能基准](#性能基准) · [技术栈](#技术栈) · [贡献指南](#贡献指南) · [许可证](#许可证)
 
 ## 快速开始
 
@@ -64,6 +74,48 @@ objectanalyzer -i samples/test_data.json -o report.html
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) 或更高版本
 
+## 项目结构
+
+解决方案分为三层：**核心分析库**（CLI 与 Web 共用）+ **两个薄宿主**（命令行、Blazor 界面）。
+
+```
+ObjectAnalyzer.sln
+├── src/
+│   ├── ObjectAnalyzer.Core/        # 核心分析库（命名空间 ObjectAnalyzer.*）
+│   │   ├── Analysis/               # 引擎与运行时：分析引擎、AnalysisRunner、选项/结果、
+│   │   │   │                       #   增量检查点、采样、内存预算
+│   │   │   ├── Fields/             #   字段统计与草图（FieldStatistic、NumericSketch、HyperLogLog）
+│   │   │   ├── Insights/           #   深度分析（时间序列、字符串模式、相关性、Unicode、模糊去重）
+│   │   │   ├── Drift/              #   分布漂移与快照对比
+│   │   │   ├── Quality/            #   数据质量检查（枚举/范围/必填/唯一/null 率/数据集期望）
+│   │   │   ├── Rules/              #   规则文件解析与字段值转换（AES/国密/JWT/JSON 展开）
+│   │   │   ├── Filter/             #   --where 过滤表达式解析器（词法 + AST）
+│   │   │   └── Schema/             #   Schema 快照与演进 Diff
+│   │   ├── Parsing/                # 多格式解析：FileParsers 工厂、JSONPath 投影
+│   │   │   ├── Parsers/            #   各格式解析器实现（JSON/JSONL/Excel-CSV/XML/YAML/Excel-JSON）
+│   │   │   ├── Compression/        #   压缩探测与输入源（gzip/bzip2/zip 直读）
+│   │   │   └── Database/           #   数据库直读（PostgreSQL/MySQL/SQLite/SQL Server）
+│   │   ├── Reporting/              # 报告导出（JSON/HTML/Markdown/CSV/Excel/PDF/控制台）
+│   │   │   ├── Schema/             #   Schema 代码生成（C#/TS/JSON Schema/OpenAPI/Proto/SQL，partial 按方言分文件）
+│   │   │   ├── Pii/                #   PII 打码与安全合规报告
+│   │   │   └── Quality/            #   质量/违规清单导出
+│   │   ├── Security/               # 数据安全：PII 识别、审计日志、KMS 密钥托管（IKmsProvider）
+│   ├── ObjectAnalyzer/             # CLI 薄宿主（System.CommandLine 选项解析 + 入口）
+│   └── ObjectAnalyzer.Web/         # Blazor Server 交互界面（图表/预览/下载/i18n/主题切换）
+│       ├── AnalysisState.cs / LocalizationService.cs   # per-circuit 分析状态 + resx 本地化（中/英）
+│       └── Components/Pages/Home.razor                # 单页交互（配置 → 进度 → 结果预览/下载）
+├── samples/                        # 示例数据：test_data.*（六种格式）+ 配套规则文件
+│   ├── test_rules.json             #   枚举/默认值/主导类型（与 test_data.json 配对）
+│   ├── test_*_rules.json           #   值转换/过滤/展开/PII/异常值/数值枚举各专项（与 test_data*.json 成对使用）
+│   ├── test_schema_v1/v2/v3.json   #   Schema 快照 v1–v3（配合 --diff-schema 做演进对比）
+└── tests/
+    ├── ObjectAnalyzer.Tests/       # 核心单元/集成测试
+    └── ObjectAnalyzer.Web.Tests/   # Web 冒烟与 P6 功能测试
+```
+
+约定：一个顶级类型一个文件、文件名与类型名一致；子目录按功能域分组（对应上表）。
+`Security/` 为横向数据安全域，PII 识别与审计日志虽由分析管线调用，源码统一放在此处。
+
 ## 构建
 
 ```bash
@@ -87,7 +139,6 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--output <FILE>` | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv` / `.xlsx` / `.pdf`） | 无 |
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
-| `--type <FILE>[:<CLASS>]` | `-t` | 指定 .cs 类型定义文件路径，用于强类型反序列化（JSON 根节点支持数组或单个对象）；.cs 含多个类时用冒号指定类名，如 `-t "samples/UserInfo.cs:UserInfo"` | 类名自动检测 |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举与质量检查约束（pattern/范围/必填/唯一/null率 + 数据集期望）、字段值转换及值解析规则 | 无 |
 | `--fields <NAMES>` | `-F` | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
 | `--where <EXPR>` | `-w` | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
@@ -123,6 +174,8 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 
 ### 示例
 
+#### 基础分析（多格式输入）
+
 ```bash
 # 分析 JSON 文件
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json
@@ -147,10 +200,11 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_excel_json_multi
 # 生成 Excel 测试文件（含普通 Excel + 单列/多列 JSON 示例）
 dotnet run --project src/ObjectAnalyzer -- --generate-test-excel
 
-# 使用强类型反序列化（.cs 文件含多个类时用冒号指定类名）
-dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t samples/UserInfo.cs
-dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -t "samples/UserInfo.cs:UserInfo"
+```
 
+#### 字段选择、转换与过滤
+
+```bash
 # 使用规则文件校验枚举约束，并导出 HTML 报告
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.html
 
@@ -171,25 +225,21 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_unwrap.json -r s
 
 # 单文件整合：字段选择 + 过滤 + 枚举约束 + 默认值 + 主导类型 + 解密后展开，一次完成
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_all_in_one.json -r samples/test_all_in_one.json
+```
 
+#### 报告导出与质量门禁
+
+```bash
 # 导出 Markdown 报告 + 独立违规清单（便于 CI 断言）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json -o report.md --violations violations.json
 
 # 导出数据质量报告 JSON，并启用质量门禁（存在违规则退出码为 3）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -r samples/test_rules.json --quality quality.json --fail-on-violations
+```
 
-# 超大文件采样：等距系统抽样，每 100 条取 1 条（5000W 行 -> 约 50W 条，秒级 Schema 概览）
-dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-step 100 -s "csharp:schema.cs"
+#### Schema 导出（六种目标）
 
-# 超大文件采样：蓄水池随机抽样，均匀抽取最多 5W 条
-dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-reservoir 50000 -s "typescript:schema.d.ts"
-
-# JSONPath 投影：API 响应 {data: [...], meta: {...}} 只想分析 data 数组
-dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_wrapped.json --root-path '$.data[*]'
-
-# JSONPath 投影：JSONL 每行 {event, payload} 只想分析 payload
-dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_payload.jsonl --record-path '$.payload'
-
+```bash
 # 导出 PostgreSQL CREATE TABLE（缺省方言；嵌套对象/数组折叠为 JSONB 列）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sql:schema.sql"
 
@@ -197,6 +247,16 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sql:sch
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "mysql:schema.mysql.sql"
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sqlite:schema.sqlite.sql"
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -s "sqlserver:schema.sqlserver.sql"
+```
+
+#### 大文件采样与数据库直连
+
+```bash
+# 超大文件采样：等距系统抽样，每 100 条取 1 条（5000W 行 -> 约 50W 条，秒级 Schema 概览）
+dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-step 100 -s "csharp:schema.cs"
+
+# 超大文件采样：蓄水池随机抽样，均匀抽取最多 5W 条
+dotnet run --project src/ObjectAnalyzer -- -i huge_export.jsonl --sample-reservoir 50000 -s "typescript:schema.d.ts"
 
 # 数据库直连：直连 SQLite 文件并流式分析全表结构与质量
 dotnet run --project src/ObjectAnalyzer -- --connection "Data Source=users.db" --query "SELECT * FROM users"
@@ -206,6 +266,16 @@ dotnet run --project src/ObjectAnalyzer -- --provider postgres --connection "Hos
 
 # 超大表直连采样：蓄水池随机抽样 5W 行做 Schema 概览（内存有界）
 dotnet run --project src/ObjectAnalyzer -- --provider sqlserver --connection "Server=.;Database=mydb;Trusted_Connection=true" --query "SELECT TOP (1000000) * FROM events" --sample-reservoir 50000 -s "csharp:events.cs"
+```
+
+#### JSONPath 投影与敏感数据
+
+```bash
+# JSONPath 投影：API 响应 {data: [...], meta: {...}} 只想分析 data 数组
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_wrapped.json --root-path '$.data[*]'
+
+# JSONPath 投影：JSONL 每行 {event, payload} 只想分析 payload
+dotnet run --project src/ObjectAnalyzer -- -i samples/test_data_payload.jsonl --record-path '$.payload'
 
 # 敏感数据打码 + 导出数据安全合规等级报告（控制台同步输出打码后的值频次）
 dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -o report.html --pii-report compliance.json
@@ -250,7 +320,7 @@ dotnet run
 
 Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图表、数据预览、报告下载（JSON/HTML/MD/CSV）与 Schema 下载（C#/TS/JSON Schema），并支持中/英文界面切换与浅色/深色主题切换（顶部按钮，选择持久化到 localStorage，首次绘制前即生效，无闪烁）。
 
-### 规则文件格式
+## 规则文件格式
 
 ```json
 {
@@ -307,7 +377,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `primaryType` 可省略：仅配置 `enumValues` 时自动推导——全部为数值 → `Number`、全部为布尔 → `Boolean`，否则（含混合）→ `String`；显式 `primaryType` 优先。
 
-### KMS 集成（规则文件敏感密钥托管）
+## KMS 集成（规则文件敏感密钥托管）
 
 规则文件里 `transform` 的敏感密钥字段（`key` / `iv` / `privateKey` / `publicKey` / `signature`）默认需以明文写入 JSON。若不想把真实密钥明文落盘，可用 **KMS 密文引用** 替代：规则文件只存密文，运行时解密注入，明文字符串仅在本次进程内存中存活、不会被写回规则文件。
 
@@ -334,7 +404,7 @@ echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project sr
 
 `kms-secret --value <明文> --encoding <utf8|base64|hex>` 亦支持直接传值（不推荐，因明文会出现在 shell 历史）。口令缺失或解密失败（口令错误 / 密文被篡改）时加载规则会 fail-fast。
 
-### 质量检查（规则文件 v2）
+## 质量检查（规则文件 v2）
 
 除 `enumValues` 枚举约束外，`fields` 中每条字段规则还支持以下质量检查维度：
 
@@ -392,7 +462,7 @@ echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project sr
 
 所有类型都支持可选参数 `parse`（当前仅 `"json"`）：转换完成后把结果当作 JSON 文本解析并**展开为嵌套字段**再统计——对象按键展开（`payload.city`、`payload.age`）、数组按下标展开（`payload[0]`）；非合法 JSON 时保留转换后的原文。`parse` 也可单独使用（不写 `type`，仅把已是 JSON 文本的字段值展开）。例如一个 base64 加密的 `{"city":"上海","age":30}`，展开后会得到 `payload.city` 与 `payload.age` 两个字段参与统计与过滤。
 
-### 自定义 PII 规则（业务敏感字段 + 打码格式）
+## 自定义 PII 规则（业务敏感字段 + 打码格式）
 
 默认 PII 识别依赖字段语义类型（手机号 / 身份证号 / 银行卡号 / 姓名 / 邮箱）。若你的业务字段（如 `internalId`、`authToken`）不含这些语义，可在规则文件的 `fields` 里通过 `pii` 声明其为敏感字段，并自定义打码格式。声明后，该字段在所有报告输出（JSON / HTML / MD / CSV / 控制台 / `--pii-report`）前都会按规则自动打码。
 
@@ -431,7 +501,7 @@ echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project sr
 
 > 命中自定义规则时优先于内置语义分类；未配置 `mask` 时默认整值打码（`maskAll: true`）。示例见 `samples/test_pii_rules.json`。
 
-### PII 误报逃生口与全局开关
+## PII 误报逃生口与全局开关
 
 - **字段级白名单 `redact: false`**：字段名启发式可能误伤合法值（如 name 列存的是产品名）。在规则文件中为该字段声明 `"redact": false` 后，即使命中敏感语义/启发式也不打码、不进合规报告。优先级高于 `pii` 自定义规则：
 
@@ -446,7 +516,7 @@ echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project sr
 - **全局开关 `--pii-off`**：数据确认不含敏感信息或需要完整原文时，跳过所有 PII 打码直接输出原始值；与 `--pii-report` 同用时后者被忽略。
 - **校验位验证降低误报**：18 位身份证号需通过 GB 11643 MOD 11-2 校验位（15 位一代证仅形态匹配）；16-19 位银行卡号需通过 Luhn 校验；IBAN 需通过 ISO 7064 MOD 97-10 校验。随机数字串不再被误判为敏感证件号。
 
-### CI 合规门禁
+## CI 合规门禁
 
 `--fail-on-pii-level <A|B|C>` 与 `--fail-on-violations` 对称：分析完成后计算合规等级（A=未发现敏感字段；B=存在敏感字段且已全部打码；C=样本无法完全打码需人工复核），达到或劣于阈值时以退出码 `4` 结束：
 
@@ -528,7 +598,7 @@ tail -n 2 /var/log/objectanalyzer/audit.ndjson | jq -r '[.event, .operator, .exi
 | `sm2` | `decrypt` | `privateKey`（PEM / Base64 DER / hex 32 字节裸） |
 | `sm2` | `verify` | `publicKey`（PEM / Base64 DER / hex 64-65 字节裸）、`signature` |
 
-SM4 测试使用 GM/T 0002-2014 附录 A.1 公开测试向量；SM2 使用 BouncyCastle 现生成密钥对做 round-trip。算法实现见 [FieldTransformProcessor.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Analysis/FieldTransformProcessor.cs) `ApplySm4` / `ApplySm2`。
+SM4 测试使用 GM/T 0002-2014 附录 A.1 公开测试向量；SM2 使用 BouncyCastle 现生成密钥对做 round-trip。算法实现见 [FieldTransformProcessor.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Analysis/Rules/FieldTransformProcessor.cs) `ApplySm4` / `ApplySm2`。
 
 ## 高级分析能力（P3）
 
@@ -730,7 +800,7 @@ objectanalyzer -i users.json --root-path '$[?(@.status=="active")]'
 
 参数规则：两者互斥（不能同时指定）；`--sample-reservoir` ≥ 2，`--sample-step` ≥ 2；未指定时保持全量分析。
 
-实现层面：`jsonl` / `csv` / `excel` / `excel-json` 等行、记录级流式格式会在**解析前跳过未选中记录**（只付出 I/O 成本，不付出 JSON/单元格解析成本），因此巨型 JSONL 的采样剖析可做到秒级；`json` / `xml` / `yaml` 与强类型路径在整体物化后做统一采样包装。报告中的对象总数与占比均基于样本计算。
+实现层面：`jsonl` / `csv` / `excel` / `excel-json` 等行、记录级流式格式会在**解析前跳过未选中记录**（只付出 I/O 成本，不付出 JSON/单元格解析成本），因此巨型 JSONL 的采样剖析可做到秒级；`json` / `xml` / `yaml` 在整体物化后做统一采样包装。报告中的对象总数与占比均基于样本计算。
 
 ## 压缩文件直读
 
@@ -746,8 +816,6 @@ objectanalyzer -i events.csv.bz2 -o report.html
 # zip 压缩包：自动选择数据条目（多数据条目时取字典序首个并在控制台提示）
 objectanalyzer -i backup.zip -o report.json
 
-# 强类型路径同样适用
-objectanalyzer -i users.json.gz -t "UserInfo.cs:User"
 ```
 
 识别与处理规则：
@@ -775,101 +843,6 @@ objectanalyzer -i users.json.gz -t "UserInfo.cs:User"
 dotnet run --project src/ObjectAnalyzer -- -i /path/to/200k.jsonl -o report.json
 ```
 
-## 项目结构
-
-```
-ObjectAnalysisStatistic/
-├── samples/                          # 示例数据
-│   ├── test_data.json / .jsonl / .csv / .xlsx / .xml / .yaml
-│   ├── test_data_excel_json.xlsx     # Excel JSON 列模式示例
-│   ├── UserInfo.cs                   # 强类型反序列化示例类
-│   ├── test_rules.json               # 规则文件示例
-│   ├── test_defaults.json            # 默认值规则示例
-│   ├── test_enum_violations.json     # 枚举约束违规示例
-│   ├── test_numeric_enum.json        # 数值枚举示例
-│   ├── test_numeric_enum_rules.json  # 数值枚举规则示例
-│   ├── test_transforms.json          # 字段选择 + 值转换规则示例
-│   ├── test_data_transforms.json     # 字段转换示例数据
-│   ├── test_unwrap_rules.json        # 转换后 JSON 展开规则示例 (parse: json)
-│   ├── test_data_unwrap.json         # 解密后对象展开示例数据
-│   ├── test_filter_rules.json        # 字段过滤规则示例 (filter)
-│   ├── test_data_filter.json         # 字段过滤示例数据
-│   ├── test_pii_rules.json           # 自定义 PII 规则示例 (业务敏感字段 + 打码格式)
-│   ├── test_data_semantic.json       # 语义推断示例数据 (Email/UUID/IPv4/URL/DateTime)
-│   ├── test_data_outliers.json       # 异常值检测示例数据 (含 IQR 离群点)
-│   ├── test_outlier_rules.json       # 异常值规则示例 (maxOutlierRatio 阈值)
-│   ├── test_schema_v1.json           # Schema 快照示例 v1 (作为 diff 基线)
-│   ├── test_schema_v2.json           # Schema 快照示例 v2 (增/改/删字段)
-│   ├── test_schema_v3.json           # Schema 快照示例 v3 (含新增/类型变化)
-│   ├── test_all_in_one.json          # 单文件整合示例（选择+过滤+枚举+转换+展开）
-│   └── test_data_all_in_one.json     # 整合示例数据
-│   （注：samples/report* 为生成物，已被 .gitignore 忽略）
-├── src/
-│   ├── ObjectAnalyzer/               # CLI 主项目 (net10.0, Exe, dotnet tool)
-│   │   ├── Analysis/                 # 分析引擎
-│   │   │   ├── AnalysisRunner.cs     # 分析流程编排
-│   │   │   ├── AnalysisFeatures.cs   # P4 分析深度增强特性开关 (EnableCorrelation / StringPatterns / UnicodeHygiene / TimeSeries 等)
-│   │   │   ├── ObjectAnalyzer.cs     # 核心分析逻辑 (MapReduce 并行聚合)
-│   │   │   ├── FieldRule.cs          # 字段规则 & 枚举约束模型
-│   │   │   ├── FieldTransformProcessor.cs # 字段选择 & 值转换 & 过滤 (JWT/AES/Base64/URL + SM4/SM2)
-│   │   │   ├── FieldFilter.cs         # 字段过滤表达式引擎 (--where)
-│   │   │   ├── FieldStatistic.cs     # 字段统计数据模型
-│   │   │   ├── AnalysisResult.cs     # 分析结果数据模型 (含 P4 CorrelationMatrix / StringPatterns / UnicodeHygiene / FuzzyDuplicates / TimeSeriesAnalyses / DistributionDiff / SamplingConfidence)
-│   │   │   ├── DataQualityReport.cs  # 数据质量报告模型 (P1)
-│   │   │   ├── QualityChecks.cs      # 质量检查 v2（模式/范围/必填/唯一/null率 + 数据集期望 + 异常值比例）
-│   │   │   ├── AuditLogger.cs        # 数据血缘审计日志 (--audit-log, NDJSON)
-│   │   ├── PiiDetector.cs        # PII 分类与打码规则
-│   │   ├── DuplicateObjectStatistic.cs
-│   │   ├── FieldCorrelationMatrix.cs # P4 字段相关性矩阵
-│   │   ├── FieldCorrelationCollector.cs # P4 相关性流式蓄水池
-│   │   ├── StringPatternProfiler.cs  # P4 字符串模式归纳
-│   │   ├── UnicodeHygieneChecker.cs  # P4 Unicode 卫生检查
-│   │   ├── FuzzyDuplicateDetector.cs # P4 模糊去重
-│   │   ├── TimeSeriesAnalyzer.cs     # P4 时间序列深度分析 (趋势/周期/间隙/脉冲)
-│   │   ├── DistributionSnapshot.cs   # P4 分布快照与漂移对比 (草图 vs 草图)
-│   │   ├── NumericSketch.cs          # t-digest 草图 + HyperLogLog
-│   │   ├── SchemaSnapshot.cs     # Schema 快照数据模型 (字段名/类型/coverage/范围/枚举/异常值)
-│   │   ├── SchemaSnapshotExporter.cs # Schema 快照构建与导出
-│   │   ├── SchemaDiff.cs         # Schema diff 数据模型 (新增/删除/变更/破坏性变更)
-│   │   └── SchemaDiffer.cs       # Schema 快照比对 (CI 演进门禁)
-│   │   ├── Parsing/                  # 多格式解析器
-│   │   │   ├── FileParsers.cs        # IFileParser 注册表模式
-│   │   │   ├── DatabaseReader.cs     # 数据库直连流式读取 (--connection/--query)
-│   │   │   ├── IFileParser.cs        # 解析器接口
-│   │   │   ├── JsonPathProjector.cs  # JSONPath 投影 (--root-path / --record-path)
-│   │   │   ├── JsonSharedOptions.cs  # 共享 JsonSerializerOptions
-│   │   │   ├── TestFileGenerator.cs  # 测试数据生成
-│   │   │   └── TypedFileParser.cs    # 强类型反序列化
-│   │   ├── Reporting/                # 报告输出
-│   │   │   ├── ConsoleReporter.cs    # Spectre.Console 控制台报告
-│   │   │   ├── HtmlReportExporter.cs # HTML 可视化报告 (含 P4 7 个小节)
-│   │   │   ├── MarkdownReportExporter.cs # Markdown 报告 (含 P4 7 个小节)
-│   │   │   ├── CsvReportExporter.cs  # CSV 报告
-│   │   │   ├── ExcelReportExporter.cs # Excel 多 sheet 工作簿 (MiniExcel)
-│   │   │   ├── PdfReportExporter.cs  # PDF 结构化排版 (QuestPDF)
-│   │   │   ├── ViolationExporter.cs  # 枚举违规结构化导出
-│   │   │   ├── QualityExporter.cs    # 数据质量报告导出 (P1)
-│   │   │   ├── PiiRedactor.cs        # 报告输出前 PII 打码 (redaction)
-│   │   │   ├── PiiReport.cs          # 数据安全合规报告模型 (A/B/C)
-│   │   │   ├── PiiExporter.cs        # 数据安全合规报告导出
-│   │   │   └── ReportExporter.cs     # 报告路由 (按扩展名分发)
-│   │   ├── TypeSystem/
-│   │   │   └── TypeLoader.cs         # Roslyn 运行时编译 .cs 文件
-│   │   └── Program.cs                # System.CommandLine 入口
-│   └── ObjectAnalyzer.Web/           # Blazor 交互式 Web 界面 (net10.0)
-│       ├── AnalysisState.cs          # 分析状态 & UI 配置
-│       ├── LocalizationService.cs    # resx 本地化 (i18n)
-│       ├── Resources/AppStrings*.resx  # 中/英文案 (含 P3/P4 专用键)
-│       ├── wwwroot/app.css           # 自定义样式 (.p3-* / .p4-* 卡片)
-│       └── Components/Pages/
-├── ObjectAnalyzer.sln
-├── Directory.Build.props            # 全局属性 (nullable, warnings as errors)
-├── Dockerfile                       # 多阶段 CLI 镜像
-├── .github/workflows/ci.yml         # build + test + publish + pack + CodeQL
-├── tests/ObjectAnalyzer.Tests/      # xUnit 核心测试 (含快照)
-└── tests/ObjectAnalyzer.Web.Tests/  # Web 冒烟 + i18n 测试
-```
-
 ## 技术栈
 
 - **语言**：C# / .NET 10
@@ -879,7 +852,7 @@ ObjectAnalysisStatistic/
 - **序列化**：System.Text.Json（内置）
 - **XML 解析**：System.Xml.Linq（内置）
 - **YAML 解析**：[YamlDotNet](https://github.com/aaubry/YamlDotNet)
-- **运行时编译**：[Roslyn](https://github.com/dotnet/roslyn)（Microsoft.CodeAnalysis.CSharp）
+- **代码生成**：[Roslyn](https://github.com/dotnet/roslyn)（Microsoft.CodeAnalysis.CSharp，SchemaExporter 的 C# 代码生成使用 SyntaxFactory AST）
 - **Web 界面**：Blazor Server (.NET 10)
 
 ## 贡献指南

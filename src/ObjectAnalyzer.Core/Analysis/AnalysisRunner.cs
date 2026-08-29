@@ -280,21 +280,10 @@ public static class AnalysisRunner
                 {
                     parsedObjects = ParseFromDatabase(options, startFromPosition);
                 }
-                // 如果指定了 --type，使用强类型反序列化路径
-                else if (!string.IsNullOrEmpty(options.TypeFile))
-                {
-                    // 强类型路径不支持断点续跑：必须整体物化
-                    if (resumeSnapshot != null)
-                    {
-                        AnsiConsole.MarkupLine(
-                            "[yellow]警告: --type 强类型反序列化路径不支持 --resume 断点续跑；将从文件开头重新分析。[/]");
-                    }
-                    parsedObjects = RunTyped(options);
-                }
                 else
                 {
                     string fmt = FileParsers.DetectFormat(options.InputPath);
-                    if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db" or "typed")
+                    if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db")
                     {
                         AnsiConsole.MarkupLine(
                             $"[yellow]警告: --root-path 在 [red]{fmt}[/] 格式下没有文件根概念，将被忽略（仅 --record-path 生效）[/]");
@@ -314,16 +303,6 @@ public static class AnalysisRunner
                 if (dbMode)
                 {
                     parsedObjects = ParseFromDatabase(options, startFromPosition);
-                }
-                // 如果指定了 --type，使用强类型反序列化路径
-                else if (!string.IsNullOrEmpty(options.TypeFile))
-                {
-                    if (resumeSnapshot != null)
-                    {
-                        AnsiConsole.MarkupLine(
-                            "[yellow]警告: --type 强类型反序列化路径不支持 --resume 断点续跑；将从文件开头重新分析。[/]");
-                    }
-                    parsedObjects = RunTyped(options);
                 }
                 else
                 {
@@ -729,53 +708,6 @@ public static class AnalysisRunner
         {
             AnsiConsole.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
         }
-    }
-
-    /// <summary>
-    /// Compiles the type definition file and performs strongly-typed deserialization.
-    /// </summary>
-    private static List<Dictionary<string, object?>> RunTyped(AnalysisOptions options)
-    {
-        AnsiConsole.MarkupLine($"正在编译类型定义文件: [blue]{Markup.Escape(options.TypeFile!)}[/] ...");
-        var compileResult = TypeLoader.Compile(options.TypeFile!, options.TypeName);
-
-        var targetType = compileResult.type;
-        AnsiConsole.MarkupLine($"编译成功。目标类型: [green]{targetType.FullName}[/]");
-
-        AnsiConsole.MarkupLine($"正在使用强类型反序列化文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
-        using var typedInput = InputSource.Open(options.InputPath);
-        var typedResult = TypedFileParser.ParseJson(typedInput.Content, targetType);
-
-        var materialized = new List<Dictionary<string, object?>>();
-        try
-        {
-            materialized.AddRange(typedResult.Objects);
-
-            if (typedResult.Errors.Count > 0)
-            {
-                foreach (var err in typedResult.Errors.Take(5))
-                {
-                    AnsiConsole.MarkupLine($"[yellow]属性读取警告: {Markup.Escape(err)}[/]");
-                }
-                if (typedResult.Errors.Count > 5)
-                {
-                    AnsiConsole.MarkupLine($"[yellow]... 还有 {typedResult.Errors.Count - 5} 条读取错误[/]");
-                }
-            }
-        }
-        finally
-        {
-            compileResult.context.Dispose();
-        }
-
-        // 强类型路径已整体物化，采样以通用包装实现
-        if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
-        {
-            AnnounceSampling(options);
-            return Sampling.Apply(materialized, options.SampleReservoir, options.SampleStep).ToList();
-        }
-
-        return materialized;
     }
 
     /// <summary>

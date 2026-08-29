@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Removed
+- **移除「编译 .cs 类型定义文件后强类型反序列化分析」功能**（原 `--type "File.cs:ClassName"` / `-t`）：删除 `TypeSystem/`（`TypeLoader` Roslyn 运行时编译 + `DynamicAssemblyContext` 可卸载程序集上下文）与 `Parsing/TypedFileParser` / `TypedParseResult`，以及 CLI 选项定义、`AnalysisOptions.TypeFile/TypeName`、AnalysisRunner 的两条强类型分支（含 --resume 不兼容警告）、Web UI 的类型文件上传/目标类名输入与其 resx 键（`OptType*` / `ClearTypeFile` / `ErrTypedParse`）、`PerformanceImprovementsTests` 的沙盒卸载用例与 `TypeLoaderTests`（4 个测试）与 `samples/UserInfo.cs` 示例。Roslyn 包引用保留（`SchemaExporter.CSharp` 的 SyntaxFactory 代码生成仍在使用）。验证：Release 构建 0 警告 0 错误，458 测试全过（405 核心 + 53 Web）。
+
 ### Changed
 - **死代码清理**（168 文件，净删约 780 行，零行为变化）：
   - 未使用 using：临时开启 `GenerateDocumentationFile` + `EnforceCodeStyleInBuild` 后以 `dotnet format style --diagnostics IDE0005` 清除 167 个文件的多余 using（约 760 行），配置随后还原。
@@ -83,7 +86,7 @@
 - **Excel / PDF 表格化报告导出**：在现有 JSON / HTML / Markdown / CSV 之外，新增两种适合交付给非技术受众的格式：
   - **Excel（.xlsx）**：基于 [MiniExcel](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的多 sheet 工作簿，按数据维度拆分——`摘要` / `字段统计` / `重复对象` / `违规清单` 基础 4 sheet + P4 七项分析对应的可选 sheet（`字符串模式` / `Unicode 卫生` / `模糊去重` / `相关性摘要` + `强相关对` + `Pearson 矩阵` + `Spearman 矩阵` / `时间序列深度` / `分布漂移摘要` + `覆盖率变化` + `数值漂移` + `Distinct 漂移` / `采样置信摘要` + `字段覆盖率区间`），仅在该维度有数据时输出。字段统计 sheet 包含完整的样本数 / 覆盖率 / 主导类型 / 语义类型 / 数值统计 / 分位数 / 长度 / Top 5 值 / 类型分布等列。PII 打码与现有所有格式一致——敏感字段值在写入单元格前已通过 `PiiRedactor.Redact` 处理。
   - **PDF**：基于 [QuestPDF](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的 A4 结构化排版，包含同样的多章节结构（标题 / 摘要表 / 字段统计表 / 重复对象 / 违规清单 / 全部 P4 小节），自动分页 + 页码 / 总页数 + 表头重复，适合打印或邮件附件交付。
-  - **CLI 路由**：[`ReportExporter.Save`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/Reporting/ReportExporter.cs) 检测 `-o` 文件扩展名后调用 `ExcelReportExporter.Save` / `PdfReportExporter.Save`；无需新增 CLI 选项。
+  - **CLI 路由**：[`ReportExporter.Save`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Reporting/ReportExporter.cs) 检测 `-o` 文件扩展名后调用 `ExcelReportExporter.Save` / `PdfReportExporter.Save`；无需新增 CLI 选项。
   - **Web 下载**：[`Home.razor`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/Components/Pages/Home.razor) 报告区新增 Excel / PDF 下载按钮，通过 [`interop.js`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/wwwroot/interop.js) 新增的 `downloadBinaryFile` 把 base64 编码的二进制流触发为浏览器下载，文件名带时间戳避免冲突。
 - **测试**：新增 `ExcelPdfReportTests` 4 个用例——多 sheet 生成（验证 4 个基础 sheet 名称 + 文件大小 > 1KB）、字段统计 sheet 表头列（`字段名` / `样本数` / `覆盖率`）、PDF 文件头 magic number 校验（`%PDF-`）、`ReportExporter` 按扩展名路由 xlsx / pdf。
 - **P4 分析深度增强（七项深度分析能力）**：在 `AnalysisResult` 中新增七类深度分析结果，配合 `AnalysisOptions` 提供的特性开关（`EnableCorrelation` / `EnableStringPatterns` / `EnableUnicodeHygiene` / `EnableTimeSeries` / `FuzzyDedupField` / `DistributionSnapshotPath` / `DiffDistributionBaseline`）按需启用，零侵入兼容默认分析流程：

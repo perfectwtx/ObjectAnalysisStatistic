@@ -84,49 +84,4 @@ public class PerformanceImprovementsTests
         Assert.Single(result.DuplicateObjects);
         Assert.Equal(5, result.DuplicateObjects[0].Count);
     }
-
-    // ──────────────────────────────────────────────
-    // 4. 可卸载程序集沙盒（DynamicAssemblyContext.Dispose）
-    // ──────────────────────────────────────────────
-
-    [Fact]
-    public void TypeLoader_DisposedContext_UnloadsAssembly()
-    {
-        // Arrange
-        string tempCsFile = Path.ChangeExtension(Path.GetTempFileName(), ".cs");
-        string tempJsonFile = Path.GetTempFileName();
-
-        File.WriteAllText(tempCsFile, @"
-namespace SandboxNs;
-public class SandboxEntity { public int Id { get; set; } }
-");
-        File.WriteAllText(tempJsonFile, @"[{""Id"": 7}]");
-
-        try
-        {
-            // Act – 编译并在 using 块中使用，退出时自动 Unload
-            using var context = CompileAndUseInSandbox(tempCsFile, tempJsonFile, out var parsed);
-
-            // Assert – 在 Dispose 前，能正常读取反序列化结果
-            Assert.Single(parsed);
-            Assert.Equal(7, parsed[0]["Id"]);
-
-            // using 块结束时自动调用 context.Dispose() → Unload()
-            // .NET 中 Collectible ALC Unload 不保证立即 GC，但保证 Unload() 不会抛出异常。
-        }
-        finally
-        {
-            if (File.Exists(tempCsFile)) File.Delete(tempCsFile);
-            if (File.Exists(tempJsonFile)) File.Delete(tempJsonFile);
-        }
-    }
-
-    private static DynamicAssemblyContext CompileAndUseInSandbox(
-        string csFile, string jsonFile,
-        out List<Dictionary<string, object?>> parsed)
-    {
-        var (context, type) = TypeLoader.Compile(csFile, null);
-        parsed = TypedFileParser.ParseJson(jsonFile, type).Objects;
-        return context; // 调用方持有，using 块结束时 Dispose
-    }
 }

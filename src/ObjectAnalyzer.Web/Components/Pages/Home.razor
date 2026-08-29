@@ -113,21 +113,6 @@
                     <span>@Loc["OptOperator"]</span>
                     <input type="text" value="@State.Operator" @oninput="OnOperatorChange" placeholder="@Loc["OptOperatorPlaceholder"]" />
                 </label>
-                <label class="option-item">
-                    <span>@Loc["OptTypeName"]</span>
-                    <input type="text" value="@State.TypeName" @oninput="OnTypeNameChange" placeholder="@Loc["OptTypeNamePlaceholder"]" />
-                </label>
-                <div class="option-item file-option">
-                    <span>@Loc["OptTypeFile"]</span>
-                    <div class="file-field">
-                        <InputFile OnChange="HandleTypeFileUpload" accept=".cs" />
-                        @if (State.TypeFileName != null)
-                        {
-                            <span class="file-ok">✓ @State.TypeFileName</span>
-                            <button class="clear-btn" @onclick="ClearTypeFile" title="@Loc["ClearTypeFile"]">✕</button>
-                        }
-                    </div>
-                </div>
                 <div class="option-item file-option">
                     <span>@Loc["OptRulesFile"]</span>
                     <div class="file-field">
@@ -1154,8 +1139,6 @@
 
         // 捕获当前配置快照，避免后台线程与 UI 状态竞争
         string dataFilePath = State.DataFilePath!;
-        string? typeFilePath = State.TypeFilePath;
-        string? typeName = State.TypeName;
         bool flatten = State.Flatten;
         string? rulesFilePath = State.RulesFilePath;
         string fieldsText = State.Fields;
@@ -1175,7 +1158,7 @@
                 : Core.Analysis.MaxMemoryMode.Soft;
         // 检查点目标文件名（仅在用户填写 CheckpointFileName 时使用）
         string safeCheckpointName = P6PostAnalysis.SanitizeCheckpointName(checkpointFileName);
-        string? typedError = null;
+        string? pipelineError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
 
         Core.Analysis.AnalysisRules? rules = null;
@@ -1231,98 +1214,72 @@
             {
                 IEnumerable<Dictionary<string, object?>> objects;
 
-                // 如果指定了类型文件，使用强类型反序列化（该路径本身需要物化结果）
-                if (typeFilePath != null)
+                // 懒管道：直接传递 IEnumerable，避免为大文件物化 List
+                var detectedFormat = effectiveFormat;
+                var parseOptions = new Core.Parsing.ParseOptions
                 {
-                    var compileResult = Core.TypeSystem.TypeLoader.Compile(typeFilePath, typeName);
-                    try
-                    {
-                        var typedResult = Core.Parsing.TypedFileParser.ParseJson(dataFilePath, compileResult.type);
-                        if (typedResult.Errors.Count > 0)
-                        {
-                            typedError = Loc.Get("ErrTypedParse", typedResult.Errors.Count, typedResult.Errors[0]);
-                        }
-                        objects = typedResult.Objects;
-                        if (Core.Analysis.Sampling.IsEnabled(sampleReservoir, sampleStep))
-                        {
-                            // 强类型路径已整体物化，采样以通用包装实现
-                            objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep).ToList();
-                        }
-                    }
-                    finally
-                    {
-                        compileResult.context.Dispose();
-                    }
+                    Flatten = effectiveFlatten,
+                    ValueParsers = effectiveValueParsers,
+                    SampleReservoir = sampleReservoir,
+                    SampleStep = sampleStep
+                };
+                objects = Core.Parsing.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
+                // jsonl/csv/excel/excel-json 已在行/记录级跳过未选中记录；其余格式做通用采样包装
+                if (Core.Analysis.Sampling.IsEnabled(sampleReservoir, sampleStep)
+                    && detectedFormat is not ("jsonl" or "csv" or "excel" or "excel-json"))
+                {
+                    objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep);
                 }
-                else
-                {
-                    // 懒管道：直接传递 IEnumerable，避免为大文件物化 List
-                    var detectedFormat = effectiveFormat;
-                    var parseOptions = new Core.Parsing.ParseOptions
-                    {
-                        Flatten = effectiveFlatten,
-                        ValueParsers = effectiveValueParsers,
-                        SampleReservoir = sampleReservoir,
-                        SampleStep = sampleStep
-                    };
-                    objects = Core.Parsing.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
-                    // jsonl/csv/excel/excel-json 已在行/记录级跳过未选中记录；其余格式做通用采样包装
-                    if (Core.Analysis.Sampling.IsEnabled(sampleReservoir, sampleStep)
-                        && detectedFormat is not ("jsonl" or "csv" or "excel" or "excel-json"))
-                    {
-                        objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep);
-                    }
 
-                    // JSONPath 投影：仅分析指定节点下的值
-                    if (hasRootPath)
-                    {
-                        // 整体 JSON 文件才支持 root-path（其他格式无文件根概念）
-                        if (detectedFormat is "json")
-                        {
-                            try
-                            {
-                                Core.Parsing.JsonPathProjector.TryValidate(rootPathText);
-                                string json = File.ReadAllText(dataFilePath);
-                                var root = System.Text.Json.Nodes.JsonNode.Parse(json);
-                                var projected = Core.Parsing.JsonPathProjector.ApplyRootPath(root, rootPathText);
-                                objects = projected;
-                            }
-                            catch (Exception ex)
-                            {
-                                typedError = Loc.Get("ErrRootPath", rootPathText, ex.Message);
-                                objects = Array.Empty<Dictionary<string, object?>>();
-                            }
-                        }
-                        else
-                        {
-                            typedError = Loc.Get("WarnRootPathIgnored", detectedFormat);
-                        }
-                    }
-                    if (hasRecordPath)
+                // JSONPath 投影：仅分析指定节点下的值
+                if (hasRootPath)
+                {
+                    // 整体 JSON 文件才支持 root-path（其他格式无文件根概念）
+                    if (detectedFormat is "json")
                     {
                         try
                         {
-                            Core.Parsing.JsonPathProjector.TryValidate(recordPathText);
-                            var materialized = objects as IReadOnlyList<Dictionary<string, object?>> ?? objects.ToList();
-                            var projected = new List<Dictionary<string, object?>>(materialized.Count);
-                            int noMatch = 0;
-                            foreach (var rec in materialized)
-                            {
-                                var matches = Core.Parsing.JsonPathProjector.ApplyRecordPath(rec, recordPathText);
-                                if (matches.Count == 0) noMatch++;
-                                projected.AddRange(matches);
-                            }
-                            if (noMatch > 0)
-                            {
-                                typedError = Loc.Get("WarnRecordPathNoMatch", noMatch, materialized.Count, recordPathText);
-                            }
+                            Core.Parsing.JsonPathProjector.TryValidate(rootPathText);
+                            string json = File.ReadAllText(dataFilePath);
+                            var root = System.Text.Json.Nodes.JsonNode.Parse(json);
+                            var projected = Core.Parsing.JsonPathProjector.ApplyRootPath(root, rootPathText);
                             objects = projected;
                         }
                         catch (Exception ex)
                         {
-                            typedError = Loc.Get("ErrRecordPath", recordPathText, ex.Message);
+                            pipelineError = Loc.Get("ErrRootPath", rootPathText, ex.Message);
                             objects = Array.Empty<Dictionary<string, object?>>();
                         }
+                    }
+                    else
+                    {
+                        pipelineError = Loc.Get("WarnRootPathIgnored", detectedFormat);
+                    }
+                }
+                if (hasRecordPath)
+                {
+                    try
+                    {
+                        Core.Parsing.JsonPathProjector.TryValidate(recordPathText);
+                        var materialized = objects as IReadOnlyList<Dictionary<string, object?>> ?? objects.ToList();
+                        var projected = new List<Dictionary<string, object?>>(materialized.Count);
+                        int noMatch = 0;
+                        foreach (var rec in materialized)
+                        {
+                            var matches = Core.Parsing.JsonPathProjector.ApplyRecordPath(rec, recordPathText);
+                            if (matches.Count == 0) noMatch++;
+                            projected.AddRange(matches);
+                        }
+                        if (noMatch > 0)
+                        {
+                            pipelineError = Loc.Get("WarnRecordPathNoMatch", noMatch, materialized.Count, recordPathText);
+                        }
+                        objects = projected;
+                    }
+                    catch (Exception ex)
+                    {
+                        pipelineError = Loc.Get("ErrRecordPath", recordPathText, ex.Message);
+                        objects = Array.Empty<Dictionary<string, object?>>();
                     }
                 }
 
@@ -1365,9 +1322,9 @@
                 return analysisResult;
             }, token);
 
-            if (typedError != null)
+            if (pipelineError != null)
             {
-                State.ErrorMessage = typedError;
+                State.ErrorMessage = pipelineError;
             }
             State.Preview = previewedPreview;
             SeedPreviewSelection();
@@ -1625,16 +1582,6 @@
         {
             State.SampleStep = val;
         }
-    }
-
-    private void ClearTypeFile()
-    {
-        CancelActiveAnalysis();
-        DeleteQuietly(State.TypeFilePath);
-        State.TypeFilePath = null;
-        State.TypeFileName = null;
-        State.TypeName = null;
-        State.ErrorMessage = null;
     }
 
     private void ClearRulesFile()
@@ -2094,23 +2041,6 @@
             fileName, State.GetViolationsJson(), "application/json;charset=utf-8");
     }
 
-    private async Task HandleTypeFileUpload(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        if (file == null) return;
-
-        // 替换旧临时文件（流式写入磁盘，避免在内存中缓存大文件）
-        CancelActiveAnalysis();
-        DeleteQuietly(State.TypeFilePath);
-        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.cs");
-        await using (var fs = File.Create(tempPath))
-        {
-            await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(fs);
-        }
-        State.TypeFilePath = tempPath;
-        State.TypeFileName = file.Name;
-        State.ErrorMessage = null;
-    }
 
     private async Task HandleRulesFileUpload(InputFileChangeEventArgs e)
     {
@@ -2145,12 +2075,6 @@
             State.RulesFileName = null;
             State.ErrorMessage = ErrorSanitizer.Format(ex);
         }
-    }
-
-    private void OnTypeNameChange(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString()?.Trim();
-        State.TypeName = string.IsNullOrEmpty(val) ? null : val;
     }
 
     private static void DeleteQuietly(string? path)

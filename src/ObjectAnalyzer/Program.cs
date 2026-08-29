@@ -29,10 +29,6 @@ var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
     description: "生成 Excel 测试文件 (samples/test_data.xlsx、samples/test_data_excel_json.xlsx、samples/test_data_excel_json_multi_columns.xlsx) 并退出。");
 
-var typeOption = new Option<string?>(
-    aliases: CliAliases.Type,
-    description: "指定 .cs 类型定义文件路径，用于强类型反序列化；可带类名: \"UserInfo.cs:User\"（.cs 含多个类时冒号后指定）。");
-
 var rulesOption = new Option<FileInfo?>(
     aliases: CliAliases.Rules,
     description: "指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束以及字段值转换（解密 / JWT 转明文等）。");
@@ -173,7 +169,6 @@ rootCommand.AddOption(outputOption);
 rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
-rootCommand.AddOption(typeOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(whereOption);
@@ -256,7 +251,6 @@ rootCommand.SetHandler((InvocationContext context) =>
     var noFlatten = parseResult.GetValueForOption(noFlattenOption);
     var maxValues = parseResult.GetValueForOption(maxValuesOption);
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
-    var type = parseResult.GetValueForOption(typeOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
     var where = parseResult.GetValueForOption(whereOption);
@@ -387,7 +381,6 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
-    var (typeFile, typeName) = SplitColonSuffix(type);
     var (schemaFormat, schemaOutput) = SplitColonSuffix(exportSchema);
 
     var options = new AnalysisOptions
@@ -396,8 +389,6 @@ rootCommand.SetHandler((InvocationContext context) =>
         OutputPath = output?.FullName,
         Flatten = !noFlatten,
         MaxValuesToShow = maxValues,
-        TypeFile = typeFile,
-        TypeName = typeName,
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
         Fields = fields,
@@ -471,7 +462,6 @@ static class CliAliases
     public static readonly string[] Input = { "--input", "-i" };
     public static readonly string[] Output = { "--output", "-o" };
     public static readonly string[] MaxValues = { "--max-values", "-m" };
-    public static readonly string[] Type = { "--type", "-t" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Fields = { "--fields", "-F" };
     public static readonly string[] Where = { "--where", "-w" };

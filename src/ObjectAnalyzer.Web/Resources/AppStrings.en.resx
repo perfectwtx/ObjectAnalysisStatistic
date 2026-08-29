@@ -22,7 +22,6 @@
   <data name="UploadSupported" xml:space="preserve"><value>Supports JSON, JSONL, CSV, Excel, XML, YAML</value></data>
   <data name="FileSelected" xml:space="preserve"><value>Selected: {0}</value></data>
   <data name="ClearFile" xml:space="preserve"><value>Clear file</value></data>
-  <data name="ClearTypeFile" xml:space="preserve"><value>Clear type definition</value></data>
   <data name="ClearRulesFile" xml:space="preserve"><value>Clear rules file</value></data>
   <data name="OptFlatten" xml:space="preserve"><value>Flatten nested</value></data>
   <data name="OptMaxValues" xml:space="preserve"><value>Max values shown</value></data>
@@ -31,9 +30,6 @@
   <data name="OptSampleReservoir" xml:space="preserve"><value>Reservoir sample</value></data>
   <data name="OptSampleStep" xml:space="preserve"><value>Step sample size</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>Sampling for huge files: reservoir keeps up to N random objects / step keeps 1 per N rows for fast schema overview (mutually exclusive, 0 = off)</value></data>
-  <data name="OptTypeName" xml:space="preserve"><value>Target class name</value></data>
-  <data name="OptTypeNamePlaceholder" xml:space="preserve"><value>Optional</value></data>
-  <data name="OptTypeFile" xml:space="preserve"><value>Type definition (.cs)</value></data>
   <data name="OptRulesFile" xml:space="preserve"><value>Rules file (.json)</value></data>
   <data name="OptFields" xml:space="preserve"><value>Fields</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>comma-separated, e.g. name,age</value></data>
@@ -117,7 +113,6 @@
   <data name="DuplicatesMore" xml:space="preserve"><value>... {0} more groups hidden</value></data>
   <data name="ErrSelectDataFile" xml:space="preserve"><value>Please select a data file first.</value></data>
   <data name="ErrCancelled" xml:space="preserve"><value>Analysis cancelled.</value></data>
-  <data name="ErrTypedParse" xml:space="preserve"><value>{0} property read errors: {1}</value></data>
   <data name="ErrInvalidRules" xml:space="preserve"><value>Rules file is empty or invalid.</value></data>
   <data name="DateRange" xml:space="preserve"><value>Date range</value></data>
   <data name="Outliers" xml:space="preserve"><value>Outliers</value></data>

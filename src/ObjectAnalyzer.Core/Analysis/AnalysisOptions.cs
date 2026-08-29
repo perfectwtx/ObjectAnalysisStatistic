@@ -9,8 +9,6 @@ public sealed class AnalysisOptions
     public string? OutputPath { get; set; }
     public bool Flatten { get; set; } = true;
     public int MaxValuesToShow { get; set; } = 5;
-    public string? TypeFile { get; set; }
-    public string? TypeName { get; set; }
     public string? RulesFile { get; set; }
     public string? ViolationsPath { get; set; }
     public string? QualityPath { get; set; }
