@@ -5,6 +5,12 @@
 ## [Unreleased]
 
 ### Changed
+- **核心库目录按功能域重组**（87 个文件纯 `git mv`，命名空间保持不变以避免 Web 端全限定引用连锁修改，零代码改动）：
+  - `Analysis/`（88 → 19 文件）：仅保留引擎与运行时（ObjectAnalyzer / AnalysisRunner / Options / Result / Snapshot / Sampling / MemoryBudget 等），新增子目录 `Fields/`（字段统计与草图：FieldStatistic、NumericSketch、HyperLogLog 等 6）、`Insights/`（P4 深度分析：时间序列/字符串模式/相关性/Unicode 卫生/模糊去重共 15）、`Drift/`（分布漂移与快照 Diff 11）、`Quality/`（质量检查 5）、`Rules/`（规则文件与值转换 8）、`Filter/`（--where 表达式解析器与 AST 8）、`Schema/`（Schema 快照与演进 7）。
+  - `Security/` 合并为数据安全域（13）：KMS 4 个 + 自 Analysis 迁入的 PII 识别 4 个（PiiDetector/PiiCategory/PiiMaskFormat/PiiValidators）与审计日志 5 个。
+  - `Reporting/`（20 → 7）：按格式导出器留根，新增 `Schema/`（SchemaExporter + 6 方言分部）、`Pii/`（打码/合规报告 4）、`Quality/`（质量/违规导出 2）。
+  - `Parsing/`（13 → 8）：新增 `Compression/`（压缩探测与输入源 3）、`Database/`（数据库直读 2），`Parsers/` 沿用。
+  - 验证：Release 构建 0 警告 0 错误；462 测试全过；git 全部识别为 rename（历史可追溯）。
 - **同类嵌套类型/单类多职责文件继续拆分**（与 FileParsers 同模式）：
   - `ObjectAnalyzer.cs`（1422→1205 行）：引擎内 3 个嵌套类型提升为顶级 `internal`——`InternalFieldMetrics`（并行聚合扩展指标）、`ThreadLocalState`→重命名 `AnalyzerThreadState`、`Hash128`（128 位非密码学哈希值类型）。
   - `FieldFilter.cs`（440→251 行）：`--where` 表达式 AST 的 7 个嵌套类型提升为顶级并以 `FieldFilter` 前缀重命名（`FieldFilterTokenKind/Token/Node/LogicalNode/ComparisonNode/CmpOp/Operand`，避免 `Node`/`Token` 泛化名污染 Analysis 命名空间）；求值助手（`TryGetNumber`/`WeakEqual`/`TryGetValueIgnoreCase`/`NumericCompare`/`LikeMatch` 5 个）随唯一消费方 `FieldFilterComparisonNode` 迁移。
