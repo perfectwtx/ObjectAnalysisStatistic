@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- **检查点文件名清洗跨平台一致化（修复 CI/Linux 失败）**：`P6PostAnalysis.SanitizeCheckpointName` 原使用 `Path.GetInvalidFileNameChars()`，该集合随运行 OS 变化——Linux 上 `<>:"|?*` 与反斜杠均合法，导致同一输入在 GitHub Actions（Linux）与本地（Windows）被清洗成不同结果，并削弱路径穿越防护的一致性。改为跨平台固定字符集（Windows 非法字符 + 正/反斜杠 + 控制字符），`P6PostAnalysisTests` 4 个按 Windows 语义编写的用例现可在任意 OS 通过，并新增 `Sanitize_CrossPlatformRejectsWindowsInvalidChars` 锁定该行为；顺带合并此前误插入的重复 `[Unreleased]` 标题。
+
 ### Added
 - **从代码 / Schema 生成规则文件（rules-from-code / rules-from-schema 子命令）**：静态解析 C# 源码或 JSON Schema（draft-07 / 2020-12 常用子集）提取类结构，生成规则文件骨架，支撑「模型优先」的数据校验工作流：
   - `RulesFromSchema.Convert`：type → primaryType（`format: date-time/date/time` → DateTime）、enum → enumValues（未声明 type 时按成员类型反推）、required → required、minimum/maximum → minValue/maxValue、pattern → pattern、default → defaultValue；嵌套对象按扁平化路径展开（`customer.name`）；数组字段跳过并记录原因；`$ref` 链式解析本地指针（环路检测 + 32 跳上限，兄弟属性独立守卫支持菱形引用）。
@@ -50,10 +53,6 @@
   - 规则加载自动注入：`AnalysisRunner.LoadRules` 在 pattern 预验证后统一遍历所有 field 的 transform，对敏感字段调用 `KmsRuleResolver.Resolve`；无 `kms:` 前缀的值原样返回（向后兼容既有明文规则文件）。下游 `FieldTransformProcessor.DecodeBytes` 完全无感知。
   - 新 CLI 子命令 `kms-secret`：用 `OA_KMS_PASSPHRASE` 口令加密明文密钥，输出可直接粘贴进规则文件的 `kms:offline/1-<encoding>:<payload>` 引用；明文优先从 stdin 读取（`--value` 可选），避免明文进 shell 历史。
   - 测试：`KmsTests.cs` 10 个用例（AES-GCM 往返、base64/hex 编码还原、salting 语义安全、错误口令 / 缺失口令、前缀解析、未知提供方、规则注入、AES 端到端解密闭环）。
-
-## [Unreleased]
-
-### Added
 - **P6 Web UI 同步**：把 P6 三块能力（进度条 / 增量分析 / 内存预算）补齐到 Blazor Web 配置面板：
   - 新增 `P6` 可折叠子区段（默认展开），内含 `--no-progress` 取反 / `--max-memory`（MB）/ `--max-memory-mode`（soft|hard）三个数值/选择控件，以及 `--resume` / `--baseline` / `--checkpoint` 三个文件上传入口（与现有 `--type` / `--rules` 复用 `InputFile` + 临时文件模式）。
   - `AnalysisState` 新增 `ShowProgress` / `CheckpointPath/Name` / `ResumeFrom/Name` / `BaselinePath/Name` / `MaxMemoryMB` / `MaxMemoryMode` 六个 P6 字段；`Dispose()` 同步清理新增临时文件。
