@@ -24,6 +24,7 @@
 
 - 数据质量报告与门禁：`--quality` 输出 Pass/Fail 摘要 + 违规率 + 逐字段明细；`--violations` 输出结构化违规清单；`--fail-on-violations` 作为 CI 质量门禁（退出码 3）；质量检查 v2 覆盖模式/范围/必填/唯一/null 率 + 数据集期望
 - 枚举约束校验：规则文件声明合法枚举值，自动校验并报告违规值
+- 从代码 / Schema 生成规则：`rules-from-code`（C# 类/枚举静态解析）与 `rules-from-schema`（JSON Schema）生成规则文件骨架，支撑「模型优先」的数据校验工作流——详见「从代码 / Schema 生成规则文件」一节
 - Schema 代码导出与演进：`--export-schema csharp|typescript|json-schema|openapi|openapi-yaml|proto|sql` 生成数据结构定义；`--export-schema-snapshot` 导出 canonical Schema 快照（字段名/类型/coverage/nullable/语义/范围/枚举/异常值），`--diff-schema <BASELINE>` 与历史快照对比，`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6）
 - 字段选择与值转换：`--fields` 仅统计指定字段；规则文件 `transform` 支持 JWT 解码 / AES 解密 / Base64 / URL 解码（失败自动保留原始值并计数），以及 `parse: "json"` 解密后对象展开（`payload.city`、`payload[0]`）
 - 字段值过滤：`--where` 支持 `==`、`!=`、`>`、`<`、`>=`、`<=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感；亦可由规则文件 `filter` 提供（CLI 优先级更高）
@@ -44,7 +45,7 @@
 
 ## 目录
 
-[快速开始](#快速开始) · [项目结构](#项目结构) · [构建](#构建) · [CLI 使用方式](#cli-使用方式) · [安装](#安装) · [规则文件格式](#规则文件格式) · [KMS 集成](#kms-集成规则文件敏感密钥托管) · [质量检查](#质量检查规则文件-v2) · [自定义 PII 规则](#自定义-pii-规则业务敏感字段--打码格式) · [PII 误报逃生口](#pii-误报逃生口与全局开关) · [CI 合规门禁](#ci-合规门禁) · [数据血缘与审计日志](#数据血缘与审计日志) · [国密算法](#国密算法sm4--sm2) · [高级分析能力（P3）](#高级分析能力p3) · [分析深度增强（P4）](#分析深度增强p4) · [Web 界面](#web-界面) · [Excel / PDF 报告导出](#excel--pdf-报告导出) · [JSONPath 投影](#jsonpath-投影仅分析指定节点下的值) · [超大文件采样](#超大文件采样分析) · [压缩文件直读](#压缩文件直读) · [性能基准](#性能基准) · [技术栈](#技术栈) · [贡献指南](#贡献指南) · [许可证](#许可证)
+[快速开始](#快速开始) · [项目结构](#项目结构) · [构建](#构建) · [CLI 使用方式](#cli-使用方式) · [安装](#安装) · [规则文件格式](#规则文件格式) · [KMS 集成](#kms-集成规则文件敏感密钥托管) · [质量检查](#质量检查规则文件-v2) · [从代码 / Schema 生成规则文件](#从代码--schema-生成规则文件) · [自定义 PII 规则](#自定义-pii-规则业务敏感字段--打码格式) · [PII 误报逃生口](#pii-误报逃生口与全局开关) · [CI 合规门禁](#ci-合规门禁) · [数据血缘与审计日志](#数据血缘与审计日志) · [国密算法](#国密算法sm4--sm2) · [高级分析能力（P3）](#高级分析能力p3) · [分析深度增强（P4）](#分析深度增强p4) · [Web 界面](#web-界面) · [Excel / PDF 报告导出](#excel--pdf-报告导出) · [JSONPath 投影](#jsonpath-投影仅分析指定节点下的值) · [超大文件采样](#超大文件采样分析) · [压缩文件直读](#压缩文件直读) · [性能基准](#性能基准) · [技术栈](#技术栈) · [贡献指南](#贡献指南) · [许可证](#许可证)
 
 ## 快速开始
 
@@ -88,7 +89,7 @@ ObjectAnalyzer.sln
 │   │   │   ├── Insights/           #   深度分析（时间序列、字符串模式、相关性、Unicode、模糊去重）
 │   │   │   ├── Drift/              #   分布漂移与快照对比
 │   │   │   ├── Quality/            #   数据质量检查（枚举/范围/必填/唯一/null 率/数据集期望）
-│   │   │   ├── Rules/              #   规则文件解析与字段值转换（AES/国密/JWT/JSON 展开）
+│   │   │   ├── Rules/              #   规则文件解析、字段值转换（AES/国密/JWT/JSON 展开）与规则生成器
 │   │   │   ├── Filter/             #   --where 过滤表达式解析器（词法 + AST）
 │   │   │   └── Schema/             #   Schema 快照与演进 Diff
 │   │   ├── Parsing/                # 多格式解析：FileParsers 工厂、JSONPath 投影
@@ -461,6 +462,35 @@ echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project sr
 > 转换失败时保留原始值，并在报告中记录该字段的转换失败次数（`TransformFailureCount`）。
 
 所有类型都支持可选参数 `parse`（当前仅 `"json"`）：转换完成后把结果当作 JSON 文本解析并**展开为嵌套字段**再统计——对象按键展开（`payload.city`、`payload.age`）、数组按下标展开（`payload[0]`）；非合法 JSON 时保留转换后的原文。`parse` 也可单独使用（不写 `type`，仅把已是 JSON 文本的字段值展开）。例如一个 base64 加密的 `{"city":"上海","age":30}`，展开后会得到 `payload.city` 与 `payload.age` 两个字段参与统计与过滤。
+
+## 从代码 / Schema 生成规则文件
+
+类结构是权威定义时，可以**静态解析源码或 JSON Schema** 生成规则文件骨架，再用 `-r` 交给分析器做质量校验——「模型优先」的数据校验工作流。仅静态解析，不编译、不参与分析管线（与已移除的 `--type` 编译反序列化是两回事）。
+
+```bash
+# 从 C# 类/记录/枚举生成（Java/TS/C++ 等语言建议先用各自生态工具转成 JSON Schema）
+dotnet run --project src/ObjectAnalyzer -- rules-from-code --input samples/UserModel.cs -o rules.json
+
+# 从 JSON Schema（draft-07 / 2020-12 常用子集）生成
+dotnet run --project src/ObjectAnalyzer -- rules-from-schema --input samples/user_schema.json -o rules.json
+
+# 生成后即可用于分析与质量门禁
+dotnet run --project src/ObjectAnalyzer -- -i data.json -r rules.json --fail-on-violations
+```
+
+映射能力：
+
+| 规则项 | 来源 |
+|--------|------|
+| `primaryType` | 声明类型（数值基元 → Number、bool → Boolean、DateTime 系 → DateTime、其余字符串系 → String；JSON Schema `format: date-time/date/time` → DateTime） |
+| `enumValues` | 枚举声明成员名（C#）/ `enum` 关键字（Schema） |
+| `required` | 非空值类型与 `[Required]`（C#）；`required` 数组（Schema） |
+| `minValue` / `maxValue` | `[Range]` / `minimum` + `maximum` |
+| `pattern` | `[RegularExpression]` / `pattern` |
+| `defaultValue` | 属性初始化器字面量 / `default` |
+| 字段键 | `[JsonPropertyName]`（C#）；嵌套对象按扁平化路径展开（`customer.name`） |
+
+边界说明：生成的是**结构约束骨架**——唯一率、null 率、离群率等数据统计类规则无法从代码推导，需按实际数据手工补充；数组字段无法静态确定具体索引，会跳过并在控制台列出；C# 复杂类型（集合/嵌套 POCO）同样跳过；Schema `$ref` 仅解析本地指针（`#/$defs/...`），存在循环引用时报错。
 
 ## 自定义 PII 规则（业务敏感字段 + 打码格式）
 

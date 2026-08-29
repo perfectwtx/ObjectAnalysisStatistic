@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Text.Json;
 using ObjectAnalyzer.Security;
 using Spectre.Console;
 
@@ -242,6 +243,92 @@ kmsSecretCommand.SetHandler((InvocationContext context) =>
 });
 rootCommand.AddCommand(kmsSecretCommand);
 
+// ── 规则文件生成：rules-from-code / rules-from-schema ──
+// 从 C# 源码或 JSON Schema 静态提取类结构，生成规则文件骨架（primaryType/枚举/必填/范围/模式/默认值）。
+// 仅静态解析，不编译、不参与分析管线；数据统计类规则（唯一/null 率/离群率）需后续手工补充。
+var rfcInputOption = new Option<FileInfo>(
+    aliases: CliAliases.Input,
+    description: "输入文件路径（rules-from-code: .cs 源码；rules-from-schema: JSON Schema 文件）。")
+{ IsRequired = true };
+var rfcClassOption = new Option<string?>(
+    aliases: CliAliases.Class,
+    description: "目标类名（仅 rules-from-code）；源码包含多个类时必填。");
+var rfcOutputOption = new Option<FileInfo>(
+    aliases: CliAliases.Output,
+    description: "生成的规则文件输出路径（.json）。")
+{ IsRequired = true };
+
+static void WriteRulesFile(AnalysisRules rules, FileInfo output, InvocationContext context, string sourceDesc)
+{
+    var json = JsonSerializer.Serialize(rules, new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    });
+    File.WriteAllText(output.FullName, json);
+    AnsiConsole.MarkupLine(
+        $"[green]已生成规则文件[/] [blue]{Markup.Escape(output.FullName)}[/]（来源: {Markup.Escape(sourceDesc)}，{rules.Fields.Count} 个字段规则）。");
+    AnsiConsole.MarkupLine("[grey]提示: 生成的是结构约束骨架（类型/枚举/必填/范围/模式/默认值）；唯一率、null 率、离群率等数据统计类规则需按实际数据手工补充。[/]");
+    context.ExitCode = 0;
+}
+
+var rulesFromCodeCommand = new Command("rules-from-code", "解析 C# 源码中的类/记录/枚举声明，生成规则文件骨架。");
+rulesFromCodeCommand.AddOption(rfcInputOption);
+rulesFromCodeCommand.AddOption(rfcClassOption);
+rulesFromCodeCommand.AddOption(rfcOutputOption);
+rulesFromCodeCommand.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var parseResult = context.ParseResult;
+        var input = parseResult.GetValueForOption(rfcInputOption)!;
+        var className = parseResult.GetValueForOption(rfcClassOption);
+        var output = parseResult.GetValueForOption(rfcOutputOption)!;
+
+        var warnings = new List<string>();
+        var rules = RulesFromCSharp.Extract(File.ReadAllText(input.FullName), className, warnings);
+        foreach (var warning in warnings)
+        {
+            AnsiConsole.MarkupLine($"[yellow]跳过: {Markup.Escape(warning)}[/]");
+        }
+        WriteRulesFile(rules, output, context, $"C# {className ?? input.Name}");
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+        context.ExitCode = 1;
+    }
+});
+
+var rulesFromSchemaCommand = new Command("rules-from-schema", "把 JSON Schema（draft-07 / 2020-12 常用子集）转换为规则文件骨架。");
+rulesFromSchemaCommand.AddOption(rfcInputOption);
+rulesFromSchemaCommand.AddOption(rfcOutputOption);
+rulesFromSchemaCommand.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var parseResult = context.ParseResult;
+        var input = parseResult.GetValueForOption(rfcInputOption)!;
+        var output = parseResult.GetValueForOption(rfcOutputOption)!;
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(input.FullName));
+        var skipped = new List<string>();
+        var rules = RulesFromSchema.Convert(doc.RootElement, skipped);
+        foreach (var skippedPath in skipped)
+        {
+            AnsiConsole.MarkupLine($"[yellow]跳过: {Markup.Escape(skippedPath)}[/]");
+        }
+        WriteRulesFile(rules, output, context, $"JSON Schema {input.Name}");
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+        context.ExitCode = 1;
+    }
+});
+rootCommand.AddCommand(rulesFromCodeCommand);
+rootCommand.AddCommand(rulesFromSchemaCommand);
+
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -462,6 +549,7 @@ static class CliAliases
     public static readonly string[] Input = { "--input", "-i" };
     public static readonly string[] Output = { "--output", "-o" };
     public static readonly string[] MaxValues = { "--max-values", "-m" };
+    public static readonly string[] Class = { "--class", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Fields = { "--fields", "-F" };
     public static readonly string[] Where = { "--where", "-w" };

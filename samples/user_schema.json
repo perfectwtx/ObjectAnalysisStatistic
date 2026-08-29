@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["orderId", "amount"],
+  "properties": {
+    "orderId": { "type": "string", "pattern": "^ORD-[0-9]{8}$" },
+    "amount": { "type": "number", "minimum": 0, "maximum": 100000 },
+    "status": { "enum": ["Pending", "Paid", "Cancelled"], "default": "Pending" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "isActive": { "type": "boolean" },
+    "customer": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "vip": { "type": "boolean" }
+      }
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "memo": { "$ref": "#/$defs/memoType" }
+  },
+  "$defs": {
+    "memoType": { "type": "string" }
+  }
+}

@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Added
+- **从代码 / Schema 生成规则文件（rules-from-code / rules-from-schema 子命令）**：静态解析 C# 源码或 JSON Schema（draft-07 / 2020-12 常用子集）提取类结构，生成规则文件骨架，支撑「模型优先」的数据校验工作流：
+  - `RulesFromSchema.Convert`：type → primaryType（`format: date-time/date/time` → DateTime）、enum → enumValues（未声明 type 时按成员类型反推）、required → required、minimum/maximum → minValue/maxValue、pattern → pattern、default → defaultValue；嵌套对象按扁平化路径展开（`customer.name`）；数组字段跳过并记录原因；`$ref` 链式解析本地指针（环路检测 + 32 跳上限，兄弟属性独立守卫支持菱形引用）。
+  - `RulesFromCSharp.Extract`（Roslyn SyntaxWalker，仅静态解析不编译）：属性/公共字段声明类型映射、文件内枚举成员 → enumValues、非空值类型与 `[Required]` → required、`[Range]` → 范围、`[RegularExpression]` → pattern、`[JsonPropertyName]` → 字段键、初始化器字面量 → defaultValue；复杂类型（集合/嵌套 POCO）跳过并输出警告；record 与多类文件支持（`--class` 指定目标）。
+  - CLI 子命令：`rules-from-code --input <Model.cs> [--class Name] -o rules.json` 与 `rules-from-schema --input <schema.json> -o rules.json`，输出与规则加载器往返兼容（camelCase + 忽略 null），控制台列出跳过项并提示数据统计类规则需手工补充。
+  - 测试 16 个用例（`RulesGenerationTests`：类型映射 / 枚举 / 必填 / 约束 / 嵌套展开 / $ref 与循环引用 / 数组跳过 / 往返兼容）；新增 `samples/UserModel.cs` 与 `samples/user_schema.json` 示例。端到端验证：生成规则直接用于 `--fail-on-violations` 门禁（合规退出码 0、违规退出码 3）。
+
 ### Removed
 - **移除「编译 .cs 类型定义文件后强类型反序列化分析」功能**（原 `--type "File.cs:ClassName"` / `-t`）：删除 `TypeSystem/`（`TypeLoader` Roslyn 运行时编译 + `DynamicAssemblyContext` 可卸载程序集上下文）与 `Parsing/TypedFileParser` / `TypedParseResult`，以及 CLI 选项定义、`AnalysisOptions.TypeFile/TypeName`、AnalysisRunner 的两条强类型分支（含 --resume 不兼容警告）、Web UI 的类型文件上传/目标类名输入与其 resx 键（`OptType*` / `ClearTypeFile` / `ErrTypedParse`）、`PerformanceImprovementsTests` 的沙盒卸载用例与 `TypeLoaderTests`（4 个测试）与 `samples/UserInfo.cs` 示例。Roslyn 包引用保留（`SchemaExporter.CSharp` 的 SyntaxFactory 代码生成仍在使用）。验证：Release 构建 0 警告 0 错误，458 测试全过（405 核心 + 53 Web）。
 
