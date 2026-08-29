@@ -2,7 +2,7 @@
 
 对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入（可直接读取 gzip / bzip2 / zip 压缩包），自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验、多维度质量检查（模式/范围/必填/唯一/null 率 + 数据集期望）及重复对象。
 
-- CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)
+- CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)，共用核心分析库 (`src/ObjectAnalyzer.Core`)
 - 多格式支持：JSON（数组/单对象）、JSONL（NDJSON）、CSV、Excel（.xlsx）、XML、YAML；压缩包直读（gzip / bzip2 / zip，含 zip 内嵌套 gzip/bzip2 条目）；另支持数据库直连（PostgreSQL / MySQL / SQLite / SQL Server）
 - 规则驱动值解析：通过规则文件 `valueParsers` 指定源字段/列并按 `parseType` 解析 JSON / JSON 字符串，适用于 Excel 多列 JSON 及其他值级解析场景
 - 强类型反序列化：指定 .cs 类型定义文件，通过 Roslyn 运行时编译后强类型反序列化 (`--type "File.cs:ClassName"`)

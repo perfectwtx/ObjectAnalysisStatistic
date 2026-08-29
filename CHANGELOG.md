@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Changed
+- **解决方案拆分：抽出核心库 `ObjectAnalyzer.Core`**：将 Analysis / Parsing / Reporting / TypeSystem / Security 五个目录从 CLI 项目（`src/ObjectAnalyzer`）整体迁移到新类库 `src/ObjectAnalyzer.Core`（程序集名 `ObjectAnalyzer.Core`，命名空间保持 `ObjectAnalyzer.*` 不变，公共 API 零变化）。CLI 瘦身为仅含 `Program.cs`（System.CommandLine 选项解析 + 入口渲染）的薄宿主，Blazor Web 与 `ObjectAnalyzer.Tests` 改为直接引用 Core，不再依赖 CLI 可执行项目：
+  - Core 承接全部 NuGet 依赖（Roslyn / MiniExcel / QuestPDF / 四类数据库驱动 / BouncyCastle / YamlDotNet / Spectre.Console 等），CLI 仅保留 `System.CommandLine` + `Spectre.Console`；后续可在 Core 内抽象进度/控制台渲染回调（`AnalysisRunner` 目前直接调用 `ConsoleReporter.Print` 与 `AnsiConsole.MarkupLine`），把 Spectre 从核心层彻底剥离——本次未做，保持零行为变化。
+  - Dockerfile 还原缓存层同步更新（先 COPY 两个 csproj 再 restore，否则 CLI 的 ProjectReference 还原失败）。
+  - dotnet tool 打包验证：nupkg 正常包含 `ObjectAnalyzer.Core.dll`；CI 按解决方案构建、CLI/Web 发布路径不变，无需改动。
+
 ### Added
 - **KMS 集成（规则文件敏感密钥托管）**：规则文件 JSON 里 `transform` 的敏感密钥字段（`key` / `iv` / `privateKey` / `publicKey` / `signature`）不再必须以明文书写，改为存 KMS 密文引用，运行时解密注入，明文字符串只在本次进程内存中存活、不被写回规则文件：
   - 可插拔抽象：新增 `IKmsProvider`（`ProviderName` + `Decrypt(string ciphertextBase64): byte[]`），`KmsSecretResolver` 按 `kms:<provider>/<version>:<payload>` 前缀路由到对应提供方——不引入云 SDK 依赖，用户可自接任意 KMS / 自托管实现。

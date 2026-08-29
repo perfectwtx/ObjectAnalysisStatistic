@@ -5,6 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # 先还原依赖（利用 Docker 层缓存）
+COPY src/ObjectAnalyzer.Core/ObjectAnalyzer.Core.csproj src/ObjectAnalyzer.Core/
 COPY src/ObjectAnalyzer/ObjectAnalyzer.csproj src/ObjectAnalyzer/
 RUN dotnet restore src/ObjectAnalyzer/ObjectAnalyzer.csproj
 

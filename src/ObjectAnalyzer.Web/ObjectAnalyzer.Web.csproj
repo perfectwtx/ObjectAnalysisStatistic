@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <ProjectReference Include="..\ObjectAnalyzer\ObjectAnalyzer.csproj" />
+    <ProjectReference Include="..\ObjectAnalyzer.Core\ObjectAnalyzer.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

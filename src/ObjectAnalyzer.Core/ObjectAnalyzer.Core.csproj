@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ObjectAnalyzer</RootNamespace>
+    <Description>ObjectAnalyzer 核心库 — 多格式解析、字段统计分析、质量/PII/Schema 检查与报告导出，供 CLI 与 Web 宿主共用。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.50.3" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageReference Include="Meziantou.Framework.JsonPath" Version="2.0.0" />
+    <PackageReference Include="MiniExcel" Version="1.45.0" />
+    <PackageReference Include="MySqlConnector" Version="2.4.0" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
+    <PackageReference Include="QuestPDF" Version="2024.10.3" />
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+</Project>
