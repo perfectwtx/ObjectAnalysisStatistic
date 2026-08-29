@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Changed
+- **`FileParsers.cs`（1153 行）拆分**：工厂类 `FileParsers` 内的 6 个私有嵌套解析器（JSON / JSONL / Excel-CSV / XML / YAML / Excel-JSON）与惰性解压枚举包装 `DecompressingEnumerable` 提升为顶级 `internal sealed` 类，归入新子目录 `Parsing/Parsers/`（命名空间 `ObjectAnalyzer.Parsing.Parsers`；程序集外公共 API 不变，仅程序集内可见性从 private 放宽到 internal）；约 230 行共享值转换助手（`ParseJsonElement` / `FlattenJson` / `ConvertXElement` / `ConvertYamlDict` / `FlattenObjectDict` 等 9 个）归入同目录新 `internal static class ParserHelpers`，解析器内调用点同步限定为 `ParserHelpers.*`。`FileParsers` 收敛为纯工厂留在 `Parsing/`（118 行：注册表 + 格式探测 + 分发）。Release 构建 0 警告 0 错误，462 测试全过。
 - **源码文件按类型拆分**：将 24 个多类型源文件（共 82 个顶级类/枚举/接口/记录）拆分为「一个类型一个文件」，文件名与类型名一致，全部留在原目录；命名空间、编译单元级与命名空间级 using、XML 文档注释逐字保留，纯结构调整零行为变化（Release 构建 0 警告 0 错误，462 测试全过）。原 `CompressedInput.cs` 由 `CompressionType` / `CompressionDetector` / `InputSource` 三个文件取代，其余 23 个主类同名文件（如 `FieldStatistic.cs`）原地收敛为单类型内容。
 - **解决方案拆分：抽出核心库 `ObjectAnalyzer.Core`**：将 Analysis / Parsing / Reporting / TypeSystem / Security 五个目录从 CLI 项目（`src/ObjectAnalyzer`）整体迁移到新类库 `src/ObjectAnalyzer.Core`（程序集名 `ObjectAnalyzer.Core`，命名空间保持 `ObjectAnalyzer.*` 不变，公共 API 零变化）。CLI 瘦身为仅含 `Program.cs`（System.CommandLine 选项解析 + 入口渲染）的薄宿主，Blazor Web 与 `ObjectAnalyzer.Tests` 改为直接引用 Core，不再依赖 CLI 可执行项目：
   - Core 承接全部 NuGet 依赖（Roslyn / MiniExcel / QuestPDF / 四类数据库驱动 / BouncyCastle / YamlDotNet / Spectre.Console 等），CLI 仅保留 `System.CommandLine` + `Spectre.Console`；后续可在 Core 内抽象进度/控制台渲染回调（`AnalysisRunner` 目前直接调用 `ConsoleReporter.Print` 与 `AnsiConsole.MarkupLine`），把 Spectre 从核心层彻底剥离——本次未做，保持零行为变化。
