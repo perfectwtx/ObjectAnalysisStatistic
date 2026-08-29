@@ -5,6 +5,136 @@
 ## [Unreleased]
 
 ### Added
+- **从代码 / Schema 生成规则文件（rules-from-code / rules-from-schema 子命令）**：静态解析 C# 源码或 JSON Schema（draft-07 / 2020-12 常用子集）提取类结构，生成规则文件骨架，支撑「模型优先」的数据校验工作流：
+  - `RulesFromSchema.Convert`：type → primaryType（`format: date-time/date/time` → DateTime）、enum → enumValues（未声明 type 时按成员类型反推）、required → required、minimum/maximum → minValue/maxValue、pattern → pattern、default → defaultValue；嵌套对象按扁平化路径展开（`customer.name`）；数组字段跳过并记录原因；`$ref` 链式解析本地指针（环路检测 + 32 跳上限，兄弟属性独立守卫支持菱形引用）。
+  - `RulesFromCSharp.Extract`（Roslyn SyntaxWalker，仅静态解析不编译）：属性/公共字段声明类型映射、文件内枚举成员 → enumValues、非空值类型与 `[Required]` → required、`[Range]` → 范围、`[RegularExpression]` → pattern、`[JsonPropertyName]` → 字段键、初始化器字面量 → defaultValue；复杂类型（集合/嵌套 POCO）跳过并输出警告；record 与多类文件支持（`--class` 指定目标）。
+  - CLI 子命令：`rules-from-code --input <Model.cs> [--class Name] -o rules.json` 与 `rules-from-schema --input <schema.json> -o rules.json`，输出与规则加载器往返兼容（camelCase + 忽略 null），控制台列出跳过项并提示数据统计类规则需手工补充。
+  - 测试 16 个用例（`RulesGenerationTests`：类型映射 / 枚举 / 必填 / 约束 / 嵌套展开 / $ref 与循环引用 / 数组跳过 / 往返兼容）；新增 `samples/UserModel.cs` 与 `samples/user_schema.json` 示例。端到端验证：生成规则直接用于 `--fail-on-violations` 门禁（合规退出码 0、违规退出码 3）。
+
+### Removed
+- **移除「编译 .cs 类型定义文件后强类型反序列化分析」功能**（原 `--type "File.cs:ClassName"` / `-t`）：删除 `TypeSystem/`（`TypeLoader` Roslyn 运行时编译 + `DynamicAssemblyContext` 可卸载程序集上下文）与 `Parsing/TypedFileParser` / `TypedParseResult`，以及 CLI 选项定义、`AnalysisOptions.TypeFile/TypeName`、AnalysisRunner 的两条强类型分支（含 --resume 不兼容警告）、Web UI 的类型文件上传/目标类名输入与其 resx 键（`OptType*` / `ClearTypeFile` / `ErrTypedParse`）、`PerformanceImprovementsTests` 的沙盒卸载用例与 `TypeLoaderTests`（4 个测试）与 `samples/UserInfo.cs` 示例。Roslyn 包引用保留（`SchemaExporter.CSharp` 的 SyntaxFactory 代码生成仍在使用）。验证：Release 构建 0 警告 0 错误，458 测试全过（405 核心 + 53 Web）。
+
+### Changed
+- **死代码清理**（168 文件，净删约 780 行，零行为变化）：
+  - 未使用 using：临时开启 `GenerateDocumentationFile` + `EnforceCodeStyleInBuild` 后以 `dotnet format style --diagnostics IDE0005` 清除 167 个文件的多余 using（约 760 行），配置随后还原。
+  - 未使用私有成员（IDE0051）：删除 `ObjectAnalyzer.MatchesFieldHint`（已被 `ContainsFieldHint` 取代的旧实现）与 `PdfReportExporter.Badge`（无调用的排版助手）。
+  - 文档腐烂修复：`NumericSketch` 类注释中指向不存在成员的 `<see cref="LogHistogram"/>` 改为普通文本；`CompressionDetector.SniffByMagic` 补缺失的 `<param name="path">`；7 处悬空 XML 注释归位（CLI 顶级语句本地函数的 `///` 转普通注释，6 个测试类的 `<summary>` 移到 `[Collection]` 特性之前）。
+  - 闲置包引用：移除 Web 项目对 MiniExcel 的直接 PackageReference（0 处直接使用，Core 传递依赖仍可用）。
+  - 核实为「非死代码」而保留：全部顶级类型均有引用（ErrorSanitizer / P6ProgressReporter 由 Home.razor 使用）；Core 全部 NuGet 包在用；tests 的 SharpZipLib 在用（构造 zip 测试样本）。
+  - 验证：Release 构建 0 警告 0 错误（含临时开启的全量 IDE/文档诊断）；462 测试全过。
+- **带构造函数的类型改用 C# 12 主构造函数**（12 处转换，构造签名与公共 API 零变化）：`MaxMemoryExceededException`（body-less 简写）、`Hash128` / `FieldFilterToken`（readonly struct，字段初始化器绑定参数）、`ReservoirSampler<T>`、`DecompressingEnumerable`、`FieldCorrelationCollector`（参数 → 字段初始化器）；`HyperLogLog` / `MergeableQuantileSketch`（范围校验抽为静态 `Validate*` 助手，异常类型/消息逐字保留）、`MemoryBudget`（throw 表达式初始化器，声明顺序保证先校验后派生）、`FieldFilter`（解析管线抽为静态 `BuildRoot`）、`AuditLogger`（文件写入器创建抽为静态 `CreateWriter`，初始化器声明顺序保持「先校验路径、后打开文件」）、`DynamicAssemblyContext`（base 调用并入主构造函数）。**刻意不转**：`InputSource`（private 构造 + 静态工厂，主构造函数会放宽为 public）、`FieldTransformProcessor`（构造体为多分支规则装配逻辑）、无构造函数的 DTO 与 record（本就是主构造语义/以对象初始化器使用）。验证：Release 构建 0 警告 0 错误，462 测试全过。
+- **核心库目录按功能域重组**（87 个文件纯 `git mv`，命名空间保持不变以避免 Web 端全限定引用连锁修改，零代码改动）：
+  - `Analysis/`（88 → 19 文件）：仅保留引擎与运行时（ObjectAnalyzer / AnalysisRunner / Options / Result / Snapshot / Sampling / MemoryBudget 等），新增子目录 `Fields/`（字段统计与草图：FieldStatistic、NumericSketch、HyperLogLog 等 6）、`Insights/`（P4 深度分析：时间序列/字符串模式/相关性/Unicode 卫生/模糊去重共 15）、`Drift/`（分布漂移与快照 Diff 11）、`Quality/`（质量检查 5）、`Rules/`（规则文件与值转换 8）、`Filter/`（--where 表达式解析器与 AST 8）、`Schema/`（Schema 快照与演进 7）。
+  - `Security/` 合并为数据安全域（13）：KMS 4 个 + 自 Analysis 迁入的 PII 识别 4 个（PiiDetector/PiiCategory/PiiMaskFormat/PiiValidators）与审计日志 5 个。
+  - `Reporting/`（20 → 7）：按格式导出器留根，新增 `Schema/`（SchemaExporter + 6 方言分部）、`Pii/`（打码/合规报告 4）、`Quality/`（质量/违规导出 2）。
+  - `Parsing/`（13 → 8）：新增 `Compression/`（压缩探测与输入源 3）、`Database/`（数据库直读 2），`Parsers/` 沿用。
+  - 验证：Release 构建 0 警告 0 错误；462 测试全过；git 全部识别为 rename（历史可追溯）。
+- **同类嵌套类型/单类多职责文件继续拆分**（与 FileParsers 同模式）：
+  - `ObjectAnalyzer.cs`（1422→1205 行）：引擎内 3 个嵌套类型提升为顶级 `internal`——`InternalFieldMetrics`（并行聚合扩展指标）、`ThreadLocalState`→重命名 `AnalyzerThreadState`、`Hash128`（128 位非密码学哈希值类型）。
+  - `FieldFilter.cs`（440→251 行）：`--where` 表达式 AST 的 7 个嵌套类型提升为顶级并以 `FieldFilter` 前缀重命名（`FieldFilterTokenKind/Token/Node/LogicalNode/ComparisonNode/CmpOp/Operand`，避免 `Node`/`Token` 泛化名污染 Analysis 命名空间）；求值助手（`TryGetNumber`/`WeakEqual`/`TryGetValueIgnoreCase`/`NumericCompare`/`LikeMatch` 5 个）随唯一消费方 `FieldFilterComparisonNode` 迁移。
+  - `SchemaExporter.cs`（1010→210 行）：改为 `partial class` 按方言拆分——`SchemaExporter.CSharp/TypeScript/JsonSchema/OpenApi/Protobuf/Sql` 6 个分部文件（31 个方法归位），公共 API 零变化；核心（`SchemaNode`/`Export`/`BuildSchemaTree`/`ApplyFieldType`/`SanitizeIdentifier`）留在主文件。
+  - 刻意不拆：`AnalysisRunner.IncrementalContext`（8 行状态包）、`StringPatternProfiler.TemplateAccumulator`（5 行）——拆分收益为零；纯方法型大文件（HtmlReportExporter 等 4 个）无类型缝隙，属设计级重构另议。
+  - 验证：Release 构建 0 警告 0 错误；462 测试全过；Roslyn 复核多类型文件数保持 0。
+- **`FileParsers.cs`（1153 行）拆分**：工厂类 `FileParsers` 内的 6 个私有嵌套解析器（JSON / JSONL / Excel-CSV / XML / YAML / Excel-JSON）与惰性解压枚举包装 `DecompressingEnumerable` 提升为顶级 `internal sealed` 类，归入新子目录 `Parsing/Parsers/`（命名空间 `ObjectAnalyzer.Parsing.Parsers`；程序集外公共 API 不变，仅程序集内可见性从 private 放宽到 internal）；约 230 行共享值转换助手（`ParseJsonElement` / `FlattenJson` / `ConvertXElement` / `ConvertYamlDict` / `FlattenObjectDict` 等 9 个）归入同目录新 `internal static class ParserHelpers`，解析器内调用点同步限定为 `ParserHelpers.*`。`FileParsers` 收敛为纯工厂留在 `Parsing/`（118 行：注册表 + 格式探测 + 分发）。Release 构建 0 警告 0 错误，462 测试全过。
+- **源码文件按类型拆分**：将 24 个多类型源文件（共 82 个顶级类/枚举/接口/记录）拆分为「一个类型一个文件」，文件名与类型名一致，全部留在原目录；命名空间、编译单元级与命名空间级 using、XML 文档注释逐字保留，纯结构调整零行为变化（Release 构建 0 警告 0 错误，462 测试全过）。原 `CompressedInput.cs` 由 `CompressionType` / `CompressionDetector` / `InputSource` 三个文件取代，其余 23 个主类同名文件（如 `FieldStatistic.cs`）原地收敛为单类型内容。
+- **解决方案拆分：抽出核心库 `ObjectAnalyzer.Core`**：将 Analysis / Parsing / Reporting / TypeSystem / Security 五个目录从 CLI 项目（`src/ObjectAnalyzer`）整体迁移到新类库 `src/ObjectAnalyzer.Core`（程序集名 `ObjectAnalyzer.Core`，命名空间保持 `ObjectAnalyzer.*` 不变，公共 API 零变化）。CLI 瘦身为仅含 `Program.cs`（System.CommandLine 选项解析 + 入口渲染）的薄宿主，Blazor Web 与 `ObjectAnalyzer.Tests` 改为直接引用 Core，不再依赖 CLI 可执行项目：
+  - Core 承接全部 NuGet 依赖（Roslyn / MiniExcel / QuestPDF / 四类数据库驱动 / BouncyCastle / YamlDotNet / Spectre.Console 等），CLI 仅保留 `System.CommandLine` + `Spectre.Console`；后续可在 Core 内抽象进度/控制台渲染回调（`AnalysisRunner` 目前直接调用 `ConsoleReporter.Print` 与 `AnsiConsole.MarkupLine`），把 Spectre 从核心层彻底剥离——本次未做，保持零行为变化。
+  - Dockerfile 还原缓存层同步更新（先 COPY 两个 csproj 再 restore，否则 CLI 的 ProjectReference 还原失败）。
+  - dotnet tool 打包验证：nupkg 正常包含 `ObjectAnalyzer.Core.dll`；CI 按解决方案构建、CLI/Web 发布路径不变，无需改动。
+
+### Added
+- **KMS 集成（规则文件敏感密钥托管）**：规则文件 JSON 里 `transform` 的敏感密钥字段（`key` / `iv` / `privateKey` / `publicKey` / `signature`）不再必须以明文书写，改为存 KMS 密文引用，运行时解密注入，明文字符串只在本次进程内存中存活、不被写回规则文件：
+  - 可插拔抽象：新增 `IKmsProvider`（`ProviderName` + `Decrypt(string ciphertextBase64): byte[]`），`KmsSecretResolver` 按 `kms:<provider>/<version>:<payload>` 前缀路由到对应提供方——不引入云 SDK 依赖，用户可自接任意 KMS / 自托管实现。
+  - 内置离线提供方 `OfflineKmsProvider`：口令从环境变量 `OA_KMS_PASSPHRASE` 读取（不落 CLI 参数 / 日志 / shell 历史），载荷格式 `[magic(4)="OA1G"][salt(16)][nonce(12)][tag(16)][ciphertext]`，AES-256-GCM，`SHA-256(passphrase+salt)` 派生密钥（KDF 强度在注释中提示生产可换 PBKDF2/Argon2）。
+  - 编码语义自洽往返：`encoding`（`utf8` / `base64` / `hex`）声明明文字节还原方式——`base64`/`hex` 类密钥在解密后被重新编码为原始文本形式，供下游 `format` 字段正常消费（`RuleResolver_DecryptsTransformSensitiveFields` / `RuleResolver_AesEndToEnd_DecryptsValue` 覆盖闭环）。
+  - 规则加载自动注入：`AnalysisRunner.LoadRules` 在 pattern 预验证后统一遍历所有 field 的 transform，对敏感字段调用 `KmsRuleResolver.Resolve`；无 `kms:` 前缀的值原样返回（向后兼容既有明文规则文件）。下游 `FieldTransformProcessor.DecodeBytes` 完全无感知。
+  - 新 CLI 子命令 `kms-secret`：用 `OA_KMS_PASSPHRASE` 口令加密明文密钥，输出可直接粘贴进规则文件的 `kms:offline/1-<encoding>:<payload>` 引用；明文优先从 stdin 读取（`--value` 可选），避免明文进 shell 历史。
+  - 测试：`KmsTests.cs` 10 个用例（AES-GCM 往返、base64/hex 编码还原、salting 语义安全、错误口令 / 缺失口令、前缀解析、未知提供方、规则注入、AES 端到端解密闭环）。
+
+## [Unreleased]
+
+### Added
+- **P6 Web UI 同步**：把 P6 三块能力（进度条 / 增量分析 / 内存预算）补齐到 Blazor Web 配置面板：
+  - 新增 `P6` 可折叠子区段（默认展开），内含 `--no-progress` 取反 / `--max-memory`（MB）/ `--max-memory-mode`（soft|hard）三个数值/选择控件，以及 `--resume` / `--baseline` / `--checkpoint` 三个文件上传入口（与现有 `--type` / `--rules` 复用 `InputFile` + 临时文件模式）。
+  - `AnalysisState` 新增 `ShowProgress` / `CheckpointPath/Name` / `ResumeFrom/Name` / `BaselinePath/Name` / `MaxMemoryMB` / `MaxMemoryMode` 六个 P6 字段；`Dispose()` 同步清理新增临时文件。
+  - 审计日志 `TryWriteWebAuditLog` 同步 P6 选项到 `AnalysisOptions`（`ShowProgress` / `CheckpointPath` / `ResumeFrom` / `BaselinePath` / `MaxMemoryMB` / `MaxMemoryMode`），确保浏览器端发起的分析在审计 NDJSON 留痕里与 CLI 行为一致。
+  - 通用文件上传辅助 `SaveUploadedFileAsync` 复用 64MB 上限与异常隔离（`%TEMP%` 落盘 + 错误时清理）。
+  - `app.css` 新增 `.option-group`（details/summary 折叠 + 暗色模式覆盖），与现有 `.options-grid` 视觉对齐。
+  - `AppStrings.resx` / `AppStrings.en.resx` 新增 14 个 P6 键（`P6GroupTitle` / `P6GroupHint` / `OptShowProgress` / `OptMaxMemory` / `OptMaxMemoryMode` + soft/hard 选项 / `OptResume` / `OptBaseline` / `OptCheckpoint` / `Clear*`）。
+  - `WebSmokeTests` 新增 `HomePage_RendersP6ConfigSection` 断言：折叠区出现 + 关键控件中文标签（同时支持 HTML 实体 / UTF-8 两种编码形式）。`AppStyles_AreServed` 同步断言 `.option-group`。
+  - 限制：Web 端不复用 `AnalysisRunner.Run`（其内置 `AnsiConsole.Progress` 与 SPA 浏览器无法观测），故 P6.1 进度条 / P6.3 内存预算目前仅在审计日志中记录选项；用户看到的仍是「点击开始→等待→结果返回」的黑盒体验。`ShowProgress` 字段已为未来 SignalR 实时进度推送预留。
+- **P6 选项真正落地到 Web 分析流程**：把进度条 / 增量 / 内存预算 / 检查点从「仅审计日志记录选项」推进到「实际影响本次 run」：
+  - P6.1 进度：基于 `IProgress<long>` + `Progress<T>` 自动捕获 `SynchronizationContext` 切回 Blazor UI 线程，把累计对象数写入 `State.ProgressText`（"已分析 12,345 条对象"），UI 展示 spinner + 文本（`aria-live="polite"`）。
+  - P6.2 断点续跑 / 基线合并：分析成功路径上调用 `result.MergeFrom(...)`——分别把 `AnalyzerSnapshot.Result`（`--resume`）与 `AnalysisResult` JSON（`--baseline`）合并进本次结果。Web 端不跳读源文件位置（仅合并聚合结果），如需真正从源文件中间续跑请用 CLI；此限制在代码注释中显式说明。
+  - P6.2 检查点落盘：分析成功后用 `AnalyzerSnapshot.SaveTo` 把 `Result` 写入 `%TEMP%/objectanalyzer-checkpoints/<safe-name>.snapshot`，文件名通过 `SanitizeCheckpointName` 规整（去路径分隔符 / 控字符 / 长度限制），UI 提供「下载检查点」按钮，下载走新增的 `MapGet("/api/checkpoint/{*path}")` 端点，反规范化 + 边界校验防止路径穿越。
+  - P6.3 内存预算：与进度回调同处一个闭包，构造时 `MemoryBudget(maxMemoryMB, mode)`，每个 `progress.Report(count)` 后调用 `memoryBudget.Check(count, out bool samplingAutoEnable)`——soft 模式触发时把 `WarnMemorySoftExceeded` 写到 `State.MemoryWarning`；hard 模式则在分析循环结束后 `ThrowIfHardExceeded()` 抛 `MaxMemoryExceededException`，被 `RunAnalysis` 单独捕获并展示 `ErrMemoryHardExceeded`。
+  - 新增 `AnalysisState` 运行时字段：`ProgressText` / `LastCheckpointServerPath` / `LastCheckpointSize` / `MemoryWarning`，均仅由分析循环填充，UI 只读展示；开始新一轮分析时自动重置。
+  - `AppStrings.resx` / `AppStrings.en.resx` 新增 9 个运行时键：`ProgressAnalyzedN` / `WarnMemorySoftExceeded` / `ErrMemoryHardExceeded` / `ErrResumeFailed` / `ErrBaselineFailed` / `ErrCheckpointFailed` / `CheckpointReady` / `DownloadCheckpoint`。
+  - `app.css` 新增 `.progress-status` / `.memory-warning` / `.checkpoint-info` 三个高亮区 + dark 模式覆盖。
+  - `WebSmokeTests` 新增 4 个测试：路径穿越保护（3 个 `InlineData`：URL 编码的 `..`/`..\`/小写）+ 合法路径 200 响应（含正确 `Content-Type: application/json` 与 schema 字段验证）。
+- **P6.2 增量分析 / 断点续跑**：解决 50GB 数据中途失败需从头再来的问题，提供三种互补能力：
+  - `--checkpoint <PATH>`：本 run 分析完成后将「当前结果 + 已处理位置」原子写入（先 `.tmp` 再 rename，避免半写状态）。快照含 `SourcePath` / `SourceFormat` / `SourcePosition`（行号）/ `Result`（完整 AnalysisResult），schema 版本 `object-analyzer.snapshot/v1`。
+  - `--resume <PATH>`：加载快照，校验源文件一致性（防错把 A 文件的快照套到 B 文件上）后，解析器从 `SourcePosition` 跳过后续才读新数据；结果与快照在 `FieldStatistic` 级合并（Welford / 直方图 / HLL distinct / 枚举违规 / 时间桶等均兼容 `MergeFrom`）。
+  - `--baseline <PATH>`：合并任意历史 `AnalysisResult` JSON（`--output ... .json` 产物），不需要源文件——适合「本次只分析新增窗口并与历史合并」场景。
+  - 合并后报告自动重新覆写 `--output`，确保下游消费者看到 merge 后的最终聚合。
+  - 限制：仅 JSONL / CSV / Excel / Excel-JSON 走行级 skip；JSON / XML / YAML 整体物化格式不支持 `--resume`（用户启用时给黄色警告）。数据库直连 `--connection + --query` 不支持行级 skip（DbDataReader 不暴露随机访问）；启用 `--resume` 配 dbMode 时直接 `NotSupportedException` 报错。
+  - `AnalyzerSnapshot` 内部类 + `LoadFrom` / `SaveTo` 静态方法 + `AnalysisResult.MergeFrom` 增量合并实现。
+  - 10 个 `AnalyzerSnapshotTests` + 4 个 `AnalysisRunnerIncrementalTests` 覆盖：原子写入 / schema 不匹配报错 / 源文件一致性校验 / 行级 skip 实际跳行 / 数值 Welford 合并精度 / 枚举违规合并 / 退出码 0。
+- **P6.3 --max-memory 内存预算监控**：解决 50GB JSONL 全量物化 OOM 的问题，提供用户可调托管堆上限：
+  - `--max-memory <MB>`：进程托管堆上限（仅监控 .NET 托管堆 `GC.GetTotalMemory`；不监控非托管 / native 内存）。`0` 表示不监控（默认）。
+  - `--max-memory-mode soft|hard`（默认 soft）：
+    - **soft**：超限仅打印黄色警告并自动启用 50K 蓄水池采样（仅当用户未指定 `--sample-reservoir` / `--sample-step`），让分析在有限内存下继续推进。`AnalysisOptions.MemoryFallbackSampleSize` 控制兜底容量（默认 50,000，足以在 PII / 质量检查场景下保持统计意义，又能将堆控制在 100MB 以内）。
+    - **hard**：超限立即以退出码 1 结束（`MaxMemoryExceededException` → AnalysisRunner catch 转为 `analysis_error` 审计事件）。
+  - 实现 `MemoryBudget` 类：`Check(objectCount, out bool samplingAutoEnable)` 周期采样；硬模式不在 progress 回调线程上抛异常（会变成"未观察异常"逃出主流程），而是设置 `HardLimitExceeded` 标记，由主流程在分析完成后调用 `ThrowIfHardExceeded` 统一抛错。
+  - 入口预检 + spinner/progress 回调每批 Check + 分析完成后 ThrowIfHardExceeded 三重保障——fresh 进程刚启动时 `GC.GetTotalMemory` 可能仅 0.1MB（无任何分配），仅靠入口预检不够；分析循环内每批 Check 由主流程末尾统一抛错。
+  - 分析结束打印「[内存] 本次分析峰值 X.X MB（--max-memory 阈值 N MB，模式 Soft/Hard）」一行总结。
+  - 10 个 `MemoryBudgetTests` 覆盖：未启用 / soft 模式 autoEnable 单次触发 / hard 模式 ThrowIfHardExceeded 抛异常 / peak 单调非降 / 负数 MB 拒绝 / AnalysisRunner 硬模式小阈值失败 / 充裕阈值成功 / 0 MB 禁用 / 软模式自动启用采样 / 异常消息含阈值。
+- **P6.1 进度条 / ETA**：分析过程默认显示 Spectre.Console 进度条，包含 `ProgressBarColumn` / `PercentageColumn` / `RemainingTimeColumn` (ETA) / `SpinnerColumn` / `TaskDescriptionColumn` 五列。`ObjectAnalyzer.Analyze` / `AnalyzeDetailed` 新增 `IProgress<long>?` 回调参数，每分块（10K 对象）触发一次，调用方把累计对象数映射到 task.Value。`--no-progress` CLI 选项可关闭进度条回到旧版 spinner 行为（CI 日志捕获 / 脚本管道场景）。CLI 路由 `--no-progress → AnalysisOptions.ShowProgress = false`。`EstimateTotalObjects` 辅助方法：仅在已物化列表上返回 Count，不对 50GB JSONL 做二次扫描数行。`ProgressReportingTests` 4 个用例验证回调触发次数 / 单调性 / AnalyzeDetailed 兼容性 / 开关标志。
+- **Excel / PDF 表格化报告导出**：在现有 JSON / HTML / Markdown / CSV 之外，新增两种适合交付给非技术受众的格式：
+  - **Excel（.xlsx）**：基于 [MiniExcel](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的多 sheet 工作簿，按数据维度拆分——`摘要` / `字段统计` / `重复对象` / `违规清单` 基础 4 sheet + P4 七项分析对应的可选 sheet（`字符串模式` / `Unicode 卫生` / `模糊去重` / `相关性摘要` + `强相关对` + `Pearson 矩阵` + `Spearman 矩阵` / `时间序列深度` / `分布漂移摘要` + `覆盖率变化` + `数值漂移` + `Distinct 漂移` / `采样置信摘要` + `字段覆盖率区间`），仅在该维度有数据时输出。字段统计 sheet 包含完整的样本数 / 覆盖率 / 主导类型 / 语义类型 / 数值统计 / 分位数 / 长度 / Top 5 值 / 类型分布等列。PII 打码与现有所有格式一致——敏感字段值在写入单元格前已通过 `PiiRedactor.Redact` 处理。
+  - **PDF**：基于 [QuestPDF](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer/ObjectAnalyzer.csproj) 的 A4 结构化排版，包含同样的多章节结构（标题 / 摘要表 / 字段统计表 / 重复对象 / 违规清单 / 全部 P4 小节），自动分页 + 页码 / 总页数 + 表头重复，适合打印或邮件附件交付。
+  - **CLI 路由**：[`ReportExporter.Save`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Reporting/ReportExporter.cs) 检测 `-o` 文件扩展名后调用 `ExcelReportExporter.Save` / `PdfReportExporter.Save`；无需新增 CLI 选项。
+  - **Web 下载**：[`Home.razor`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/Components/Pages/Home.razor) 报告区新增 Excel / PDF 下载按钮，通过 [`interop.js`](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Web/wwwroot/interop.js) 新增的 `downloadBinaryFile` 把 base64 编码的二进制流触发为浏览器下载，文件名带时间戳避免冲突。
+- **测试**：新增 `ExcelPdfReportTests` 4 个用例——多 sheet 生成（验证 4 个基础 sheet 名称 + 文件大小 > 1KB）、字段统计 sheet 表头列（`字段名` / `样本数` / `覆盖率`）、PDF 文件头 magic number 校验（`%PDF-`）、`ReportExporter` 按扩展名路由 xlsx / pdf。
+- **P4 分析深度增强（七项深度分析能力）**：在 `AnalysisResult` 中新增七类深度分析结果，配合 `AnalysisOptions` 提供的特性开关（`EnableCorrelation` / `EnableStringPatterns` / `EnableUnicodeHygiene` / `EnableTimeSeries` / `FuzzyDedupField` / `DistributionSnapshotPath` / `DiffDistributionBaseline`）按需启用，零侵入兼容默认分析流程：
+  - **字段相关性矩阵（Pearson / Spearman）**：流式蓄水池（默认 20K 行/字段）保留每字段数值样本，分析完成后输出完整的 Pearson + Spearman 系数矩阵与「强相关对」（|r| ≥ 0.7 且样本 ≥ 30），帮助发现 `age ↔ income` 这类隐式关联；见 `FieldCorrelationMatrix.cs` / `FieldCorrelationCollector.cs`。
+  - **字符串模式自动归纳**：对每个字符串字段自动归纳形态模板（如 `###-####` / `[A-Z]{3}\d{6}` / `[a-z]+@[a-z]+\.[a-z]+`），输出主导模板、Top-N 模板、模板覆盖率与样本数，便于规则文件 pattern 编写与异常形态定位；见 `StringPatternProfiler.cs`。
+  - **Unicode 卫生检查**：对每个字符串字段输出卫生评分（0~100），识别全/半角混用、不可见字符（零宽空格 / 双向控制符 / BOM 等）、控制字符、大小写混用、左右引号、不可见分隔符等常见脏数据来源；见 `UnicodeHygieneChecker.cs`。
+  - **模糊去重（相似重复识别）**：对指定字段（如 `name` / `title` / `address`）做归一化（去空格/标点/全半角/大小写）+ 词袋 Jaccard 相似度，将"几乎一致"的对象分组为 `FuzzyDuplicateGroup`，输出组数、相似重复对、规范化键；见 `FuzzyDuplicateDetector.cs`。
+  - **时间序列深度分析**：对 DateTime 字段在「日期/时间深度剖析」基础上做趋势识别（上升/下降/平稳/混合）、周期检测（日/周/月）、间隙分析（最大间隔 / 间隔标准差）、脉冲性（孤立 burst 数）；见 `TimeSeriesAnalyzer.cs`。
+  - **采样置信区间**：启用 `--sample-reservoir` / `--sample-step` 时自动计算，对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段的可信度评估，提示低覆盖字段的统计不确定性；见 `Sampling.cs` `ConfidenceInterval`。
+  - **分布漂移对比（草图 vs 草图）**：新增 `--export-distribution-snapshot` 导出每字段的 t-digest 质心 + HyperLogLog 寄存器（约 10KB/字段），`--diff-distribution` 与历史快照对比输出均值/分位/null 率/distinct/Jaccard 多维度漂移，显著漂移字段用 σ 倍数标记；与 `SchemaDiff` 互补——前者看结构、后者看分布；见 `DistributionSnapshot.cs`。
+- **报告（HTML / Markdown / CSV / JSON）同步**：HTML 与 Markdown 报告新增「字段相关性」「字符串模式」「Unicode 卫生」「模糊去重」「时间序列深度」「采样置信」「分布漂移」共 7 个 P4 专用小节，与现有小节保持一致的视觉风格与可读性。
+- **Web UI 同步**：Blazor 页面新增 "🧬 P4 深度分析" 区域，以独立卡片（🔗 字段相关性矩阵 / 🔤 字符串模式归纳 / 🧹 Unicode 卫生检查 / 👥 模糊去重 / 📈 时间序列深度 / 🎯 采样置信 / 📉 分布漂移）形式展示各深度分析结果；AppStrings.resx 同步 40+ P4 专用本地化字符串；app.css 新增 .p4-section/.p4-grid/.p4-card 等样式（橙色系，与 P3 蓝/绿系区分）。
+- **测试**：P4 分析深度增强 18 个新增用例——`StringPattern_BuildTemplate_HandlesDigitsAndLetters`、`Correlation_TwoCorrelatedNumericFields_DetectsStrongPair`、`TimeSeries_RisingTrend_DetectedAsRising`、`UnicodeHygiene_FullHalfWidthMix_DetectedAsIssue`、`FuzzyDedup_NearDuplicates_GroupedTogether`、`SamplingConfidence_Reservoir_ProducesInterval`、`DistributionDiff_FieldMeanShifted_ReportedAsDrift` 等核心场景回归；并修复 `FieldCorrelationCollector.MergeFrom()` 流式合并时未克隆 thread-local 数据的 bug 与 `PiiRedactor.Redact()` 丢失 `CorrelationMatrix` / `FuzzyDuplicates` 等 P4 字段的脱敏克隆 bug。
+- **国密算法支持（SM4 / SM2 字段转换，国内合规场景刚需）**：在 `FieldTransform.type` 中新增 `sm4` / `sm2` 两个类型，复用现有 `key` / `iv` / `mode` / `padding` / `format` 字段并扩展 SM2 专用 `privateKey` / `publicKey` / `signature` 三个配置：
+  - **SM4**（GM/T 0002-2014）：对称加解密，128-bit 块/128-bit 密钥，支持 CBC（默认）/ ECB 与 PKCS7（默认）/ None 填充；`format` 支持 base64 / hex；CBC 必须提供 `iv`。底层使用 BouncyCastle `SM4Engine` + `CbcBlockCipher` + `Pkcs7Padding`。
+  - **SM2**（GM/T 0003-2012）：基于 sm2p256v1 曲线，两种工作模式：
+    - `mode: decrypt` — 用 `privateKey` 解密 SM2 密文（公钥加密的密文）；
+    - `mode: verify` — 用 `publicKey` 校验 `signature` 是否为 `plainText` 的合法 SM2 签名，返回 `valid` / `invalid`。
+  - SM2 密钥支持多种编码自动识别：Base64 DER（PKCS#8 / X.509 SubjectPublicKeyInfo）、PEM（PEM 块带 `-----BEGIN ...-----` 头）、hex（32 字节裸私钥整数 / 64 字节裸 X||Y / 65 字节 04||X||Y 未压缩点）。
+  - 实现 `FieldTransformProcessor.ValidateTransform` 严格校验 key/IV 长度、SM2 mode 合法性、密钥与签名字段必填关系；通过 `FieldTransformProcessor.ApplySm4/ApplySm2/ApplySm2Decrypt/ApplySm2Verify` 统一入口。
+- **测试（国密）**：新增 `GuomiTransformTests` —— 11 个用例：SM4 ECB 官方测试向量（GM/T 0002-2014 附录 A.1）、SM4 CBC 随机密钥 round-trip、SM4 密文格式自动识别、SM4 失败保留原值、SM2 自生成密钥对加解密 round-trip、SM2 签名验签 round-trip、SM2 验签负例、SM2 密钥格式（hex 32/64/65、PEM、Base64 DER）兼容、SM2 错误密钥长度/格式报错、SM4/SM2 配置校验报错。
+- **数据血缘与审计日志（--audit-log / --operator）**：分析运行自动记录合规所需的"谁在何时分析了什么"事件链，以 JSON Lines (NDJSON) 格式追加到指定文件：
+  - 四类事件：`analysis_start` / `analysis_finish` / `analysis_cancel` / `analysis_error`；
+  - 每条事件含 `runId`（串联同一运行）、`timestamp`（UTC ISO 8601）、`operator`、`toolVersion`、`inputSource`（db://provider?query / 文件路径）、`inputHash`（SHA-256 hex）、`inputBytes`、`options`（关键选项快照）、`result`（仅 finish，含 totalObjects/fields/质量违规数/PII 数/退出码等）、`exitCode`、`message`。
+  - **不写入任何敏感数据**：审计日志绝不记录字段值（ValueCounts/Sample/PII 明文），也绝不记录 AES/SM4/SM2 的 `key` / `iv` / `privateKey` / `publicKey` / `signature` 等敏感配置；transform 字段仅记录 `field` + `type` 用于溯源。
+  - 写入采用同步 AutoFlush + FileShare.Read，确保审计数据在进程崩溃/被强杀时不丢失，并允许外部日志聚合器并发读取。
+  - `AnalysisRunner` 集成：start 事件在所有前置校验通过后写入；finish / cancel / error 在所有返回点（含 0/3/4/5/6 业务门禁失败与未捕获异常）兜底记录；审计路径不可写时仅警告，不阻塞分析主流程。
+  - 配合现有 `--operator` 标识执行者（CI runner / 用户邮箱 / 调度器 ID）实现完整溯源。
+- **测试（审计日志）**：新增 `AuditLoggerTests` —— 13 个用例：NDJSON 写盘、文件追加模式、空字段默认省略、选项快照不含敏感材料（key/iv/PEM/signature 等）、SHA-256 哈希稳定且 hex、缺失文件返回 null、结果摘要不存值；`AnalysisRunner` 集成 6 个用例：成功 start+finish、runId 串联、退出码 0/3、字段值不泄漏（PII 测试数据）、未启用审计照常运行、关键选项完整记录。
+- **安全策略文档 SECURITY.md（中文）**：声明支持版本、数据分类与处理原则、密钥管理建议、审计日志最佳实践、国密算法支持范围、漏洞披露渠道（GitHub Security Advisories / 邮件）与 SLA（首次确认 3 工作日 / 严重问题 30 天修复）、致谢机制、安全特性清单。
+- **测试**：JSONPath 单元测试（根路径数组通配、对象匹配、过滤器、嵌套路径、空集、语法错误 4 类 7 个用例）+ JSONPath 集成测试（root-path+record-path 组合、JSONL record-path 提取、CSV/Excel record-path 兼容、空集告警、组合提取后展平回归 7 个用例）。
+- **P3 高级分析能力**
+  - **日期/时间深度剖析**：`InternalFieldMetrics` 新增 `DateTimeStats` 通道（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），`FieldStatistic` 输出 `DateTimeCount` / `MinDateTime` / `MaxDateTime` + 时间桶直方图（按跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存；控制台 / JSON / HTML / Markdown 报告新增「时间序列」小节。
+  - **异常值检测（IQR 1.5×）**：复用现有 t-digest 分位数草图计算 P25 / P75 → IQR，基于对数直方图近似归类离群点；`FieldStatistic` 新增 `OutlierCount` / `OutlierRatio` / `OutlierBounds`（流式样本数 < 4 时不计算，避免小样本抖动）；`QualityChecks` 新增 `OutlierRatio` 类型，规则文件支持 `fields.<name>.maxOutlierRatio` 字段级阈值；新增 `--fail-on-outlier-ratio <RATIO>` 全局 CI 门禁（退出码 5）。
+  - **Schema 快照 + Diff**：`--export-schema-snapshot <FILE>` 导出 canonical schema JSON（字段名/主导类型/语义/coverage/nullable/范围/枚举/异常值，独立于 `--export-schema` 代码生成器）；`--diff-schema <BASELINE>` 与历史快照对比，识别新增/删除/类型变化/coverage 变化/语义变化等；`--schema-diff-report <FILE>` 导出结构化 diff JSON；`--allow-breaking-schema-changes false` 触发 CI 演进门禁（退出码 6，破坏性变更定义：字段删除、主导类型变化、nullable 收紧、coverage 下降 ≥ 0.1）；控制台 / JSON / HTML / Markdown 报告新增「Schema 演进」小节；可作为下游「数据漂移对比」的字段级基础。
+  - **测试**：日期/时间剖析（min/max/直方图计数一致性 + UTC 归一化）、异常值检测（明显离群点被标记 + 区间文本非空 + 小样本保护）、Schema 快照构建与往返、diff 三种场景（新增/删除/破坏性变更门禁），共 12 个新用例。
+  - **测试基础设施**：新增 `AnalysisRunnerSequentialGroup` xUnit CollectionDefinition 强制 AnalysisRunner 测试串行执行，规避 Spectre.Console `AnsiConsole.Status()` 在多进程级并行时争用全局句柄的并发异常。
+- **压缩文件直读（gzip / bzip2 / zip）**：`.gz` / `.bz2` / `.zip` 压缩包可直接作为输入，无需预先解压——按扩展名识别最外层压缩并流式解包，内层格式由剥离压缩后缀的扩展名决定；扩展名不可判时按头部魔数嗅探兜底（未知扩展名的 Office Open XML 文件按 Excel 解析而非当作 zip 数据容器）；zip 自动选择数据条目（优先已知数据格式、多候选取字典序首个并在控制台提示），且支持 zip 内嵌套 gzip/bzip2 条目（如 `logs.csv.gz`）。行级流式格式（JSONL/CSV/XML/YAML）在解压流上边读边解析，超大压缩文件内存有界；仅内层为需随机访问的 `.xlsx` 时才缓冲到内存。采样与强类型 `--type` 路径照常适用。解析器入口统一改为流式契约（`IFileParser.Parse(Stream)`），由惰性枚举包装负责打开/释放解压源（句柄零泄漏）。
+- **测试**：gzip JSONL/JSON/CSV/xlsx、bzip2 JSON、zip 单/多条目确定性选择、仅目录 zip 报错、zip 嵌套 gzip 条目、无扩展名魔数识别、改名 xlsx 内容级识别为 excel、非压缩回归、句柄释放、AnalysisRunner 端到端退出码 0，共 16 个新用例。
+- **质量检查 v2（Great Expectations 风格）**：规则文件字段级新增 5 个检查维度——`pattern`（正则模式，截断时近似计数并标记）、`minValue`/`maxValue`（数值范围越界，逐行精确计数、不受唯一值截断影响）、`required`（null 或整行缺失）、`unique`（唯一性：未截断精确统计，截断时 HyperLogLog 近似并标记）、`nullRateMax`（null 率上限，分子含显式 null 与缺失）；顶层新增 `expectations` 数据集期望——`minRowCount`（最少对象数）与 `maxDuplicateRate`（重复对象占比上限）。所有违规统一汇总至 `AnalysisResult.QualityViolations` 并接入 `--fail-on-violations` 门禁（退出码 3）、`--violations` 导出（升级为 `{ summary, fieldViolations, datasetViolations }` 对象结构，枚举条目保留旧版逐值 `values` 键向后兼容）与数据质量报告（`Checks` 字段级条目 + 顶层 `DatasetViolations`）；无效正则在加载规则文件时立即报错退出；PII 打码同步作用于违规样本。
+- **测试**：范围越界截断场景精确计数、required 缺失+null 合计、nullRateMax 边界通过/超出、pattern 命中与截断近似标志、unique 精确重复样本与 HLL 近似区间、minRowCount/maxDuplicateRate 通过与失败、`--fail-on-violations` 退出码 3 / 干净数据退出 0 / 无效正则退出 1 集成、`--violations` v2 结构回读、数据质量报告新维度与旧枚举语义兼容、PII 掩码传播到违规样本、纯枚举旧规则向后兼容聚合、JSON 往返，共 19 个新用例。
 - **数值/语义统计深度补齐**：数值列新增样本标准差（Welford 在线算法，O(1) 内存）、近似分位数 P50/P90/P95/P99（简化 t-digest 质心草图，容量有界且支持多线程合并）、2 的幂对数直方图分桶（负数/零/正数桶按值域升序，单遍流式无需预知范围）；字符串列新增平均长度；全部标量字段新增 distinct 值计数——唯一值未超过跟踪阈值时为精确计数，超出时自动退化为 HyperLogLog 近似估计（p=14，稀疏→稠密渐进存储 + LinearCounting 校正消除 n≈m 过渡区正偏差，标准误差 ≈0.8%），以 `DistinctApproximate` 标志区分。JSON / 控制台 / HTML / Markdown / CSV 报告同步展示；CSV 表头新增 `StdDevNumber`/`MedianNumber`/`P90Number`/`P95Number`/`P99Number`/`Histogram`/`AvgLength`/`DistinctApproximate` 列，`UniqueValues` 列升级为真实 distinct 计数。
 - **测试**：Welford 均值/样本标准差闭式解对比、t-digest 分位数均匀/重尾分布容差与"合并 ≈ 单遍"等价性、直方图桶计数总和与区间顺序、HyperLogLog 多样本平均精度（<2%）与稀疏合并一致性、并行分析深度指标稳定性、JSON 序列化往返、脱敏克隆保留新字段、CSV 新列冒烟，共 17 个新用例。
 - **PII 误报逃生口**：规则文件字段级 `redact: false` 白名单——字段名启发式误伤合法值时（如 name 列存产品名），声明后该字段不打码、不进合规报告；优先级高于 `pii` 自定义规则。新增 `--pii-off` 全局关闭 PII 识别与打码，报告输出原始值（与 `--fail-on-pii-level` 互斥、同用 `--pii-report` 时忽略后者）。

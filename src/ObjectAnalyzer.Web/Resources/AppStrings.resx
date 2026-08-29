@@ -22,7 +22,6 @@
   <data name="UploadSupported" xml:space="preserve"><value>支持 JSON, JSONL, CSV, Excel, XML, YAML</value></data>
   <data name="FileSelected" xml:space="preserve"><value>已选择: {0}</value></data>
   <data name="ClearFile" xml:space="preserve"><value>清除文件</value></data>
-  <data name="ClearTypeFile" xml:space="preserve"><value>清除类型定义</value></data>
   <data name="ClearRulesFile" xml:space="preserve"><value>清除规则文件</value></data>
   <data name="OptFlatten" xml:space="preserve"><value>展平嵌套</value></data>
   <data name="OptMaxValues" xml:space="preserve"><value>最大展示值</value></data>
@@ -31,14 +30,46 @@
   <data name="OptSampleReservoir" xml:space="preserve"><value>蓄水池采样</value></data>
   <data name="OptSampleStep" xml:space="preserve"><value>等距采样步长</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>超大文件采样：蓄水池随机取 N 条 / 等距每 N 条取 1 条，快速预估 Schema（两者互斥，0 = 关闭）</value></data>
-  <data name="OptTypeName" xml:space="preserve"><value>目标类名</value></data>
-  <data name="OptTypeNamePlaceholder" xml:space="preserve"><value>可选</value></data>
-  <data name="OptTypeFile" xml:space="preserve"><value>类型定义 (.cs)</value></data>
   <data name="OptRulesFile" xml:space="preserve"><value>规则文件 (.json)</value></data>
   <data name="OptFields" xml:space="preserve"><value>统计字段</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>逗号分隔，如 name,age</value></data>
   <data name="OptWhere" xml:space="preserve"><value>过滤条件</value></data>
   <data name="OptWherePlaceholder" xml:space="preserve"><value>如 Age > 18 AND Status in ['A','B']</value></data>
+  <data name="OptRootPath" xml:space="preserve"><value>文件根 JSONPath</value></data>
+  <data name="OptRootPathPlaceholder" xml:space="preserve"><value>如 $.data[*]，从整体 JSON 提取子节点</value></data>
+  <data name="OptRecordPath" xml:space="preserve"><value>记录级 JSONPath</value></data>
+  <data name="OptRecordPathPlaceholder" xml:space="preserve"><value>如 $.payload，从每条记录提取子节点</value></data>
+  <data name="OptAuditLog" xml:space="preserve"><value>审计日志 (NDJSON)</value></data>
+  <data name="OptAuditLogPlaceholder" xml:space="preserve"><value>可选，服务器本地路径，如 C:\Logs\audit.ndjson</value></data>
+  <data name="OptOperator" xml:space="preserve"><value>操作者</value></data>
+  <data name="OptOperatorPlaceholder" xml:space="preserve"><value>如 [email protected] / ci-runner-12</value></data>
+  <data name="P6GroupTitle" xml:space="preserve"><value>P6 — 增量 / 内存 / 进度</value></data>
+  <data name="P6GroupHint" xml:space="preserve"><value>大文件场景的容错与可恢复性</value></data>
+  <data name="OptShowProgress" xml:space="preserve"><value>显示进度条 / ETA</value></data>
+  <data name="OptMaxMemory" xml:space="preserve"><value>内存上限 (MB)</value></data>
+  <data name="OptMaxMemoryTitle" xml:space="preserve"><value>进程托管堆上限，0 = 不监控</value></data>
+  <data name="OptMaxMemoryMode" xml:space="preserve"><value>超限行为</value></data>
+  <data name="OptMaxMemoryModeTitle" xml:space="preserve"><value>soft=警告+自动采样继续；hard=立即失败</value></data>
+  <data name="OptMaxMemoryModeSoft" xml:space="preserve"><value>警告并自动采样</value></data>
+  <data name="OptMaxMemoryModeHard" xml:space="preserve"><value>立即失败</value></data>
+  <data name="OptResume" xml:space="preserve"><value>断点续跑 (.snapshot)</value></data>
+  <data name="ClearResumeFile" xml:space="preserve"><value>清除检查点</value></data>
+  <data name="OptBaseline" xml:space="preserve"><value>基线合并 (--baseline)</value></data>
+  <data name="ClearBaselineFile" xml:space="preserve"><value>清除基线</value></data>
+  <data name="OptCheckpoint" xml:space="preserve"><value>检查点输出 (--checkpoint)</value></data>
+  <data name="ClearCheckpointFile" xml:space="preserve"><value>清除检查点模板</value></data>
+  <data name="ProgressAnalyzedN" xml:space="preserve"><value>已分析 {0:N0} 条对象</value></data>
+  <data name="WarnMemorySoftExceeded" xml:space="preserve"><value>已超出内存软阈值，已自动启用蓄水池采样 50,000 条以保护进程</value></data>
+  <data name="ErrMemoryHardExceeded" xml:space="preserve"><value>内存使用超出 --max-memory 硬上限：{0}</value></data>
+  <data name="ErrResumeFailed" xml:space="preserve"><value>断点续跑合并失败：{0}</value></data>
+  <data name="ErrBaselineFailed" xml:space="preserve"><value>基线合并失败：{0}</value></data>
+  <data name="ErrCheckpointFailed" xml:space="preserve"><value>检查点落盘失败：{0}</value></data>
+  <data name="CheckpointReady" xml:space="preserve"><value>检查点已生成：{0}（{1:N0} 字节）</value></data>
+  <data name="DownloadCheckpoint" xml:space="preserve"><value>下载检查点</value></data>
+  <data name="ErrRootPath" xml:space="preserve"><value>--root-path 表达式 {0} 无效: {1}</value></data>
+  <data name="ErrRecordPath" xml:space="preserve"><value>--record-path 表达式 {0} 无效: {1}</value></data>
+  <data name="WarnRootPathIgnored" xml:space="preserve"><value>--root-path 仅对整体 JSON 文件生效，当前格式 {0} 已忽略。</value></data>
+  <data name="WarnRecordPathNoMatch" xml:space="preserve"><value>--record-path {2} 在 {0}/{1} 条记录上无匹配，已跳过。</value></data>
   <data name="Analyzing" xml:space="preserve"><value>分析中...</value></data>
   <data name="StartAnalysis" xml:space="preserve"><value>开始分析</value></data>
   <data name="Cancel" xml:space="preserve"><value>取消</value></data>
@@ -82,6 +113,76 @@
   <data name="DuplicatesMore" xml:space="preserve"><value>... 还有 {0} 组未展示</value></data>
   <data name="ErrSelectDataFile" xml:space="preserve"><value>请先选择数据文件。</value></data>
   <data name="ErrCancelled" xml:space="preserve"><value>分析已取消。</value></data>
-  <data name="ErrTypedParse" xml:space="preserve"><value>存在 {0} 条属性读取错误: {1}</value></data>
   <data name="ErrInvalidRules" xml:space="preserve"><value>规则文件内容为空或格式无效。</value></data>
+  <data name="DateRange" xml:space="preserve"><value>时间范围</value></data>
+  <data name="Outliers" xml:space="preserve"><value>异常值</value></data>
+  <data name="OutlierCountFmt" xml:space="preserve"><value>{0} ({1:P1})</value></data>
+  <data name="OutlierBoundsHint" xml:space="preserve"><value>区间 {0}</value></data>
+  <data name="P3InsightsTitle" xml:space="preserve"><value>P3 高级分析</value></data>
+  <data name="P3InsightsHint" xml:space="preserve"><value>日期/时间深度剖析、IQR 异常值检测、Schema 演进对比</value></data>
+  <data name="TimeSeriesCard" xml:space="preserve"><value>时间序列</value></data>
+  <data name="OutliersCard" xml:space="preserve"><value>异常值 (IQR 1.5×)</value></data>
+  <data name="SchemaDiffCard" xml:space="preserve"><value>Schema 演进</value></data>
+  <data name="NoDateTimeFields" xml:space="preserve"><value>未发现 DateTime 类型字段</value></data>
+  <data name="NoOutlierFields" xml:space="preserve"><value>所有数值字段异常值比例低于 1%</value></data>
+  <data name="NoBaselineUploaded" xml:space="preserve"><value>上传一个 Schema 快照 JSON 作为基线，可与本次分析结果做 diff</value></data>
+  <data name="UploadBaseline" xml:space="preserve"><value>上传基线快照</value></data>
+  <data name="ClearBaseline" xml:space="preserve"><value>清除基线</value></data>
+  <data name="BaselineLoaded" xml:space="preserve"><value>基线已加载：{0} 个字段</value></data>
+  <data name="DiffSummary" xml:space="preserve"><value>+{0} 新增 / −{1} 删除 / ±{2} 变更</value></data>
+  <data name="DiffBreakingBadge" xml:space="preserve"><value>含破坏性变更</value></data>
+  <data name="DiffSafeBadge" xml:space="preserve"><value>无破坏性变更</value></data>
+  <data name="DiffAddedTitle" xml:space="preserve"><value>新增字段 ({0})</value></data>
+  <data name="DiffRemovedTitle" xml:space="preserve"><value>删除字段 ({0})</value></data>
+  <data name="DiffChangedTitle" xml:space="preserve"><value>变更字段 ({0})</value></data>
+  <data name="ErrInvalidBaseline" xml:space="preserve"><value>基线快照 JSON 解析失败或格式不匹配（snapshotVersion 字段缺失？）</value></data>
+  <data name="ExportCurrentSnapshot" xml:space="preserve"><value>导出当前快照</value></data>
+  <data name="ExportCurrentSnapshotHint" xml:space="preserve"><value>下载当前结果的 canonical Schema 快照 JSON，作为后续 diff 的基线</value></data>
+  <data name="HistogramBars" xml:space="preserve"><value>{0} 个时间桶</value></data>
+  <data name="DatetimeSpan" xml:space="preserve"><value>跨度 {0}</value></data>
+  <data name="OutlierZero" xml:space="preserve"><value>无离群点</value></data>
+  <data name="P4InsightsTitle" xml:space="preserve"><value>P4 深度分析</value></data>
+  <data name="P4InsightsHint" xml:space="preserve"><value>字段相关性、字符串模式、Unicode 卫生、模糊去重、采样置信、分布漂移</value></data>
+  <data name="CorrelationCard" xml:space="preserve"><value>字段相关性矩阵</value></data>
+  <data name="StringPatternsCard" xml:space="preserve"><value>字符串模式归纳</value></data>
+  <data name="UnicodeHygieneCard" xml:space="preserve"><value>Unicode 卫生检查</value></data>
+  <data name="FuzzyDedupCard" xml:space="preserve"><value>模糊去重 (相似重复)</value></data>
+  <data name="TimeSeriesDeepCard" xml:space="preserve"><value>时间序列深度分析</value></data>
+  <data name="SamplingConfidenceCard" xml:space="preserve"><value>采样置信区间</value></data>
+  <data name="DistributionDiffCard" xml:space="preserve"><value>值分布漂移 (草图对比)</value></data>
+  <data name="NoCorrelation" xml:space="preserve"><value>未启用相关性分析（无 ≥2 个数值字段）</value></data>
+  <data name="NoStringPatterns" xml:space="preserve"><value>未启用字符串模式归纳</value></data>
+  <data name="NoHygieneIssues" xml:space="preserve"><value>未启用 Unicode 卫生检查</value></data>
+  <data name="HygieneAllClean" xml:space="preserve"><value>所有字段卫生评分 ≥ 90，无需关注</value></data>
+  <data name="NoFuzzyDedup" xml:space="preserve"><value>未指定模糊去重字段</value></data>
+  <data name="NoTimeSeriesDeep" xml:space="preserve"><value>无足够 DateTime 字段做趋势/周期分析</value></data>
+  <data name="NoSamplingConfidence" xml:space="preserve"><value>未启用采样（全量分析时无置信区间）</value></data>
+  <data name="NoDistributionDiff" xml:space="preserve"><value>未提供分布快照基线</value></data>
+  <data name="NoStrongPairs" xml:space="preserve"><value>无显著强相关对 (|r| &lt; 0.7 或样本 &lt; 30)</value></data>
+  <data name="FieldsLabel" xml:space="preserve"><value>字段</value></data>
+  <data name="SamplesLabel" xml:space="preserve"><value>样本</value></data>
+  <data name="HygieneDirtyLabel" xml:space="preserve"><value>脏字段</value></data>
+  <data name="FuzzyGroupsLabel" xml:space="preserve"><value>相似重复组</value></data>
+  <data name="FuzzySimLabel" xml:space="preserve"><value>相似样本</value></data>
+  <data name="EffectiveNLabel" xml:space="preserve"><value>有效样本数</value></data>
+  <data name="DriftCountLabel" xml:space="preserve"><value>显著漂移字段</value></data>
+  <data name="BaselineLabel" xml:space="preserve"><value>基线</value></data>
+  <data name="CurrentLabel" xml:space="preserve"><value>当前</value></data>
+  <data name="HygieneScoreFmt" xml:space="preserve"><value>评分 {0:F0}</value></data>
+  <data name="HygieneMixedFullHalf" xml:space="preserve"><value>全/半角混用 ({0}全 / {1}半)</value></data>
+  <data name="HygieneInvisible" xml:space="preserve"><value>不可见字符 {0}</value></data>
+  <data name="HygieneControl" xml:space="preserve"><value>控制字符 {0}</value></data>
+  <data name="HygieneSurroundingWs" xml:space="preserve"><value>前后空白 {0}</value></data>
+  <data name="HygieneMixedCase" xml:space="preserve"><value>大小写混用 {0}</value></data>
+  <data name="FuzzyGroupSizeFmt" xml:space="preserve"><value>×{0} 相似变体</value></data>
+  <data name="TimeSeriesTrendFmt" xml:space="preserve"><value>趋势: {0}</value></data>
+  <data name="TimeSeriesPeriodFmt" xml:space="preserve"><value>周期 {0} 桶</value></data>
+  <data name="TimeSeriesSpanFmt" xml:space="preserve"><value>{0} 桶 × {1}</value></data>
+  <data name="ConfidenceRangeFmt" xml:space="preserve"><value>区间 [{0:P0}, {1:P0}]</value></data>
+  <data name="PatternCountFmt" xml:space="preserve"><value>×{0} / {1}</value></data>
+  <data name="NumericDriftTitle" xml:space="preserve"><value>数值漂移 ({0})</value></data>
+  <data name="DistinctDriftTitle" xml:space="preserve"><value>枚举漂移 ({0})</value></data>
+  <data name="DriftMeanFmt" xml:space="preserve"><value>μ: {0:F2} → {1:F2}</value></data>
+  <data name="DriftSigmaFmt" xml:space="preserve"><value>{0:F2}σ</value></data>
+  <data name="DriftJaccardFmt" xml:space="preserve"><value>Jaccard = {0:F2}</value></data>
 </root>

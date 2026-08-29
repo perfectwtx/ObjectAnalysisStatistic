@@ -1,9 +1,7 @@
-using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.IO;
-using ObjectAnalyzer;
-using ObjectAnalyzer.Analysis;
+using System.Text.Json;
+using ObjectAnalyzer.Security;
 using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -13,7 +11,7 @@ var cts = new CancellationTokenSource();
 
 var inputOption = new Option<FileInfo?>(
     aliases: CliAliases.Input,
-    description: "指定输入的 JSON、JSONL、CSV、Excel、XML、YAML 文件路径。");
+    description: "指定输入的 JSON、JSONL、CSV、Excel、XML、YAML 文件路径；支持 .gz / .bz2 / .zip 压缩包直读（含 zip 内嵌套 gzip/bzip2 条目，自动识别内层格式）。");
 
 var outputOption = new Option<FileInfo?>(
     aliases: CliAliases.Output,
@@ -31,10 +29,6 @@ var maxValuesOption = new Option<int>(
 var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
     description: "生成 Excel 测试文件 (samples/test_data.xlsx、samples/test_data_excel_json.xlsx、samples/test_data_excel_json_multi_columns.xlsx) 并退出。");
-
-var typeOption = new Option<string?>(
-    aliases: CliAliases.Type,
-    description: "指定 .cs 类型定义文件路径，用于强类型反序列化；可带类名: \"UserInfo.cs:User\"（.cs 含多个类时冒号后指定）。");
 
 var rulesOption = new Option<FileInfo?>(
     aliases: CliAliases.Rules,
@@ -55,7 +49,7 @@ var parallelOption = new Option<int>(
 
 var violationsOption = new Option<FileInfo?>(
     aliases: CliAliases.Violations,
-    description: "将枚举违规导出为独立的结构化 JSON 文件路径。");
+    description: "将质量检查违规（枚举/范围/模式/必填/唯一/null 率 + 数据集期望）导出为独立的结构化 JSON 文件路径。");
 
 var qualityOption = new Option<FileInfo?>(
     aliases: CliAliases.Quality,
@@ -106,13 +100,76 @@ var failOnPiiLevelOption = new Option<string?>(
     description: "CI 合规门禁：合规等级达到或劣于指定级别时以非零退出码结束（C=仅 C 级失败；B=发现任何敏感字段即失败）。与 --fail-on-violations 对称。");
 failOnPiiLevelOption.AddCompletions("A", "B", "C");
 
+var failOnOutlierRatioOption = new Option<double?>(
+    name: "--fail-on-outlier-ratio",
+    description: "CI 异常值门禁：任一数值字段的 IQR 异常值比例（0.0~1.0）超过该阈值时以退出码 5 结束。与 --fail-on-violations 对称。规则文件 fields.<name>.maxOutlierRatio 可按字段设置。");
+
+var schemaSnapshotOption = new Option<string?>(
+    name: "--export-schema-snapshot",
+    description: "导出 canonical Schema 快照到指定 JSON 路径（字段名/类型/coverage/nullable/语义/范围/枚举/异常值）。独立于 --export-schema 的代码生成器；与 --diff-schema 配合做 schema 演进对比。");
+
+var diffSchemaOption = new Option<string?>(
+    name: "--diff-schema",
+    description: "与历史 Schema 快照做 diff（指定基线 JSON 文件路径）。输出新增/删除/变更字段，破坏性变更可触发退出码 6。配合 --export-schema-snapshot 形成 CI 演进门禁。");
+
+var schemaDiffReportOption = new Option<string?>(
+    name: "--schema-diff-report",
+    description: "Schema diff 结果导出到指定 JSON 文件（结构化输出，便于下游消费）。未指定时仅在控制台与主报告展示。");
+
+var allowBreakingSchemaChangesOption = new Option<bool>(
+    name: "--allow-breaking-schema-changes",
+    description: "Schema 演进门禁：true（默认）= 允许破坏性变更；false = 含破坏性变更时以退出码 6 结束（与 --fail-on-violations 对称）。",
+    getDefaultValue: () => true);
+
+var rootPathOption = new Option<string?>(
+    name: "--root-path",
+    description: "在文件根应用 JSONPath 表达式（RFC 9535），从整体文件中提取子节点作为分析输入（如 --root-path '$.data[*]'，从 {data:[...]} 中只分析 data 数组）。仅对整体 JSON 文件生效；语法无效时报错，匹配空集时警告后继续。");
+
+var recordPathOption = new Option<string?>(
+    name: "--record-path",
+    description: "在每条记录上应用 JSONPath 表达式（RFC 9535），提取子节点替换为新记录后再分析（如 JSONL 每行 {event,payload}，--record-path '$.payload' 只分析 payload）。对 JSON / JSONL / CSV / Excel / DB 均生效；语法无效时报错，匹配空集时警告后继续。");
+
+var auditLogOption = new Option<string?>(
+    name: "--audit-log",
+    description: "审计日志输出路径（NDJSON 格式，每行一条 JSON）。记录 analysis_start / analysis_finish / analysis_cancel / analysis_error 四类事件，仅包含输入 SHA-256 哈希 / 操作者 / 关键选项 / 结果摘要，不写入字段值。适合合规留痕。");
+
+var operatorOption = new Option<string?>(
+    name: "--operator",
+    description: "操作者标识，写入审计日志的每条事件（--audit-log 启用时生效）。推荐填入执行者 ID（如 \"[email protected]\" / \"ci-runner-12\"），便于溯源。",
+    getDefaultValue: () => "anonymous");
+
+var noProgressOption = new Option<bool>(
+    name: "--no-progress",
+    description: "关闭分析过程中的 Spectre.Console 进度条 + ETA，回归到 spinner 行为。典型场景：CI 日志捕获、脚本管道、已重定向到文件时希望避免 ANSI 控制码污染输出。默认开启进度条。");
+
+var checkpointOption = new Option<string?>(
+    name: "--checkpoint",
+    description: "P6.2：检查点输出路径。本次分析完成后会把当前结果 + 已处理位置写入该文件，下次可用 --resume <PATH> 续跑。原子写入（先 .tmp 再 rename）避免半写状态。");
+
+var resumeOption = new Option<string?>(
+    name: "--resume",
+    description: "P6.2：从检查点续跑。指定 --resume <PATH> 加载之前 --checkpoint 写入的快照，解析器从已处理位置之后继续读取新数据，结果与快照合并后输出。源文件路径不一致时拒绝续跑。");
+
+var baselineOption = new Option<string?>(
+    name: "--baseline",
+    description: "P6.2：历史 AnalysisResult JSON 路径（通常由 --output ... .json 产生）。本次结果会与基线合并（FieldStatistic 级 Welford / 直方图 / 枚举违规可增量合并），适合「只分析新增数据并与历史合并」的场景。与 --resume 的区别：--resume 是从源文件中间续跑；--baseline 是合并任意历史结果文件。");
+
+var maxMemoryOption = new Option<long>(
+    name: "--max-memory",
+    description: "P6.3：进程托管堆上限（MB）。仅监控 .NET 托管堆。默认 0（不监控）。典型场景：50GB JSONL 全量物化会 OOM，设 1024 让 --max-memory-mode soft 自动启用采样、或者 hard 立即失败。",
+    getDefaultValue: () => 0);
+
+var maxMemoryModeOption = new Option<string>(
+    name: "--max-memory-mode",
+    description: "P6.3：超限行为（需配合 --max-memory）。soft=警告并自动启用 50K 蓄水池采样；hard=立即以退出码 1 结束。默认 soft。",
+    getDefaultValue: () => "soft");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
 rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
-rootCommand.AddOption(typeOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(whereOption);
@@ -129,6 +186,149 @@ rootCommand.AddOption(providerOption);
 rootCommand.AddOption(piiReportOption);
 rootCommand.AddOption(piiOffOption);
 rootCommand.AddOption(failOnPiiLevelOption);
+rootCommand.AddOption(failOnOutlierRatioOption);
+rootCommand.AddOption(schemaSnapshotOption);
+rootCommand.AddOption(diffSchemaOption);
+rootCommand.AddOption(schemaDiffReportOption);
+rootCommand.AddOption(allowBreakingSchemaChangesOption);
+rootCommand.AddOption(rootPathOption);
+rootCommand.AddOption(recordPathOption);
+rootCommand.AddOption(auditLogOption);
+rootCommand.AddOption(operatorOption);
+rootCommand.AddOption(noProgressOption);
+rootCommand.AddOption(checkpointOption);
+rootCommand.AddOption(resumeOption);
+rootCommand.AddOption(baselineOption);
+rootCommand.AddOption(maxMemoryOption);
+rootCommand.AddOption(maxMemoryModeOption);
+
+// ── KMS 离线密钥工具：kms-secret ──
+// 用环境变量口令对明文密钥加密，输出可直接写入规则文件 transform 的 kms:offline/... 引用。
+// 明文从 stdin 读取（不落命令行参数 / shell 历史），口令从 OA_KMS_PASSPHRASE 环境变量读取。
+var kmsEncodingOption = new Option<string?>(
+    "--encoding",
+    description: "明文密钥的编码还原方式：utf8（默认）、base64 或 hex。base64/hex 表示把解密出的字节重新编码为该形式，供 transform 的 format 字段使用。",
+    getDefaultValue: () => "utf8");
+var kmsPlainOption = new Option<string?>(
+    "--value",
+    description: "要加密的明文密钥（可选）。不指定则从 stdin 读取——推荐，避免明文出现在 shell 历史。");
+var kmsSecretCommand = new Command("kms-secret", "离线 KMS：用环境变量 OA_KMS_PASSPHRASE 的口令加密明文密钥，生成规则文件可直接引用的 kms:offline/... 密文。");
+kmsSecretCommand.AddOption(kmsEncodingOption);
+kmsSecretCommand.AddOption(kmsPlainOption);
+kmsSecretCommand.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var parseResult = context.ParseResult;
+        string? plainValue = parseResult.GetValueForOption(kmsPlainOption);
+        string? encoding = parseResult.GetValueForOption(kmsEncodingOption);
+        string plaintext = plainValue ?? Console.In.ReadToEnd().TrimEnd('\r', '\n', ' ');
+        if (string.IsNullOrEmpty(plaintext))
+        {
+            AnsiConsole.MarkupLine("[red]错误: 明文密钥为空。请通过 --value 或 stdin 提供要加密的密钥。[/]");
+            context.ExitCode = 1;
+            return;
+        }
+
+        string kmsRef = OfflineKmsProvider.Encrypt(plaintext, encoding ?? "utf8");
+        AnsiConsole.MarkupLine("[green]加密成功。将以下值粘贴到规则文件 transform 的 key/iv/privateKey 等字段即可：[/]");
+        Console.WriteLine(kmsRef);
+        context.ExitCode = 0;
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+        context.ExitCode = 1;
+    }
+});
+rootCommand.AddCommand(kmsSecretCommand);
+
+// ── 规则文件生成：rules-from-code / rules-from-schema ──
+// 从 C# 源码或 JSON Schema 静态提取类结构，生成规则文件骨架（primaryType/枚举/必填/范围/模式/默认值）。
+// 仅静态解析，不编译、不参与分析管线；数据统计类规则（唯一/null 率/离群率）需后续手工补充。
+var rfcInputOption = new Option<FileInfo>(
+    aliases: CliAliases.Input,
+    description: "输入文件路径（rules-from-code: .cs 源码；rules-from-schema: JSON Schema 文件）。")
+{ IsRequired = true };
+var rfcClassOption = new Option<string?>(
+    aliases: CliAliases.Class,
+    description: "目标类名（仅 rules-from-code）；源码包含多个类时必填。");
+var rfcOutputOption = new Option<FileInfo>(
+    aliases: CliAliases.Output,
+    description: "生成的规则文件输出路径（.json）。")
+{ IsRequired = true };
+
+static void WriteRulesFile(AnalysisRules rules, FileInfo output, InvocationContext context, string sourceDesc)
+{
+    var json = JsonSerializer.Serialize(rules, new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    });
+    File.WriteAllText(output.FullName, json);
+    AnsiConsole.MarkupLine(
+        $"[green]已生成规则文件[/] [blue]{Markup.Escape(output.FullName)}[/]（来源: {Markup.Escape(sourceDesc)}，{rules.Fields.Count} 个字段规则）。");
+    AnsiConsole.MarkupLine("[grey]提示: 生成的是结构约束骨架（类型/枚举/必填/范围/模式/默认值）；唯一率、null 率、离群率等数据统计类规则需按实际数据手工补充。[/]");
+    context.ExitCode = 0;
+}
+
+var rulesFromCodeCommand = new Command("rules-from-code", "解析 C# 源码中的类/记录/枚举声明，生成规则文件骨架。");
+rulesFromCodeCommand.AddOption(rfcInputOption);
+rulesFromCodeCommand.AddOption(rfcClassOption);
+rulesFromCodeCommand.AddOption(rfcOutputOption);
+rulesFromCodeCommand.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var parseResult = context.ParseResult;
+        var input = parseResult.GetValueForOption(rfcInputOption)!;
+        var className = parseResult.GetValueForOption(rfcClassOption);
+        var output = parseResult.GetValueForOption(rfcOutputOption)!;
+
+        var warnings = new List<string>();
+        var rules = RulesFromCSharp.Extract(File.ReadAllText(input.FullName), className, warnings);
+        foreach (var warning in warnings)
+        {
+            AnsiConsole.MarkupLine($"[yellow]跳过: {Markup.Escape(warning)}[/]");
+        }
+        WriteRulesFile(rules, output, context, $"C# {className ?? input.Name}");
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+        context.ExitCode = 1;
+    }
+});
+
+var rulesFromSchemaCommand = new Command("rules-from-schema", "把 JSON Schema（draft-07 / 2020-12 常用子集）转换为规则文件骨架。");
+rulesFromSchemaCommand.AddOption(rfcInputOption);
+rulesFromSchemaCommand.AddOption(rfcOutputOption);
+rulesFromSchemaCommand.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var parseResult = context.ParseResult;
+        var input = parseResult.GetValueForOption(rfcInputOption)!;
+        var output = parseResult.GetValueForOption(rfcOutputOption)!;
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(input.FullName));
+        var skipped = new List<string>();
+        var rules = RulesFromSchema.Convert(doc.RootElement, skipped);
+        foreach (var skippedPath in skipped)
+        {
+            AnsiConsole.MarkupLine($"[yellow]跳过: {Markup.Escape(skippedPath)}[/]");
+        }
+        WriteRulesFile(rules, output, context, $"JSON Schema {input.Name}");
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+        context.ExitCode = 1;
+    }
+});
+rootCommand.AddCommand(rulesFromCodeCommand);
+rootCommand.AddCommand(rulesFromSchemaCommand);
+
 
 rootCommand.SetHandler((InvocationContext context) =>
 {
@@ -138,7 +338,6 @@ rootCommand.SetHandler((InvocationContext context) =>
     var noFlatten = parseResult.GetValueForOption(noFlattenOption);
     var maxValues = parseResult.GetValueForOption(maxValuesOption);
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
-    var type = parseResult.GetValueForOption(typeOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
     var where = parseResult.GetValueForOption(whereOption);
@@ -155,6 +354,25 @@ rootCommand.SetHandler((InvocationContext context) =>
     var piiReport = parseResult.GetValueForOption(piiReportOption);
     var piiOff = parseResult.GetValueForOption(piiOffOption);
     var failOnPiiLevel = parseResult.GetValueForOption(failOnPiiLevelOption);
+    var failOnOutlierRatio = parseResult.GetValueForOption(failOnOutlierRatioOption);
+    var schemaSnapshotPath = parseResult.GetValueForOption(schemaSnapshotOption);
+    var diffSchemaBaseline = parseResult.GetValueForOption(diffSchemaOption);
+    var schemaDiffReportPath = parseResult.GetValueForOption(schemaDiffReportOption);
+    var allowBreakingSchemaChanges = parseResult.GetValueForOption(allowBreakingSchemaChangesOption);
+    var rootPath = parseResult.GetValueForOption(rootPathOption);
+    var recordPath = parseResult.GetValueForOption(recordPathOption);
+    var auditLogPath = parseResult.GetValueForOption(auditLogOption);
+    var operatorValue = parseResult.GetValueForOption(operatorOption) ?? "anonymous";
+    var noProgress = parseResult.GetValueForOption(noProgressOption);
+    var checkpointPath = parseResult.GetValueForOption(checkpointOption);
+    var resumeFrom = parseResult.GetValueForOption(resumeOption);
+    var baselinePath = parseResult.GetValueForOption(baselineOption);
+    var maxMemoryMB = parseResult.GetValueForOption(maxMemoryOption);
+    var maxMemoryMode = (parseResult.GetValueForOption(maxMemoryModeOption) ?? "soft").Trim().ToLowerInvariant() switch
+    {
+        "hard" => MaxMemoryMode.Hard,
+        _ => MaxMemoryMode.Soft
+    };
 
     if (generateTestExcel)
     {
@@ -220,7 +438,36 @@ rootCommand.SetHandler((InvocationContext context) =>
         return;
     }
 
-    var (typeFile, typeName) = SplitColonSuffix(type);
+    if (!string.IsNullOrWhiteSpace(rootPath) && (string.Equals(Path.GetExtension(input?.FullName ?? ""), ".jsonl", StringComparison.OrdinalIgnoreCase)
+        || input?.FullName.EndsWith(".jsonl.gz", StringComparison.OrdinalIgnoreCase) == true))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --root-path 仅对整体 JSON 文件生效；JSONL 是流式逐行结构，请在每行使用 --record-path。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
+    // P6.2 早期校验：--resume / --baseline / --checkpoint 互斥关系与输入文件存在性
+    if (!string.IsNullOrWhiteSpace(resumeFrom) && input == null)
+    {
+        AnsiConsole.MarkupLine("[red]错误: --resume 必须与 -i 输入文件同时指定（用于校验源文件一致性）。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+    if (!string.IsNullOrWhiteSpace(checkpointPath) && !string.IsNullOrWhiteSpace(resumeFrom) &&
+        string.Equals(Path.GetFullPath(checkpointPath!), Path.GetFullPath(resumeFrom!), StringComparison.OrdinalIgnoreCase))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --checkpoint 与 --resume 指向同一文件；为避免相互覆盖，请使用不同路径。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+    if (!string.IsNullOrWhiteSpace(baselinePath) && !string.IsNullOrWhiteSpace(resumeFrom) &&
+        string.Equals(Path.GetFullPath(baselinePath!), Path.GetFullPath(resumeFrom!), StringComparison.OrdinalIgnoreCase))
+    {
+        AnsiConsole.MarkupLine("[red]错误: --baseline 与 --resume 指向同一文件；语义冲突，请使用不同路径。[/]");
+        context.ExitCode = 1;
+        return;
+    }
+
     var (schemaFormat, schemaOutput) = SplitColonSuffix(exportSchema);
 
     var options = new AnalysisOptions
@@ -229,8 +476,6 @@ rootCommand.SetHandler((InvocationContext context) =>
         OutputPath = output?.FullName,
         Flatten = !noFlatten,
         MaxValuesToShow = maxValues,
-        TypeFile = typeFile,
-        TypeName = typeName,
         RulesFile = rules?.FullName,
         MaxDegreeOfParallelism = maxParallel,
         Fields = fields,
@@ -247,7 +492,22 @@ rootCommand.SetHandler((InvocationContext context) =>
         DbProvider = provider,
         PiiPath = piiReport?.FullName,
         PiiOff = piiOff,
-        FailOnPiiLevel = failOnPiiLevel
+        FailOnPiiLevel = failOnPiiLevel,
+        FailOnOutlierRatio = failOnOutlierRatio,
+        SchemaSnapshotPath = schemaSnapshotPath,
+        DiffSchemaBaseline = diffSchemaBaseline,
+        SchemaDiffReportPath = schemaDiffReportPath,
+        AllowBreakingSchemaChanges = allowBreakingSchemaChanges,
+        RootPath = rootPath,
+        RecordPath = recordPath,
+        AuditLogPath = auditLogPath,
+        Operator = operatorValue,
+        ShowProgress = !noProgress,
+        CheckpointPath = checkpointPath,
+        ResumeFrom = resumeFrom,
+        BaselinePath = baselinePath,
+        MaxMemoryMB = maxMemoryMB,
+        MaxMemoryMode = maxMemoryMode
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);
@@ -261,11 +521,11 @@ Console.CancelKeyPress += (_, e) =>
 
 return rootCommand.Invoke(args);
 
-/// <summary>
-/// 切分 "前缀[:后缀]"（如 "File.cs:ClassName"、"csharp:out.cs"）。
-/// 跳过 Windows 盘符冒号（如 "C:\x" 中的 'C:'），因此 "csharp:C:\out.cs" 会正确切分为 ("csharp","C:\out.cs")。
-/// 无可用冒号时原样作为路径。
-/// </summary>
+// <summary>
+// 切分 "前缀[:后缀]"（如 "File.cs:ClassName"、"csharp:out.cs"）。
+// 跳过 Windows 盘符冒号（如 "C:\x" 中的 'C:'），因此 "csharp:C:\out.cs" 会正确切分为 ("csharp","C:\out.cs")。
+// 无可用冒号时原样作为路径。
+// </summary>
 static (string? path, string? suffix) SplitColonSuffix(string? value)
 {
     if (string.IsNullOrWhiteSpace(value))
@@ -289,7 +549,7 @@ static class CliAliases
     public static readonly string[] Input = { "--input", "-i" };
     public static readonly string[] Output = { "--output", "-o" };
     public static readonly string[] MaxValues = { "--max-values", "-m" };
-    public static readonly string[] Type = { "--type", "-t" };
+    public static readonly string[] Class = { "--class", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Fields = { "--fields", "-F" };
     public static readonly string[] Where = { "--where", "-w" };
