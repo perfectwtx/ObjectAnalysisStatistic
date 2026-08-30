@@ -6,6 +6,7 @@
 
 ### Added
 - **全量规则参考模板 `samples/rules_full_reference.jsonc` + 规则加载支持注释**：模板覆盖全部规则配置（flatten / fields 全部 13 项字段规则 / selectedFields / filter / valueParsers / expectations），每一项配置都带中文注释说明用途与取值；AES/国密等需要 KMS 口令的示例默认以块注释给出（取消注释并设置 `OA_KMS_PASSPHRASE` 后启用）。规则加载（CLI LoadRules / Web 粘贴与上传路径 / 审计摘要）统一改用 `AnalysisRules.RulesJsonOptions`（`ReadCommentHandling = Skip` + 大小写不敏感），**带注释的规则文件可直接使用**。测试：`Rules_WithComments_LoadsViaSharedOptions`。
+- **配套演示数据 `samples/rules_full_reference_data.json`**（102 行，由 PowerShell 脚本确定性生成）：字段与模板规则一一对应，内置全部违规触发场景——age 必填缺失×2 / 范围越界（200、-3）/ 离群点×6（999）/ 空值×2、gender 非法枚举×3（Robot）、email 正则不匹配×2 与重复值×2、整行重复×2、含可展开的 JWT token（transform: jwt + parse:"json" 演示）与 inactive 行（filter 演示）。端到端验证：模板规则 + 演示数据产出 5 条字段违规（age 3 + email 2），`--fail-on-violations` 退出码 3。⚠ 冒烟中发现已知缺陷：**规则文件同时配置 `filter` 与 `flatten: true` 时字段级质量检查被跳过**（模板中 filter 已注释并标注；Backlog 待修）。
 
 ### Fixed
 - **检查点文件名清洗跨平台一致化（修复 CI/Linux 失败）**：`P6PostAnalysis.SanitizeCheckpointName` 原使用 `Path.GetInvalidFileNameChars()`，该集合随运行 OS 变化——Linux 上 `<>:"|?*` 与反斜杠均合法，导致同一输入在 GitHub Actions（Linux）与本地（Windows）被清洗成不同结果，并削弱路径穿越防护的一致性。改为跨平台固定字符集（Windows 非法字符 + 正/反斜杠 + 控制字符），`P6PostAnalysisTests` 4 个按 Windows 语义编写的用例现可在任意 OS 通过，并新增 `Sanitize_CrossPlatformRejectsWindowsInvalidChars` 锁定该行为；顺带合并此前误插入的重复 `[Unreleased]` 标题。

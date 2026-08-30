@@ -113,7 +113,11 @@
 
   // 全局过滤条件：只统计满足表达式的记录（等价 CLI --where，CLI 优先级更高）。
   // 支持 == != > < >= <=、in / not in、like / not like、AND / OR 与括号，字段名大小写不敏感。
+  // ⚠ 已知问题：与 "flatten": true 同时配置时，字段级质量检查（pattern/enum/范围等）会被跳过——
+  //    需要字段质量检查时请先注释掉本行（默认注释）。
+  /*
   "filter": "age >= 18 AND status in ['active']",
+  */
 
   // 值解析器：把指定 Excel 列的值按 JSON 解析后再统计（Excel 多列 JSON 专用场景）。
   // ⚠ 注意：一旦配置 valueParsers，分析器会强制按 excel-json 格式解析——
