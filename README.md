@@ -15,7 +15,7 @@
 **统计与深度剖析**
 
 - 基础统计：字段频次/覆盖率/主导数据类型、唯一值频次与占比、默认值推断（`null` / `0` / `false`）、重复对象检测（128 位非密码学哈希去重，快于 MD5）、嵌套扁平化（`a.b.c` 路径形式，可选）
-- 数值/文本深度剖析：数值列输出均值、样本标准差（Welford 流式算法）、近似分位数 P50/P90/P95/P99（可合并 t-digest 草图）与 2 的幂对数直方图；文本列输出平均长度；所有标量字段提供 distinct 计数（超阈值自动切换 HyperLogLog 近似，内存有界）
+- 数值/文本深度剖析：数值列输出均值、样本标准差（Welford 流式算法）、近似分位数 P50/P90/P95/P99（可合并 t-digest 草图）与 2 的幂对数直方图；文本列输出平均长度；所有标量字段提供 distinct 计数（超阈值自动切换 HyperLogLog 近似，内存有界）。CSV 是无类型格式，默认对看起来是数字的字符串做保守推断（整数 → long、小数 → double），让均值/分位数/相关性等数值剖析对 CSV 同样生效；推断刻意保守（前导零 / 超长数字 / 科学计数法 / 千分位 / 带单位 一律保持字符串），可用 `--no-csv-number-inference` 关闭
 - 日期/时间深度剖析：自动识别 DateTime / DateTimeOffset 字符串（`Z` / `+08:00` / 无时区三种形态统一按 UTC 入桶），输出最小/最大时间戳与时间桶直方图（按数据跨度自适应切档：秒/分/时/天/周/月/年）；流式热路径 O(1) 内存
 - 异常值检测（IQR 1.5×）：数值列自动统计离群点数量与占比，列出 top-N 离群值所在字段；规则文件 `fields.<name>.maxOutlierRatio` 按字段设置阈值；`--fail-on-outlier-ratio` 提供 CI 门禁（退出码 5）
 - 分析深度增强（P4）：字段相关性矩阵（Pearson/Spearman）、字符串模式归纳、Unicode 卫生检查、模糊去重、时间序列深度分析（趋势/周期/间隙）、采样置信区间、分布漂移对比（草图 vs 草图）——详见「分析深度增强（P4）」一节
@@ -143,6 +143,8 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--no-flatten` | — | 解析 JSON 时不扁平化嵌套属性路径 | `false`（即扁平化） |
 | `--max-values <N>` | `-m` | 控制台报告中每个字段最多展示的唯一值数量 | `5` |
 | `--rules <FILE>` | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举与质量检查约束（pattern/范围/必填/唯一/null率 + 数据集期望）、字段值转换及值解析规则 | 无 |
+| `--allow-unknown-rules` | — | 放行规则文件里的未知键（拼错或已废弃）。默认严格——遇到未知键直接报错中止，按编辑距离给出建议键名，因为这些键会被静默忽略，规则看似生效实则没有；规则原文走 `RulesLint` 旁检查，不动反序列化，旧规则文件兼容性不受影响 | `false`（严格） |
+| `--no-csv-number-inference` | — | 关闭 CSV 数值推断：数字列一律按字符串统计。默认开启——CSV 无类型信息，不推断的话数值列 `primaryType` 永远是 `String`，均值/标准差/分位数/相关性等数值剖析全部失效 | `false`（开启） |
 | `--fields <NAMES>` | `-F` | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计 | 无 |
 | `--where <EXPR>` | `-w` | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行 | 无 |
 | `--violations <FILE>` | `-v` | 将质量检查违规（枚举/范围/模式/必填/唯一/null 率 + 数据集期望）导出为独立的结构化 JSON 文件，便于 CI 断言 | 无 |
@@ -326,6 +328,8 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 ## 规则文件格式
 
 > **全量参考模板**：[`samples/rules_full_reference.jsonc`](samples/rules_full_reference.jsonc) 覆盖全部规则配置并逐项附带中文注释，可直接复制使用（规则加载支持 `//` 与 `/* */` 注释，会自动忽略）。配套演示数据 [`samples/rules_full_reference_data.json`](samples/rules_full_reference_data.json)（102 行）覆盖每种规则的触发场景：必填缺失、类型/范围越界、离群点、空值率、枚举非法值、正则不匹配、重复值与重复整行——用模板规则跑一遍即可看到全部违规效果。
+>
+> **未知键检查（默认严格）**：规则文件加载时除正常反序列化外，还会经 `RulesLint` 旁检查所有键名是否在已知集合内——发现拼写错误或已废弃键时**直接报错中止**（退出码 1），并按编辑距离给出建议键名（例如把 `enum` 写成 `enums`、把 `pii.redact` 写成 `pii.reduct`）。这是因为反序列化遇到未知键会静默忽略，规则看似生效实则没有，问题会藏到生产环境才暴露。API 端 `POST /api/rules/validate` 同样接入；放宽用 `--allow-unknown-rules`（CLI）或 `?strict=false`（API）。
 
 ```json
 {
@@ -688,7 +692,7 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v3.json --diff
 
 P3 落地后，分析能力补齐到数据科学常用维度：跨字段关联、形态归纳、数据卫生、相似识别、时序分析、采样可信度、分布漂移。**零侵入兼容**——任一特性按需开启，关闭时与 v1.x 行为完全一致。所有结果会同时出现在控制台 / JSON / HTML / Markdown 报告与 Blazor Web 界面的 "🧬 P4 深度分析" 区域。
 
-> 这些特性通过 `AnalysisOptions` 与 `AnalysisFeatures` 启用（CLI / Web UI / 库 API 三处一致）；任一开关默认关闭，无任何额外开销。
+> 这些特性通过 `AnalysisOptions` 与 `AnalysisFeatures` 启用（CLI / Web UI / 库 API / Mini API 四处一致）；任一开关默认关闭，无任何额外开销。Mini API 上对应 `enableCorrelation` / `enableStringPatterns` / `enableUnicodeHygiene` / `enableTimeSeries` / `enableDistributionSnapshot` 五个 `enable*` 布尔参数。
 
 ### 字段相关性矩阵（Pearson / Spearman）
 
@@ -768,9 +772,9 @@ dotnet run --project src/ObjectAnalyzer.Api      # 启动后访问 http://localh
 | 端点 | 说明 |
 |------|------|
 | `GET /api/health` | 健康检查（状态 + 版本） |
-| `POST /api/analyze` | multipart 上传数据文件（字段 `file`；可选 `rules` 文件或 `rulesJson` 内联规则），支持 `flatten` / `maxValues` / `fields` / `filter` / `rootPath` / `recordPath` / `sampleReservoir` / `sampleStep` / `maxParallel` 表单参数 → 返回完整分析结果 |
-| `POST /api/analyze/raw?format=json` | 请求体即数据文本（JSON / JSONL / CSV…），选项走查询参数 → 分析结果 |
-| `POST /api/rules/validate` | 校验规则 JSON（支持注释）→ `{ valid, fields }` |
+| `POST /api/analyze` | multipart 上传数据文件（字段 `file`；可选 `rules` 文件或 `rulesJson` 内联规则），支持 `flatten` / `maxValues` / `fields` / `filter` / `rootPath` / `recordPath` / `sampleReservoir` / `sampleStep` / `maxParallel` / `csvInferNumbers` 表单参数；5 个 P4 深度分析开关（`enableCorrelation` / `enableStringPatterns` / `enableUnicodeHygiene` / `enableTimeSeries` / `enableDistributionSnapshot`）按需开启 → 返回完整分析结果 |
+| `POST /api/analyze/raw?format=json` | 请求体即数据文本（JSON / JSONL / CSV…），选项走查询参数（同 multipart 字段名 + `enable*` 系列 P4 开关） → 分析结果 |
+| `POST /api/rules/validate` | 校验规则 JSON（支持注释）。默认严格（`?strict=true`）：未知键直接 400 + 按编辑距离给建议键名；传 `?strict=false` 放行仅返回警告；可选 `allowUnknownRules=true` 与之等价 |
 | `GET /api/rules/reference` | 返回全量规则参考模板（samples/rules_full_reference.jsonc） |
 
 ```bash
@@ -781,6 +785,19 @@ curl -X POST "http://localhost:5200/api/analyze/raw?format=json" \
 
 # 示例：上传文件分析（multipart）
 curl -X POST http://localhost:5200/api/analyze -F "file=@samples/test_data.json"
+
+# 示例：开启 P4 深度分析（相关性矩阵 + 字符串模式 + Unicode 卫生 + 时间序列 + 分布快照）
+curl -X POST "http://localhost:5200/api/analyze/raw?format=json&enableCorrelation=true&enableStringPatterns=true&enableUnicodeHygiene=true&enableTimeSeries=true&enableDistributionSnapshot=true" \
+     -H "Content-Type: application/json" \
+     -d @samples/test_data.json
+
+# 示例：上传 CSV 并保留数值推断（数字列按 long/double 统计，触发均值/分位数）
+curl -X POST http://localhost:5200/api/analyze -F "file=@samples/test_data.csv" -F "csvInferNumbers=true"
+
+# 示例：校验规则文件（默认严格：未知键 400 + 建议键名）
+curl -X POST http://localhost:5200/api/rules/validate \
+     -H "Content-Type: application/json" \
+     -d @samples/test_rules.json
 ```
 
 响应为 camelCase JSON：`{ fileName, format, result: { totalObjects, totalUniqueObjects, fieldStatistics, … } }`——字段级违规与统计信息内嵌于 `result`，前端可直接渲染。
