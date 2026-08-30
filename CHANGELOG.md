@@ -28,6 +28,11 @@
 - **移除「编译 .cs 类型定义文件后强类型反序列化分析」功能**（原 `--type "File.cs:ClassName"` / `-t`）：删除 `TypeSystem/`（`TypeLoader` Roslyn 运行时编译 + `DynamicAssemblyContext` 可卸载程序集上下文）与 `Parsing/TypedFileParser` / `TypedParseResult`，以及 CLI 选项定义、`AnalysisOptions.TypeFile/TypeName`、AnalysisRunner 的两条强类型分支（含 --resume 不兼容警告）、Web UI 的类型文件上传/目标类名输入与其 resx 键（`OptType*` / `ClearTypeFile` / `ErrTypedParse`）、`PerformanceImprovementsTests` 的沙盒卸载用例与 `TypeLoaderTests`（4 个测试）与 `samples/UserInfo.cs` 示例。Roslyn 包引用保留（`SchemaExporter.CSharp` 的 SyntaxFactory 代码生成仍在使用）。验证：Release 构建 0 警告 0 错误，458 测试全过（405 核心 + 53 Web）。
 
 ### Changed
+- **Mini API 响应改为强类型 DTO（替代匿名对象）**：`src/ObjectAnalyzer.Api` 的 5 个端点去掉 `Results.Ok(new { 匿名 })`，改用新的 `ApiContracts.cs` 具名响应类型，并用 `Results<Ok<T>, BadRequest<TErr>>` 泛型结果保留状态码——OpenAPI / Scalar 现在为每个接口呈现完整、带字段注释的响应 schema（此前匿名对象在文档里是空的 `{}`）：
+  - 新 DTO：`HealthResponse`（/api/health）、`RulesValidationResponse` + `RulesLintEntry`（/api/rules/validate，200/400 同构）、`ErrorResponse`（分析类 400）、`AnalyzeResponse`（/api/analyze）、`AnalyzeRawResponse`（/api/analyze/raw）。
+  - `/api/rules/reference` 保持返回原始 `.jsonc` 文本（它会被调用方原样读回再 POST 给 /api/rules/validate 往返，不适合结构化）。
+  - 字段注释用属性级 `<summary>`（与 Core 的 `AnalysisResult` 同款，positional record 参数无 XML 注释目标）、JSON 契约 camelCase + 省略 null 不变；`ApiErrors` 助手统一构造错误响应。
+  - 验证：OpenAPI 各响应 schema 字段均带 `description`；Api.Tests 13 + 核心 444 + Web 54 全绿；Debug/Release 构建 0 警告 0 错误。**注意**：本机离线构建需 `-p:SignMode=None -p:NuGetAudit=false`（nuget.org 签名校验/漏洞审计不可达导致 NU1301/NU1900）。
 - **死代码清理**（168 文件，净删约 780 行，零行为变化）：
   - 未使用 using：临时开启 `GenerateDocumentationFile` + `EnforceCodeStyleInBuild` 后以 `dotnet format style --diagnostics IDE0005` 清除 167 个文件的多余 using（约 760 行），配置随后还原。
   - 未使用私有成员（IDE0051）：删除 `ObjectAnalyzer.MatchesFieldHint`（已被 `ContainsFieldHint` 取代的旧实现）与 `PdfReportExporter.Badge`（无调用的排版助手）。

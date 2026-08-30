@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Analysis.Rules;
@@ -46,11 +47,11 @@ app.MapScalarApiReference(options =>
 });                         // GET /scalar
 
 // ── 健康检查 ──
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", () =>
 {
-    status = "ok",
-    version = typeof(AnalysisResult).Assembly.GetName().Version?.ToString()
-}))
+    var version = typeof(AnalysisResult).Assembly.GetName().Version?.ToString();
+    return TypedResults.Ok(new HealthResponse("ok", version));
+})
 .WithTags("系统")
 .WithSummary("健康检查")
 .WithDescription("返回服务状态与核心分析库版本号。");
@@ -60,12 +61,14 @@ app.MapGet("/api/health", () => Results.Ok(new
 // STJ 默认静默忽略未知成员，规则名拼错时用户得不到任何反馈，规则看似生效实则完全没生效。
 // 所以未知键默认直接算校验不通过（valid=false），调用方据此阻断分析；
 // 确实要放行时追加 ?strict=false，退回只提示不拦截。
-app.MapPost("/api/rules/validate", async (HttpRequest request) =>
+app.MapPost("/api/rules/validate",
+    async Task<Results<Ok<RulesValidationResponse>, BadRequest<RulesValidationResponse>>> (HttpRequest request) =>
 {
     using var reader = new StreamReader(request.Body);
     var json = await reader.ReadToEndAsync();
 
-    var unknowns = RulesLint.Scan(json);
+    var unknownRaw = RulesLint.Scan(json);
+    var unknowns = unknownRaw.Select(k => new RulesLintEntry(k.Path, k.Name, k.Suggestion)).ToList();
     var strict = request.Query["strict"].ToString() is not ("false" or "0");
 
     try
@@ -73,18 +76,17 @@ app.MapPost("/api/rules/validate", async (HttpRequest request) =>
         var rules = JsonSerializer.Deserialize<AnalysisRules>(json, AnalysisRules.RulesJsonOptions);
         // 未知键与结构错误一样走 200 + valid=false：返回 4xx 会让调用方丢掉 unknowns 明细，
         // UI 就没法逐条提示"是不是想写 xxx"了
-        var unknownError = strict && unknowns.Count > 0 ? RulesLint.Describe(unknowns) : null;
-        return Results.Ok(new
-        {
-            valid = rules != null && unknownError is null,
-            fields = rules?.Fields.Count ?? 0,
-            unknowns,
-            error = unknownError
-        });
+        var unknownError = strict && unknownRaw.Count > 0 ? RulesLint.Describe(unknownRaw) : null;
+        return TypedResults.Ok(new RulesValidationResponse(
+            Valid: rules != null && unknownError is null,
+            Fields: rules?.Fields.Count ?? 0,
+            Unknowns: unknowns,
+            Error: unknownError));
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { valid = false, error = ex.Message, unknowns });
+        return TypedResults.BadRequest(new RulesValidationResponse(
+            Valid: false, Fields: 0, Unknowns: unknowns, Error: ex.Message));
     }
 })
 .WithTags("规则")
@@ -115,14 +117,15 @@ app.MapGet("/api/rules/reference", () =>
 .WithDescription("返回 samples/rules_full_reference.jsonc 的完整内容——覆盖全部规则配置且逐项带中文注释，可作为规则文件的起点。");
 
 // ── 分析：multipart 上传 ──
-app.MapPost("/api/analyze", async Task<IResult> (
+app.MapPost("/api/analyze",
+    async Task<Results<Ok<AnalyzeResponse>, BadRequest<ErrorResponse>>> (
     [FromForm] AnalyzeForm form,
     HttpRequest request,
     CancellationToken cancellationToken) =>
 {
     var file = form.File;
     if (file is null || file.Length == 0)
-        return Results.BadRequest(new { error = "请通过 multipart 表单上传数据文件（字段名 file）。" });
+        return TypedResults.BadRequest(new ErrorResponse("请通过 multipart 表单上传数据文件（字段名 file）。"));
 
     var tempData = Path.Combine(Path.GetTempPath(), $"oa-api-{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}");
     var tempRules = Path.Combine(Path.GetTempPath(), $"oa-api-{Guid.NewGuid():N}.json");
@@ -149,9 +152,9 @@ app.MapPost("/api/analyze", async Task<IResult> (
             // 而不是"通过了校验却静默不生效"。确认可忽略时传 allowUnknownRules=true。
             if (form.AllowUnknownRules is not true)
             {
-                var unknowns = RulesLint.Scan(rulesText);
-                if (unknowns.Count > 0)
-                    return Results.BadRequest(new { error = RulesLint.Describe(unknowns), unknowns });
+                var unknownRaw = RulesLint.Scan(rulesText);
+                if (unknownRaw.Count > 0)
+                    return TypedResults.BadRequest(ApiErrors.UnknownRules(unknownRaw));
             }
 
             rulesObj = JsonSerializer.Deserialize<AnalysisRules>(rulesText, AnalysisRules.RulesJsonOptions);
@@ -177,17 +180,15 @@ app.MapPost("/api/analyze", async Task<IResult> (
             EnableDistributionSnapshot = form.EnableDistributionSnapshot
         }, cancellationToken);
 
-        return Results.Ok(new
-        {
-            fileName = file.FileName,
-            format,
-            rulesSource,
-            result
-        });
+        return TypedResults.Ok(new AnalyzeResponse(
+            FileName: file.FileName,
+            Format: format,
+            RulesSource: rulesSource,
+            Result: result));
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return TypedResults.BadRequest(ApiErrors.FromException(ex));
     }
     finally
     {
@@ -205,7 +206,8 @@ app.MapPost("/api/analyze", async Task<IResult> (
 .DisableAntiforgery();
 
 // ── 分析：请求体即数据文本 ──
-app.MapPost("/api/analyze/raw", async Task<IResult> (
+app.MapPost("/api/analyze/raw",
+    async Task<Results<Ok<AnalyzeRawResponse>, BadRequest<ErrorResponse>>> (
     HttpRequest request,
     [Description("数据格式：json / jsonl / csv / excel / xml / yaml")] string format,
     [Description("是否展开嵌套字段为 a.b.c 路径（默认 true）")] bool? flatten,
@@ -226,7 +228,7 @@ app.MapPost("/api/analyze/raw", async Task<IResult> (
     CancellationToken cancellationToken) =>
 {
     if (string.IsNullOrWhiteSpace(format))
-        return Results.BadRequest(new { error = "请通过 ?format= 指定数据格式（json / jsonl / csv…）。" });
+        return TypedResults.BadRequest(new ErrorResponse("请通过 ?format= 指定数据格式（json / jsonl / csv…）。"));
 
     var tempData = Path.Combine(Path.GetTempPath(), $"oa-api-{Guid.NewGuid():N}.{format.Trim('.').ToLowerInvariant()}");
     try
@@ -254,11 +256,11 @@ app.MapPost("/api/analyze/raw", async Task<IResult> (
                 EnableDistributionSnapshot = enableDistributionSnapshot
             }, cancellationToken);
 
-        return Results.Ok(new { format = format.Trim().ToLowerInvariant(), result });
+        return TypedResults.Ok(new AnalyzeRawResponse(format.Trim().ToLowerInvariant(), result));
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return TypedResults.BadRequest(ApiErrors.FromException(ex));
     }
     finally
     {
