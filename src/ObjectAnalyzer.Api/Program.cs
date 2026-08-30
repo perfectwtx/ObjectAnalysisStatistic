@@ -223,6 +223,8 @@ app.MapPost("/api/analyze/raw",
     [Description("等距采样步长，每 N 条取 1 条（0 = 关闭）")] int? sampleStep,
     [Description("最大并行线程数（-1 = 全部核心）")] int? maxParallel,
     [Description("CSV 数字列推断为数值类型（默认 true，false 则按字符串统计）")] bool? csvInferNumbers,
+    [Description("内联规则 JSON（走查询参数，受请求行长度限制；规则较长请改用 multipart 上传）")] string? rulesJson,
+    [Description("容忍规则里不认识的键（默认 false，拼错会报错）")] bool? allowUnknownRules,
     [Description("启用字段相关性分析")] bool? enableCorrelation,
     [Description("启用字符串模式归纳")] bool? enableStringPatterns,
     [Description("启用 Unicode 卫生检查")] bool? enableUnicodeHygiene,
@@ -239,7 +241,26 @@ app.MapPost("/api/analyze/raw",
         await using (var fs = File.Create(tempData))
             await request.Body.CopyToAsync(fs, cancellationToken);
 
-        var result = AnalysisCore.AnalyzeFile(tempData, format.Trim().ToLowerInvariant(), null,
+        // 规则走查询参数（请求体已被数据文本占用）：与 multipart 版本同源的未知键检查，
+        // 避免"配了规则却静默不生效"。反序列化失败由外层 catch 统一转 400。
+        AnalysisRules? rulesObj = null;
+        if (!string.IsNullOrWhiteSpace(rulesJson))
+        {
+            if (allowUnknownRules is not true)
+            {
+                var unknownRaw = RulesLint.Scan(rulesJson);
+                if (unknownRaw.Count > 0)
+                    return TypedResults.BadRequest(ApiErrors.UnknownRules(unknownRaw));
+            }
+
+            rulesObj = JsonSerializer.Deserialize<AnalysisRules>(rulesJson, AnalysisRules.RulesJsonOptions);
+        }
+
+        var requestedFormat = format.Trim().ToLowerInvariant();
+        // 规则带 valueParsers 时实际走 excel-json 解析器，响应里如实回写
+        var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(requestedFormat, rulesObj);
+
+        var result = AnalysisCore.AnalyzeFile(tempData, requestedFormat, rulesObj,
             new AnalyzeRequestOptions
             {
                 Flatten = flatten,
@@ -259,7 +280,8 @@ app.MapPost("/api/analyze/raw",
                 EnableDistributionSnapshot = enableDistributionSnapshot
             }, cancellationToken);
 
-        return TypedResults.Ok(new AnalyzeRawResponse(format.Trim().ToLowerInvariant(), result));
+        return TypedResults.Ok(new AnalyzeRawResponse(
+            effectiveFormat, rulesObj is null ? null : "inline", result));
     }
     catch (Exception ex)
     {
@@ -272,7 +294,11 @@ app.MapPost("/api/analyze/raw",
 })
 .WithTags("分析")
 .WithSummary("分析请求数据文本")
-.WithDescription("请求体即数据文本（JSON / JSONL / CSV / Excel / XML / YAML），通过 ?format= 指定格式；全部分析参数通过查询字符串传入。响应与 multipart 版本一致。")
+.WithDescription("请求体即数据文本（JSON / JSONL / CSV / Excel / XML / YAML），通过 ?format= 指定格式；全部分析参数通过查询字符串传入。响应与 multipart 版本一致。" +
+    "规则通过 ?rulesJson= 传入（请求体已被数据文本占用，故只能走查询参数 —— 受请求行长度限制，" +
+    "规则较长时请改用 multipart 的 /api/analyze）。规则里的未知键默认同样拦截并返回 400 + unknowns，" +
+    "确认可忽略时追加 allowUnknownRules=true。" +
+    "规则含 valueParsers 时实际按 excel-json 解析，响应的 format 会如实回写 excel-json。")
 .DisableAntiforgery();
 
 app.Run();

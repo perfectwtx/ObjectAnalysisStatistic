@@ -245,6 +245,66 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task AnalyzeRaw_WithRulesJson_AppliesValueParsers()
+    {
+        // /api/analyze/raw 原先硬编码传 rules: null，粘贴/直连场景用不了 valueParsers 与 transform。
+        // 请求体被数据文本占用，规则只能走查询参数，这里验证它确实生效。
+        var client = CreateClient();
+
+        string cell = "{\"body\":\"{\\\"mountain\\\":\\\"bear\\\"}\"}";
+        string csv = "A\n\"" + cell.Replace("\"", "\"\"") + "\"\n";
+        string rules = """
+            {"flatten":true,"valueParsers":[{"source":"A","parseType":"json","header":1}],
+             "fields":{"A.body":{"transform":{"parse":"json"}}}}
+            """.Replace("\n", "").Replace("\r", "");
+
+        var url = "/api/analyze/raw?format=csv&rulesJson=" + Uri.EscapeDataString(rules);
+        var response = await client.PostAsync(url,
+            new StringContent(csv, System.Text.Encoding.UTF8, "text/plain"));
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("excel-json", body.GetProperty("format").GetString());
+        Assert.Equal("inline", body.GetProperty("rulesSource").GetString());
+
+        var names = body.GetProperty("result").GetProperty("fieldStatistics")
+            .EnumerateArray()
+            .Select(f => f.GetProperty("fieldName").GetString())
+            .ToList();
+        Assert.Contains("A.body.mountain", names);
+    }
+
+    [Fact]
+    public async Task AnalyzeRaw_UnknownRuleKey_Returns400()
+    {
+        var client = CreateClient();
+        var rules = """{"fields":{"age":{"requird":true}}}""";
+
+        var response = await client.PostAsync(
+            "/api/analyze/raw?format=json&rulesJson=" + Uri.EscapeDataString(rules),
+            new StringContent("""[{"age":30}]""", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("requird", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task AnalyzeRaw_WithoutRules_OmitsRulesSource()
+    {
+        // 不传规则时响应里不该多出 rulesSource，避免前端把「没规则」误判成「规则没生效」
+        var client = CreateClient();
+
+        var response = await client.PostAsync("/api/analyze/raw?format=json",
+            new StringContent("""[{"age":30}]""", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.TryGetProperty("rulesSource", out _));
+        Assert.Equal("json", body.GetProperty("format").GetString());
+    }
+
+    [Fact]
     public async Task RulesReference_ReturnsTemplate()
     {
         var client = CreateClient();
