@@ -8,6 +8,13 @@ public sealed class AnalysisOptions
     public string InputPath { get; set; } = "";
     public string? OutputPath { get; set; }
     public bool Flatten { get; set; } = true;
+
+    /// <summary>
+    /// CSV 是否为「看起来是数字」的字符串推断数值类型（--no-csv-number-inference 关闭）。
+    /// 默认 true —— 不推断的话 CSV 数值列一律是 String，均值/标准差/分位数/相关性全部失效。
+    /// </summary>
+    public bool CsvInferNumbers { get; set; } = true;
+
     public int MaxValuesToShow { get; set; } = 5;
     public string? RulesFile { get; set; }
 

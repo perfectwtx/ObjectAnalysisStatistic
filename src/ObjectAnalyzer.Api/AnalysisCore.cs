@@ -28,6 +28,10 @@ public sealed class AnalyzeForm
     [Description("是否展开嵌套字段为 a.b.c 路径（默认 true）")]
     public bool? Flatten { get; init; }
 
+    /// <summary>CSV 数字列是否推断为数值类型（默认 true）。关掉后一律按字符串统计。</summary>
+    [Description("CSV 数字列推断为数值类型（默认 true，关掉则按字符串统计）")]
+    public bool? CsvInferNumbers { get; init; }
+
     /// <summary>控制台报告每字段最多展示的唯一值数量。</summary>
     [Description("每字段最多展示的唯一值数量（默认 5）")]
     public int? MaxValuesToShow { get; init; }
@@ -97,6 +101,7 @@ internal static class AnalysisCore
         {
             Flatten = options.Flatten ?? true,
             ValueParsers = rules?.ValueParsers ?? new List<ValueParserConfig>(),
+            CsvInferNumbers = options.CsvInferNumbers ?? true,
             SampleReservoir = options.SampleReservoir ?? 0,
             SampleStep = options.SampleStep ?? 0
         };
@@ -154,6 +159,10 @@ public sealed class AnalyzeRequestOptions
     /// <summary>是否把嵌套 JSON 的属性展开为 a.b.c 路径后再统计（默认 true）。</summary>
     [Description("是否展开嵌套字段为 a.b.c 路径（默认 true）")]
     public bool? Flatten { get; init; }
+
+    /// <summary>CSV 数字列是否推断为数值类型（默认 true）。关掉后一律按字符串统计。</summary>
+    [Description("CSV 数字列推断为数值类型（默认 true，关掉则按字符串统计）")]
+    public bool? CsvInferNumbers { get; init; }
 
     /// <summary>控制台报告每字段最多展示的唯一值数量。</summary>
     [Description("每字段最多展示的唯一值数量（默认 5）")]

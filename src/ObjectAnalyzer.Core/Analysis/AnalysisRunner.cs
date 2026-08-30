@@ -638,6 +638,7 @@ public static class AnalysisRunner
         {
             Flatten = ResolveFlatten(options, rules),
             ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
+            CsvInferNumbers = options.CsvInferNumbers,
             SampleReservoir = options.SampleReservoir,
             SampleStep = options.SampleStep,
             StartFromLine = startFromPosition

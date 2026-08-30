@@ -38,6 +38,10 @@ var allowUnknownRulesOption = new Option<bool>(
     name: "--allow-unknown-rules",
     description: "规则文件里存在不认识的键（拼错或已废弃）时仍继续分析。默认会报错中止，因为这些键会被静默忽略——规则看似生效实则没有。");
 
+var noCsvNumberInferenceOption = new Option<bool>(
+    name: "--no-csv-number-inference",
+    description: "关闭 CSV 数值推断：数字列一律按字符串统计。默认开启——CSV 无类型信息，不推断的话数值列拿不到均值/标准差/分位数，相关性分析也无从计算。");
+
 var fieldsOption = new Option<string?>(
     aliases: CliAliases.Fields,
     description: "仅统计这些字段（逗号分隔）。与规则文件的 transform 配合时，字段值将按规则转换后再统计。");
@@ -176,6 +180,7 @@ rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(allowUnknownRulesOption);
+rootCommand.AddOption(noCsvNumberInferenceOption);
 rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(whereOption);
 rootCommand.AddOption(parallelOption);
@@ -345,6 +350,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var allowUnknownRules = parseResult.GetValueForOption(allowUnknownRulesOption);
+    var noCsvNumberInference = parseResult.GetValueForOption(noCsvNumberInferenceOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
     var where = parseResult.GetValueForOption(whereOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
@@ -481,6 +487,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         InputPath = input?.FullName ?? "",
         OutputPath = output?.FullName,
         Flatten = !noFlatten,
+        CsvInferNumbers = !noCsvNumberInference,
         MaxValuesToShow = maxValues,
         RulesFile = rules?.FullName,
         AllowUnknownRules = allowUnknownRules,
