@@ -24,7 +24,9 @@ public class FileParsersTests
                 ValueParsers = new[] { new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "auto", Header = 0 } }
             }).ToList();
             Assert.Equal(2, byLetter.Count);
-            Assert.Equal("30", byLetter[0].GetValueOrDefault("B"));
+            // CSV 会推断数值类型："30" → 30L（CSV 无类型信息，不推断则数值列
+            // 的均值/分位数/相关性全部失效）。保留字符串需传 CsvInferNumbers = false
+            Assert.Equal(30L, byLetter[0].GetValueOrDefault("B"));
         }
         finally
         {

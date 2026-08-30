@@ -153,7 +153,8 @@ public class CompressedInputTests
             var rows = FileParsers.ParseByFormat(path, "csv", new() { Flatten = true }).ToList();
             Assert.Equal(2, rows.Count);
             Assert.Equal("Bob", rows[1]["Name"]);
-            Assert.Equal("25", rows[1]["Age"]);
+            // CSV 数值列默认开启推断，"25" → 25L；保留字符串请传 CsvInferNumbers = false
+            Assert.Equal(25L, rows[1]["Age"]);
         }
         finally
         {
