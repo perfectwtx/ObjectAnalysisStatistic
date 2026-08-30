@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ObjectAnalyzer.Api</RootNamespace>
     <Description>ObjectAnalyzer Mini API — 为 React 前端提供 HTTP 分析接口。</Description>
+    <!-- 生成 XML 文档注释供 OpenAPI 读取参数/端点描述 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
