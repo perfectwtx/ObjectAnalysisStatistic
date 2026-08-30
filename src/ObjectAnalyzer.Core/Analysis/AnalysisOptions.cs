@@ -10,6 +10,12 @@ public sealed class AnalysisOptions
     public bool Flatten { get; set; } = true;
     public int MaxValuesToShow { get; set; } = 5;
     public string? RulesFile { get; set; }
+
+    /// <summary>
+    /// 规则文件里出现不认识的键（拼错 / 已废弃）时仍然继续分析（--allow-unknown-rules）。
+    /// 默认 false —— 直接报错中止，避免规则看似生效实则被静默忽略。
+    /// </summary>
+    public bool AllowUnknownRules { get; set; }
     public string? ViolationsPath { get; set; }
     public string? QualityPath { get; set; }
     public bool FailOnViolations { get; set; }

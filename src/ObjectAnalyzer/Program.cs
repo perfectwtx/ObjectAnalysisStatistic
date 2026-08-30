@@ -34,6 +34,10 @@ var rulesOption = new Option<FileInfo?>(
     aliases: CliAliases.Rules,
     description: "指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举约束以及字段值转换（解密 / JWT 转明文等）。");
 
+var allowUnknownRulesOption = new Option<bool>(
+    name: "--allow-unknown-rules",
+    description: "规则文件里存在不认识的键（拼错或已废弃）时仍继续分析。默认会报错中止，因为这些键会被静默忽略——规则看似生效实则没有。");
+
 var fieldsOption = new Option<string?>(
     aliases: CliAliases.Fields,
     description: "仅统计这些字段（逗号分隔）。与规则文件的 transform 配合时，字段值将按规则转换后再统计。");
@@ -171,6 +175,7 @@ rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(rulesOption);
+rootCommand.AddOption(allowUnknownRulesOption);
 rootCommand.AddOption(fieldsOption);
 rootCommand.AddOption(whereOption);
 rootCommand.AddOption(parallelOption);
@@ -339,6 +344,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var maxValues = parseResult.GetValueForOption(maxValuesOption);
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
     var rules = parseResult.GetValueForOption(rulesOption);
+    var allowUnknownRules = parseResult.GetValueForOption(allowUnknownRulesOption);
     var fields = parseResult.GetValueForOption(fieldsOption);
     var where = parseResult.GetValueForOption(whereOption);
     var maxParallel = parseResult.GetValueForOption(parallelOption);
@@ -477,6 +483,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         Flatten = !noFlatten,
         MaxValuesToShow = maxValues,
         RulesFile = rules?.FullName,
+        AllowUnknownRules = allowUnknownRules,
         MaxDegreeOfParallelism = maxParallel,
         Fields = fields,
         Filter = where,

@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Security;
 using Spectre.Console;
 
@@ -93,7 +94,7 @@ public static class AnalysisRunner
         {
             try
             {
-                rules = LoadRules(options.RulesFile);
+                rules = LoadRules(options.RulesFile, options.AllowUnknownRules);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -722,7 +723,9 @@ public static class AnalysisRunner
         CancellationToken cancellationToken = default)
     {
         // 规则已在 Run() 中提前加载；如调用方未提供，则按需加载
-        rules ??= !string.IsNullOrEmpty(options.RulesFile) ? LoadRules(options.RulesFile) : null;
+        rules ??= !string.IsNullOrEmpty(options.RulesFile)
+            ? LoadRules(options.RulesFile, options.AllowUnknownRules)
+            : null;
 
         // 过滤条件：--where 优先，其次规则文件 filter
         string? effectiveFilter = !string.IsNullOrWhiteSpace(options.Filter)
@@ -1166,7 +1169,7 @@ public static class AnalysisRunner
         _ => 0
     };
 
-    private static AnalysisRules LoadRules(string rulesPath)
+    private static AnalysisRules LoadRules(string rulesPath, bool allowUnknownRules = false)
     {
         if (!File.Exists(rulesPath))
         {
@@ -1175,6 +1178,19 @@ public static class AnalysisRunner
 
         AnsiConsole.MarkupLine($"正在加载规则文件: [blue]{Markup.Escape(rulesPath)}[/] ...");
         var json = File.ReadAllText(rulesPath);
+
+        // 未知键（拼错 / 已废弃）在反序列化时会被 STJ 静默忽略，这里先扫一遍原文拦下来：
+        // 否则规则看着生效、实则完全没生效，比直接报错难查得多。
+        if (!allowUnknownRules)
+        {
+            var unknowns = RulesLint.Scan(json);
+            if (unknowns.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"规则文件 {Markup.Escape(rulesPath)} 校验失败：{RulesLint.Describe(unknowns)}");
+            }
+        }
+
         var rules = JsonSerializer.Deserialize<AnalysisRules>(json, AnalysisRules.RulesJsonOptions);
         if (rules == null)
         {
