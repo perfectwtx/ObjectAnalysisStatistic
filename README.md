@@ -2,7 +2,7 @@
 
 对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel / Excel-JSON 列 / XML / YAML 输入（可直接读取 gzip / bzip2 / zip 压缩包），自动统计字段频次、数据类型、值分布、默认值推断、枚举约束校验、多维度质量检查（模式/范围/必填/唯一/null 率 + 数据集期望）及重复对象。
 
-- CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`)，共用核心分析库 (`src/ObjectAnalyzer.Core`)
+- CLI 命令行工具 (`src/ObjectAnalyzer`) + Blazor 交互式 Web 界面 (`src/ObjectAnalyzer.Web`) + Mini API (`src/ObjectAnalyzer.Api`，对接 React 前端)，共用核心分析库 (`src/ObjectAnalyzer.Core`)
 
 **输入与解析**
 
@@ -102,6 +102,7 @@ ObjectAnalyzer.sln
 │   │   │   └── Quality/            #   质量/违规清单导出
 │   │   ├── Security/               # 数据安全：PII 识别、审计日志、KMS 密钥托管（IKmsProvider）
 │   ├── ObjectAnalyzer/             # CLI 薄宿主（System.CommandLine 选项解析 + 入口）
+│   ├── ObjectAnalyzer.Api/         # Mini API（HTTP 分析接口，对接 React 前端）
 │   └── ObjectAnalyzer.Web/         # Blazor Server 交互界面（图表/预览/下载/i18n/主题切换）
 │       ├── AnalysisState.cs / LocalizationService.cs   # per-circuit 分析状态 + resx 本地化（中/英）
 │       └── Components/Pages/Home.razor                # 单页交互（配置 → 进度 → 结果预览/下载）
@@ -111,6 +112,7 @@ ObjectAnalyzer.sln
 │   ├── test_schema_v1/v2/v3.json   #   Schema 快照 v1–v3（配合 --diff-schema 做演进对比）
 └── tests/
     ├── ObjectAnalyzer.Tests/       # 核心单元/集成测试
+    ├── ObjectAnalyzer.Api.Tests/   # Mini API 集成测试
     └── ObjectAnalyzer.Web.Tests/   # Web 冒烟与 P6 功能测试
 ```
 
@@ -754,6 +756,36 @@ Blazor 页面 `Home.razor` 的 `.p4-section` 区域以 7 张独立卡片展示�
 | 📉 分布漂移 | `DiffDistributionBaseline` 已指定 | 显著漂移字段 + 均值 / σ / Jaccard |
 
 未启用的卡片会显示"无数据"占位（保持 UI 结构稳定），分析完成后浏览器内一键完成 P4 深度分析结果的浏览与对比，无需打开 HTML 报告。
+
+## Mini API（React 前端对接）
+
+`src/ObjectAnalyzer.Api` 提供独立于 Blazor 界面的 HTTP 分析接口，供 React 前端（Vite 开发服务器）或任意第三方调用。默认监听 `http://localhost:5200`，已为 `localhost:5173` 配置跨域。
+
+```bash
+dotnet run --project src/ObjectAnalyzer.Api      # 启动后访问 http://localhost:5200
+```
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/health` | 健康检查（状态 + 版本） |
+| `POST /api/analyze` | multipart 上传数据文件（字段 `file`；可选 `rules` 文件或 `rulesJson` 内联规则），支持 `flatten` / `maxValues` / `fields` / `filter` / `rootPath` / `recordPath` / `sampleReservoir` / `sampleStep` / `maxParallel` 表单参数 → 返回完整分析结果 |
+| `POST /api/analyze/raw?format=json` | 请求体即数据文本（JSON / JSONL / CSV…），选项走查询参数 → 分析结果 |
+| `POST /api/rules/validate` | 校验规则 JSON（支持注释）→ `{ valid, fields }` |
+| `GET /api/rules/reference` | 返回全量规则参考模板（samples/rules_full_reference.jsonc） |
+
+```bash
+# 示例：分析 JSON 数据
+curl -X POST "http://localhost:5200/api/analyze/raw?format=json" \
+     -H "Content-Type: application/json" \
+     -d '[{"name":"alice","age":30},{"name":"bob","age":45}]'
+
+# 示例：上传文件分析（multipart）
+curl -X POST http://localhost:5200/api/analyze -F "file=@samples/test_data.json"
+```
+
+响应为 camelCase JSON：`{ fileName, format, result: { totalObjects, totalUniqueObjects, fieldStatistics, … } }`——字段级违规与统计信息内嵌于 `result`，前端可直接渲染。
+
+**接口文档**：启动后访问 [`/scalar`](http://localhost:5200/scalar)（Scalar 交互式文档界面，可直接调试），OpenAPI 3.1 JSON 位于 `/openapi/v1.json`。
 
 ## Web 界面
 

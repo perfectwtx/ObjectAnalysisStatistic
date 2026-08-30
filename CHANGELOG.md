@@ -5,6 +5,12 @@
 ## [Unreleased]
 
 ### Added
+- **Mini API 项目 `src/ObjectAnalyzer.Api`（对接 React 前端）**：独立于 Blazor 界面的 HTTP 分析接口，默认监听 `http://localhost:5200`，CORS 已放行 Vite 开发服务器（localhost:5173）：
+  - `POST /api/analyze`：multipart 上传数据文件（+ 可选规则文件/内联 rulesJson），支持 flatten / maxValues / fields / filter / 两级 JSONPath / 采样 / 并行度等全部分析参数 → camelCase 完整分析结果；
+  - `POST /api/analyze/raw?format=`：请求体即数据文本（JSON/JSONL/CSV…）；
+  - `POST /api/rules/validate`：规则 JSON 校验（走 RulesJsonOptions，支持注释）；`GET /api/rules/reference`：返回全量规则参考模板；`GET /api/health`：健康检查。
+  - 分析执行复用 Core 管线（FileParsers.ParseByFormat + FieldTransformProcessor 字段选择/转换/过滤 + Sampling + ObjectAnalyzer.Analyze）；新增集成测试项目 `tests/ObjectAnalyzer.Api.Tests`（WebApplicationFactory，8 个用例：健康/原始分析/multipart 上传/缺文件 400/规则校验合法与含注释/参考模板）。
+  - 集成 **Scalar 交互式文档**：`GET /scalar`（Scalar 界面，可直接调试）+ `GET /openapi/v1.json`（OpenAPI 3.1），端点已标注摘要与描述；`Microsoft.OpenApi` 显式固定 2.x 规避传递引用的 2.0.0 高危漏洞（NU1903）。
 - **全量规则参考模板 `samples/rules_full_reference.jsonc` + 规则加载支持注释**：模板覆盖全部规则配置（flatten / fields 全部 13 项字段规则 / selectedFields / filter / valueParsers / expectations），每一项配置都带中文注释说明用途与取值；AES/国密等需要 KMS 口令的示例默认以块注释给出（取消注释并设置 `OA_KMS_PASSPHRASE` 后启用）。规则加载（CLI LoadRules / Web 粘贴与上传路径 / 审计摘要）统一改用 `AnalysisRules.RulesJsonOptions`（`ReadCommentHandling = Skip` + 大小写不敏感），**带注释的规则文件可直接使用**。测试：`Rules_WithComments_LoadsViaSharedOptions`。
 - **配套演示数据 `samples/rules_full_reference_data.json`**（102 行，由 PowerShell 脚本确定性生成）：字段与模板规则一一对应，内置全部违规触发场景——age 必填缺失×2 / 范围越界（200、-3）/ 离群点×6（999）/ 空值×2、gender 非法枚举×3（Robot）、email 正则不匹配×2 与重复值×2、整行重复×2、含可展开的 JWT token（transform: jwt + parse:"json" 演示）与 inactive 行（filter 演示）。端到端验证：模板规则 + 演示数据产出 5 条字段违规（age 3 + email 2），`--fail-on-violations` 退出码 3。⚠ 冒烟中发现已知缺陷：**规则文件同时配置 `filter` 与 `flatten: true` 时字段级质量检查被跳过**（模板中 filter 已注释并标注；Backlog 待修）。
 
