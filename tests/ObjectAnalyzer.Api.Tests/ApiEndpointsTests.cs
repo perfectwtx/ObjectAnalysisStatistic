@@ -207,6 +207,44 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Analyze_ValueParsersRule_ForcesExcelJsonParsing()
+    {
+        // 回归：规则里配了 valueParsers 时，API 必须和 CLI 一样切到 excel-json 解析器。
+        // 之前 API 直接拿扩展名检测出的格式（csv → excel）去解析，单元格只被当成纯文本读出，
+        // 于是字段还叫 "A"，"A.body" 上的 transform 永远匹配不上，JSON 值一个都展不开。
+        var client = CreateClient();
+
+        // 单元格内容：{"body":"{\"mountain\":\"bear\"}"}（放进 CSV 时引号需翻倍）
+        string cell = "{\"body\":\"{\\\"mountain\\\":\\\"bear\\\"}\"}";
+        string csv = "A\n\"" + cell.Replace("\"", "\"\"") + "\"\n";
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(csv, System.Text.Encoding.UTF8, "text/csv"), "file", "cell.csv");
+        form.Add(
+            new StringContent(
+                """{"flatten":true,"valueParsers":[{"source":"A","parseType":"json","header":1}],"fields":{"A.body":{"transform":{"parse":"json"}}}}""",
+                System.Text.Encoding.UTF8, "application/json"),
+            "rulesJson");
+
+        var response = await client.PostAsync("/api/analyze", form);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        // 响应如实回写实际使用的解析器，便于前端判断规则是否真的生效
+        Assert.Equal("excel-json", body.GetProperty("format").GetString());
+
+        var stats = body.GetProperty("result").GetProperty("fieldStatistics").EnumerateArray().ToList();
+        var names = stats.Select(f => f.GetProperty("fieldName").GetString()).ToList();
+
+        Assert.Contains("A.body.mountain", names);
+        // 没生效时只会剩一个原始文本列 A
+        Assert.DoesNotContain("A", names);
+
+        var mountain = stats.Single(f => f.GetProperty("fieldName").GetString() == "A.body.mountain");
+        Assert.Equal("bear", mountain.GetProperty("valueCounts").EnumerateObject().Single().Name);
+    }
+
+    [Fact]
     public async Task RulesReference_ReturnsTemplate()
     {
         var client = CreateClient();

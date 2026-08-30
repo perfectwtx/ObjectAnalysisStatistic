@@ -161,6 +161,9 @@ app.MapPost("/api/analyze",
         }
 
         var format = FileParsers.DetectFormat(tempData);
+        // 规则带 valueParsers 时实际走的是 excel-json 解析器，响应里如实回写，
+        // 免得 UI 显示 "excel" 而字段却已按 JSON 展开，看着像抽风
+        var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, rulesObj);
         var result = AnalysisCore.AnalyzeFile(tempData, format, rulesObj, new AnalyzeRequestOptions
         {
             Flatten = form.Flatten,
@@ -182,7 +185,7 @@ app.MapPost("/api/analyze",
 
         return TypedResults.Ok(new AnalyzeResponse(
             FileName: file.FileName,
-            Format: format,
+            Format: effectiveFormat,
             RulesSource: rulesSource,
             Result: result));
     }

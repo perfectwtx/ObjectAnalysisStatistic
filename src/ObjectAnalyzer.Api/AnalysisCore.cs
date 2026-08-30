@@ -106,8 +106,10 @@ internal static class AnalysisCore
             SampleStep = options.SampleStep ?? 0
         };
 
+        string effectiveFormat = ResolveEffectiveFormat(format, rules);
+
         IEnumerable<Dictionary<string, object?>> objects =
-            FileParsers.ParseByFormat(dataPath, format, parseOptions);
+            FileParsers.ParseByFormat(dataPath, effectiveFormat, parseOptions);
 
         var selectedFields = options.Fields?
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -119,7 +121,7 @@ internal static class AnalysisCore
             objects = processor.Wrap(objects);
 
         if (Sampling.IsEnabled(options.SampleReservoir ?? 0, options.SampleStep ?? 0)
-            && format is not ("jsonl" or "csv" or "excel" or "excel-json"))
+            && effectiveFormat is not ("jsonl" or "csv" or "excel" or "excel-json"))
         {
             objects = Sampling.Apply(objects, options.SampleReservoir ?? 0, options.SampleStep ?? 0);
         }
@@ -129,6 +131,15 @@ internal static class AnalysisCore
             BuildFeatures(options),
             cancellationToken: cancellationToken);
     }
+
+    /// <summary>
+    /// 解析格式兜底：规则里配置了 valueParsers（Excel / CSV 单元格内嵌 JSON）时，
+    /// 必须切到 excel-json 解析器 —— 否则单元格只会被当成纯文本读出，
+    /// 后续的 fields.transform 也永远匹配不上（字段还叫 "A"，不是 "A.body"）。
+    /// 与 CLI 的 AnalysisRunner.ResolveEffectiveFormat 保持同一套规则，避免两边行为分叉。
+    /// </summary>
+    internal static string ResolveEffectiveFormat(string format, AnalysisRules? rules)
+        => rules?.ValueParsers is { Count: > 0 } ? "excel-json" : format;
 
     /// <summary>把请求参数映射为 P4 特性开关；全未指定时返回 null（保持默认行为）。</summary>
     private static AnalysisFeatures? BuildFeatures(AnalyzeRequestOptions o)
