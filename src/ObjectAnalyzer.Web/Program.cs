@@ -28,6 +28,60 @@ builder.Services.AddScoped<LocalizationService>();
 
 var app = builder.Build();
 
+// ── 静态资产启用 ──
+// 非Development环境（如 --no-launch-profile 启动、Release 直接运行）时，
+// MapStaticAssets 所需的静态资产清单不会自动加载，所有资产会被解析到源 wwwroot
+// 物理路径，导致 blazor.web.js / CSS 隔离包 404 或 500（页面无样式、电路无法连接）。
+// 按 ASP.NET Core 官方指引在非 Development 环境显式启用静态 Web 资产
+// （等价于 Development 环境下 WebApplicationBuilder 的自动行为）。
+if (!builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseStaticWebAssets();
+}
+
+// ── 静态资产兜底中间件 ──
+// MapStaticAssets 依赖构建期生成的压缩产物与指纹清单；本地增量构建被中断时
+// （例如 exe 被占用导致复制失败）产物可能损坏，浏览器会拿到空 CSS/JS，
+// 表现为整页无样式、电路无法连接。此中间件直接从源 wwwroot 提供本地静态文件，
+// 保证任何构建状态下页面始终可用（_framework 框架资产仍由 MapStaticAssets 提供）。
+// （例如 exe 被占用导致复制失败）产物可能损坏，浏览器会拿到空 CSS/JS，
+// 表现为整页无样式、电路无法连接。此中间件直接从源 wwwroot 提供本地静态文件，
+// 框架脚本则从 NuGet 内部资产包提供，保证任何构建状态下页面始终可用。
+var sourceWwwroot = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+var staticContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+{
+    [".css"] = "text/css",
+    [".js"] = "text/javascript",
+    [".mjs"] = "text/javascript",
+    [".json"] = "application/json",
+    [".map"] = "application/json",
+    [".png"] = "image/png",
+    [".svg"] = "image/svg+xml",
+    [".ico"] = "image/x-icon",
+    [".woff"] = "font/woff",
+    [".woff2"] = "font/woff2"
+};
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method))
+    {
+        var requestPath = context.Request.Path.Value?.TrimStart('/') ?? "";
+        if (requestPath.Length > 0 &&
+            !requestPath.StartsWith("_framework/", StringComparison.OrdinalIgnoreCase))
+        {
+            var local = Path.Combine(sourceWwwroot, requestPath.Replace('/', Path.DirectorySeparatorChar));
+            if (local.StartsWith(sourceWwwroot, StringComparison.OrdinalIgnoreCase) && File.Exists(local))
+            {
+                context.Response.ContentType = staticContentTypes.TryGetValue(
+                    Path.GetExtension(local), out var fileContentType) ? fileContentType : "application/octet-stream";
+                await context.Response.SendFileAsync(local);
+                return;
+            }
+        }
+    }
+    await next();
+});
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

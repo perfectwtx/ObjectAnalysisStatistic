@@ -86,7 +86,7 @@ window.objectAnalyzer = {
 
         const clamp = (w) => Math.min(560, Math.max(240, w));
         const saved = parseInt(localStorage.getItem(storageKey) || '0', 10);
-        if (saved) shell.style.gridTemplateColumns = clamp(saved) + 'px minmax(0, 1fr)';
+        if (saved) shell.style.gridTemplateColumns = clamp(saved) + 'px 6px minmax(0, 1fr)';
 
         let dragging = false;
         handle.addEventListener('pointerdown', (e) => {
@@ -97,7 +97,7 @@ window.objectAnalyzer = {
         });
         handle.addEventListener('pointermove', (e) => {
             if (!dragging) return;
-            shell.style.gridTemplateColumns = clamp(e.clientX) + 'px minmax(0, 1fr)';
+            shell.style.gridTemplateColumns = clamp(e.clientX) + 'px 6px minmax(0, 1fr)';
         });
         const stop = (e) => {
             if (!dragging) return;
