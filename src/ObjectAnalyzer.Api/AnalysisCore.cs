@@ -20,6 +20,10 @@ public sealed class AnalyzeForm
     [Description("内联规则 JSON（优先于规则文件）")]
     public string? RulesJson { get; init; }
 
+    /// <summary>规则里出现后端不认识的键时仍然继续分析（默认 false：直接报 400）。</summary>
+    [Description("容忍规则里不认识的键（默认 false，拼错会报错）")]
+    public bool? AllowUnknownRules { get; init; }
+
     /// <summary>是否把嵌套 JSON 的属性展开为 a.b.c 路径后再统计（默认 true）。</summary>
     [Description("是否展开嵌套字段为 a.b.c 路径（默认 true）")]
     public bool? Flatten { get; init; }
@@ -55,6 +59,28 @@ public sealed class AnalyzeForm
     /// <summary>最大并行线程数（-1 = 使用全部核心）。</summary>
     [Description("最大并行线程数（-1 = 全部核心）")]
     public int? MaxDegreeOfParallelism { get; init; }
+
+    // ── P4 深度分析开关（默认全关，行为与 v1.x 一致，无额外开销）──
+
+    /// <summary>输出数值字段 Pearson / Spearman 相关性矩阵。</summary>
+    [Description("启用字段相关性分析")]
+    public bool? EnableCorrelation { get; init; }
+
+    /// <summary>归纳字符串字段形态模板（如 ###-####）。</summary>
+    [Description("启用字符串模式归纳")]
+    public bool? EnableStringPatterns { get; init; }
+
+    /// <summary>检查全/半角、不可见字符、控制字符等 Unicode 卫生问题。</summary>
+    [Description("启用 Unicode 卫生检查")]
+    public bool? EnableUnicodeHygiene { get; init; }
+
+    /// <summary>对 DateTime 字段做趋势 / 周期 / 间隙分析。</summary>
+    [Description("启用时间序列分析")]
+    public bool? EnableTimeSeries { get; init; }
+
+    /// <summary>导出分布快照，用于漂移检测。</summary>
+    [Description("启用分布快照导出")]
+    public bool? EnableDistributionSnapshot { get; init; }
 }
 
 // ── 分析执行核心：保存输入 → 解析 → 字段选择/转换/过滤 → 统计 ──
@@ -95,7 +121,30 @@ internal static class AnalysisCore
 
         return Analyzer.Analyze(objects, rules,
             new ParallelOptions { MaxDegreeOfParallelism = options.MaxDegreeOfParallelism ?? -1 },
+            BuildFeatures(options),
             cancellationToken: cancellationToken);
+    }
+
+    /// <summary>把请求参数映射为 P4 特性开关；全未指定时返回 null（保持默认行为）。</summary>
+    private static AnalysisFeatures? BuildFeatures(AnalyzeRequestOptions o)
+    {
+        if (o.EnableCorrelation is null
+            && o.EnableStringPatterns is null
+            && o.EnableUnicodeHygiene is null
+            && o.EnableTimeSeries is null
+            && o.EnableDistributionSnapshot is null)
+        {
+            return null;
+        }
+
+        return new AnalysisFeatures
+        {
+            EnableCorrelation = o.EnableCorrelation ?? false,
+            EnableStringPatterns = o.EnableStringPatterns ?? false,
+            EnableUnicodeHygiene = o.EnableUnicodeHygiene ?? false,
+            EnableTimeSeries = o.EnableTimeSeries ?? false,
+            EnableDistributionSnapshot = o.EnableDistributionSnapshot ?? false,
+        };
     }
 }
 
@@ -137,4 +186,21 @@ public sealed class AnalyzeRequestOptions
     /// <summary>最大并行线程数（-1 = 使用全部核心）。</summary>
     [Description("最大并行线程数（-1 = 全部核心）")]
     public int? MaxDegreeOfParallelism { get; init; }
+
+    // ── P4 深度分析开关（默认全关，行为与 v1.x 一致，无额外开销）──
+
+    /// <summary>输出数值字段 Pearson / Spearman 相关性矩阵。</summary>
+    public bool? EnableCorrelation { get; init; }
+
+    /// <summary>归纳字符串字段形态模板（如 ###-####）。</summary>
+    public bool? EnableStringPatterns { get; init; }
+
+    /// <summary>检查全/半角、不可见字符、控制字符等 Unicode 卫生问题。</summary>
+    public bool? EnableUnicodeHygiene { get; init; }
+
+    /// <summary>对 DateTime 字段做趋势 / 周期 / 间隙分析。</summary>
+    public bool? EnableTimeSeries { get; init; }
+
+    /// <summary>导出分布快照，用于漂移检测。</summary>
+    public bool? EnableDistributionSnapshot { get; init; }
 }

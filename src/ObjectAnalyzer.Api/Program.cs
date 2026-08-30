@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Api;
 using ObjectAnalyzer.Parsing;
 using Scalar.AspNetCore;
@@ -55,23 +56,45 @@ app.MapGet("/api/health", () => Results.Ok(new
 .WithDescription("返回服务状态与核心分析库版本号。");
 
 // ── 规则校验 ──
+// 除反序列化本身的错误（结构写错、类型写错）外，额外列出「写了但后端不认识」的键：
+// STJ 默认静默忽略未知成员，规则名拼错时用户得不到任何反馈，规则看似生效实则完全没生效。
+// 所以未知键默认直接算校验不通过（valid=false），调用方据此阻断分析；
+// 确实要放行时追加 ?strict=false，退回只提示不拦截。
 app.MapPost("/api/rules/validate", async (HttpRequest request) =>
 {
+    using var reader = new StreamReader(request.Body);
+    var json = await reader.ReadToEndAsync();
+
+    var unknowns = RulesLint.Scan(json);
+    var strict = request.Query["strict"].ToString() is not ("false" or "0");
+
     try
     {
-        using var reader = new StreamReader(request.Body);
-        var json = await reader.ReadToEndAsync();
         var rules = JsonSerializer.Deserialize<AnalysisRules>(json, AnalysisRules.RulesJsonOptions);
-        return Results.Ok(new { valid = rules != null, fields = rules?.Fields.Count ?? 0 });
+        // 未知键与结构错误一样走 200 + valid=false：返回 4xx 会让调用方丢掉 unknowns 明细，
+        // UI 就没法逐条提示"是不是想写 xxx"了
+        var unknownError = strict && unknowns.Count > 0 ? RulesLint.Describe(unknowns) : null;
+        return Results.Ok(new
+        {
+            valid = rules != null && unknownError is null,
+            fields = rules?.Fields.Count ?? 0,
+            unknowns,
+            error = unknownError
+        });
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { valid = false, error = ex.Message });
+        return Results.BadRequest(new { valid = false, error = ex.Message, unknowns });
     }
 })
 .WithTags("规则")
 .WithSummary("校验规则 JSON")
-.WithDescription("请求体为规则文件 JSON（支持 // 与 /* */ 注释、字段名大小写不敏感）。返回 { valid, fields }；非法时返回 400 与错误信息。");
+.WithDescription("""
+请求体为规则文件 JSON（支持 // 与 /* */ 注释、字段名大小写不敏感）。
+返回 { valid, fields, unknowns, error? }：unknowns 是后端不认识的键（拼写错误或已废弃），
+每项带 path / name / suggestion（按编辑距离猜的正确键名）。
+默认未知键即判校验不通过（valid=false，error 为中文说明）；追加 ?strict=false 时只提示不拦截。
+""");
 
 // ── 规则参考模板 ──
 app.MapGet("/api/rules/reference", () =>
@@ -110,16 +133,28 @@ app.MapPost("/api/analyze", async Task<IResult> (
 
         AnalysisRules? rulesObj = null;
         var rulesSource = form.RulesJson is not null ? "inline" : form.Rules is not null ? "file" : null;
-        if (form.RulesJson is not null)
+
+        // 内联规则优先；规则文件先落盘再读文本——反序列化前要拿原文做一次未知键扫描
+        string? rulesText = form.RulesJson;
+        if (rulesText is null && form.Rules is not null && form.Rules.Length > 0)
         {
-            rulesObj = JsonSerializer.Deserialize<AnalysisRules>(form.RulesJson, AnalysisRules.RulesJsonOptions);
+            await using (var rfs = File.Create(tempRules))
+                await form.Rules.CopyToAsync(rfs, cancellationToken);
+            rulesText = await File.ReadAllTextAsync(tempRules, cancellationToken);
         }
-        else if (form.Rules is not null && form.Rules.Length > 0)
+
+        if (rulesText is not null)
         {
-            await using var rfs = File.Create(tempRules);
-            await form.Rules.CopyToAsync(rfs, cancellationToken);
-            rulesObj = JsonSerializer.Deserialize<AnalysisRules>(
-                File.ReadAllText(tempRules), AnalysisRules.RulesJsonOptions);
+            // 与 /api/rules/validate 同源的检查：拼错的规则名在这里同样被拦下，
+            // 而不是"通过了校验却静默不生效"。确认可忽略时传 allowUnknownRules=true。
+            if (form.AllowUnknownRules is not true)
+            {
+                var unknowns = RulesLint.Scan(rulesText);
+                if (unknowns.Count > 0)
+                    return Results.BadRequest(new { error = RulesLint.Describe(unknowns), unknowns });
+            }
+
+            rulesObj = JsonSerializer.Deserialize<AnalysisRules>(rulesText, AnalysisRules.RulesJsonOptions);
         }
 
         var format = FileParsers.DetectFormat(tempData);
@@ -133,7 +168,12 @@ app.MapPost("/api/analyze", async Task<IResult> (
             RecordPath = form.RecordPath,
             SampleReservoir = form.SampleReservoir,
             SampleStep = form.SampleStep,
-            MaxDegreeOfParallelism = form.MaxDegreeOfParallelism
+            MaxDegreeOfParallelism = form.MaxDegreeOfParallelism,
+            EnableCorrelation = form.EnableCorrelation,
+            EnableStringPatterns = form.EnableStringPatterns,
+            EnableUnicodeHygiene = form.EnableUnicodeHygiene,
+            EnableTimeSeries = form.EnableTimeSeries,
+            EnableDistributionSnapshot = form.EnableDistributionSnapshot
         }, cancellationToken);
 
         return Results.Ok(new
@@ -157,7 +197,10 @@ app.MapPost("/api/analyze", async Task<IResult> (
 .WithTags("分析")
 .WithSummary("分析数据文件（multipart 上传）")
 .WithDescription("上传数据文件并执行完整分析：字段统计与覆盖率、类型/语义推断、值分布、数值深度剖析（均值/标准差/分位数/直方图）、重复对象、默认值推断等。" +
-    "可选规则文件或内联规则 JSON 启用枚举校验/范围检查/打码/值转换/数据集期望。响应为 camelCase JSON，字段级违规内嵌于 result.fieldStatistics。")
+    "可选规则文件或内联规则 JSON 启用枚举校验/范围检查/打码/值转换/数据集期望。" +
+    "规则里若出现后端不认识的键（拼错/已废弃），默认直接返回 400 并列出 unknowns，" +
+    "避免规则看似生效实则被静默忽略；确认无需处理时传 allowUnknownRules=true。" +
+    "响应为 camelCase JSON，字段级违规内嵌于 result.fieldStatistics。")
 .DisableAntiforgery();
 
 // ── 分析：请求体即数据文本 ──
@@ -173,6 +216,11 @@ app.MapPost("/api/analyze/raw", async Task<IResult> (
     [Description("蓄水池随机采样最大记录数（0 = 关闭）")] int? sampleReservoir,
     [Description("等距采样步长，每 N 条取 1 条（0 = 关闭）")] int? sampleStep,
     [Description("最大并行线程数（-1 = 全部核心）")] int? maxParallel,
+    [Description("启用字段相关性分析")] bool? enableCorrelation,
+    [Description("启用字符串模式归纳")] bool? enableStringPatterns,
+    [Description("启用 Unicode 卫生检查")] bool? enableUnicodeHygiene,
+    [Description("启用时间序列分析")] bool? enableTimeSeries,
+    [Description("启用分布快照导出")] bool? enableDistributionSnapshot,
     CancellationToken cancellationToken) =>
 {
     if (string.IsNullOrWhiteSpace(format))
@@ -195,7 +243,12 @@ app.MapPost("/api/analyze/raw", async Task<IResult> (
                 RecordPath = recordPath,
                 SampleReservoir = sampleReservoir,
                 SampleStep = sampleStep,
-                MaxDegreeOfParallelism = maxParallel
+                MaxDegreeOfParallelism = maxParallel,
+                EnableCorrelation = enableCorrelation,
+                EnableStringPatterns = enableStringPatterns,
+                EnableUnicodeHygiene = enableUnicodeHygiene,
+                EnableTimeSeries = enableTimeSeries,
+                EnableDistributionSnapshot = enableDistributionSnapshot
             }, cancellationToken);
 
         return Results.Ok(new { format = format.Trim().ToLowerInvariant(), result });
