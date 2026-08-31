@@ -112,40 +112,6 @@ public static class AnalysisRunner
             options.ApplyRuntime(rules.Runtime);
         }
 
-        // 旧顶层字段（rules.flatten / selectedFields / filter）→ options（向后兼容）
-        // 优先级低于 rules.runtime（已被 ApplyRuntime 处理），仍保留作为最后兜底。
-        if (rules != null)
-        {
-            if (rules.Flatten is bool legacyFlatten && options.Flatten == true)
-            {
-                options.Flatten = legacyFlatten;
-            }
-            if (rules.SelectedFields is { Count: > 0 } legacySel && string.IsNullOrEmpty(options.Fields))
-            {
-                options.Fields = string.Join(",", legacySel);
-            }
-            if (!string.IsNullOrWhiteSpace(rules.Filter) && string.IsNullOrWhiteSpace(options.Filter))
-            {
-                options.Filter = rules.Filter;
-            }
-        }
-
-        // 反向同步：把 options 上合并后的 selectedFields / filter 同步回 rules，
-        // 让下游 FieldTransformProcessor / ConsoleReporter 等直接读 rules 的代码看到一致的值。
-        if (rules != null)
-        {
-            if (!string.IsNullOrWhiteSpace(options.Fields))
-            {
-                rules.SelectedFields = options.Fields
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .ToList();
-            }
-            if (!string.IsNullOrWhiteSpace(options.Filter))
-            {
-                rules.Filter = options.Filter;
-            }
-        }
-
         // 采样参数提前校验，避免解析到一半才发现配置非法
         if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
             Sampling.Validate(options.SampleReservoir, options.SampleStep);
@@ -678,7 +644,7 @@ public static class AnalysisRunner
         }
         var parseOptions = new ParseOptions
         {
-            Flatten = ResolveFlatten(options, rules),
+            Flatten = ResolveFlatten(options),
             ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
             CsvInferNumbers = options.CsvInferNumbers,
             SampleReservoir = options.SampleReservoir,
@@ -770,12 +736,10 @@ public static class AnalysisRunner
             ? LoadRules(options.RulesFile, options.AllowUnknownRules)
             : null;
 
-        // 过滤条件：--where 优先，其次规则文件 filter
-        string? effectiveFilter = !string.IsNullOrWhiteSpace(options.Filter)
-            ? options.Filter
-            : !string.IsNullOrWhiteSpace(rules?.Filter) ? rules.Filter : null;
+        // 过滤条件：--where 优先
+        string? effectiveFilter = options.Filter;
 
-        // 字段选择 + 值转换 + 过滤（--fields / 规则文件 selectedFields / transform / --where / 规则文件 filter）
+        // 字段选择 + 值转换 + 过滤（--fields / 规则文件 runtime.selectedFields / transform / --where / 规则文件 runtime.filter）
         var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields), effectiveFilter);
         if (effectiveFilter != null)
         {
@@ -1264,18 +1228,12 @@ public static class AnalysisRunner
         return rules;
     }
 
-    private static bool ResolveFlatten(AnalysisOptions options, AnalysisRules? rules)
+    private static bool ResolveFlatten(AnalysisOptions options)
     {
         // --record-path 必须看到嵌套子对象才能正确投影；提前展平会让 $.foo.bar 这种路径找不到目标。
         // 因此启用 --record-path 时，强制不展平（让 record-path 处理完后再分析，提取出的子对象本身就是平坦的）。
         if (!string.IsNullOrWhiteSpace(options.RecordPath))
             return false;
-
-        if (!options.Flatten)
-            return false;
-
-        if (rules?.Flatten is bool flatten)
-            return flatten;
 
         return options.Flatten;
     }

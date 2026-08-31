@@ -38,7 +38,13 @@ public class FieldTransformTests
     [Fact]
     public void Rules_SelectedFields_UsedWhenNoCliFields()
     {
-        var rules = new AnalysisRules { SelectedFields = new List<string> { "Name" } };
+        var rules = new AnalysisRules
+        {
+            Runtime = new AnalysisRuntime
+            {
+                SelectedFields = new List<string> { "Name" }
+            }
+        };
         var processor = new FieldTransformProcessor(rules);
 
         var wrapped = processor.Wrap(new List<Dictionary<string, object?>>
@@ -511,7 +517,7 @@ public class FieldTransformTests
         {
             Transform = new FieldTransform { Parse = "json" }
         };
-        rules.SelectedFields = new List<string> { "A.body.mountain" };
+        rules.Runtime = new AnalysisRuntime { SelectedFields = new List<string> { "A.body.mountain" } };
 
         var processor = new FieldTransformProcessor(rules);
         var result = Analyze(processor.Wrap(objects), rules);

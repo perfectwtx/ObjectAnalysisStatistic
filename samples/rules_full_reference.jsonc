@@ -10,10 +10,6 @@
 // 提示：不需要的配置直接删除该行即可；字段路径支持嵌套写法（如 address.city）。
 // ═══════════════════════════════════════════════════════════════════
 {
-  // 是否把嵌套 JSON 的属性展开为 a.b.c 路径后再统计。
-  // true（默认）= 展平；false = 保留对象树。CLI 的 --no-flatten 优先级更高。
-  "flatten": true,
-
   // ─────────────────────────────────────────────
   //  字段规则：键 = 字段路径，值 = 该字段的规则。
   //  分析时逐条核对，不符合的记为「违规」，
@@ -108,13 +104,10 @@
   //  顶层配置
   // ─────────────────────────────────────────────
 
-  // 只统计这些字段（等价 CLI --fields；优先级低于命令行参数）
-  "selectedFields": ["name", "age", "email"],
-
   // 全局过滤条件：只统计满足表达式的记录（等价 CLI --where，CLI 优先级更高）。
   // 支持 == != > < >= <=、in / not in、like / not like、AND / OR 与括号，字段名大小写不敏感。
-  // ⚠ 已知问题：与 "flatten": true 同时配置时，字段级质量检查（pattern/enum/范围等）会被跳过——
-  //    需要字段质量检查时请先注释掉本行（默认注释）。
+  // ⚠ 已知问题：与 "runtime": { "flatten": true } 同时配置时，字段级质量检查
+  //   （pattern/enum/范围等）会被跳过——需要字段质量检查时请先注释掉本行（默认注释）。
   /*
   "filter": "age >= 18 AND status in ['active']",
   */
@@ -148,7 +141,7 @@
     "maxParallelism": -1,            // 最大并行线程数（-1 = 全部核心）
     "allowUnknownRules": false,      // 规则文件里有未知键时是否放行（默认 false 严格）
 
-    // ── 字段选择 / 过滤（新写法；旧顶层 selectedFields / filter 仍兼容）──
+    // ── 字段选择 / 过滤（统一收敛到 runtime 节点；旧顶层 selectedFields / filter 已移除）──
     "selectedFields": ["name", "age", "email"],
     "filter": "age >= 18 AND status in ['active']",
 

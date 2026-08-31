@@ -23,11 +23,11 @@ public class RulesLintTests
     [Fact]
     public void Scan_UnknownTopLevelKey_UsesRootPath()
     {
-        var unknowns = RulesLint.Scan("""{"flaten":true}""");
+        var unknowns = RulesLint.Scan("""{"expections":true}""");
 
         var hit = Assert.Single(unknowns);
         Assert.Equal("$", hit.Path);
-        Assert.Equal("flatten", hit.Suggestion);
+        Assert.Equal("expectations", hit.Suggestion);
     }
 
     [Fact]
@@ -36,7 +36,6 @@ public class RulesLintTests
         var unknowns = RulesLint.Scan("""
         {
           // 注释与尾随逗号都不该干扰扫描
-          "flatten": true,
           "fields": {
             "age": { "required": true, "minValue": 0, "maxValue": 120 },
             "email": { "pattern": "\\S+@\\S+", "transform": { "parse": "jwt" } }

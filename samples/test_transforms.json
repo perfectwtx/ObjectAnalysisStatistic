@@ -1,5 +1,7 @@
 {
-  "selectedFields": ["token", "encryptedPhone", "encodedName"],
+  "runtime": {
+    "selectedFields": ["token", "encryptedPhone", "encodedName"]
+  },
   "fields": {
     "token": {
       "transform": {

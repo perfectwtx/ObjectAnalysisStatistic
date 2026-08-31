@@ -1,6 +1,8 @@
 {
-  "selectedFields": ["name", "age", "status"],
-  "filter": "age >= 25 AND status in ['active', 'vip']",
+  "runtime": {
+    "selectedFields": ["name", "age", "status"],
+    "filter": "age >= 25 AND status in ['active', 'vip']"
+  },
   "fields": {
   }
 }

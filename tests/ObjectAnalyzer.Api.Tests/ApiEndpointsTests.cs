@@ -222,7 +222,7 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         form.Add(new StringContent(csv, System.Text.Encoding.UTF8, "text/csv"), "file", "cell.csv");
         form.Add(
             new StringContent(
-                """{"flatten":true,"valueParsers":[{"source":"A","parseType":"json","header":1}],"fields":{"A.body":{"transform":{"parse":"json"}}}}""",
+                """{"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}],"fields":{"A.body":{"transform":{"parse":"json"}}}}""",
                 System.Text.Encoding.UTF8, "application/json"),
             "rulesJson");
 
@@ -254,7 +254,7 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         string cell = "{\"body\":\"{\\\"mountain\\\":\\\"bear\\\"}\"}";
         string csv = "A\n\"" + cell.Replace("\"", "\"\"") + "\"\n";
         string rules = """
-            {"flatten":true,"valueParsers":[{"source":"A","parseType":"json","header":1}],
+            {"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}],
              "fields":{"A.body":{"transform":{"parse":"json"}}}}
             """.Replace("\n", "").Replace("\r", "");
 

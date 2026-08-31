@@ -1,6 +1,8 @@
 {
-  "selectedFields": ["id", "email", "payload", "status", "score"],
-  "filter": "status in ['active'] AND payload.age >= 25",
+  "runtime": {
+    "selectedFields": ["id", "email", "payload", "status", "score"],
+    "filter": "status in ['active'] AND payload.age >= 25"
+  },
   "fields": {
     "id": {
       "primaryType": "String"

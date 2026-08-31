@@ -352,15 +352,17 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 ```json
 {
-  "flatten": true,
+  "runtime": {
+    "flatten": true,
+    "selectedFields": ["token"],
+    "filter": "age >= 25 AND status in ['active', 'vip']"
+  },
   "valueParsers": [
     { "source": "A", "parseType": "json", "header": 0 },
     { "source": "B", "parseType": "auto", "header": 0 },
     { "source": "Line", "parseType": "json" },
     { "source": "payload", "parseType": "json-string" }
   ],
-  "selectedFields": ["token"],
-  "filter": "age >= 25 AND status in ['active', 'vip']",
   "fields": {
     "Gender": {
       "defaultValue": "unknown",
@@ -397,11 +399,9 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `header` 控制 Excel/CSV 表头模式：`1`（默认）首行值为列名，`source` 与字段前缀用表头文字（如 `Line.body.AcctId`）；`0` 无表头，列以字母 `A`/`B`/`C` 命名，`source` 用列字母，首行作为表头跳过。
 
-`flatten` 可以放在顶层规则，也可以直接写在单个 `valueParsers` 项里：顶层值作为全局默认，单项的 `flatten` 允许对某个 source 做单独覆盖；`--no-flatten` 仍然优先级最高。
+`flatten` 写在单个 `valueParsers` 项里（按 source 单独覆盖），全局默认走 `runtime.flatten`；`--no-flatten` 仍然优先级最高。
 
 对于 Excel JSON 多列场景，多个 `valueParsers` 会保持独立对象桶，不会被合并成同一个对象；在 `flatten: true` 时，会展开成 `A.id` / `A.name` / `B.age` 这类字段，结果形态类似 `{“A.id”: 1, “A.name”: “张三”, “B.age”: 28}`。
-
-`selectedFields` 仅统计指定字段（等价于 CLI `--fields`，后者优先级更高）。
 
 `primaryType` 可省略：仅配置 `enumValues` 时自动推导——全部为数值 → `Number`、全部为布尔 → `Boolean`，否则（含混合）→ `String`；显式 `primaryType` 优先。
 
@@ -425,7 +425,7 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 }
 ```
 
-顶层 `flatten` / `selectedFields` / `filter` **仍兼容**（作为最后兜底），新规则建议全部迁移到 `runtime` 节点；新旧同时存在时 `runtime` 优先。`RulesLint` 已自动覆盖 `runtime` 节点下的全部子键，路径形如 `runtime.pii.failOnLevel`，拼写错误会被拦截并给出建议键名。
+顶层 `flatten` / `selectedFields` / `filter` 已全部移除，规则文件必须写到 `runtime` 节点。`RulesLint` 会自动覆盖 `runtime` 节点下的全部子键，路径形如 `runtime.pii.failOnLevel`，拼写错误会被拦截并给出建议键名。
 
 #### 字段对照表（CLI / API / runtime JSON）
 
@@ -663,7 +663,7 @@ echo -n 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=' | dotnet run --project sr
 
 所有违规统一汇总到数据质量报告与 `--violations` 导出（含数据集期望条目，枚举违规仍按逐值列出）；配置 `--fail-on-violations` 后存在任一违规即以退出码 3 结束。无效正则会在加载规则文件时立即报错退出（退出码 1）。
 
-`filter` 为全局过滤条件（等价于 CLI `--where`，后者优先级更高），字段名大小写不敏感，应用于字段选择与值转换之后。支持的运算符：
+`runtime.filter` 为全局过滤条件（等价于 CLI `--where`，后者优先级更高），字段名大小写不敏感，应用于字段选择与值转换之后。支持的运算符：
 
 | 运算符                 | 说明                                 | 示例                                            |
 | ------------------- | ---------------------------------- | --------------------------------------------- |

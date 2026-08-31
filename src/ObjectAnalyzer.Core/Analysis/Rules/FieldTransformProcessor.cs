@@ -29,8 +29,8 @@ public sealed class FieldTransformProcessor
     private readonly FieldFilter? _filter;
 
     /// <summary>
-    /// 基于规则文件构建处理器。selectedFields 优先级高于 rules.SelectedFields；
-    /// filterExpression 优先级高于 rules.Filter（为空字符串时回退到 rules.Filter）。
+    /// 基于规则文件构建处理器。selectedFields 优先级高于 <see cref="AnalysisRuntime.SelectedFields"/>；
+    /// filterExpression 优先级高于 <see cref="AnalysisRuntime.Filter"/>（为空字符串时回退到 runtime.filter）。
     /// </summary>
     public FieldTransformProcessor(AnalysisRules? rules, IEnumerable<string>? selectedFields = null, string? filterExpression = null)
     {
@@ -39,12 +39,12 @@ public sealed class FieldTransformProcessor
         {
             _selectedFields = new HashSet<string>(explicitSelection, StringComparer.OrdinalIgnoreCase);
         }
-        else if (rules?.SelectedFields is { Count: > 0 } ruleFields)
+        else if (rules?.Runtime?.SelectedFields is { Count: > 0 } ruleFields)
         {
             _selectedFields = new HashSet<string>(ruleFields, StringComparer.OrdinalIgnoreCase);
         }
 
-        string? filter = string.IsNullOrWhiteSpace(filterExpression) ? rules?.Filter : filterExpression;
+        string? filter = string.IsNullOrWhiteSpace(filterExpression) ? rules?.Runtime?.Filter : filterExpression;
         if (!string.IsNullOrWhiteSpace(filter))
         {
             _filter = new FieldFilter(filter);

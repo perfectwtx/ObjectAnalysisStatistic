@@ -18,34 +18,15 @@ public class AnalysisRules
         PropertyNameCaseInsensitive = true
     };
 
-    /// <summary>
-    /// 全局 JSON 展开行为：true 时扁平化嵌套对象，false 时保留对象树。CLI 的 --no-flatten 优先级更高。
-    /// <para>新写法：迁移到 <see cref="Runtime"/>.flatten；本顶层字段保留仅用于向后兼容。
-    /// 同时存在时以 <see cref="Runtime"/> 为准。</para>
-    /// </summary>
-    [JsonPropertyName("flatten")]
-    public bool? Flatten { get; set; }
-
     [JsonPropertyName("fields")]
     public Dictionary<string, FieldRule> Fields { get; set; } = new();
 
     /// <summary>
-    /// 仅统计这些字段（逗号分隔）。优先级低于 CLI 的 --fields 选项。
-    /// <para>新写法：迁移到 <see cref="Runtime"/>.selectedFields；本顶层字段保留仅用于向后兼容。</para>
-    /// </summary>
-    [JsonPropertyName("selectedFields")]
-    public List<string>? SelectedFields { get; set; }
-
-    /// <summary>
-    /// 全局过滤条件表达式（如 "Age &gt; 18 AND Gender in ['男','女']"）。优先级低于 CLI 的 --where 选项。
-    /// <para>新写法：迁移到 <see cref="Runtime"/>.filter；本顶层字段保留仅用于向后兼容。</para>
-    /// </summary>
-    [JsonPropertyName("filter")]
-    public string? Filter { get; set; }
-
-    /// <summary>
     /// 运行时配置（"怎么跑"）。对应 CLI / API 显式参数：CLI / API 显式值 &gt; 本节点 &gt; <see cref="AnalysisOptions"/> 内置默认。
     /// 字段均为可空 —— null 表示"未指定"。
+    /// <para>历史版本曾有顶层 <c>flatten</c> / <c>selectedFields</c> / <c>filter</c>，现统一收敛到 <see cref="Runtime"/> 子节点：
+    /// <c>runtime.flatten</c> / <c>runtime.selectedFields</c> / <c>runtime.filter</c>。顶层旧字段已被移除，
+    /// 旧规则文件应改为 <c>"runtime": { ... }</c>。</para>
     /// </summary>
     [JsonPropertyName("runtime")]
     public AnalysisRuntime? Runtime { get; set; }
