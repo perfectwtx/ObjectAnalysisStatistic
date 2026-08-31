@@ -108,48 +108,32 @@ public static class AnalyzeEndpoints
             "响应为 camelCase JSON，字段级违规内嵌于 result.fieldStatistics。")
         .DisableAntiforgery();
 
-        // ── 分析：强类型配置（数据文件上传，其余全部走强类型 config JSON）──
-        // 与 /api/analyze 相比：除数据文件 file 外，所有选项与规则合并为一个强类型 config JSON
-        // （options + 内联 rules 对象 + P4 开关），不再需要规则文件/规则字符串，也不散成逐项表单/查询参数。
+        // ── 分析：强类型 JSON body（数据文本内嵌 + 全强类型配置）──
+        // 请求体为纯 JSON，直接反序列化为强类型 AnalyzeConfigRequest：
+        // 数据文本走 dataText（JSON/JSONL/CSV/XML/YAML），其余全部是强类型字段——
+        // 分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + P4 开关）+ 内联 rules 规则对象。
+        // OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。
         routes.MapPost("/analyze/config",
-            async Task<Results<Ok<AnalyzeResponse>, BadRequest<ErrorResponse>>> (
-            [FromForm] AnalyzeConfigForm form,
+            async Task<Results<Ok<AnalyzeRawResponse>, BadRequest<ErrorResponse>>> (
+            [FromBody] AnalyzeConfigRequest config,
             CancellationToken cancellationToken) =>
         {
-            var file = form.File;
-            if (file is null || file.Length == 0)
-                return TypedResults.BadRequest(new ErrorResponse("请通过 multipart 表单上传数据文件（字段名 file）。"));
+            if (string.IsNullOrWhiteSpace(config.DataText))
+                return TypedResults.BadRequest(new ErrorResponse("缺少数据文本：请提供 dataText（数据内容，JSON / JSONL / CSV / XML / YAML）。"));
 
-            if (string.IsNullOrWhiteSpace(form.Config))
-                return TypedResults.BadRequest(new ErrorResponse("缺少强类型配置：请通过 multipart 表单字段 config 传入 JSON（选项 + rules 规则对象）。"));
-
-            AnalyzeConfigRequest config;
+            var tempData = Path.Combine(Path.GetTempPath(), $"oa-api-{Guid.NewGuid():N}.txt");
             try
             {
-                // 与规则同款：允许 // 注释、字段名大小写不敏感；配置 JSON 里嵌套的 rules 走各自 [JsonPropertyName]。
-                config = JsonSerializer.Deserialize<AnalyzeConfigRequest>(form.Config, AnalysisRules.RulesJsonOptions)
-                         ?? throw new InvalidDataException("config 反序列化结果为空。");
-            }
-            catch (JsonException ex)
-            {
-                return TypedResults.BadRequest(new ErrorResponse($"config 不是合法 JSON：{ex.Message}"));
-            }
+                await File.WriteAllTextAsync(tempData, config.DataText, cancellationToken);
 
-            var tempData = Path.Combine(Path.GetTempPath(), $"oa-api-{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}");
-            try
-            {
-                await using (var fs = File.Create(tempData))
-                    await file.CopyToAsync(fs, cancellationToken);
-
-                var format = FileParsers.DetectFormat(tempData);
+                var format = string.IsNullOrWhiteSpace(config.Format)
+                    ? FileParsers.DetectFormat(tempData)
+                    : config.Format.Trim().ToLowerInvariant();
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, config.Rules);
                 var result = AnalysisCore.AnalyzeFile(tempData, format, config.Rules, config, cancellationToken);
 
-                return TypedResults.Ok(new AnalyzeResponse(
-                    FileName: file.FileName,
-                    Format: effectiveFormat,
-                    RulesSource: config.Rules is not null ? "inline" : null,
-                    Result: result));
+                return TypedResults.Ok(new AnalyzeRawResponse(
+                    effectiveFormat, config.Rules is not null ? "inline" : null, result));
             }
             catch (Exception ex)
             {
@@ -161,11 +145,11 @@ public static class AnalyzeEndpoints
             }
         })
         .WithTags("分析")
-        .WithSummary("分析数据文件（强类型配置）")
-        .WithDescription("上传数据文件 file，其余所有选项与规则放进单个强类型 config JSON（multipart 表单字段）。" +
-            "config 结构：继承全部分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel 等）+ P4 开关，" +
-            "并内含强类型 rules 规则对象（flatten/valueParsers/fields/filter/expectations）——规则不是文件、不是字符串。" +
-            "config 支持 // 注释、字段名大小写不敏感。响应与 /api/analyze 一致（camelCase，字段级违规内嵌于 result.fieldStatistics）。")
+        .WithSummary("分析强类型 JSON 请求体")
+        .WithDescription("请求体为纯 JSON，直接绑定为强类型 AnalyzeConfigRequest：dataText 内嵌数据文本（JSON/JSONL/CSV/XML/YAML），" +
+            "format 指定格式（留空自动检测）。其余全部是强类型字段——分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + P4 开关）" +
+            "与内联 rules 规则对象（flatten/valueParsers/fields/filter/expectations）。" +
+            "OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。响应为 camelCase JSON，字段级违规内嵌于 result.fieldStatistics。")
         .DisableAntiforgery();
 
         // ── 分析：请求体即数据文本 ──
