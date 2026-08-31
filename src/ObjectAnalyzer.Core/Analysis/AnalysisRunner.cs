@@ -104,6 +104,48 @@ public static class AnalysisRunner
             }
         }
 
+        // 方案 A：把 rules.runtime 节点配置合并到 options。
+        // 优先级：CLI / API 显式参数 > rules.runtime > options 内置默认。
+        // ApplyRuntime 内部只覆盖"默认"的 options 字段，调用方已显式设的值不会被覆盖。
+        if (rules?.Runtime != null)
+        {
+            options.ApplyRuntime(rules.Runtime);
+        }
+
+        // 旧顶层字段（rules.flatten / selectedFields / filter）→ options（向后兼容）
+        // 优先级低于 rules.runtime（已被 ApplyRuntime 处理），仍保留作为最后兜底。
+        if (rules != null)
+        {
+            if (rules.Flatten is bool legacyFlatten && options.Flatten == true)
+            {
+                options.Flatten = legacyFlatten;
+            }
+            if (rules.SelectedFields is { Count: > 0 } legacySel && string.IsNullOrEmpty(options.Fields))
+            {
+                options.Fields = string.Join(",", legacySel);
+            }
+            if (!string.IsNullOrWhiteSpace(rules.Filter) && string.IsNullOrWhiteSpace(options.Filter))
+            {
+                options.Filter = rules.Filter;
+            }
+        }
+
+        // 反向同步：把 options 上合并后的 selectedFields / filter 同步回 rules，
+        // 让下游 FieldTransformProcessor / ConsoleReporter 等直接读 rules 的代码看到一致的值。
+        if (rules != null)
+        {
+            if (!string.IsNullOrWhiteSpace(options.Fields))
+            {
+                rules.SelectedFields = options.Fields
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(options.Filter))
+            {
+                rules.Filter = options.Filter;
+            }
+        }
+
         // 采样参数提前校验，避免解析到一半才发现配置非法
         if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
             Sampling.Validate(options.SampleReservoir, options.SampleStep);

@@ -1,5 +1,6 @@
 @page "/"
 @using Core = global::ObjectAnalyzer
+@using global::ObjectAnalyzer.Analysis
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Net
 @using System.Text.Json
@@ -1323,6 +1324,58 @@
         {
             var rulesJson = File.ReadAllText(rulesFilePath);
             rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson, Core.Analysis.AnalysisRules.RulesJsonOptions);
+        }
+
+        // 方案 A：把 rules.runtime 节点配置合并到 AnalysisOptions（与 CLI / API 同源、同优先级链）。
+        // Web 端不走 AnalysisRunner.Run，自己用局部变量驱动分析，所以这里手动做一次合并。
+        // 合并后只覆盖"默认"字段，UI 已显式设置的值不会被覆盖。
+        // 同时把旧顶层字段（rules.flatten / selectedFields / filter）作为最后兜底同步。
+        if (rules?.Runtime != null || rules?.Flatten is bool || rules?.SelectedFields is { Count: > 0 } || !string.IsNullOrWhiteSpace(rules?.Filter))
+        {
+            var rtOptions = new Core.Analysis.AnalysisOptions
+            {
+                InputPath = dataFilePath,
+                Flatten = flatten,
+                CsvInferNumbers = true, // Web 端目前无 CSV 数字推断开关
+                MaxValuesToShow = 5,
+                RulesFile = rulesFilePath,
+                AllowUnknownRules = false,
+                MaxDegreeOfParallelism = maxDegreeOfParallelism,
+                Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
+                Filter = string.IsNullOrWhiteSpace(filterText) ? null : filterText,
+                SampleReservoir = sampleReservoir,
+                SampleStep = sampleStep,
+                ShowProgress = showProgress,
+                ResumeFrom = resumeFromPath,
+                BaselinePath = baselinePath,
+                CheckpointPath = string.IsNullOrWhiteSpace(safeCheckpointName) ? null : safeCheckpointName,
+                MaxMemoryMB = maxMemoryMB,
+                MaxMemoryMode = maxMemoryMode,
+            };
+            if (rules?.Runtime != null)
+            {
+                rtOptions.ApplyRuntime(rules.Runtime);
+            }
+            // 旧顶层字段兜底（runtime 已覆盖则不动；只填 options 上仍为默认的字段）
+            if (rules?.Flatten is bool legacyFlatten && rtOptions.Flatten == flatten)
+            {
+                rtOptions.Flatten = legacyFlatten;
+                flatten = legacyFlatten;
+            }
+            if (rules?.SelectedFields is { Count: > 0 } legacySel && string.IsNullOrWhiteSpace(rtOptions.Fields))
+            {
+                rtOptions.Fields = string.Join(",", legacySel);
+                fieldsText = rtOptions.Fields;
+            }
+            if (!string.IsNullOrWhiteSpace(rules?.Filter) && string.IsNullOrWhiteSpace(rtOptions.Filter))
+            {
+                rtOptions.Filter = rules.Filter;
+                filterText = rtOptions.Filter;
+            }
+            // 把 options 合并后回填到本地变量
+            sampleReservoir = rtOptions.SampleReservoir;
+            sampleStep = rtOptions.SampleStep;
+            maxDegreeOfParallelism = rtOptions.MaxDegreeOfParallelism;
         }
 
         string effectiveFormat = rules?.ValueParsers is { Count: > 0 }

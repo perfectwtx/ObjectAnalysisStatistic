@@ -386,6 +386,30 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 
 `primaryType` 可省略：仅配置 `enumValues` 时自动推导——全部为数值 → `Number`、全部为布尔 → `Boolean`，否则（含混合）→ `String`；显式 `primaryType` 优先。
 
+### runtime 节点（方案 A · "怎么跑"）
+
+为把"字段规则"与"运行配置"分开、便于版本化与跨入口复用，规则文件新增 `runtime` 顶层节，集中收纳所有**非字段业务**开关（采样 / 进度 / 内存预算 / Schema 演进 / 分布漂移 / PII / 门禁 / P4 深度 / P6 增量 / 审计 / 多格式输出等）。
+
+**优先级**：CLI / API 显式参数 > `runtime` 节点 > `AnalysisOptions` 内置默认。即调用方传了就用调用方的；调用方没传就用规则文件里的；都没设就走默认——同一份规则文件可以扔进不同场景而不必改 CLI。
+
+```jsonc
+{
+  "fields": { "age": { "minValue": 0 } },
+  "runtime": {
+    "maxValuesToShow": 20,            // 等价 --max-values
+    "memory": { "maxMB": 1024, "mode": "hard" },
+    "progress": { "enabled": false },  // 等价 --no-progress（CI 友好）
+    "checkpoint": { "path": "ck.snapshot" },  // 等价 --checkpoint
+    "p4": { "correlation": true },     // 等价 --correlation
+    "outputs": { "primary": "report.html", "schemaCode": "csharp:out.cs" }
+  }
+}
+```
+
+顶层 `flatten` / `selectedFields` / `filter` **仍兼容**（作为最后兜底），新规则建议全部迁移到 `runtime` 节点；新旧同时存在时 `runtime` 优先。`RulesLint` 已自动覆盖 `runtime` 节点下的全部子键，路径形如 `runtime.pii.failOnLevel`，拼写错误会被拦截并给出建议键名。
+
+完整字段与默认值见 [AnalysisRuntime.cs](src/ObjectAnalyzer.Core/Analysis/Runtime/AnalysisRuntime.cs) 与 [samples/rules_full_reference.jsonc](samples/rules_full_reference.jsonc)。
+
 ## KMS 集成（规则文件敏感密钥托管）
 
 规则文件里 `transform` 的敏感密钥字段（`key` / `iv` / `privateKey` / `publicKey` / `signature`）默认需以明文写入 JSON。若不想把真实密钥明文落盘，可用 **KMS 密文引用** 替代：规则文件只存密文，运行时解密注入，明文字符串仅在本次进程内存中存活、不会被写回规则文件。

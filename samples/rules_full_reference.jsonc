@@ -132,5 +132,107 @@
   "expectations": {
     "minRowCount": 100,              // 数据集最少行数，不足记违规
     "maxDuplicateRate": 0.05         // 完全重复对象的占比上限（0~1）
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  运行时配置（方案 A · "怎么跑"）
+  //  优先级：CLI / API 显式参数 > 本节点 > 内置默认。
+  //  字段均可省略——省略等同"用默认"。所有字段均可空 null。
+  // ═══════════════════════════════════════════════════════════════
+  "runtime": {
+
+    // ── 解析行为 ──
+    "flatten": true,                 // 嵌套属性是否展平为 a.b.c
+    "csvInferNumbers": true,         // CSV 数字列是否推断为 long / double
+    "maxValuesToShow": 5,            // 每字段最多展示的 distinct 数
+    "maxParallelism": -1,            // 最大并行线程数（-1 = 全部核心）
+    "allowUnknownRules": false,      // 规则文件里有未知键时是否放行（默认 false 严格）
+
+    // ── 字段选择 / 过滤（新写法；旧顶层 selectedFields / filter 仍兼容）──
+    "selectedFields": ["name", "age", "email"],
+    "filter": "age >= 18 AND status in ['active']",
+
+    // ── 采样策略（互斥：reservoir 优先）──
+    "sampling": {
+      "reservoir": 0,                // 蓄水池随机抽样（> 0 启用）
+      "step": 0                      // 等距系统抽样步长（> 1 启用）
+    },
+
+    // ── JSONPath 投影（--root-path 仅整体 JSON；--record-path 逐行）──
+    "jsonPath": {
+      "root": "$.data[*]",           // 整体文件根 JSONPath
+      "record": "$.payload"          // 记录级 JSONPath
+    },
+
+    // ── Schema 演进（快照 / Diff / 门禁）──
+    "schema": {
+      "snapshot": "schema.snapshot.json",   // 导出 Schema 快照
+      "diffBaseline": "baseline.snapshot.json",  // Diff 基线
+      "diffReport": "schema.diff.json",    // Diff 结果报告
+      "allowBreakingChanges": true         // false = 破坏性变更触发退出码 6
+    },
+
+    // ── 分布漂移（t-digest + HLL 草图）──
+    "distribution": {
+      "snapshot": "dist.snapshot.json",
+      "diffBaseline": "dist.baseline.json",
+      "diffReport": "dist.diff.json",
+      "lowConfidenceWidth": 0.2       // 置信区间宽度阈值（仅库 API 暴露）
+    },
+
+    // ── PII / 合规 ──
+    "pii": {
+      "off": false,                   // 全局关闭 PII 识别与打码
+      "report": "pii-report.json",    // 合规等级报告
+      "failOnLevel": "B"              // CI 合规门禁（A/B/C；null = 不门禁）
+    },
+
+    // ── CI 质量门禁 ──
+    "gates": {
+      "failOnViolations": false,      // 存在任一违规即以退出码 3 结束
+      "failOnOutlierRatio": null      // 任一数值字段 IQR 异常值比例 > 阈值（退出码 5）
+    },
+
+    // ── P4 深度分析（默认全关；开启会增加运行时间与内存）──
+    "p4": {
+      "correlation": false,           // Pearson + Spearman 相关性矩阵
+      "stringPatterns": false,        // 字符串形态模板归纳
+      "unicodeHygiene": false,        // Unicode 卫生检查
+      "timeSeries": false,            // DateTime 趋势 / 周期 / 间隙
+      "distributionSnapshot": false,  // 自动填 distribution.snapshot 默认路径
+      "fuzzyDedupField": null         // 模糊去重目标字段
+    },
+
+    // ── P6.2 增量分析（检查点 / 续跑 / 基线合并）──
+    "checkpoint": {
+      "path": null,                   // 检查点落盘路径（每 10K 对象一次）
+      "resumeFrom": null,             // 从历史检查点恢复
+      "baseline": null                // 合并历史 AnalysisResult JSON
+    },
+
+    // ── P6.3 内存预算监控 ──
+    "memory": {
+      "maxMB": 0,                     // 进程托管堆上限 MB（0 = 不监控）
+      "mode": "soft"                  // soft（警告并自动降级到 50K 采样） / hard（立即抛异常失败）
+    },
+
+    // ── P6.1 进度显示 ──
+    "progress": {
+      "enabled": true                 // false = 静默运行（CI / 重定向到文件时）
+    },
+
+    // ── 审计日志（NDJSON，绝不记字段值与密钥）──
+    "audit": {
+      "log": "audit.ndjson",
+      "operator": "anonymous"         // CI 用户 / 流水线 ID / 邮箱
+    },
+
+    // ── 多格式报告输出 ──
+    "outputs": {
+      "primary": "report.html",       // 主报告（按扩展名路由 .json/.html/.md/.csv/.xlsx/.pdf）
+      "violations": "violations.json",
+      "quality": "quality.json",
+      "schemaCode": "csharp:out.cs"   // Schema 代码生成（csharp / typescript / json-schema / openapi / proto / sql）
+    }
   }
 }

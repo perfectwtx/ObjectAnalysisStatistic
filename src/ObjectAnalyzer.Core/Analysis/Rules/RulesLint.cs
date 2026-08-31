@@ -27,7 +27,13 @@ public static class RulesLint
     [
         typeof(AnalysisRules), typeof(FieldRule), typeof(FieldTransform),
         typeof(PiiRule), typeof(PiiMaskConfig), typeof(AnalysisExpectations),
-        typeof(ValueParserConfig)
+        typeof(ValueParserConfig),
+        // runtime 节点（方案 A）：所有 AnalysisRuntime 子节点都是规则对象
+        typeof(AnalysisRuntime), typeof(SamplingConfig), typeof(JsonPathConfig),
+        typeof(SchemaConfig), typeof(DistributionConfig), typeof(PiiRuntimeConfig),
+        typeof(GatesConfig), typeof(P4Config), typeof(CheckpointConfig),
+        typeof(MemoryConfig), typeof(ProgressConfig), typeof(AuditConfig),
+        typeof(OutputsConfig)
     ];
 
     private static readonly Dictionary<Type, string[]> KnownNamesCache = [];

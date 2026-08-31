@@ -67,6 +67,57 @@ public class RulesLintTests
     }
 
     [Fact]
+    public void Scan_RuntimeSection_RecognizesAllKeys()
+    {
+        // 方案 A：runtime 节点下的所有子节点键都应该被识别
+        var unknowns = RulesLint.Scan("""
+        {
+          "runtime": {
+            "flatten": true,
+            "csvInferNumbers": false,
+            "maxValuesToShow": 10,
+            "maxParallelism": 4,
+            "allowUnknownRules": true,
+            "selectedFields": ["a", "b"],
+            "filter": "age >= 0",
+            "sampling": { "reservoir": 100, "step": 5 },
+            "jsonPath": { "root": "$.data[*]", "record": "$.payload" },
+            "schema": { "snapshot": "snap.json", "diffBaseline": "base.json", "diffReport": "diff.json", "allowBreakingChanges": false },
+            "distribution": { "snapshot": "d.json", "diffBaseline": "db.json", "diffReport": "dr.json", "lowConfidenceWidth": 0.1 },
+            "pii": { "off": false, "report": "pii.json", "failOnLevel": "B" },
+            "gates": { "failOnViolations": true, "failOnOutlierRatio": 0.1 },
+            "p4": { "correlation": true, "stringPatterns": true, "unicodeHygiene": false, "timeSeries": true, "distributionSnapshot": true, "fuzzyDedupField": "name" },
+            "checkpoint": { "path": "ck.json", "resumeFrom": "r.json", "baseline": "b.json" },
+            "memory": { "maxMB": 1024, "mode": "hard" },
+            "progress": { "enabled": false },
+            "audit": { "log": "audit.ndjson", "operator": "ci-bot" },
+            "outputs": { "primary": "out.html", "violations": "v.json", "quality": "q.json", "schemaCode": "csharp:out.cs" }
+          }
+        }
+        """);
+
+        Assert.Empty(unknowns);
+    }
+
+    [Fact]
+    public void Scan_RuntimeSection_TypoIsReportedWithPath()
+    {
+        // runtime.pii.failOnLevle 拼错 → 应被识别为未知键
+        var unknowns = RulesLint.Scan("""
+        {
+          "runtime": {
+            "pii": { "failOnLevle": "B" }
+          }
+        }
+        """);
+
+        var hit = Assert.Single(unknowns);
+        Assert.Equal("runtime.pii", hit.Path);
+        Assert.Equal("failOnLevle", hit.Name);
+        Assert.Equal("failOnLevel", hit.Suggestion);
+    }
+
+    [Fact]
     public void Describe_ListsAtMostThreeAndTotalCount()
     {
         var unknowns = RulesLint.Scan("""
