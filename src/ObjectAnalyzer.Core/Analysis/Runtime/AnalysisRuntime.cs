@@ -40,7 +40,7 @@ public class AnalysisRuntime
     [JsonPropertyName("allowUnknownRules")]
     public bool? AllowUnknownRules { get; set; }
 
-    // ── 字段选择（统一收敛到 runtime 节点；旧顶层 selectedFields / filter 已移除）──
+    // ── 字段选择 ──
 
     /// <summary>仅统计指定字段。null / 空 = 不限。与 <c>--fields</c> 对应。</summary>
     [JsonPropertyName("selectedFields")]

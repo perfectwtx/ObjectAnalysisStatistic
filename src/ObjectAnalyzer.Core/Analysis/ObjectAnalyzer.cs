@@ -54,7 +54,8 @@ public static partial class ObjectAnalyzer
 
 
     /// <summary>
-    /// 主流分析入口（行为与 v1.x 兼容；不暴露内部草图）。
+    /// 主流分析入口：返回 <see cref="AnalysisResult"/>，不暴露内部草图。
+    /// 需要每字段的 t-digest / HyperLogLog 草图（用于分布快照 / 漂移）时使用 <see cref="AnalyzeDetailed"/>。
     /// </summary>
     public static AnalysisResult Analyze(
         IEnumerable<Dictionary<string, object?>> objects,

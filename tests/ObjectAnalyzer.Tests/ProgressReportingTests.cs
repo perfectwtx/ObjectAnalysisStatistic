@@ -50,7 +50,7 @@ public class ProgressReportingTests
     [Fact]
     public void Analyze_WithoutProgressCallback_StillWorks()
     {
-        // 不传 progress 回调时应正常完成（兼容旧调用方）
+        // 不传 progress 回调时应正常完成
         var data = MakeData(5_000);
         var result = global::ObjectAnalyzer.Analysis.ObjectAnalyzer.Analyze(data);
         Assert.Equal(5_000, result.TotalObjects);

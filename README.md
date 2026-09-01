@@ -162,7 +162,7 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--no-flatten`                      | —    | 解析 JSON 时不扁平化嵌套属性路径                                                                                                                                                                                                                                                | `false`（即扁平化） |
 | `--max-values <N>`                  | `-m` | 控制台报告中每个字段最多展示的唯一值数量                                                                                                                                                                                                                                               | `5`           |
 | `--rules <FILE>`                    | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举与质量检查约束（pattern/范围/必填/唯一/null率 + 数据集期望）、字段值转换及值解析规则                                                                                                                                                                            | 无             |
-| `--allow-unknown-rules`             | —    | 放行规则文件里的未知键（拼错或已废弃）。默认严格——遇到未知键直接报错中止，按编辑距离给出建议键名，因为这些键会被静默忽略，规则看似生效实则没有；规则原文走 `RulesLint` 旁检查，不动反序列化，旧规则文件兼容性不受影响                                                                                                                                                 | `false`（严格）   |
+| `--allow-unknown-rules`             | —    | 放行规则文件里的未知键（拼错或已废弃）。默认严格——遇到未知键直接报错中止，按编辑距离给出建议键名，因为这些键会被静默忽略，规则看似生效实则没有；规则原文走 `RulesLint` 旁检查，不动反序列化                                                                                                                                                | `false`（严格）   |
 | `--no-csv-number-inference`         | —    | 关闭 CSV 数值推断：数字列一律按字符串统计。默认开启——CSV 无类型信息，不推断的话数值列 `primaryType` 永远是 `String`，均值/标准差/分位数/相关性等数值剖析全部失效                                                                                                                                                                | `false`（开启）   |
 | `--fields <NAMES>`                  | `-F` | 仅统计这些字段（逗号分隔）；配合规则文件 transform 时，字段值按规则转换后再统计                                                                                                                                                                                                                      | 无             |
 | `--where <EXPR>`                    | `-w` | 按字段值过滤对象后再统计（如 `"age >= 25 AND status in ['active']"`）；支持 `== != > < >= <=`、`in`/`not in`、`like`/`not like`、`AND`/`OR` 与括号，字段名大小写不敏感，过滤在字段选择与值转换之后执行                                                                                                               | 无             |
@@ -917,7 +917,7 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v3.json --diff
 
 ## 分析深度增强（P4）
 
-P3 落地后，分析能力补齐到数据科学常用维度：跨字段关联、形态归纳、数据卫生、相似识别、时序分析、采样可信度、分布漂移。**零侵入兼容**——任一特性按需开启，关闭时与 v1.x 行为完全一致。所有结果会同时出现在控制台 / JSON / HTML / Markdown 报告与 Blazor Web 界面的 "🧬 P4 深度分析" 区域。
+P3 落地后，分析能力补齐到数据科学常用维度：跨字段关联、形态归纳、数据卫生、相似识别、时序分析、采样可信度、分布漂移。**任一特性按需开启，关闭时无任何额外开销**。所有结果会同时出现在控制台 / JSON / HTML / Markdown 报告与 Blazor Web 界面的 "🧬 P4 深度分析" 区域。
 
 > 这些特性通过 `AnalysisOptions` 与 `AnalysisFeatures` 启用（CLI / Web UI / 库 API / Mini API 四处一致）；任一开关默认关闭，无任何额外开销。Mini API 上对应 `enableCorrelation` / `enableStringPatterns` / `enableUnicodeHygiene` / `enableTimeSeries` / `enableDistributionSnapshot` 五个 `enable*` 布尔参数。
 

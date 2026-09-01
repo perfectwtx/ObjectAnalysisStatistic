@@ -4,8 +4,8 @@ namespace ObjectAnalyzer.Security;
 /// 解析 <c>kms:</c> 前缀并按 provider 路由到对应 <see cref="IKmsProvider"/> 解密密文。
 ///
 /// 密文引用格式：<c>kms:&lt;provider&gt;/&lt;version&gt;:&lt;base64 payload&gt;</c>
-/// 版本 <c>version</c> 目前仅作为兼容性标记保留（实现可选用），不强制验签。
-/// 非 <c>kms:</c> 前缀的普通字符串原样返回（向后兼容既有明文规则文件）。
+/// 版本 <c>version</c> 由各实现自定义用途（offline 用于声明 payload 编码：utf8 / base64 / hex）。
+/// 非 <c>kms:</c> 前缀的普通字符串原样返回。
 /// </summary>
 public static class KmsSecretResolver
 {

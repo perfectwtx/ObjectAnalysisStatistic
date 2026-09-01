@@ -24,9 +24,6 @@ public class AnalysisRules
     /// <summary>
     /// 运行时配置（"怎么跑"）。对应 CLI / API 显式参数：CLI / API 显式值 &gt; 本节点 &gt; <see cref="AnalysisOptions"/> 内置默认。
     /// 字段均为可空 —— null 表示"未指定"。
-    /// <para>历史版本曾有顶层 <c>flatten</c> / <c>selectedFields</c> / <c>filter</c>，现统一收敛到 <see cref="Runtime"/> 子节点：
-    /// <c>runtime.flatten</c> / <c>runtime.selectedFields</c> / <c>runtime.filter</c>。顶层旧字段已被移除，
-    /// 旧规则文件应改为 <c>"runtime": { ... }</c>。</para>
     /// </summary>
     [JsonPropertyName("runtime")]
     public AnalysisRuntime? Runtime { get; set; }

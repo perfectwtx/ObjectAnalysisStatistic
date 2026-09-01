@@ -983,7 +983,7 @@ public static class AnalysisRunner
 
     /// <summary>
     /// 从 CLI 选项构建 <see cref="AnalysisFeatures"/>：当用户未启用任何 P4 特性时返回 null，
-    /// 以避免默认路径上的任何额外开销（与 v1.x 行为兼容）。
+    /// 以避免默认路径上引入任何额外开销。
     /// </summary>
     internal static AnalysisFeatures? BuildAnalysisFeatures(AnalysisOptions options)
     {

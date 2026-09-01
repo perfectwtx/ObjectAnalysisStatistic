@@ -51,8 +51,7 @@ public static class AnalysisOptionsExtensions
             options.AllowUnknownRules = rtAur;
         }
 
-        // ── 字段选择 / 过滤（迁自 AnalysisRules 顶层 selectedFields / filter）──
-        // - 规则文件同时存在顶层旧字段与 runtime 节点时，runtime 优先。
+        // ── 字段选择 / 过滤 ──
         if (runtime.SelectedFields is { Count: > 0 } && string.IsNullOrEmpty(options.Fields))
         {
             options.Fields = string.Join(",", runtime.SelectedFields);

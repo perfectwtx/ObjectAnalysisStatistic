@@ -123,7 +123,7 @@ public static class RulesFromCSharp
                         {
                             double? lo = TryGetNumeric(argArray[0].Expression);
                             double? hi = TryGetNumeric(argArray[1].Expression);
-                            // 兼容 (typeof(...), "min", "max") 字符串形态
+                            // [Range(typeof(...), "min", "max")] 字符串形态也支持
                             if (lo is null && argArray[0].Expression is LiteralExpressionSyntax loLit
                                 && loLit.IsKind(SyntaxKind.StringLiteralExpression)
                                 && double.TryParse(loLit.Token.ValueText, out var loParsed))

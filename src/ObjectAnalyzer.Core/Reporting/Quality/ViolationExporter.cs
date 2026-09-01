@@ -10,11 +10,11 @@ namespace ObjectAnalyzer.Reporting;
 /// <code>
 /// {
 ///   "summary": { "totalViolations": 3, "fieldsWithViolations": 2 },
-///   "fieldViolations": [ { "field", "check", "count", "approximate", "samples", "message", "values"(仅枚举) } ],
+///   "fieldViolations": [ { "field", "check", "count", "approximate", "samples", "message" } ],
 ///   "datasetViolations": [ { "check": "rowCount", ... } ]
 /// }
 /// </code>
-/// 枚举条目保留旧版 "values" 键以兼容既有 CI 脚本。
+/// 枚举违规导出为单一聚合条目（samples 是前 N 条样本），与其他检查一致。
 /// </summary>
 public static class ViolationExporter
 {
@@ -25,7 +25,7 @@ public static class ViolationExporter
         var fieldEntries = new List<Dictionary<string, object?>>();
         foreach (var stat in result.FieldStatistics)
         {
-            // 枚举违规：逐值列表（兼容 v1 消费方）
+            // 枚举违规：聚合为单条 entry（含 samples 前 N 条样本）
             if (stat.EnumViolations.Count > 0)
             {
                 fieldEntries.Add(new Dictionary<string, object?>
@@ -34,12 +34,11 @@ public static class ViolationExporter
                     ["check"] = QualityCheckTypes.EnumValues,
                     ["count"] = stat.EnumViolations.Count,
                     ["message"] = $"{stat.EnumViolations.Count} 个不在枚举范围内的值",
-                    ["values"] = stat.EnumViolations,
                     ["samples"] = ((IReadOnlyList<string>)stat.EnumViolations).Take(QualityChecks.MaxSamples).ToArray()
                 });
             }
 
-            // 枚举聚合条目已在上方以逐值形式（含 values 键）导出，此处跳过避免双计
+            // 其他质量检查条目按 check 维度展开
             foreach (var check in result.QualityViolations.Where(v =>
                 v.Field == stat.FieldName && v.Check != QualityCheckTypes.EnumValues))
             {

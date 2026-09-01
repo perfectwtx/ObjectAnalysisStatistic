@@ -506,7 +506,7 @@ public sealed class FieldTransformProcessor
         }
         catch (FormatException)
         {
-            // 兼容：密文本身就视为 base64 字符串（无论 format）
+            // format 指定的解码方式失败时按 base64 重试（密文本身就是 base64 字符串）
             cipher = Convert.FromBase64String(cipherText);
         }
 

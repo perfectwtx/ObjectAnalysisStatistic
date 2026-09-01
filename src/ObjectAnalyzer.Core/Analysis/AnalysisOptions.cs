@@ -155,7 +155,7 @@ public sealed class AnalysisOptions
 
     /// <summary>
     /// 是否在分析过程中显示 Spectre.Console 进度条 + ETA（--no-progress 取反）。默认 true。
-    /// 关掉后回退到旧版 spinner 行为；典型场景：CI 日志捕获 / 脚本管道 / 已重定向到文件。
+    /// 关闭后跳过进度条渲染，输出直接打印到 stdout；典型场景：CI 日志捕获 / 脚本管道 / 已重定向到文件。
     /// </summary>
     public bool ShowProgress { get; set; } = true;
 

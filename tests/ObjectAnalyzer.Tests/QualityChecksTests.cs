@@ -286,7 +286,9 @@ public class QualityChecksTests
             var fields = root.GetProperty("fieldViolations");
             Assert.Equal(2, fields.GetArrayLength());
             Assert.Contains(fields.EnumerateArray(),
-                e => e.GetProperty("check").GetString() == "enum" && e.TryGetProperty("values", out _));
+                e => e.GetProperty("check").GetString() == "enum"
+                    && e.TryGetProperty("samples", out var s)
+                    && s.GetArrayLength() > 0);
             Assert.Contains(fields.EnumerateArray(),
                 e => e.GetProperty("check").GetString() == "pattern");
 
@@ -412,7 +414,7 @@ public class QualityChecksTests
     }
 
     // ──────────────────────────────────────────────
-    // PII 打码传播 & 向后兼容
+    // PII 打码传播
     // ──────────────────────────────────────────────
 
     [Fact]

@@ -21,7 +21,7 @@ public sealed class DataQualityReport
 
     public static DataQualityReport Build(AnalysisResult result)
     {
-        // 非枚举的质量检查条目按字段分组；枚举违规沿用逐值列表（兼容既有消费方）
+        // 非枚举的质量检查条目按字段分组；枚举违规作为字段行的逐值 Violations 列表
         var checksByField = result.QualityViolations
             .Where(v => !string.IsNullOrEmpty(v.Field) && v.Check != QualityCheckTypes.EnumValues)
             .GroupBy(v => v.Field, StringComparer.Ordinal)
