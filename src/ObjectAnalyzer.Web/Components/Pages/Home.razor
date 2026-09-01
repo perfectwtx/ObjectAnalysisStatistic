@@ -78,6 +78,10 @@
                     <input type="checkbox" checked="@State.Flatten" @onchange="OnFlattenChange" />
                     <span>@Loc["OptFlatten"]</span>
                 </label>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.CsvInferNumbers" @onchange="OnCsvInferNumbersChange" title="@Loc["OptCsvInferNumbersTitle"]" />
+                    <span>@Loc["OptCsvInferNumbers"]</span>
+                </label>
                 <label class="option-item">
                     <span>@Loc["OptMaxValues"]</span>
                     <input type="number" value="@State.MaxValuesToShow" @oninput="OnMaxValuesChange" min="1" max="100" />
@@ -85,6 +89,27 @@
                 <label class="option-item">
                     <span>@Loc["OptParallel"]</span>
                     <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="@Loc["OptParallelTitle"]" />
+                </label>
+                <div class="side-subgroup-title">@Loc["GroupP4Depth"]</div>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.EnableCorrelation" @onchange="OnEnableCorrelationChange" title="@Loc["OptEnableCorrelationTitle"]" />
+                    <span>@Loc["OptEnableCorrelation"]</span>
+                </label>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.EnableStringPatterns" @onchange="OnEnableStringPatternsChange" title="@Loc["OptEnableStringPatternsTitle"]" />
+                    <span>@Loc["OptEnableStringPatterns"]</span>
+                </label>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.EnableUnicodeHygiene" @onchange="OnEnableUnicodeHygieneChange" title="@Loc["OptEnableUnicodeHygieneTitle"]" />
+                    <span>@Loc["OptEnableUnicodeHygiene"]</span>
+                </label>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.EnableTimeSeries" @onchange="OnEnableTimeSeriesChange" title="@Loc["OptEnableTimeSeriesTitle"]" />
+                    <span>@Loc["OptEnableTimeSeries"]</span>
+                </label>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.EnableDistributionSnapshot" @onchange="OnEnableDistributionSnapshotChange" title="@Loc["OptEnableDistributionSnapshotTitle"]" />
+                    <span>@Loc["OptEnableDistributionSnapshot"]</span>
                 </label>
                 <div class="side-subgroup-title">@Loc["GroupFieldsFilter"]</div>
                 <label class="option-item">
@@ -149,6 +174,10 @@
                         <span class="file-ok">✓ @Loc["RulesApplied"]</span>
                     }
                 </div>
+                <label class="option-item checkbox-item">
+                    <input type="checkbox" checked="@State.AllowUnknownRules" @onchange="OnAllowUnknownRulesChange" title="@Loc["OptAllowUnknownRulesTitle"]" />
+                    <span>@Loc["OptAllowUnknownRules"]</span>
+                </label>
                 <details class="option-group">
                     <summary>
                         <span class="opt-group-title">@Loc["RulesDocTitle"]</span>
@@ -1298,12 +1327,20 @@
         // 捕获当前配置快照，避免后台线程与 UI 状态竞争
         string dataFilePath = State.DataFilePath!;
         bool flatten = State.Flatten;
+        bool csvInferNumbers = State.CsvInferNumbers;
         string? rulesFilePath = State.RulesFilePath;
+        bool allowUnknownRules = State.AllowUnknownRules;
         string fieldsText = State.Fields;
         string filterText = State.Filter;
         int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
         int sampleReservoir = State.SampleReservoir;
         int sampleStep = State.SampleStep;
+        // P4 深度分析开关：任一为真才构造 AdvancedAnalysisOptions 走对应分支
+        bool enableCorrelation = State.EnableCorrelation;
+        bool enableStringPatterns = State.EnableStringPatterns;
+        bool enableUnicodeHygiene = State.EnableUnicodeHygiene;
+        bool enableTimeSeries = State.EnableTimeSeries;
+        bool enableDistributionSnapshot = State.EnableDistributionSnapshot;
         // P6 快照：进度条 / 增量 / 内存预算
         bool showProgress = State.ShowProgress;
         string? resumeFromPath = State.ResumeFrom;
@@ -1323,6 +1360,18 @@
         if (rulesFilePath != null)
         {
             var rulesJson = File.ReadAllText(rulesFilePath);
+            // 与 /api/analyze 同源：未勾选"容忍未知键"时把拼错/已废弃的键拦下，避免规则看似生效实则被静默忽略
+            if (!allowUnknownRules)
+            {
+                var unknown = Core.Analysis.Rules.RulesLint.Scan(rulesJson);
+                if (unknown.Count > 0)
+                {
+                    var unknownList = string.Join(", ", unknown);
+                    State.IsLoading = false;
+                    State.ErrorMessage = Loc.Get("ErrUnknownRules", unknownList);
+                    return;
+                }
+            }
             rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson, Core.Analysis.AnalysisRules.RulesJsonOptions);
         }
 
@@ -1337,11 +1386,11 @@
                 Parse =
                 {
                     Flatten = flatten,
-                    CsvInferNumbers = true, // Web 端目前无 CSV 数字推断开关
+                    CsvInferNumbers = csvInferNumbers,
                     MaxValuesToShow = 5,
                     MaxDegreeOfParallelism = maxDegreeOfParallelism
                 },
-                Rules = { RulesFile = rulesFilePath, AllowUnknownRules = false },
+                Rules = { RulesFile = rulesFilePath, AllowUnknownRules = allowUnknownRules },
                 FieldSelection =
                 {
                     Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
@@ -1349,6 +1398,14 @@
                 },
                 Sampling = { SampleReservoir = sampleReservoir, SampleStep = sampleStep },
                 Progress = { ShowProgress = showProgress },
+                Advanced =
+                {
+                    EnableCorrelation = enableCorrelation,
+                    EnableStringPatterns = enableStringPatterns,
+                    EnableUnicodeHygiene = enableUnicodeHygiene,
+                    EnableTimeSeries = enableTimeSeries,
+                    EnableDistributionSnapshot = enableDistributionSnapshot
+                },
                 Incremental =
                 {
                     ResumeFrom = resumeFromPath,
@@ -1506,7 +1563,21 @@
                     }
                     return o;
                 });
-                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: null, progress: progress, token);
+                // 任一 P4 深度分析开关被勾选时构造 AdvancedAnalysisOptions 走对应分支；全关时传 null，与 v1.x 行为一致
+                Core.Analysis.Options.AdvancedAnalysisOptions? features =
+                    (enableCorrelation || enableStringPatterns
+                        || enableUnicodeHygiene || enableTimeSeries
+                        || enableDistributionSnapshot)
+                        ? new Core.Analysis.Options.AdvancedAnalysisOptions
+                        {
+                            EnableCorrelation = enableCorrelation,
+                            EnableStringPatterns = enableStringPatterns,
+                            EnableUnicodeHygiene = enableUnicodeHygiene,
+                            EnableTimeSeries = enableTimeSeries,
+                            EnableDistributionSnapshot = enableDistributionSnapshot
+                        }
+                        : null;
+                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: features, progress: progress, token);
                 transformProcessor.ApplyFailures(analysisResult);
                 // ── P6.3 内存预算 hard 模式：分析循环结束后由本机检查点统一抛错（避免在 progress 回调线程上抛）──
                 memoryBudget.ThrowIfHardExceeded();
@@ -1789,6 +1860,20 @@
             State.SampleStep = val;
         }
     }
+
+    private void OnCsvInferNumbersChange(ChangeEventArgs e) => State.CsvInferNumbers = e.Value is true;
+
+    private void OnAllowUnknownRulesChange(ChangeEventArgs e) => State.AllowUnknownRules = e.Value is true;
+
+    private void OnEnableCorrelationChange(ChangeEventArgs e) => State.EnableCorrelation = e.Value is true;
+
+    private void OnEnableStringPatternsChange(ChangeEventArgs e) => State.EnableStringPatterns = e.Value is true;
+
+    private void OnEnableUnicodeHygieneChange(ChangeEventArgs e) => State.EnableUnicodeHygiene = e.Value is true;
+
+    private void OnEnableTimeSeriesChange(ChangeEventArgs e) => State.EnableTimeSeries = e.Value is true;
+
+    private void OnEnableDistributionSnapshotChange(ChangeEventArgs e) => State.EnableDistributionSnapshot = e.Value is true;
 
     private void ClearRulesFile()
     {

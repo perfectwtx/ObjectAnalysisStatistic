@@ -41,6 +41,29 @@ public sealed class AnalysisState : IDisposable
     public int SampleReservoir { get; set; }                     // --sample-reservoir (>0 启用)
     public int SampleStep { get; set; }                          // --sample-step (>1 启用)
 
+    /// <summary>CSV 数字列推断为数值类型（--csv-infer-numbers / --no-csv-number-inference）。
+    /// 默认 true：30 → 30、3.14 → 3.14；前导零 / 长数字 / 科学计数法 / 带单位保持字符串避免误转。
+    /// 关掉后整列按字符串统计，失去数值剖析（均值/分位数/相关性等）。</summary>
+    public bool CsvInferNumbers { get; set; } = true;
+
+    /// <summary>规则文件里出现不认识的键时是否放行（--allow-unknown-rules）。
+    /// 默认 false：拼错/已废弃的键会被 RulesLint 拦下并返回 400，避免规则看似生效实则被静默忽略；
+    /// 确认可忽略时勾选此项放行。</summary>
+    public bool AllowUnknownRules { get; set; }
+
+    // ── P4 深度分析开关（默认全关，与 v1.x 行为一致；开启后填充"深度分析"选项卡）──
+    public bool EnableCorrelation { get; set; }                  // --correlation
+    public bool EnableStringPatterns { get; set; }               // --string-patterns
+    public bool EnableUnicodeHygiene { get; set; }               // --unicode-hygiene
+    public bool EnableTimeSeries { get; set; }                   // --time-series
+    public bool EnableDistributionSnapshot { get; set; }         // --distribution-snapshot
+
+    /// <summary>任一 P4 开关被勾选（用于在 UI 标识需要走 AdvancedAnalysisOptions 路径）。</summary>
+    public bool HasAnyP4Switch =>
+        EnableCorrelation || EnableStringPatterns
+        || EnableUnicodeHygiene || EnableTimeSeries
+        || EnableDistributionSnapshot;
+
     // --type (.cs 类型定义文件)：以临时文件形式保存，避免在内存中缓存大内容
 
     // 规则文件 (--rules)：以临时文件形式保存

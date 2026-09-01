@@ -47,6 +47,7 @@
   <data name="RulesApplied" xml:space="preserve"><value>规则已就绪</value></data>
   <data name="RulesDocTitle" xml:space="preserve"><value>支持的规则字段</value></data>
   <data name="ErrRulesEmpty" xml:space="preserve"><value>请先粘贴规则 JSON 内容再应用。</value></data>
+  <data name="ErrUnknownRules" xml:space="preserve"><value>规则文件包含未识别的键：{0}。请检查拼写/版本；如确认可忽略请勾选侧边栏的"容忍规则里不认识的键"。</value></data>
   <data name="RulesPastedName" xml:space="preserve"><value>手动输入的规则</value></data>
   <data name="EmptyStateTitle" xml:space="preserve"><value>开始你的第一次分析</value></data>
   <data name="EmptyStateHint" xml:space="preserve"><value>从左侧上传 JSON / JSONL / CSV / Excel / XML / YAML 文件（或连接数据库），配置选项后点击「开始分析」——概览统计、图表与明细将在这里展示。</value></data>
@@ -65,6 +66,21 @@
   <data name="P6GroupTitle" xml:space="preserve"><value>P6 — 增量 / 内存 / 进度</value></data>
   <data name="P6GroupHint" xml:space="preserve"><value>大文件场景的容错与可恢复性</value></data>
   <data name="OptShowProgress" xml:space="preserve"><value>显示进度条 / ETA</value></data>
+  <data name="OptCsvInferNumbers" xml:space="preserve"><value>CSV 数字列推断为数值</value></data>
+  <data name="OptCsvInferNumbersTitle" xml:space="preserve"><value>CSV 数字列自动推断为数值类型（30→30，3.14→3.14），关掉则按字符串统计</value></data>
+  <data name="OptAllowUnknownRules" xml:space="preserve"><value>容忍规则里不认识的键</value></data>
+  <data name="OptAllowUnknownRulesTitle" xml:space="preserve"><value>规则拼错/已废弃时仍然继续分析（默认会拦截，避免规则看似生效实则被静默忽略）</value></data>
+  <data name="GroupP4Depth" xml:space="preserve"><value>P4 深度分析</value></data>
+  <data name="OptEnableCorrelation" xml:space="preserve"><value>字段相关性矩阵</value></data>
+  <data name="OptEnableCorrelationTitle" xml:space="preserve"><value>计算数值字段 Pearson / Spearman 相关性，找出强相关对</value></data>
+  <data name="OptEnableStringPatterns" xml:space="preserve"><value>字符串模式归纳</value></data>
+  <data name="OptEnableStringPatternsTitle" xml:space="preserve"><value>把字段值归纳为模板（手机号 ###-####、邮编 #####、IPv4 ##.##.##.## 等）</value></data>
+  <data name="OptEnableUnicodeHygiene" xml:space="preserve"><value>Unicode 卫生检查</value></data>
+  <data name="OptEnableUnicodeHygieneTitle" xml:space="preserve"><value>检测全/半角、不可见字符、控制字符等异常</value></data>
+  <data name="OptEnableTimeSeries" xml:space="preserve"><value>时间序列分析</value></data>
+  <data name="OptEnableTimeSeriesTitle" xml:space="preserve"><value>对 DateTime 字段做趋势 / 周期 / 间隙分析</value></data>
+  <data name="OptEnableDistributionSnapshot" xml:space="preserve"><value>分布快照导出</value></data>
+  <data name="OptEnableDistributionSnapshotTitle" xml:space="preserve"><value>导出每个字段的分布快照 JSON（用于跨数据集漂移检测）</value></data>
   <data name="OptMaxMemory" xml:space="preserve"><value>内存上限 (MB)</value></data>
   <data name="OptMaxMemoryTitle" xml:space="preserve"><value>进程托管堆上限，0 = 不监控</value></data>
   <data name="OptMaxMemoryMode" xml:space="preserve"><value>超限行为</value></data>

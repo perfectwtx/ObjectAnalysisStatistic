@@ -47,6 +47,7 @@
   <data name="RulesApplied" xml:space="preserve"><value>Rules ready</value></data>
   <data name="RulesDocTitle" xml:space="preserve"><value>Supported rule fields</value></data>
   <data name="ErrRulesEmpty" xml:space="preserve"><value>Paste rules JSON content before applying.</value></data>
+  <data name="ErrUnknownRules" xml:space="preserve"><value>Rule file contains unknown keys: {0}. Check spelling/version; if intentional, enable "Tolerate unknown rule keys" in the sidebar.</value></data>
   <data name="RulesPastedName" xml:space="preserve"><value>Pasted rules</value></data>
   <data name="EmptyStateTitle" xml:space="preserve"><value>Start your first analysis</value></data>
   <data name="EmptyStateHint" xml:space="preserve"><value>Upload a JSON / JSONL / CSV / Excel / XML / YAML file from the sidebar (or connect a database), configure options, then press Start Analysis — overview stats, charts and details will appear here.</value></data>
@@ -65,6 +66,21 @@
   <data name="P6GroupTitle" xml:space="preserve"><value>P6 — Incremental / Memory / Progress</value></data>
   <data name="P6GroupHint" xml:space="preserve"><value>Resilience and recovery for large files</value></data>
   <data name="OptShowProgress" xml:space="preserve"><value>Show progress bar / ETA</value></data>
+  <data name="OptCsvInferNumbers" xml:space="preserve"><value>CSV numeric inference</value></data>
+  <data name="OptCsvInferNumbersTitle" xml:space="preserve"><value>Auto-infer numeric CSV columns (30→30, 3.14→3.14). Off keeps everything as string.</value></data>
+  <data name="OptAllowUnknownRules" xml:space="preserve"><value>Tolerate unknown rule keys</value></data>
+  <data name="OptAllowUnknownRulesTitle" xml:space="preserve"><value>Continue when rules contain unknown keys (default: rejected, to avoid silently dropped rules)</value></data>
+  <data name="GroupP4Depth" xml:space="preserve"><value>P4 Deep analysis</value></data>
+  <data name="OptEnableCorrelation" xml:space="preserve"><value>Field correlation matrix</value></data>
+  <data name="OptEnableCorrelationTitle" xml:space="preserve"><value>Compute Pearson / Spearman correlations between numeric fields, find strongly related pairs</value></data>
+  <data name="OptEnableStringPatterns" xml:space="preserve"><value>String pattern inference</value></data>
+  <data name="OptEnableStringPatternsTitle" xml:space="preserve"><value>Infer string templates (phone ###-####, zip #####, IPv4 ##.##.##.##, etc.)</value></data>
+  <data name="OptEnableUnicodeHygiene" xml:space="preserve"><value>Unicode hygiene check</value></data>
+  <data name="OptEnableUnicodeHygieneTitle" xml:space="preserve"><value>Detect full/half-width, invisible characters, control characters</value></data>
+  <data name="OptEnableTimeSeries" xml:space="preserve"><value>Time series analysis</value></data>
+  <data name="OptEnableTimeSeriesTitle" xml:space="preserve"><value>Trend / seasonality / gap analysis for DateTime fields</value></data>
+  <data name="OptEnableDistributionSnapshot" xml:space="preserve"><value>Distribution snapshot export</value></data>
+  <data name="OptEnableDistributionSnapshotTitle" xml:space="preserve"><value>Export per-field distribution snapshot JSON for cross-dataset drift detection</value></data>
   <data name="OptMaxMemory" xml:space="preserve"><value>Memory limit (MB)</value></data>
   <data name="OptMaxMemoryTitle" xml:space="preserve"><value>Managed heap ceiling, 0 = no monitoring</value></data>
   <data name="OptMaxMemoryMode" xml:space="preserve"><value>On exceed</value></data>
