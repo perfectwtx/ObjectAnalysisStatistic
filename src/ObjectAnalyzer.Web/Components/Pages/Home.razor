@@ -111,6 +111,14 @@
                     <input type="checkbox" checked="@State.EnableDistributionSnapshot" @onchange="OnEnableDistributionSnapshotChange" title="@Loc["OptEnableDistributionSnapshotTitle"]" />
                     <span>@Loc["OptEnableDistributionSnapshot"]</span>
                 </label>
+                <label class="option-item">
+                    <span>@Loc["OptFuzzyDedupField"]</span>
+                    <input type="text" value="@State.FuzzyDedupField" @oninput="OnFuzzyDedupFieldChange" placeholder="name" title="@Loc["OptFuzzyDedupFieldTitle"]" />
+                </label>
+                <label class="option-item">
+                    <span>@Loc["OptCorrelationReservoir"]</span>
+                    <input type="number" value="@State.CorrelationReservoir" @oninput="OnCorrelationReservoirChange" min="100" max="1000000" title="@Loc["OptCorrelationReservoirTitle"]" />
+                </label>
                 <div class="side-subgroup-title">@Loc["GroupFieldsFilter"]</div>
                 <label class="option-item">
                     <span>@Loc["OptFields"]</span>
@@ -137,6 +145,17 @@
                     <span>@Loc["OptSampleStep"]</span>
                     <input type="number" value="@State.SampleStep" @oninput="OnSampleStepChange" min="0" placeholder="0" title="@Loc["OptSampleTitle"]" />
                 </label>
+                <details class="option-advanced">
+                    <summary>@Loc["GroupSamplingAdvanced"]</summary>
+                    <label class="option-item">
+                        <span>@Loc["OptLowConfidenceWidth"]</span>
+                        <input type="number" step="0.05" value="@State.LowConfidenceWidth" @oninput="OnLowConfidenceWidthChange" min="0" max="1" title="@Loc["OptLowConfidenceWidthTitle"]" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["OptMemoryFallbackSampleSize"]</span>
+                        <input type="number" value="@State.MemoryFallbackSampleSize" @oninput="OnMemoryFallbackSampleSizeChange" min="100" title="@Loc["OptMemoryFallbackSampleSizeTitle"]" />
+                    </label>
+                </details>
                 <div class="side-subgroup-title">@Loc["GroupAudit"]</div>
                 <label class="option-item">
                     <span>@Loc["OptAuditLog"]</span>
@@ -1074,6 +1093,16 @@
                     @* 分布漂移卡片（与 Schema Diff 类似但基于草图对比） *@
                     <div class="p4-card p4-card-wide">
                         <h3>📉 @Loc["DistributionDiffCard"]</h3>
+
+                        <div class="p3-baseline-row">
+                            <InputFile OnChange="HandleDistributionBaselineUpload" accept=".json" title="@Loc["LblDistributionBaselineTitle"]" />
+                            @if (State.DistributionBaselineName != null)
+                            {
+                                <span class="file-ok">✓ @State.DistributionBaselineName</span>
+                                <button class="clear-btn" @onclick="ClearDistributionBaseline" title="@Loc["ClearBaseline"]">✕</button>
+                            }
+                        </div>
+
                         @{
                             var dd = State.Result.DistributionDiff;
                         }
@@ -1287,6 +1316,9 @@
         State.BaselineSnapshotName = null;
         State.ComputedSchemaDiff = null;
         State.BaselineError = null;
+        // 分布漂移基线：与 schema baseline 同源——旧数据对应的基线失去意义，强制重传
+        State.DistributionBaselinePath = null;
+        State.DistributionBaselineName = null;
     }
 
     private void ClearDataFile()
@@ -1335,12 +1367,18 @@
         int maxDegreeOfParallelism = State.MaxDegreeOfParallelism;
         int sampleReservoir = State.SampleReservoir;
         int sampleStep = State.SampleStep;
+        double lowConfidenceWidth = State.LowConfidenceWidth;
+        int memoryFallbackSampleSize = State.MemoryFallbackSampleSize;
         // P4 深度分析开关：任一为真才构造 AdvancedAnalysisOptions 走对应分支
         bool enableCorrelation = State.EnableCorrelation;
         bool enableStringPatterns = State.EnableStringPatterns;
         bool enableUnicodeHygiene = State.EnableUnicodeHygiene;
         bool enableTimeSeries = State.EnableTimeSeries;
         bool enableDistributionSnapshot = State.EnableDistributionSnapshot;
+        string? fuzzyDedupField = State.FuzzyDedupField;
+        int correlationReservoir = State.CorrelationReservoir;
+        // P3 分布漂移基线（与 schema baseline 同源：用户上传的临时文件路径）
+        string? distributionBaselinePath = State.DistributionBaselinePath;
         // P6 快照：进度条 / 增量 / 内存预算
         bool showProgress = State.ShowProgress;
         string? resumeFromPath = State.ResumeFrom;
@@ -1396,7 +1434,13 @@
                     Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
                     Filter = string.IsNullOrWhiteSpace(filterText) ? null : filterText
                 },
-                Sampling = { SampleReservoir = sampleReservoir, SampleStep = sampleStep },
+                Sampling =
+                {
+                    SampleReservoir = sampleReservoir,
+                    SampleStep = sampleStep,
+                    LowConfidenceWidth = lowConfidenceWidth,
+                    MemoryFallbackSampleSize = memoryFallbackSampleSize
+                },
                 Progress = { ShowProgress = showProgress },
                 Advanced =
                 {
@@ -1404,8 +1448,11 @@
                     EnableStringPatterns = enableStringPatterns,
                     EnableUnicodeHygiene = enableUnicodeHygiene,
                     EnableTimeSeries = enableTimeSeries,
-                    EnableDistributionSnapshot = enableDistributionSnapshot
+                    EnableDistributionSnapshot = enableDistributionSnapshot,
+                    FuzzyDedupField = fuzzyDedupField,
+                    CorrelationReservoir = correlationReservoir
                 },
+                Distribution = { DiffDistributionBaseline = distributionBaselinePath },
                 Incremental =
                 {
                     ResumeFrom = resumeFromPath,
@@ -1567,14 +1614,17 @@
                 Core.Analysis.Options.AdvancedAnalysisOptions? features =
                     (enableCorrelation || enableStringPatterns
                         || enableUnicodeHygiene || enableTimeSeries
-                        || enableDistributionSnapshot)
+                        || enableDistributionSnapshot
+                        || !string.IsNullOrWhiteSpace(fuzzyDedupField))
                         ? new Core.Analysis.Options.AdvancedAnalysisOptions
                         {
                             EnableCorrelation = enableCorrelation,
                             EnableStringPatterns = enableStringPatterns,
                             EnableUnicodeHygiene = enableUnicodeHygiene,
                             EnableTimeSeries = enableTimeSeries,
-                            EnableDistributionSnapshot = enableDistributionSnapshot
+                            EnableDistributionSnapshot = enableDistributionSnapshot,
+                            FuzzyDedupField = fuzzyDedupField,
+                            CorrelationReservoir = correlationReservoir
                         }
                         : null;
                 var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: features, progress: progress, token);
@@ -1858,6 +1908,36 @@
         if (int.TryParse(e.Value?.ToString(), out int val) && val >= 0)
         {
             State.SampleStep = val;
+        }
+    }
+
+    private void OnLowConfidenceWidthChange(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double val) && val >= 0 && val <= 1)
+        {
+            State.LowConfidenceWidth = val;
+        }
+    }
+
+    private void OnMemoryFallbackSampleSizeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val) && val >= 100)
+        {
+            State.MemoryFallbackSampleSize = val;
+        }
+    }
+
+    private void OnFuzzyDedupFieldChange(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        State.FuzzyDedupField = string.IsNullOrWhiteSpace(v) ? null : v.Trim();
+    }
+
+    private void OnCorrelationReservoirChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val) && val >= 100)
+        {
+            State.CorrelationReservoir = val;
         }
     }
 
@@ -2515,6 +2595,32 @@
         State.BaselineSnapshotName = null;
         State.ComputedSchemaDiff = null;
         State.BaselineError = null;
+    }
+
+    /// <summary>上传分布基线：存到临时文件并把状态挂上；与 schema baseline 走同源 handler。</summary>
+    private async Task HandleDistributionBaselineUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        CancelActiveAnalysis();
+        DeleteQuietly(State.DistributionBaselinePath);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.json");
+        await using (var fs = File.Create(tempPath))
+        {
+            await file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024).CopyToAsync(fs);
+        }
+
+        State.DistributionBaselinePath = tempPath;
+        State.DistributionBaselineName = file.Name;
+    }
+
+    private void ClearDistributionBaseline()
+    {
+        CancelActiveAnalysis();
+        DeleteQuietly(State.DistributionBaselinePath);
+        State.DistributionBaselinePath = null;
+        State.DistributionBaselineName = null;
     }
 
     /// <summary>将当前分析结果导出为 canonical Schema 快照 JSON 文件（下载到浏览器）。</summary>

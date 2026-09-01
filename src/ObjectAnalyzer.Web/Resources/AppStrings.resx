@@ -81,6 +81,17 @@
   <data name="OptEnableTimeSeriesTitle" xml:space="preserve"><value>对 DateTime 字段做趋势 / 周期 / 间隙分析</value></data>
   <data name="OptEnableDistributionSnapshot" xml:space="preserve"><value>分布快照导出</value></data>
   <data name="OptEnableDistributionSnapshotTitle" xml:space="preserve"><value>导出每个字段的分布快照 JSON（用于跨数据集漂移检测）</value></data>
+  <data name="OptFuzzyDedupField" xml:space="preserve"><value>模糊去重目标字段</value></data>
+  <data name="OptFuzzyDedupFieldTitle" xml:space="preserve"><value>对指定字段做形态变体聚类（去除标点/全半角/繁简后归并相似字符串），如 name</value></data>
+  <data name="OptCorrelationReservoir" xml:space="preserve"><value>相关性蓄水池容量</value></data>
+  <data name="OptCorrelationReservoirTitle" xml:space="preserve"><value>每字段保留最多 N 行数值（默认 20000）；大数据集且内存紧张时可调小</value></data>
+  <data name="GroupSamplingAdvanced" xml:space="preserve"><value>采样高级</value></data>
+  <data name="OptLowConfidenceWidth" xml:space="preserve"><value>低可信阈值</value></data>
+  <data name="OptLowConfidenceWidthTitle" xml:space="preserve"><value>采样置信区间宽度 ≥ 此值视为"低可信"（默认 0.2；越小越严格）</value></data>
+  <data name="OptMemoryFallbackSampleSize" xml:space="preserve"><value>软模式自动采样容量</value></data>
+  <data name="OptMemoryFallbackSampleSizeTitle" xml:space="preserve"><value>soft 内存模式下被自动触发的采样容量（仅当未指定 SampleReservoir/Step 时生效，默认 50000）</value></data>
+  <data name="LblDistributionBaseline" xml:space="preserve"><value>分布基线（分布漂移对比）</value></data>
+  <data name="LblDistributionBaselineTitle" xml:space="preserve"><value>上传历史 distribution-snapshot JSON，与本次分析的分布快照做漂移对比</value></data>
   <data name="OptMaxMemory" xml:space="preserve"><value>内存上限 (MB)</value></data>
   <data name="OptMaxMemoryTitle" xml:space="preserve"><value>进程托管堆上限，0 = 不监控</value></data>
   <data name="OptMaxMemoryMode" xml:space="preserve"><value>超限行为</value></data>

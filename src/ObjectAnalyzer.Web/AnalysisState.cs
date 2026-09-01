@@ -41,6 +41,14 @@ public sealed class AnalysisState : IDisposable
     public int SampleReservoir { get; set; }                     // --sample-reservoir (>0 启用)
     public int SampleStep { get; set; }                          // --sample-step (>1 启用)
 
+    /// <summary>采样置信区间宽度阈值（覆盖区间宽度 ≥ 此值视为"低可信"，默认 0.2）。
+    /// 影响"采样置信度"卡片的"低可信"字段数；越小越严格（更多字段会被标红）。</summary>
+    public double LowConfidenceWidth { get; set; } = 0.2;
+
+    /// <summary>soft 内存模式下被自动触发的采样容量（仅当用户未指定 SampleReservoir/Step 时生效，默认 50000）。
+    /// Web 用户通常不需要调整；分析超大文件触达内存预算时可适度调小让回退更激进。</summary>
+    public int MemoryFallbackSampleSize { get; set; } = 50_000;
+
     /// <summary>CSV 数字列推断为数值类型（--csv-infer-numbers / --no-csv-number-inference）。
     /// 默认 true：30 → 30、3.14 → 3.14；前导零 / 长数字 / 科学计数法 / 带单位保持字符串避免误转。
     /// 关掉后整列按字符串统计，失去数值剖析（均值/分位数/相关性等）。</summary>
@@ -58,6 +66,14 @@ public sealed class AnalysisState : IDisposable
     public bool EnableTimeSeries { get; set; }                   // --time-series
     public bool EnableDistributionSnapshot { get; set; }         // --distribution-snapshot
 
+    /// <summary>模糊去重目标字段（--fuzzy-dedup-field）。空 = 不启用；填了字段名后
+    /// 会在该字段上做形态变体聚类（去除标点/全半角/繁简后归并相似字符串），填充"模糊去重"卡。</summary>
+    public string? FuzzyDedupField { get; set; }
+
+    /// <summary>相关性蓄水池容量（每字段保留最多 N 行数值，默认 20000）。
+    /// 大数据集且内存紧张时可调小；调大能更精确但耗内存。普通用户无需调整。</summary>
+    public int CorrelationReservoir { get; set; } = 20_000;
+
     /// <summary>任一 P4 开关被勾选（用于在 UI 标识需要走 AdvancedAnalysisOptions 路径）。</summary>
     public bool HasAnyP4Switch =>
         EnableCorrelation || EnableStringPatterns
@@ -74,6 +90,11 @@ public sealed class AnalysisState : IDisposable
     // 用户上传的 schema snapshot JSON，作为 diff 的 baseline。基线独立于本次分析的源数据。
     public string? BaselineSnapshotPath { get; set; }
     public string? BaselineSnapshotName { get; set; }
+
+    // ── P3 分布快照基线（--diff-distribution）──
+    // 用户上传的 distribution snapshot JSON，与本次分析的分布快照做漂移对比。
+    public string? DistributionBaselinePath { get; set; }
+    public string? DistributionBaselineName { get; set; }
 
     /// <summary>用户上传基线后，本地计算（不重新跑分析）的 SchemaDiff 副本；未上传基线时为 null。</summary>
     public global::ObjectAnalyzer.Analysis.SchemaDiff? ComputedSchemaDiff { get; set; }
@@ -255,6 +276,8 @@ public sealed class AnalysisState : IDisposable
         DeleteQuietly(DataFilePath);
         DeleteQuietly(RulesFilePath);
         DeleteQuietly(BaselineSnapshotPath);
+        // P3 分布漂移基线：用户上传的临时文件
+        DeleteQuietly(DistributionBaselinePath);
         // P6.2 增量分析：检查点/断点/基线均为用户上传的临时文件
         DeleteQuietly(CheckpointPath);
         DeleteQuietly(ResumeFrom);

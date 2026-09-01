@@ -81,6 +81,17 @@
   <data name="OptEnableTimeSeriesTitle" xml:space="preserve"><value>Trend / seasonality / gap analysis for DateTime fields</value></data>
   <data name="OptEnableDistributionSnapshot" xml:space="preserve"><value>Distribution snapshot export</value></data>
   <data name="OptEnableDistributionSnapshotTitle" xml:space="preserve"><value>Export per-field distribution snapshot JSON for cross-dataset drift detection</value></data>
+  <data name="OptFuzzyDedupField" xml:space="preserve"><value>Fuzzy dedup target field</value></data>
+  <data name="OptFuzzyDedupFieldTitle" xml:space="preserve"><value>Cluster form variants on this field (strip punctuation/fullwidth/trad-simp) — e.g. name</value></data>
+  <data name="OptCorrelationReservoir" xml:space="preserve"><value>Correlation reservoir size</value></data>
+  <data name="OptCorrelationReservoirTitle" xml:space="preserve"><value>Max numeric samples kept per field (default 20000); lower for memory, higher for precision</value></data>
+  <data name="GroupSamplingAdvanced" xml:space="preserve"><value>Sampling (advanced)</value></data>
+  <data name="OptLowConfidenceWidth" xml:space="preserve"><value>Low-confidence threshold</value></data>
+  <data name="OptLowConfidenceWidthTitle" xml:space="preserve"><value>Sampling coverage interval width ≥ this is "low confidence" (default 0.2; lower = stricter)</value></data>
+  <data name="OptMemoryFallbackSampleSize" xml:space="preserve"><value>Soft-mode auto sample size</value></data>
+  <data name="OptMemoryFallbackSampleSizeTitle" xml:space="preserve"><value>Auto-sampling size triggered under soft memory mode (only when SampleReservoir/Step unset; default 50000)</value></data>
+  <data name="LblDistributionBaseline" xml:space="preserve"><value>Distribution baseline (drift compare)</value></data>
+  <data name="LblDistributionBaselineTitle" xml:space="preserve"><value>Upload a historical distribution-snapshot JSON to compare with this run's snapshot</value></data>
   <data name="OptMaxMemory" xml:space="preserve"><value>Memory limit (MB)</value></data>
   <data name="OptMaxMemoryTitle" xml:space="preserve"><value>Managed heap ceiling, 0 = no monitoring</value></data>
   <data name="OptMaxMemoryMode" xml:space="preserve"><value>On exceed</value></data>
