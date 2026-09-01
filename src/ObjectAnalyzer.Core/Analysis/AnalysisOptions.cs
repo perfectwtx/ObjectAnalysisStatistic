@@ -58,26 +58,4 @@ public sealed class AnalysisOptions
 
     // ── 审计日志 ──
     public AuditOptions Audit { get; set; } = new();
-
-    /// <summary>
-    /// 已加载的字段规则（来自规则文件的 <c>fields</c> 节）。
-    /// 启动分析时由 AnalysisRunner 自行从 <see cref="RulesOptions.RulesFile"/> 加载后填入。
-    /// </summary>
-    public Dictionary<string, FieldRule>? FieldRules { get; set; }
-
-    /// <summary>
-    /// 已加载的字段值解析器（来自规则文件的 <c>valueParsers</c> 节，如 Excel 单元格内嵌 JSON）。
-    /// </summary>
-    public List<ValueParserConfig>? ValueParsers { get; set; }
-
-    /// <summary>
-    /// 已加载的数据集级期望（来自规则文件的 <c>expectations</c> 节）。
-    /// </summary>
-    public AnalysisExpectations? Expectations { get; set; }
-
-    /// <summary>
-    /// 完整的已加载规则文件（向后兼容字段规则的直接访问，如 PII 规则、transform 等）。
-    /// null 表示未提供规则文件。
-    /// </summary>
-    public AnalysisRules? RulesAll { get; set; }
 }
