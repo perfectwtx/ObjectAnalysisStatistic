@@ -77,6 +77,54 @@ public class PreflightCheckerTests
 
     [Fact]
     [Trait("Category", "Preflight")]
+    public void Build_ParentPrefixOverlap_MarksAsMatched()
+    {
+        // parse:json 场景：规则字段 A.body 在结果中已被展平为 A.body.foo / A.body.bar
+        // 但在预检阶段，解析器还没走 transform，样本里仍是 A.body。
+        // 这里模拟结果视角：样本里只有展平后的子字段；规则字段 A.body 应当算作命中。
+        var ruleFields = new[] { "A.body" };
+        var sampleFields = new[] { "A.body.foo", "A.body.bar", "A.body.baz" };
+        var result = PreflightChecker.Build(ruleFields, sampleFields);
+
+        Assert.False(result.HasWarning);
+        Assert.Single(result.MatchedRuleFields);
+        Assert.Contains("A.body", result.MatchedRuleFields);
+        Assert.Empty(result.UnmatchedRuleFields);
+    }
+
+    [Fact]
+    [Trait("Category", "Preflight")]
+    public void Build_ParentPrefixOverlap_MixedRules()
+    {
+        // 混合场景：规则里有父路径（应匹配）和无关联字段（应不匹配）
+        var ruleFields = new[] { "A.body", "name", "missing" };
+        var sampleFields = new[] { "A.body.foo", "name" };
+        var result = PreflightChecker.Build(ruleFields, sampleFields);
+
+        Assert.False(result.HasWarning);
+        Assert.Equal(2, result.MatchedRuleFields.Count);
+        Assert.Contains("A.body", result.MatchedRuleFields);
+        Assert.Contains("name", result.MatchedRuleFields);
+        Assert.Single(result.UnmatchedRuleFields);
+        Assert.Contains("missing", result.UnmatchedRuleFields);
+    }
+
+    [Fact]
+    [Trait("Category", "Preflight")]
+    public void Build_ParentPrefixOverlap_SiblingIsNotMatch()
+    {
+        // A.bodyX 是 A.body 的兄弟，不是子字段，不应被认作匹配
+        var ruleFields = new[] { "A.body" };
+        var sampleFields = new[] { "A.bodyX", "A.bodyX.y" };
+        var result = PreflightChecker.Build(ruleFields, sampleFields);
+
+        Assert.True(result.HasWarning);
+        Assert.Single(result.UnmatchedRuleFields);
+        Assert.Empty(result.MatchedRuleFields);
+    }
+
+    [Fact]
+    [Trait("Category", "Preflight")]
     public void Build_PartialOverlap_NoWarning()
     {
         // 部分匹配：至少 1 个规则字段落到数据里 → 用户用对了规则文件，不阻断

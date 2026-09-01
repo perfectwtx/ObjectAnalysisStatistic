@@ -92,19 +92,30 @@ public static class PreflightChecker
             if (sampleSeen.Add(f)) sampleFields.Add(f);
         }
 
-        // 3) 比对：大小写不敏感
+        // 3) 比对：大小写不敏感 + 父路径匹配
+        // 关键点：当规则字段带 parse:json 时，FieldTransformProcessor 会把值展平成 A.body.foo / A.body.bar
+        // 等子字段，原始的 A.body 名字在结果中已被替换；但在预检阶段，解析器还没走 transform，
+        // 样本里仍是原始列名（如 A）。为统一方案 B 与方案 D 的判定语义，约定：
+        // 规则字段 X 命中结果字段 Y，当且仅当 Y == X（完全相等）或 Y 以 "X." 开头（X 是 Y 的父路径）。
+        // 这样无论 transform 在哪个阶段触发，"规则字段确实覆盖到数据"这件事都能被识别。
         var matched = new List<string>();
         var unmatched = new List<string>();
         foreach (var f in ruleFields)
         {
-            if (sampleSeen.Contains(f))
+            bool isMatched = sampleSeen.Contains(f);
+            if (!isMatched)
             {
-                matched.Add(f);
+                string prefix = f + ".";
+                foreach (var s in sampleFields)
+                {
+                    if (s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isMatched = true;
+                        break;
+                    }
+                }
             }
-            else
-            {
-                unmatched.Add(f);
-            }
+            if (isMatched) matched.Add(f); else unmatched.Add(f);
         }
 
         // 4) 判定：有规则字段 + 样本字段都拿到 + 一个都没匹配上 → 警告

@@ -1881,6 +1881,8 @@
             // ── 方案 D：结果页兜底警告 ──
             // 再次校验：本次结果里是否出现任意规则字段？若完全没有，说明规则文件与数据不匹配。
             // 仅在用户上传了规则文件时计算；预检未触发（例如部分匹配）时也兜底。
+            // 关键点：当规则字段带 parse:json 时，FieldTransformProcessor 会把值展平成 A.body.foo / A.body.bar
+            // 等子字段，原始的 A.body 名字已被替换；此时不能只看完全相等，要允许"规则字段是结果字段的父路径"。
             if (rules != null && rules.Fields.Count > 0 && result.FieldStatistics.Count > 0)
             {
                 var observed = new HashSet<string>(
@@ -1891,6 +1893,17 @@
                 {
                     if (string.IsNullOrWhiteSpace(field)) continue;
                     if (observed.Contains(field)) { anyMatched = true; break; }
+                    // 规则字段是某个结果字段的父路径（A.body → A.body.foo）
+                    string prefix = field + ".";
+                    foreach (var stat in observed)
+                    {
+                        if (stat.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            anyMatched = true;
+                            break;
+                        }
+                    }
+                    if (anyMatched) break;
                 }
                 if (!anyMatched)
                 {
