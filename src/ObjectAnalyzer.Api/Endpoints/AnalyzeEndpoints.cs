@@ -64,24 +64,9 @@ public static class AnalyzeEndpoints
                 // 规则带 valueParsers 时实际走的是 excel-json 解析器，响应里如实回写，
                 // 免得 UI 显示 "excel" 而字段却已按 JSON 展开，看着像抽风
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, rulesObj);
-                var result = AnalysisCore.AnalyzeFile(tempData, format, rulesObj, new AnalyzeRequestOptions
-                {
-                    Flatten = form.Flatten,
-                    MaxValuesToShow = form.MaxValuesToShow,
-                    Fields = form.Fields,
-                    Filter = form.Filter,
-                    RootPath = form.RootPath,
-                    RecordPath = form.RecordPath,
-                    SampleReservoir = form.SampleReservoir,
-                    SampleStep = form.SampleStep,
-                    MaxDegreeOfParallelism = form.MaxDegreeOfParallelism,
-                    CsvInferNumbers = form.CsvInferNumbers,
-                    EnableCorrelation = form.EnableCorrelation,
-                    EnableStringPatterns = form.EnableStringPatterns,
-                    EnableUnicodeHygiene = form.EnableUnicodeHygiene,
-                    EnableTimeSeries = form.EnableTimeSeries,
-                    EnableDistributionSnapshot = form.EnableDistributionSnapshot
-                }, cancellationToken);
+                // multipart 表单字段通过继承复用，AnalysisOptions 一次性构造（含 rules.runtime 合并）
+                var options = form.ToAnalysisOptions(tempData, rulesObj);
+                var result = AnalysisCore.AnalyzeFile(tempData, format, rulesObj, options, cancellationToken);
 
                 return TypedResults.Ok(new AnalyzeResponse(
                     FileName: file.FileName,
@@ -130,7 +115,8 @@ public static class AnalyzeEndpoints
                     ? FileParsers.DetectFormat(tempData)
                     : config.Format.Trim().ToLowerInvariant();
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, config.Rules);
-                var result = AnalysisCore.AnalyzeFile(tempData, format, config.Rules, config, cancellationToken);
+                var options = config.ToAnalysisOptions(tempData, config.Rules);
+                var result = AnalysisCore.AnalyzeFile(tempData, format, config.Rules, options, cancellationToken);
 
                 return TypedResults.Ok(new AnalyzeRawResponse(
                     effectiveFormat, config.Rules is not null ? "inline" : null, result));
@@ -153,27 +139,16 @@ public static class AnalyzeEndpoints
         .DisableAntiforgery();
 
         // ── 分析：请求体即数据文本 ──
+        // 分析参数统一通过 [AsParameters] AnalyzeRequestOptions 绑定（每个属性 → 独立查询参数），
+        // 规则通过查询参数 rulesJson / allowUnknownRules 传入。
+        // 这样查询参数集合与 /analyze、/analyze/config 的字段一一对应，新增选项时三个端点同步。
         routes.MapPost("/analyze/raw",
             async Task<Results<Ok<AnalyzeRawResponse>, BadRequest<ErrorResponse>>> (
             HttpRequest request,
+            [AsParameters] AnalyzeRequestOptions options,
             [Description("数据格式：json / jsonl / csv / excel / xml / yaml")] string format,
-            [Description("是否展开嵌套字段为 a.b.c 路径（默认 true）")] bool? flatten,
-            [Description("每字段最多展示的唯一值数量（默认 5）")] int? maxValues,
-            [Description("仅统计这些字段（逗号分隔，如 name,age）")] string? fields,
-            [Description("过滤表达式，如 age >= 18 AND status in ['active']")] string? filter,
-            [Description("文件根 JSONPath，如 $.data[*]（仅整体 JSON 生效）")] string? rootPath,
-            [Description("记录级 JSONPath，如 $.payload（每条记录生效）")] string? recordPath,
-            [Description("蓄水池随机采样最大记录数（0 = 关闭）")] int? sampleReservoir,
-            [Description("等距采样步长，每 N 条取 1 条（0 = 关闭）")] int? sampleStep,
-            [Description("最大并行线程数（-1 = 全部核心）")] int? maxParallel,
-            [Description("CSV 数字列推断为数值类型（默认 true，false 则按字符串统计）")] bool? csvInferNumbers,
             [Description("内联规则 JSON（走查询参数，受请求行长度限制；规则较长请改用 multipart 上传）")] string? rulesJson,
             [Description("容忍规则里不认识的键（默认 false，拼错会报错）")] bool? allowUnknownRules,
-            [Description("启用字段相关性分析")] bool? enableCorrelation,
-            [Description("启用字符串模式归纳")] bool? enableStringPatterns,
-            [Description("启用 Unicode 卫生检查")] bool? enableUnicodeHygiene,
-            [Description("启用时间序列分析")] bool? enableTimeSeries,
-            [Description("启用分布快照导出")] bool? enableDistributionSnapshot,
             CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(format))
@@ -204,25 +179,9 @@ public static class AnalyzeEndpoints
                 // 规则带 valueParsers 时实际走 excel-json 解析器，响应里如实回写
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(requestedFormat, rulesObj);
 
-                var result = AnalysisCore.AnalyzeFile(tempData, requestedFormat, rulesObj,
-                    new AnalyzeRequestOptions
-                    {
-                        Flatten = flatten,
-                        MaxValuesToShow = maxValues,
-                        Fields = fields,
-                        Filter = filter,
-                        RootPath = rootPath,
-                        RecordPath = recordPath,
-                        SampleReservoir = sampleReservoir,
-                        SampleStep = sampleStep,
-                        MaxDegreeOfParallelism = maxParallel,
-                        CsvInferNumbers = csvInferNumbers,
-                        EnableCorrelation = enableCorrelation,
-                        EnableStringPatterns = enableStringPatterns,
-                        EnableUnicodeHygiene = enableUnicodeHygiene,
-                        EnableTimeSeries = enableTimeSeries,
-                        EnableDistributionSnapshot = enableDistributionSnapshot
-                    }, cancellationToken);
+                // 查询参数 + 规则一次性构造 AnalysisOptions（含 rules.runtime 合并）
+                var analysisOptions = options.ToAnalysisOptions(tempData, rulesObj);
+                var result = AnalysisCore.AnalyzeFile(tempData, requestedFormat, rulesObj, analysisOptions, cancellationToken);
 
                 return TypedResults.Ok(new AnalyzeRawResponse(
                     effectiveFormat, rulesObj is null ? null : "inline", result));
@@ -238,7 +197,7 @@ public static class AnalyzeEndpoints
         })
         .WithTags("分析")
         .WithSummary("分析请求数据文本")
-        .WithDescription("请求体即数据文本（JSON / JSONL / CSV / Excel / XML / YAML），通过 ?format= 指定格式；全部分析参数通过查询字符串传入。响应与 multipart 版本一致。" +
+        .WithDescription("请求体即数据文本（JSON / JSONL / CSV / Excel / XML / YAML），通过 ?format= 指定格式；全部分析参数通过查询字符串传入（与 /analyze、/analyze/config 字段一致），" +
             "规则通过 ?rulesJson= 传入（请求体已被数据文本占用，故只能走查询参数 —— 受请求行长度限制，" +
             "规则较长时请改用 multipart 的 /api/analyze）。规则里的未知键默认同样拦截并返回 400 + unknowns，" +
             "确认可忽略时追加 allowUnknownRules=true。" +

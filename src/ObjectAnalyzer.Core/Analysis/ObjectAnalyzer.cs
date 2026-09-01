@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ObjectAnalyzer.Analysis.Options;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -61,7 +62,7 @@ public static partial class ObjectAnalyzer
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
-        AnalysisFeatures? features = null,
+        AdvancedAnalysisOptions? features = null,
         IProgress<long>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -81,7 +82,7 @@ public static partial class ObjectAnalyzer
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
-        AnalysisFeatures? features = null,
+        AdvancedAnalysisOptions? features = null,
         IProgress<long>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -100,7 +101,7 @@ public static partial class ObjectAnalyzer
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules,
         ParallelOptions? parallelOptions,
-        AnalysisFeatures? features,
+        AdvancedAnalysisOptions? features,
         CancellationToken cancellationToken,
         IProgress<long>? progress = null)
     {
@@ -814,9 +815,17 @@ public static partial class ObjectAnalyzer
         string valStr,
         string fieldName,
         Dictionary<string, double?>? correlationRow,
-        AnalysisFeatures? features)
+        AdvancedAnalysisOptions? features)
     {
-        if (features == null || features.IsEmpty) return;
+        if (features == null) return;
+        if (!features.EnableCorrelation
+            && !features.EnableStringPatterns
+            && !features.EnableUnicodeHygiene
+            && !features.EnableTimeSeries
+            && !features.EnableDistributionSnapshot)
+        {
+            return;
+        }
 
         // 1) 相关性：收集每字段的数值样本到本对象行（循环结束后再 RecordObject）
         if (correlationRow != null && value != null && TryGetDoubleValue(value, out double dVal))

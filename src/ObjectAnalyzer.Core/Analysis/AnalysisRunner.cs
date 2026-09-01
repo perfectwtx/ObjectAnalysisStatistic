@@ -811,7 +811,7 @@ public static class AnalysisRunner
                             ? options.Parse.MaxDegreeOfParallelism
                             : -1
                     };
-                    var features = BuildAnalysisFeatures(options);
+                    var features = options.Advanced;
                     if (needDistributionSketches)
                     {
                         var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
@@ -842,7 +842,7 @@ public static class AnalysisRunner
                             ? options.Parse.MaxDegreeOfParallelism
                             : -1
                     };
-                    var features = BuildAnalysisFeatures(options);
+                    var features = options.Advanced;
                     // P6.2：即使进度条关闭，也要追踪记录数（--checkpoint 落盘依赖 LastRecordCount）
                     IProgress<long>? progress = incremental == null && s_activeMemoryBudget is null
                         ? null
@@ -979,30 +979,6 @@ public static class AnalysisRunner
         // Schema 快照导出 / diff 计算（独立于代码生成器 SchemaExporter）
         // 已在 ProcessAndReport 前置阶段完成（见 ProcessAndReport 顶部），此处保留注释便于阅读。
         return result;
-    }
-
-    /// <summary>
-    /// 从 CLI 选项构建 <see cref="AnalysisFeatures"/>：当用户未启用任何 P4 特性时返回 null，
-    /// 以避免默认路径上引入任何额外开销。
-    /// </summary>
-    internal static AnalysisFeatures? BuildAnalysisFeatures(AnalysisOptions options)
-    {
-        bool anyEnabled = options.Advanced.EnableCorrelation
-            || options.Advanced.EnableStringPatterns
-            || options.Advanced.EnableUnicodeHygiene
-            || options.Advanced.EnableTimeSeries
-            || !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath)
-            || !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline);
-        if (!anyEnabled) return null;
-        return new AnalysisFeatures
-        {
-            EnableCorrelation = options.Advanced.EnableCorrelation,
-            EnableStringPatterns = options.Advanced.EnableStringPatterns,
-            EnableUnicodeHygiene = options.Advanced.EnableUnicodeHygiene,
-            EnableTimeSeries = options.Advanced.EnableTimeSeries,
-            EnableDistributionSnapshot = !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath)
-                || !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline)
-        };
     }
 
     /// <summary>

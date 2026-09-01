@@ -152,7 +152,7 @@ public class CsvNumberInferenceTests
         {
             var data = FileParsers.ParseByFormat(path, "csv", new ParseOptions()).ToList();
             var result = ObjectAnalyzer.Analysis.ObjectAnalyzer.Analyze(
-                data, features: new ObjectAnalyzer.Analysis.AnalysisFeatures { EnableCorrelation = true });
+                data, features: new ObjectAnalyzer.Analysis.Options.AdvancedAnalysisOptions { EnableCorrelation = true });
 
             Assert.NotNull(result.CorrelationMatrix);
             Assert.Equal(2, result.CorrelationMatrix!.Fields.Count);

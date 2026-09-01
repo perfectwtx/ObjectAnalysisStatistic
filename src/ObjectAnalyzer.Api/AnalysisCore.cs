@@ -1,4 +1,5 @@
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Parsing;
 using Analyzer = global::ObjectAnalyzer.Analysis.ObjectAnalyzer;
 
@@ -11,27 +12,23 @@ internal static class AnalysisCore
         string dataPath,
         string format,
         AnalysisRules? rules,
-        AnalyzeRequestOptions request,
+        AnalysisOptions options,
         CancellationToken cancellationToken)
     {
-        // 方案 A：把 rules.runtime 节点配置合并到 options（与 CLI 同源、同优先级链）。
-        // 流程：先把 AnalyzeRequestOptions（可空）展开为 AnalysisOptions（带默认）→
-        //      调用 RulesToOptionsConverter 仅覆盖"默认"字段 →
-        //      把合并后的值用回 AnalyzeRequestOptions，让下游代码无需感知。
-        if (rules?.Runtime != null)
-        {
-            var merged = BuildAnalysisOptionsFromRequest(dataPath, request);
-            RulesToOptionsConverter.Apply(merged, rules);
-            request = MergeBack(merged, request);
-        }
+        // 解析前按"record-path 强制不展平"的口径决定 Flatten：
+        // 提前展平会让 $.foo.bar 这种路径找不到目标
+        // （与 AnalysisRunner.ResolveFlatten 行为一致，CLI / API 同源）。
+        bool flatten = !string.IsNullOrWhiteSpace(options.Input.RecordPath)
+            ? false
+            : options.Parse.Flatten;
 
         var parseOptions = new ParseOptions
         {
-            Flatten = request.Flatten ?? true,
+            Flatten = flatten,
             ValueParsers = rules?.ValueParsers ?? new List<ValueParserConfig>(),
-            CsvInferNumbers = request.CsvInferNumbers ?? true,
-            SampleReservoir = request.SampleReservoir ?? 0,
-            SampleStep = request.SampleStep ?? 0
+            CsvInferNumbers = options.Parse.CsvInferNumbers,
+            SampleReservoir = options.Sampling.SampleReservoir,
+            SampleStep = options.Sampling.SampleStep
         };
 
         string effectiveFormat = ResolveEffectiveFormat(format, rules);
@@ -39,24 +36,26 @@ internal static class AnalysisCore
         IEnumerable<Dictionary<string, object?>> objects =
             FileParsers.ParseByFormat(dataPath, effectiveFormat, parseOptions);
 
-        var selectedFields = request.Fields?
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var selectedFields = string.IsNullOrWhiteSpace(options.FieldSelection.Fields)
+            ? null
+            : options.FieldSelection.Fields
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-        var processor = new FieldTransformProcessor(rules, selectedFields, request.Filter);
+        var processor = new FieldTransformProcessor(rules, selectedFields, options.FieldSelection.Filter);
         if (processor.HasSelectionOrTransforms)
             objects = processor.Wrap(objects);
 
-        if (Sampling.IsEnabled(request.SampleReservoir ?? 0, request.SampleStep ?? 0)
+        if (Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep)
             && effectiveFormat is not ("jsonl" or "csv" or "excel" or "excel-json"))
         {
-            objects = Sampling.Apply(objects, request.SampleReservoir ?? 0, request.SampleStep ?? 0);
+            objects = Sampling.Apply(objects, options.Sampling.SampleReservoir, options.Sampling.SampleStep);
         }
 
         return Analyzer.Analyze(objects, rules,
-            new ParallelOptions { MaxDegreeOfParallelism = request.MaxDegreeOfParallelism ?? -1 },
-            BuildFeatures(request),
+            new ParallelOptions { MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism },
+            options.Advanced,
             cancellationToken: cancellationToken);
     }
 
@@ -68,87 +67,4 @@ internal static class AnalysisCore
     /// </summary>
     internal static string ResolveEffectiveFormat(string format, AnalysisRules? rules)
         => rules?.ValueParsers is { Count: > 0 } ? "excel-json" : format;
-
-    /// <summary>把请求参数映射为 P4 特性开关；全未指定时返回 null（保持默认行为）。</summary>
-    private static AnalysisFeatures? BuildFeatures(AnalyzeRequestOptions o)
-    {
-        if (o.EnableCorrelation is null
-            && o.EnableStringPatterns is null
-            && o.EnableUnicodeHygiene is null
-            && o.EnableTimeSeries is null
-            && o.EnableDistributionSnapshot is null)
-        {
-            return null;
-        }
-
-        return new AnalysisFeatures
-        {
-            EnableCorrelation = o.EnableCorrelation ?? false,
-            EnableStringPatterns = o.EnableStringPatterns ?? false,
-            EnableUnicodeHygiene = o.EnableUnicodeHygiene ?? false,
-            EnableTimeSeries = o.EnableTimeSeries ?? false,
-            EnableDistributionSnapshot = o.EnableDistributionSnapshot ?? false,
-        };
-    }
-
-    /// <summary>
-    /// 把 <see cref="AnalyzeRequestOptions"/>（全可空）展开为 <see cref="AnalysisOptions"/>（带默认）。
-    /// 调用方已显式提供的值映射到对应字段；未提供的字段保持 <see cref="AnalysisOptions"/> 的内置默认，
-    /// 这样 <see cref="RulesToOptionsConverter"/> 才能正确判断"哪些字段还是默认"。
-    /// </summary>
-    private static AnalysisOptions BuildAnalysisOptionsFromRequest(string dataPath, AnalyzeRequestOptions req)
-    {
-        return new AnalysisOptions
-        {
-            Input =
-            {
-                InputPath = dataPath,
-                RootPath = req.RootPath,
-                RecordPath = req.RecordPath
-            },
-            Parse =
-            {
-                Flatten = req.Flatten ?? true,
-                CsvInferNumbers = req.CsvInferNumbers ?? true,
-                MaxValuesToShow = req.MaxValuesToShow ?? 5,
-                MaxDegreeOfParallelism = req.MaxDegreeOfParallelism ?? -1
-            },
-            FieldSelection = { Fields = req.Fields, Filter = req.Filter },
-            Sampling = { SampleReservoir = req.SampleReservoir ?? 0, SampleStep = req.SampleStep ?? 0 },
-            Advanced =
-            {
-                EnableCorrelation = req.EnableCorrelation ?? false,
-                EnableStringPatterns = req.EnableStringPatterns ?? false,
-                EnableUnicodeHygiene = req.EnableUnicodeHygiene ?? false,
-                EnableTimeSeries = req.EnableTimeSeries ?? false
-            }
-        };
-    }
-
-    /// <summary>
-    /// 把 RulesToOptionsConverter 合并后的 <see cref="AnalysisOptions"/> 关键字段回写到 <see cref="AnalyzeRequestOptions"/>。
-    /// 仅回写 RulesToOptionsConverter 实际覆盖的字段集合（P4 / Sampling / JsonPath），其他字段保持原样。
-    /// </summary>
-    private static AnalyzeRequestOptions MergeBack(AnalysisOptions merged, AnalyzeRequestOptions original)
-    {
-        return new AnalyzeRequestOptions
-        {
-            Flatten = original.Flatten, // 由后续 parseOptions 处理
-            CsvInferNumbers = original.CsvInferNumbers,
-            MaxValuesToShow = original.MaxValuesToShow ?? merged.Parse.MaxValuesToShow,
-            Fields = string.IsNullOrEmpty(original.Fields) ? (string.IsNullOrEmpty(merged.FieldSelection.Fields) ? null : merged.FieldSelection.Fields) : original.Fields,
-            Filter = string.IsNullOrWhiteSpace(original.Filter) ? merged.FieldSelection.Filter : original.Filter,
-            RootPath = string.IsNullOrWhiteSpace(original.RootPath) ? merged.Input.RootPath : original.RootPath,
-            RecordPath = string.IsNullOrWhiteSpace(original.RecordPath) ? merged.Input.RecordPath : original.RecordPath,
-            SampleReservoir = original.SampleReservoir ?? (merged.Sampling.SampleReservoir > 0 ? merged.Sampling.SampleReservoir : null),
-            SampleStep = original.SampleStep ?? (merged.Sampling.SampleStep > 0 ? merged.Sampling.SampleStep : null),
-            MaxDegreeOfParallelism = original.MaxDegreeOfParallelism ?? (merged.Parse.MaxDegreeOfParallelism >= 1 ? merged.Parse.MaxDegreeOfParallelism : null),
-            EnableCorrelation = original.EnableCorrelation ?? merged.Advanced.EnableCorrelation,
-            EnableStringPatterns = original.EnableStringPatterns ?? merged.Advanced.EnableStringPatterns,
-            EnableUnicodeHygiene = original.EnableUnicodeHygiene ?? merged.Advanced.EnableUnicodeHygiene,
-            EnableTimeSeries = original.EnableTimeSeries ?? merged.Advanced.EnableTimeSeries,
-            EnableDistributionSnapshot = original.EnableDistributionSnapshot
-                ?? (!string.IsNullOrEmpty(merged.Distribution.DistributionSnapshotPath)),
-        };
-    }
 }

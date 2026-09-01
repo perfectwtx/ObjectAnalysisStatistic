@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 using Xunit;
 
 /// <summary>
@@ -31,7 +32,7 @@ public class P4AnalysisDepthTests
             double y = 2 * x + rng.NextDouble();
             objects.Add(new() { ["x"] = x, ["y"] = y });
         }
-        var features = new AnalysisFeatures { EnableCorrelation = true };
+        var features = new AdvancedAnalysisOptions { EnableCorrelation = true };
         var result = Analyze(objects, features: features);
 
         Assert.NotNull(result.CorrelationMatrix);
@@ -76,7 +77,7 @@ public class P4AnalysisDepthTests
             objects.Add(new() { ["contact"] = $"1380013{i:D4}" }); // 手机号
             objects.Add(new() { ["contact"] = $"10008{i}" });      // 邮编（5 位数字）
         }
-        var features = new AnalysisFeatures { EnableStringPatterns = true };
+        var features = new AdvancedAnalysisOptions { EnableStringPatterns = true };
         var result = Analyze(objects, features: features);
 
         Assert.NotNull(result.StringPatterns);
@@ -111,7 +112,7 @@ public class P4AnalysisDepthTests
             new() { ["name"] = "张三" },
             new() { ["name"] = "Carol\u200B" },  // 零宽空格
         };
-        var features = new AnalysisFeatures { EnableUnicodeHygiene = true };
+        var features = new AdvancedAnalysisOptions { EnableUnicodeHygiene = true };
         var result = Analyze(objects, features: features);
 
         Assert.NotNull(result.UnicodeHygiene);
@@ -141,7 +142,7 @@ public class P4AnalysisDepthTests
             }
         }
 
-        var features = new AnalysisFeatures { EnableTimeSeries = true };
+        var features = new AdvancedAnalysisOptions { EnableTimeSeries = true };
         var result = Analyze(expanded, features: features);
 
         Assert.NotNull(result.TimeSeriesAnalyses);

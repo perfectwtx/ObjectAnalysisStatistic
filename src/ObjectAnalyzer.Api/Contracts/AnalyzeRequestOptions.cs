@@ -1,8 +1,15 @@
 using System.ComponentModel;
+using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 
 namespace ObjectAnalyzer.Api;
 
-/// <summary>分析请求选项（multipart 表单 / 查询参数绑定，注释会进入 OpenAPI 文档）。</summary>
+/// <summary>分析请求选项（multipart 表单 / 查询参数 / JSON body 绑定，注释会进入 OpenAPI 文档）。</summary>
+/// <remarks>
+/// 全字段可空：null 表示"未指定"——由 <see cref="ToAnalysisOptions"/> 用 <see cref="AnalysisOptions"/> 的内置默认填充。
+/// 规则文件 (rules.runtime) 通过 <see cref="RulesToOptionsConverter.Apply"/> 一次性合并到 <see cref="AnalysisOptions"/> 对应子组；
+/// 合并只覆盖"未显式指定"的字段（保持请求的优先级最高）。
+/// </remarks>
 public class AnalyzeRequestOptions
 {
     /// <summary>是否把嵌套 JSON 的属性展开为 a.b.c 路径后再统计（默认 true）。</summary>
@@ -61,4 +68,45 @@ public class AnalyzeRequestOptions
 
     /// <summary>导出分布快照，用于漂移检测。</summary>
     public bool? EnableDistributionSnapshot { get; init; }
+
+    /// <summary>
+    /// 把请求选项（可空）展开为 <see cref="AnalysisOptions"/>（带默认），
+    /// 并按需把规则文件 runtime 节点合并进来——返回的对象可直接喂给分析流水线。
+    /// </summary>
+    public AnalysisOptions ToAnalysisOptions(string dataPath, AnalysisRules? rules = null)
+    {
+        var options = new AnalysisOptions
+        {
+            Input =
+            {
+                InputPath = dataPath,
+                RootPath = RootPath,
+                RecordPath = RecordPath
+            },
+            Parse =
+            {
+                Flatten = Flatten ?? true,
+                CsvInferNumbers = CsvInferNumbers ?? true,
+                MaxValuesToShow = MaxValuesToShow ?? 5,
+                MaxDegreeOfParallelism = MaxDegreeOfParallelism ?? -1
+            },
+            FieldSelection = { Fields = Fields, Filter = Filter },
+            Sampling = { SampleReservoir = SampleReservoir ?? 0, SampleStep = SampleStep ?? 0 },
+            Advanced =
+            {
+                EnableCorrelation = EnableCorrelation ?? false,
+                EnableStringPatterns = EnableStringPatterns ?? false,
+                EnableUnicodeHygiene = EnableUnicodeHygiene ?? false,
+                EnableTimeSeries = EnableTimeSeries ?? false,
+                EnableDistributionSnapshot = EnableDistributionSnapshot ?? false
+            }
+        };
+
+        if (rules?.Runtime != null)
+        {
+            RulesToOptionsConverter.Apply(options, rules);
+        }
+
+        return options;
+    }
 }
