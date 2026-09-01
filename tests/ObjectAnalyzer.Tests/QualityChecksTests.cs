@@ -347,9 +347,9 @@ public class QualityChecksTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rulesPath,
-                FailOnViolations = true
+                Input = { InputPath = input },
+                Rules = { RulesFile = rulesPath },
+                Gates = { FailOnViolations = true }
             };
             Assert.Equal(3, AnalysisRunner.Run(options));
         }
@@ -379,9 +379,9 @@ public class QualityChecksTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rulesPath,
-                FailOnViolations = true
+                Input = { InputPath = input },
+                Rules = { RulesFile = rulesPath },
+                Gates = { FailOnViolations = true }
             };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
@@ -403,7 +403,7 @@ public class QualityChecksTests
             File.WriteAllText(rulesPath,
                 """{"fields": { "v": { "pattern": "[unclosed" } }}""");
 
-            var options = new AnalysisOptions { InputPath = input, RulesFile = rulesPath };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Rules = { RulesFile = rulesPath } };
             Assert.Equal(1, AnalysisRunner.Run(options));
         }
         finally

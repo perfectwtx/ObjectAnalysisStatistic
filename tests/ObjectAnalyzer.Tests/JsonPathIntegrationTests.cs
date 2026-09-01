@@ -27,10 +27,9 @@ public class JsonPathIntegrationTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                OutputPath = output,
-                RootPath = "$.data[*]",
-                PiiOff = true   // 关闭 PII 打码以断言原始值
+                Input = { InputPath = input, RootPath = "$.data[*]" },
+                Report = { OutputPath = output },
+                Pii = { PiiOff = true }   // 关闭 PII 打码以断言原始值
             };
             Assert.Equal(0, AnalysisRunner.Run(options));
 
@@ -64,10 +63,9 @@ public class JsonPathIntegrationTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                OutputPath = output,
-                RecordPath = "$.payload",
-                PiiOff = true
+                Input = { InputPath = input, RecordPath = "$.payload" },
+                Report = { OutputPath = output },
+                Pii = { PiiOff = true }
             };
             Assert.Equal(0, AnalysisRunner.Run(options));
 
@@ -95,8 +93,7 @@ public class JsonPathIntegrationTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RootPath = "$.doesNotExist[*]"
+                Input = { InputPath = input, RootPath = "$.doesNotExist[*]" }
             };
             // 空集时仅警告，继续分析 → 退出码 0
             Assert.Equal(0, AnalysisRunner.Run(options));
@@ -117,8 +114,7 @@ public class JsonPathIntegrationTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RecordPath = "$.[invalid"
+                Input = { InputPath = input, RecordPath = "$.[invalid" }
             };
             // 语法无效应硬错误退出码 1
             Assert.Equal(1, AnalysisRunner.Run(options));
@@ -141,8 +137,7 @@ public class JsonPathIntegrationTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RootPath = "$.data"
+                Input = { InputPath = input, RootPath = "$.data" }
             };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
@@ -172,11 +167,9 @@ public class JsonPathIntegrationTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                OutputPath = output,
-                RootPath = "$.events[*]",
-                RecordPath = "$.details",
-                PiiOff = true
+                Input = { InputPath = input, RootPath = "$.events[*]", RecordPath = "$.details" },
+                Report = { OutputPath = output },
+                Pii = { PiiOff = true }
             };
             Assert.Equal(0, AnalysisRunner.Run(options));
 

@@ -1333,29 +1333,35 @@
         {
             var rtOptions = new Core.Analysis.AnalysisOptions
             {
-                InputPath = dataFilePath,
-                Flatten = flatten,
-                CsvInferNumbers = true, // Web 端目前无 CSV 数字推断开关
-                MaxValuesToShow = 5,
-                RulesFile = rulesFilePath,
-                AllowUnknownRules = false,
-                MaxDegreeOfParallelism = maxDegreeOfParallelism,
-                Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
-                Filter = string.IsNullOrWhiteSpace(filterText) ? null : filterText,
-                SampleReservoir = sampleReservoir,
-                SampleStep = sampleStep,
-                ShowProgress = showProgress,
-                ResumeFrom = resumeFromPath,
-                BaselinePath = baselinePath,
-                CheckpointPath = string.IsNullOrWhiteSpace(safeCheckpointName) ? null : safeCheckpointName,
-                MaxMemoryMB = maxMemoryMB,
-                MaxMemoryMode = maxMemoryMode,
+                Input = { InputPath = dataFilePath },
+                Parse =
+                {
+                    Flatten = flatten,
+                    CsvInferNumbers = true, // Web 端目前无 CSV 数字推断开关
+                    MaxValuesToShow = 5,
+                    MaxDegreeOfParallelism = maxDegreeOfParallelism
+                },
+                Rules = { RulesFile = rulesFilePath, AllowUnknownRules = false },
+                FieldSelection =
+                {
+                    Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
+                    Filter = string.IsNullOrWhiteSpace(filterText) ? null : filterText
+                },
+                Sampling = { SampleReservoir = sampleReservoir, SampleStep = sampleStep },
+                Progress = { ShowProgress = showProgress },
+                Incremental =
+                {
+                    ResumeFrom = resumeFromPath,
+                    BaselinePath = baselinePath,
+                    CheckpointPath = string.IsNullOrWhiteSpace(safeCheckpointName) ? null : safeCheckpointName
+                },
+                Memory = { MaxMemoryMB = maxMemoryMB, MaxMemoryMode = maxMemoryMode }
             };
-            rtOptions.ApplyRuntime(rules.Runtime);
+            Core.Analysis.RulesToOptionsConverter.Apply(rtOptions, rules);
             // 把 options 合并后回填到本地变量
-            sampleReservoir = rtOptions.SampleReservoir;
-            sampleStep = rtOptions.SampleStep;
-            maxDegreeOfParallelism = rtOptions.MaxDegreeOfParallelism;
+            sampleReservoir = rtOptions.Sampling.SampleReservoir;
+            sampleStep = rtOptions.Sampling.SampleStep;
+            maxDegreeOfParallelism = rtOptions.Parse.MaxDegreeOfParallelism;
         }
 
         string effectiveFormat = rules?.ValueParsers is { Count: > 0 }
@@ -1603,26 +1609,40 @@
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var auditOptions = new Core.Analysis.AnalysisOptions
             {
-                InputPath = State.DataFilePath ?? "",
-                RulesFile = State.RulesFilePath,
-                Flatten = State.Flatten,
-                Fields = string.IsNullOrWhiteSpace(State.Fields) ? null : State.Fields,
-                Filter = string.IsNullOrWhiteSpace(State.Filter) ? null : State.Filter,
-                RootPath = string.IsNullOrWhiteSpace(State.RootPath) ? null : State.RootPath,
-                RecordPath = string.IsNullOrWhiteSpace(State.RecordPath) ? null : State.RecordPath,
-                MaxValuesToShow = State.MaxValuesToShow,
-                MaxDegreeOfParallelism = State.MaxDegreeOfParallelism,
-                SampleReservoir = State.SampleReservoir,
-                SampleStep = State.SampleStep,
+                Input =
+                {
+                    InputPath = State.DataFilePath ?? "",
+                    RootPath = string.IsNullOrWhiteSpace(State.RootPath) ? null : State.RootPath,
+                    RecordPath = string.IsNullOrWhiteSpace(State.RecordPath) ? null : State.RecordPath
+                },
+                Rules = { RulesFile = State.RulesFilePath },
+                Parse =
+                {
+                    Flatten = State.Flatten,
+                    MaxValuesToShow = State.MaxValuesToShow,
+                    MaxDegreeOfParallelism = State.MaxDegreeOfParallelism
+                },
+                FieldSelection =
+                {
+                    Fields = string.IsNullOrWhiteSpace(State.Fields) ? null : State.Fields,
+                    Filter = string.IsNullOrWhiteSpace(State.Filter) ? null : State.Filter
+                },
+                Sampling = { SampleReservoir = State.SampleReservoir, SampleStep = State.SampleStep },
                 // P6 配置同步：审计时只记录选项，不含文件值
-                ShowProgress = State.ShowProgress,
-                CheckpointPath = string.IsNullOrWhiteSpace(State.CheckpointPath) ? null : State.CheckpointPath,
-                ResumeFrom = string.IsNullOrWhiteSpace(State.ResumeFrom) ? null : State.ResumeFrom,
-                BaselinePath = string.IsNullOrWhiteSpace(State.BaselinePath) ? null : State.BaselinePath,
-                MaxMemoryMB = State.MaxMemoryMB,
-                MaxMemoryMode = string.Equals(State.MaxMemoryMode, "hard", StringComparison.OrdinalIgnoreCase)
-                    ? Core.Analysis.MaxMemoryMode.Hard
-                    : Core.Analysis.MaxMemoryMode.Soft
+                Progress = { ShowProgress = State.ShowProgress },
+                Incremental =
+                {
+                    CheckpointPath = string.IsNullOrWhiteSpace(State.CheckpointPath) ? null : State.CheckpointPath,
+                    ResumeFrom = string.IsNullOrWhiteSpace(State.ResumeFrom) ? null : State.ResumeFrom,
+                    BaselinePath = string.IsNullOrWhiteSpace(State.BaselinePath) ? null : State.BaselinePath
+                },
+                Memory =
+                {
+                    MaxMemoryMB = State.MaxMemoryMB,
+                    MaxMemoryMode = string.Equals(State.MaxMemoryMode, "hard", StringComparison.OrdinalIgnoreCase)
+                        ? Core.Analysis.MaxMemoryMode.Hard
+                        : Core.Analysis.MaxMemoryMode.Soft
+                }
             };
 
             Core.Analysis.AnalysisRules? rules = null;

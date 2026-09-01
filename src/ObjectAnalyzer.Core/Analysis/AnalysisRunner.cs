@@ -51,9 +51,9 @@ public static class AnalysisRunner
         var sw = new StopwatchLike();
         try
         {
-            if (!string.IsNullOrWhiteSpace(options.AuditLogPath))
+            if (!string.IsNullOrWhiteSpace(options.Audit.AuditLogPath))
             {
-                audit = new AuditLogger(options.AuditLogPath);
+                audit = new AuditLogger(options.Audit.AuditLogPath);
             }
         }
         catch (Exception ex)
@@ -82,19 +82,19 @@ public static class AnalysisRunner
         StopwatchLike sw,
         CancellationToken cancellationToken)
     {
-        bool dbMode = !string.IsNullOrEmpty(options.ConnectionString);
-        if (!dbMode && !File.Exists(options.InputPath))
+        bool dbMode = !string.IsNullOrEmpty(options.Input.ConnectionString);
+        if (!dbMode && !File.Exists(options.Input.InputPath))
         {
-            AnsiConsole.MarkupLine($"[red]错误: 输入文件不存在: {Markup.Escape(options.InputPath)}[/]");
+            AnsiConsole.MarkupLine($"[red]错误: 输入文件不存在: {Markup.Escape(options.Input.InputPath)}[/]");
             return 1;
         }
 
         AnalysisRules? rules = null;
-        if (!string.IsNullOrEmpty(options.RulesFile))
+        if (!string.IsNullOrEmpty(options.Rules.RulesFile))
         {
             try
             {
-                rules = LoadRules(options.RulesFile, options.AllowUnknownRules);
+                rules = LoadRules(options.Rules.RulesFile, options.Rules.AllowUnknownRules);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -104,29 +104,29 @@ public static class AnalysisRunner
             }
         }
 
-        // 方案 A：把 rules.runtime 节点配置合并到 options。
-        // 优先级：CLI / API 显式参数 > rules.runtime > options 内置默认。
-        // ApplyRuntime 内部只覆盖"默认"的 options 字段，调用方已显式设的值不会被覆盖。
-        if (rules?.Runtime != null)
+        // 规则文件 (JsonObject runtime) → AnalysisOptions 一次性合并。
+        // 优先级：CLI / API 显式参数 > rules.runtime > 子组内置默认。
+        // Apply 内部只覆盖"默认"的子组字段，调用方已显式设的值不会被覆盖。
+        if (rules != null)
         {
-            options.ApplyRuntime(rules.Runtime);
+            RulesToOptionsConverter.Apply(options, rules);
         }
 
         // 采样参数提前校验，避免解析到一半才发现配置非法
-        if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
-            Sampling.Validate(options.SampleReservoir, options.SampleStep);
+        if (Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+            Sampling.Validate(options.Sampling.SampleReservoir, options.Sampling.SampleStep);
 
         // 数据库直连参数提前校验
         if (dbMode)
         {
-            if (string.IsNullOrEmpty(options.Query))
+            if (string.IsNullOrEmpty(options.Input.Query))
             {
                 AnsiConsole.MarkupLine("[red]错误: 使用 --connection 直连数据库时必须指定 --query。[/]");
                 return 1;
             }
             try
             {
-                DatabaseReader.ResolveProvider(options.DbProvider, options.ConnectionString!);
+                DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString!);
             }
             catch (Exception ex)
             {
@@ -136,35 +136,35 @@ public static class AnalysisRunner
         }
 
         // Schema diff 基线文件预检
-        if (!string.IsNullOrEmpty(options.DiffSchemaBaseline) && !File.Exists(options.DiffSchemaBaseline))
+        if (!string.IsNullOrEmpty(options.Schema.DiffSchemaBaseline) && !File.Exists(options.Schema.DiffSchemaBaseline))
         {
             AnsiConsole.MarkupLine(
-                $"[red]错误: --diff-schema 基线文件不存在: {Markup.Escape(options.DiffSchemaBaseline)}[/]");
+                $"[red]错误: --diff-schema 基线文件不存在: {Markup.Escape(options.Schema.DiffSchemaBaseline)}[/]");
             return 1;
         }
 
         // P6.2：--resume 预检：快照文件存在性 + 源文件一致性 + 防止 --resume / --baseline / --checkpoint 自相矛盾
-        if (!string.IsNullOrEmpty(options.ResumeFrom) && !File.Exists(options.ResumeFrom))
+        if (!string.IsNullOrEmpty(options.Incremental.ResumeFrom) && !File.Exists(options.Incremental.ResumeFrom))
         {
             AnsiConsole.MarkupLine(
-                $"[red]错误: --resume 快照文件不存在: {Markup.Escape(options.ResumeFrom)}[/]");
+                $"[red]错误: --resume 快照文件不存在: {Markup.Escape(options.Incremental.ResumeFrom)}[/]");
             return 1;
         }
-        if (!string.IsNullOrEmpty(options.BaselinePath) && !File.Exists(options.BaselinePath))
+        if (!string.IsNullOrEmpty(options.Incremental.BaselinePath) && !File.Exists(options.Incremental.BaselinePath))
         {
             AnsiConsole.MarkupLine(
-                $"[red]错误: --baseline 基线文件不存在: {Markup.Escape(options.BaselinePath)}[/]");
+                $"[red]错误: --baseline 基线文件不存在: {Markup.Escape(options.Incremental.BaselinePath)}[/]");
             return 1;
         }
-        if (!string.IsNullOrEmpty(options.CheckpointPath) && !string.IsNullOrEmpty(options.ResumeFrom) &&
-            string.Equals(Path.GetFullPath(options.CheckpointPath), Path.GetFullPath(options.ResumeFrom), StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(options.Incremental.CheckpointPath) && !string.IsNullOrEmpty(options.Incremental.ResumeFrom) &&
+            string.Equals(Path.GetFullPath(options.Incremental.CheckpointPath), Path.GetFullPath(options.Incremental.ResumeFrom), StringComparison.OrdinalIgnoreCase))
         {
             AnsiConsole.MarkupLine(
                 "[red]错误: --checkpoint 与 --resume 指向同一文件；为避免相互覆盖，请使用不同路径。[/]");
             return 1;
         }
-        if (!string.IsNullOrEmpty(options.BaselinePath) && !string.IsNullOrEmpty(options.ResumeFrom) &&
-            string.Equals(Path.GetFullPath(options.BaselinePath), Path.GetFullPath(options.ResumeFrom), StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(options.Incremental.BaselinePath) && !string.IsNullOrEmpty(options.Incremental.ResumeFrom) &&
+            string.Equals(Path.GetFullPath(options.Incremental.BaselinePath), Path.GetFullPath(options.Incremental.ResumeFrom), StringComparison.OrdinalIgnoreCase))
         {
             AnsiConsole.MarkupLine(
                 "[red]错误: --baseline 与 --resume 指向同一文件；语义冲突，请使用不同路径。[/]");
@@ -174,11 +174,11 @@ public static class AnalysisRunner
         // P6.2：--resume 加载快照
         AnalyzerSnapshot? resumeSnapshot = null;
         long startFromPosition = 0;
-        if (!string.IsNullOrEmpty(options.ResumeFrom))
+        if (!string.IsNullOrEmpty(options.Incremental.ResumeFrom))
         {
             try
             {
-                resumeSnapshot = AnalyzerSnapshot.LoadFrom(options.ResumeFrom!);
+                resumeSnapshot = AnalyzerSnapshot.LoadFrom(options.Incremental.ResumeFrom!);
             }
             catch (Exception ex)
             {
@@ -187,9 +187,9 @@ public static class AnalysisRunner
             }
 
             // 源文件一致性：防止用户错把 A 文件的快照套到 B 文件上（resume 的 SourcePosition 仅对 A 有意义）
-            if (!string.IsNullOrEmpty(options.InputPath))
+            if (!string.IsNullOrEmpty(options.Input.InputPath))
             {
-                string currentAbs = Path.GetFullPath(options.InputPath);
+                string currentAbs = Path.GetFullPath(options.Input.InputPath);
                 string snapAbs = Path.GetFullPath(resumeSnapshot.SourcePath);
                 if (!string.Equals(currentAbs, snapAbs, StringComparison.OrdinalIgnoreCase))
                 {
@@ -201,7 +201,7 @@ public static class AnalysisRunner
 
             startFromPosition = Math.Max(0, resumeSnapshot.SourcePosition);
             AnsiConsole.MarkupLine(
-                $"[green][[检查点]][/] 从 {Markup.Escape(options.ResumeFrom!)} 恢复分析，已处理 {startFromPosition:N0} 条记录，本次从该位置继续");
+                $"[green][[检查点]][/] 从 {Markup.Escape(options.Incremental.ResumeFrom!)} 恢复分析，已处理 {startFromPosition:N0} 条记录，本次从该位置继续");
         }
 
         var incremental = new IncrementalContext
@@ -212,17 +212,17 @@ public static class AnalysisRunner
         };
 
         // P6.3：实例化内存预算（--max-memory）。0 表示不监控；其余值生效。
-        MemoryBudget? memoryBudget = options.MaxMemoryMB > 0
-            ? new MemoryBudget(options.MaxMemoryMB, options.MaxMemoryMode)
+        MemoryBudget? memoryBudget = options.Memory.MaxMemoryMB > 0
+            ? new MemoryBudget(options.Memory.MaxMemoryMB, options.Memory.MaxMemoryMode)
             : null;
         s_activeMemoryBudget = memoryBudget;
 
         // JSONPath 表达式语法预检（fail-fast，避免解析到一半才发现）
-        if (!string.IsNullOrWhiteSpace(options.RootPath))
+        if (!string.IsNullOrWhiteSpace(options.Input.RootPath))
         {
             try
             {
-                JsonPathProjector.TryValidate(options.RootPath);
+                JsonPathProjector.TryValidate(options.Input.RootPath);
             }
             catch (Exception ex)
             {
@@ -230,11 +230,11 @@ public static class AnalysisRunner
                 return 1;
             }
         }
-        if (!string.IsNullOrWhiteSpace(options.RecordPath))
+        if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
         {
             try
             {
-                JsonPathProjector.TryValidate(options.RecordPath);
+                JsonPathProjector.TryValidate(options.Input.RecordPath);
             }
             catch (Exception ex)
             {
@@ -260,12 +260,12 @@ public static class AnalysisRunner
                 entryBudget.Check(0, out bool autoEnable);
                 if (autoEnable)
                 {
-                    bool userRequestedSampling = Sampling.IsEnabled(options.SampleReservoir, options.SampleStep);
+                    bool userRequestedSampling = Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep);
                     if (!userRequestedSampling)
                     {
-                        options.SampleReservoir = options.MemoryFallbackSampleSize;
+                        options.Sampling.SampleReservoir = options.Sampling.MemoryFallbackSampleSize;
                         AnsiConsole.MarkupLine(
-                            $"[grey][[内存]][/] 检测到启动时已接近 [blue]--max-memory {options.MaxMemoryMB:N0} MB[/]；已自动切换为蓄水池采样 [blue]{options.SampleReservoir:N0}[/] 条以保护进程。");
+                            $"[grey][[内存]][/] 检测到启动时已接近 [blue]--max-memory {options.Memory.MaxMemoryMB:N0} MB[/]；已自动切换为蓄水池采样 [blue]{options.Sampling.SampleReservoir:N0}[/] 条以保护进程。");
                     }
                 }
                 // 入口已超限时（启动内存即超阈值，如 xunit 测试进程）立即拒绝
@@ -281,7 +281,7 @@ public static class AnalysisRunner
             // JSONPath 投影：先在文件根应用（仅当 --root-path 存在且非数据库/类型模式），
             // 此时跳过原解析器以避免对文件整体读两次；最后在每条记录上应用（--record-path）。
             // 匹配空集时仅警告。
-            bool hasRootPath = !string.IsNullOrWhiteSpace(options.RootPath);
+            bool hasRootPath = !string.IsNullOrWhiteSpace(options.Input.RootPath);
             if (hasRootPath)
             {
                 // 数据库直连：DbDataReader 惰性流式读取查询结果
@@ -291,7 +291,7 @@ public static class AnalysisRunner
                 }
                 else
                 {
-                    string fmt = FileParsers.DetectFormat(options.InputPath);
+                    string fmt = FileParsers.DetectFormat(options.Input.InputPath);
                     if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db")
                     {
                         AnsiConsole.MarkupLine(
@@ -301,8 +301,8 @@ public static class AnalysisRunner
                     else
                     {
                         AnsiConsole.MarkupLine(
-                            $"[grey][[JSONPath]][/] 正在文件根应用 [blue]{Markup.Escape(options.RootPath!)}[/] ...");
-                        parsedObjects = LoadAndApplyRootPath(options.InputPath, options.RootPath!);
+                            $"[grey][[JSONPath]][/] 正在文件根应用 [blue]{Markup.Escape(options.Input.RootPath!)}[/] ...");
+                        parsedObjects = LoadAndApplyRootPath(options.Input.InputPath, options.Input.RootPath!);
                     }
                 }
             }
@@ -320,11 +320,11 @@ public static class AnalysisRunner
             }
 
             // record-path 始终生效（即使在 root-path 之后）
-            if (!string.IsNullOrWhiteSpace(options.RecordPath))
+            if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
             {
                 AnsiConsole.MarkupLine(
-                    $"[grey][[JSONPath]][/] 正在每条记录上应用 [blue]{Markup.Escape(options.RecordPath!)}[/] ...");
-                parsedObjects = ApplyRecordPathStream(parsedObjects, options.RecordPath!);
+                    $"[grey][[JSONPath]][/] 正在每条记录上应用 [blue]{Markup.Escape(options.Input.RecordPath!)}[/] ...");
+                parsedObjects = ApplyRecordPathStream(parsedObjects, options.Input.RecordPath!);
             }
 
             // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
@@ -341,13 +341,13 @@ public static class AnalysisRunner
             }
 
             // P6.2：--baseline 合并历史 AnalysisResult JSON（与 --resume 互补：--resume 是从源文件中间续跑；--baseline 是合并任意历史结果）
-            if (!string.IsNullOrEmpty(options.BaselinePath))
+            if (!string.IsNullOrEmpty(options.Incremental.BaselinePath))
             {
-                var baseline = LoadAnalysisResultFromFile(options.BaselinePath!);
+                var baseline = LoadAnalysisResultFromFile(options.Incremental.BaselinePath!);
                 if (baseline != null)
                 {
                     AnsiConsole.MarkupLine(
-                        $"[green][[基线]][/] 正在合并基线 {Markup.Escape(options.BaselinePath!)} 的 {baseline.TotalObjects:N0} 条记录结果...");
+                        $"[green][[基线]][/] 正在合并基线 {Markup.Escape(options.Incremental.BaselinePath!)} 的 {baseline.TotalObjects:N0} 条记录结果...");
                     result.MergeFrom(baseline);
                     AnsiConsole.MarkupLine(
                         $"[green][[基线]][/] 合并后共 {result.TotalObjects:N0} 条记录");
@@ -355,14 +355,14 @@ public static class AnalysisRunner
             }
 
             // P6.2：--checkpoint 落盘当前快照（用于下次 --resume）
-            if (!string.IsNullOrEmpty(options.CheckpointPath))
+            if (!string.IsNullOrEmpty(options.Incremental.CheckpointPath))
             {
                 long totalProcessed = startFromPosition + incremental.LastRecordCount;
                 string fmt = incremental.EffectiveFormat
-                    ?? (string.IsNullOrEmpty(options.InputPath) ? "db" : FileParsers.DetectFormat(options.InputPath));
+                    ?? (string.IsNullOrEmpty(options.Input.InputPath) ? "db" : FileParsers.DetectFormat(options.Input.InputPath));
                 var snapshot = new AnalyzerSnapshot
                 {
-                    SourcePath = options.InputPath,
+                    SourcePath = options.Input.InputPath,
                     SourceFormat = fmt,
                     SourcePosition = totalProcessed,
                     PositionKind = "line",
@@ -370,9 +370,9 @@ public static class AnalysisRunner
                 };
                 try
                 {
-                    snapshot.SaveTo(options.CheckpointPath!);
+                    snapshot.SaveTo(options.Incremental.CheckpointPath!);
                     AnsiConsole.MarkupLine(
-                        $"[green][[检查点]][/] 已落盘分析快照至 [blue]{Markup.Escape(options.CheckpointPath!)}[/]（共 {totalProcessed:N0} 条记录，{result.FieldStatistics.Count} 个字段）");
+                        $"[green][[检查点]][/] 已落盘分析快照至 [blue]{Markup.Escape(options.Incremental.CheckpointPath!)}[/]（共 {totalProcessed:N0} 条记录，{result.FieldStatistics.Count} 个字段）");
                 }
                 catch (Exception ex)
                 {
@@ -383,23 +383,23 @@ public static class AnalysisRunner
 
             // P6.2：--resume / --baseline 合并后，需要把合并后的最终结果重新导出到 OutputPath。
             // ProcessAndReport 已写过一遍（含"本 run 局部"结果），再次覆盖以反映 merge 后的最终聚合。
-            if ((resumeSnapshot != null || !string.IsNullOrEmpty(options.BaselinePath))
-                && !string.IsNullOrEmpty(options.OutputPath))
+            if ((resumeSnapshot != null || !string.IsNullOrEmpty(options.Incremental.BaselinePath))
+                && !string.IsNullOrEmpty(options.Report.OutputPath))
             {
                 try
                 {
-                    ReportExporter.Save(result, options.OutputPath!, redactPii: !options.PiiOff);
+                    ReportExporter.Save(result, options.Report.OutputPath!, redactPii: !options.Pii.PiiOff);
                 }
                 catch (Exception ex)
                 {
                     AnsiConsole.MarkupLine(
-                        $"[yellow]警告: 合并后报告覆写失败 ({Markup.Escape(ex.Message)})；{Markup.Escape(options.OutputPath!)} 仍为合并前结果。[/]");
+                        $"[yellow]警告: 合并后报告覆写失败 ({Markup.Escape(ex.Message)})；{Markup.Escape(options.Report.OutputPath!)} 仍为合并前结果。[/]");
                 }
             }
 
             int exitCode = 0;
             // CI 数据质量门禁：存在任一质量违规（枚举/范围/模式/必填/唯一/null 率/数据集期望）时以非零退出码结束
-            if (options.FailOnViolations && result.QualityViolations.Count > 0)
+            if (options.Gates.FailOnViolations && result.QualityViolations.Count > 0)
             {
                 long occurrenceCount = result.QualityViolations.Sum(v => v.Count);
                 AnsiConsole.MarkupLine(
@@ -421,11 +421,11 @@ public static class AnalysisRunner
             }
 
             // CI 数据安全合规门禁：合规等级达到或劣于阈值时以非零退出码结束（与 --fail-on-violations 对称）
-            if (exitCode == 0 && !string.IsNullOrWhiteSpace(options.FailOnPiiLevel))
+            if (exitCode == 0 && !string.IsNullOrWhiteSpace(options.Gates.FailOnPiiLevel))
             {
                 var piiReport = PiiReport.Build(result);
                 if (piiReport.PiiFieldCount > 0 &&
-                    PiiSeverityRank(piiReport.ComplianceLevel) >= PiiSeverityRank(options.FailOnPiiLevel))
+                    PiiSeverityRank(piiReport.ComplianceLevel) >= PiiSeverityRank(options.Gates.FailOnPiiLevel))
                 {
                     AnsiConsole.MarkupLine(
                         $"[red]数据安全合规未通过（合规等级 {piiReport.ComplianceLevel}，发现 {piiReport.PiiFieldCount} 个敏感字段 / {piiReport.PiiValueCount} 个敏感值），退出码 4。[/]");
@@ -434,9 +434,9 @@ public static class AnalysisRunner
             }
 
             // CI 异常值门禁：任一数值字段异常值比例超阈值时以退出码 5 结束
-            if (exitCode == 0 && options.FailOnOutlierRatio.HasValue)
+            if (exitCode == 0 && options.Gates.FailOnOutlierRatio.HasValue)
             {
-                double threshold = options.FailOnOutlierRatio.Value;
+                double threshold = options.Gates.FailOnOutlierRatio.Value;
                 var offenders = result.FieldStatistics
                     .Where(s => s.OutlierRatio.HasValue && s.OutlierRatio.Value > threshold)
                     .ToList();
@@ -458,7 +458,7 @@ public static class AnalysisRunner
             }
 
             // CI Schema 演进门禁：--allow-breaking-schema-changes=false 时，含破坏性变更以退出码 6 结束
-            if (exitCode == 0 && !options.AllowBreakingSchemaChanges && result.SchemaDiff != null && result.SchemaDiff.HasBreakingChanges)
+            if (exitCode == 0 && !options.Gates.AllowBreakingSchemaChanges && result.SchemaDiff != null && result.SchemaDiff.HasBreakingChanges)
             {
                 int removed = result.SchemaDiff.RemovedFields.Count;
                 int breakingChanges = result.SchemaDiff.ChangedFields.Count(c => c.Breaking);
@@ -528,11 +528,11 @@ public static class AnalysisRunner
             Timestamp = AuditLogger.FormatTimestamp(DateTime.UtcNow),
             Event = "analysis_start",
             RunId = runId,
-            Operator = string.IsNullOrWhiteSpace(options.Operator) ? "anonymous" : options.Operator,
+            Operator = string.IsNullOrWhiteSpace(options.Audit.Operator) ? "anonymous" : options.Audit.Operator,
             ToolVersion = GetToolVersion(),
             InputSource = BuildInputSource(options),
-            InputHash = AuditLogger.ComputeFileHash(options.InputPath),
-            InputBytes = AuditLogger.GetFileSize(options.InputPath),
+            InputHash = AuditLogger.ComputeFileHash(options.Input.InputPath),
+            InputBytes = AuditLogger.GetFileSize(options.Input.InputPath),
             Options = AuditLogger.Snapshot(options, rules)
         });
     }
@@ -554,11 +554,11 @@ public static class AnalysisRunner
             Timestamp = AuditLogger.FormatTimestamp(DateTime.UtcNow),
             Event = eventName,
             RunId = runId,
-            Operator = string.IsNullOrWhiteSpace(options.Operator) ? "anonymous" : options.Operator,
+            Operator = string.IsNullOrWhiteSpace(options.Audit.Operator) ? "anonymous" : options.Audit.Operator,
             ToolVersion = GetToolVersion(),
             InputSource = BuildInputSource(options),
-            InputHash = AuditLogger.ComputeFileHash(options.InputPath),
-            InputBytes = AuditLogger.GetFileSize(options.InputPath),
+            InputHash = AuditLogger.ComputeFileHash(options.Input.InputPath),
+            InputBytes = AuditLogger.GetFileSize(options.Input.InputPath),
             Options = AuditLogger.Snapshot(options, rules),
             Result = result == null ? null : AuditLogger.Summarize(result, sw),
             Message = message,
@@ -568,13 +568,13 @@ public static class AnalysisRunner
 
     private static string BuildInputSource(AnalysisOptions options)
     {
-        if (!string.IsNullOrEmpty(options.ConnectionString))
+        if (!string.IsNullOrEmpty(options.Input.ConnectionString))
         {
-            string provider = string.IsNullOrEmpty(options.DbProvider) ? "auto" : options.DbProvider;
-            string query = options.Query ?? "";
+            string provider = string.IsNullOrEmpty(options.Input.DbProvider) ? "auto" : options.Input.DbProvider;
+            string query = options.Input.Query ?? "";
             return $"db://{provider}?{query}";
         }
-        return options.InputPath;
+        return options.Input.InputPath;
     }
 
     private static string GetToolVersion()
@@ -619,9 +619,9 @@ public static class AnalysisRunner
             AnsiConsole.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
         }
 
-        AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.InputPath)}[/] ...");
+        AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.Input.InputPath)}[/] ...");
 
-        var compression = CompressionDetector.Detect(options.InputPath);
+        var compression = CompressionDetector.Detect(options.Input.InputPath);
         if (compression != CompressionType.None)
         {
             string label = compression switch
@@ -635,7 +635,7 @@ public static class AnalysisRunner
 
             // zip 含多个数据条目时提示确定性选择结果，避免“为什么统计的是这个文件”的困惑
             if (compression == CompressionType.Zip &&
-                InputSource.PreviewZipEntries(options.InputPath) is { } preview &&
+                InputSource.PreviewZipEntries(options.Input.InputPath) is { } preview &&
                 preview.Others.Count > 0)
             {
                 AnsiConsole.MarkupLine(
@@ -646,12 +646,12 @@ public static class AnalysisRunner
         {
             Flatten = ResolveFlatten(options),
             ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
-            CsvInferNumbers = options.CsvInferNumbers,
-            SampleReservoir = options.SampleReservoir,
-            SampleStep = options.SampleStep,
+            CsvInferNumbers = options.Parse.CsvInferNumbers,
+            SampleReservoir = options.Sampling.SampleReservoir,
+            SampleStep = options.Sampling.SampleStep,
             StartFromLine = startFromPosition
         };
-        IEnumerable<Dictionary<string, object?>> parsed = FileParsers.ParseByFormat(options.InputPath, format, parseOptions);
+        IEnumerable<Dictionary<string, object?>> parsed = FileParsers.ParseByFormat(options.Input.InputPath, format, parseOptions);
 
         // jsonl / csv / excel / excel-json 已在行/记录级跳过未选中记录；
         // 其余整体物化格式（json / xml / yaml）在解析完成后统一做采样包装。
@@ -666,7 +666,7 @@ public static class AnalysisRunner
             return "excel-json";
         }
 
-        return FileParsers.DetectFormat(options.InputPath);
+        return FileParsers.DetectFormat(options.Input.InputPath);
     }
 
     private static bool RequiresExcelJsonValueParsing(AnalysisRules? rules)
@@ -676,9 +676,9 @@ public static class AnalysisRunner
 
     private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options, long startFromPosition = 0)
     {
-        var provider = DatabaseReader.ResolveProvider(options.DbProvider, options.ConnectionString!);
+        var provider = DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString!);
         AnsiConsole.MarkupLine($"[grey][[数据库直连]][/] 使用 [blue]{DatabaseReader.DisplayName(provider)}[/] 数据源，流式读取查询结果...");
-        AnsiConsole.MarkupLine($"正在直连数据库并执行查询: [blue]{Markup.Escape(options.Query!)}[/] ...");
+        AnsiConsole.MarkupLine($"正在直连数据库并执行查询: [blue]{Markup.Escape(options.Input.Query!)}[/] ...");
 
         if (startFromPosition > 0)
         {
@@ -689,7 +689,7 @@ public static class AnalysisRunner
         }
 
         IEnumerable<Dictionary<string, object?>> parsed =
-            DatabaseReader.ReadRows(options.ConnectionString!, provider, options.Query!);
+            DatabaseReader.ReadRows(options.Input.ConnectionString!, provider, options.Input.Query!);
 
         return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled: false);
     }
@@ -699,24 +699,24 @@ public static class AnalysisRunner
         AnalysisOptions options,
         bool parserAlreadySampled)
     {
-        if (!Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
+        if (!Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
             return parsed;
 
         AnnounceSampling(options);
         return parserAlreadySampled
             ? parsed
-            : Sampling.Apply(parsed, options.SampleReservoir, options.SampleStep);
+            : Sampling.Apply(parsed, options.Sampling.SampleReservoir, options.Sampling.SampleStep);
     }
 
     private static void AnnounceSampling(AnalysisOptions options)
     {
-        if (options.SampleReservoir > 0)
+        if (options.Sampling.SampleReservoir > 0)
         {
-            AnsiConsole.MarkupLine($"[grey][[采样]][/] 蓄水池随机抽样：从海量数据中均匀抽取最多 [blue]{options.SampleReservoir}[/] 条进行统计与 Schema 概览。");
+            AnsiConsole.MarkupLine($"[grey][[采样]][/] 蓄水池随机抽样：从海量数据中均匀抽取最多 [blue]{options.Sampling.SampleReservoir}[/] 条进行统计与 Schema 概览。");
         }
         else
         {
-            AnsiConsole.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
+            AnsiConsole.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.Sampling.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
         }
     }
 
@@ -732,15 +732,15 @@ public static class AnalysisRunner
         CancellationToken cancellationToken = default)
     {
         // 规则已在 Run() 中提前加载；如调用方未提供，则按需加载
-        rules ??= !string.IsNullOrEmpty(options.RulesFile)
-            ? LoadRules(options.RulesFile, options.AllowUnknownRules)
+        rules ??= !string.IsNullOrEmpty(options.Rules.RulesFile)
+            ? LoadRules(options.Rules.RulesFile, options.Rules.AllowUnknownRules)
             : null;
 
         // 过滤条件：--where 优先
-        string? effectiveFilter = options.Filter;
+        string? effectiveFilter = options.FieldSelection.Filter;
 
         // 字段选择 + 值转换 + 过滤（--fields / 规则文件 runtime.selectedFields / transform / --where / 规则文件 runtime.filter）
-        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.Fields), effectiveFilter);
+        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.FieldSelection.Fields), effectiveFilter);
         if (effectiveFilter != null)
         {
             AnsiConsole.MarkupLine($"[grey][[过滤]][/] 已应用过滤条件: [blue]{Markup.Escape(effectiveFilter)}[/]");
@@ -753,10 +753,10 @@ public static class AnalysisRunner
         // 模糊去重需要多次枚举解析后对象（在 Analyze 之前完成）。
         // 物化一次既保证模糊去重的随机访问、也避免 Analyzer 重复解析；
         // 数据量 < 1MB 时物化成本可忽略；后续如需扩展可加 --fuzzy-dedup-stream 改为单遍流式。
-        bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.FuzzyDedupField);
+        bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField);
         bool needDistributionSketches =
-            !string.IsNullOrEmpty(options.DistributionSnapshotPath) ||
-            !string.IsNullOrEmpty(options.DiffDistributionBaseline);
+            !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
+            !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline);
         List<Dictionary<string, object?>> materialized = (needFuzzyDedup || needDistributionSketches)
             ? parsedObjects.ToList()
             : new List<Dictionary<string, object?>>();
@@ -765,7 +765,7 @@ public static class AnalysisRunner
         FuzzyDuplicateReport? fuzzyReport = null;
         if (needFuzzyDedup)
         {
-            string field = options.FuzzyDedupField!;
+            string field = options.Advanced.FuzzyDedupField!;
             AnsiConsole.MarkupLine($"[grey][[模糊去重]][/] 正在对字段 [blue]{Markup.Escape(field)}[/] 做形态变体聚类...");
             fuzzyReport = FuzzyDuplicateDetector.Detect(materialized, obj =>
             {
@@ -780,9 +780,9 @@ public static class AnalysisRunner
         // 优先用"已知总量"驱动 maxValue（materialized 列表直接用 Count；其余场景不强行预扫描——
         // 50GB JSONL 再读一遍数行需要 30+ 秒，得不偿失）；
         // 未知时退化为纯对象计数 + spinner，RemainingTimeColumn 仍可基于速率给出粗略 ETA。
-        long? expectedTotal = options.ShowProgress ? EstimateTotalObjects(materialized) : null;
+        long? expectedTotal = options.Progress.ShowProgress ? EstimateTotalObjects(materialized) : null;
 
-        if (options.ShowProgress)
+        if (options.Progress.ShowProgress)
         {
             AnsiConsole.Progress()
                 .AutoClear(false)
@@ -795,9 +795,9 @@ public static class AnalysisRunner
                     new SpinnerColumn(Spinner.Known.Dots))
                 .Start(ctx =>
                 {
-                    string desc = string.IsNullOrEmpty(options.InputPath)
+                    string desc = string.IsNullOrEmpty(options.Input.InputPath)
                         ? "[green]分析中[/] [grey](数据库直连)[/]"
-                        : $"[green]分析中[/] [grey]{Markup.Escape(Path.GetFileName(options.InputPath))}[/]";
+                        : $"[green]分析中[/] [grey]{Markup.Escape(Path.GetFileName(options.Input.InputPath))}[/]";
                     var task = ctx.AddTask(desc, maxValue: expectedTotal ?? 100);
                     var progress = new Progress<long>(objects =>
                     {
@@ -807,8 +807,8 @@ public static class AnalysisRunner
 
                     var parallelOptions = new ParallelOptions
                     {
-                        MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
-                            ? options.MaxDegreeOfParallelism
+                        MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
+                            ? options.Parse.MaxDegreeOfParallelism
                             : -1
                     };
                     var features = BuildAnalysisFeatures(options);
@@ -838,8 +838,8 @@ public static class AnalysisRunner
                 {
                     var parallelOptions = new ParallelOptions
                     {
-                        MaxDegreeOfParallelism = options.MaxDegreeOfParallelism > 0
-                            ? options.MaxDegreeOfParallelism
+                        MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
+                            ? options.Parse.MaxDegreeOfParallelism
                             : -1
                     };
                     var features = BuildAnalysisFeatures(options);
@@ -875,16 +875,16 @@ public static class AnalysisRunner
         if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
 
         // 采样置信区间：仅当启用 sampling 时计算（对每字段覆盖率做 Wilson 95% 评估）
-        if (Sampling.IsEnabled(options.SampleReservoir, options.SampleStep))
+        if (Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
         {
-            long effective = options.SampleReservoir > 0
-                ? options.SampleReservoir
-                : Math.Max(1, result.TotalObjects / Math.Max(1, options.SampleStep));
+            long effective = options.Sampling.SampleReservoir > 0
+                ? options.Sampling.SampleReservoir
+                : Math.Max(1, result.TotalObjects / Math.Max(1, options.Sampling.SampleStep));
             long estimated = result.TotalObjects;
             var fieldCounts = result.FieldStatistics
                 .Select(s => (s.FieldName, s.Count));
             result.SamplingConfidence = SamplingConfidenceCalculator.Build(
-                method: options.SampleReservoir > 0 ? "reservoir" : "systematic",
+                method: options.Sampling.SampleReservoir > 0 ? "reservoir" : "systematic",
                 sampleSize: effective,
                 estimatedTotal: estimated,
                 fieldCounts: fieldCounts,
@@ -901,7 +901,7 @@ public static class AnalysisRunner
         if (s_activeMemoryBudget is { IsEnabled: true } finalBudget)
         {
             AnsiConsole.MarkupLine(
-                $"[grey][[内存]][/] 本次分析峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.MaxMemoryMB:N0} MB，模式 {options.MaxMemoryMode}）");
+                $"[grey][[内存]][/] 本次分析峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.Memory.MaxMemoryMB:N0} MB，模式 {options.Memory.MaxMemoryMode}）");
             // hard 模式：分析完成后若曾触发 HardLimitExceeded（来自 progress 回调内的 Check），
             // 此处由主流程显式抛错；不能放在 progress 回调里直接 throw——会变成"未观察异常"逃出主流程。
             finalBudget.ThrowIfHardExceeded();
@@ -915,49 +915,49 @@ public static class AnalysisRunner
         ProcessDistributionSnapshot(result, options);
 
         // 输出控制台统计结果（--pii-off 时保留原始值）
-        ConsoleReporter.Print(result, options.MaxValuesToShow, redactPii: !options.PiiOff);
+        ConsoleReporter.Print(result, options.Parse.MaxValuesToShow, redactPii: !options.Pii.PiiOff);
 
         // 输出数据安全合规摘要（发现敏感字段时提示打码与合规导出；--pii-off 时跳过）
-        if (!options.PiiOff)
+        if (!options.Pii.PiiOff)
         {
             PiiReport.PrintSummary(result);
         }
 
         // 如果指定了输出路径，则保存详细报告
-        if (!string.IsNullOrEmpty(options.OutputPath))
+        if (!string.IsNullOrEmpty(options.Report.OutputPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ReportExporter.Save(result, options.OutputPath, redactPii: !options.PiiOff);
+            ReportExporter.Save(result, options.Report.OutputPath, redactPii: !options.Pii.PiiOff);
         }
 
         // 如果指定了违规导出路径，则单独导出枚举违规清单
-        if (!string.IsNullOrEmpty(options.ViolationsPath))
+        if (!string.IsNullOrEmpty(options.Report.ViolationsPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ViolationExporter.Save(result, options.ViolationsPath, redactPii: !options.PiiOff);
+            ViolationExporter.Save(result, options.Report.ViolationsPath, redactPii: !options.Pii.PiiOff);
         }
 
         // 如果指定了数据质量报告路径，导出结构化 Pass/Fail 质量报告
-        if (!string.IsNullOrEmpty(options.QualityPath))
+        if (!string.IsNullOrEmpty(options.Report.QualityPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            QualityExporter.Save(result, options.QualityPath, redactPii: !options.PiiOff);
+            QualityExporter.Save(result, options.Report.QualityPath, redactPii: !options.Pii.PiiOff);
         }
 
         // 如果指定了数据安全合规报告路径，导出合规等级 + 敏感字段清单（--pii-off 时跳过）
-        if (!string.IsNullOrEmpty(options.PiiPath))
+        if (!string.IsNullOrEmpty(options.Pii.PiiPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            PiiExporter.Save(result, options.PiiPath);
+            PiiExporter.Save(result, options.Pii.PiiPath);
         }
 
         // 如果指定了 Schema 导出，自动生成 C# / TypeScript / JSON Schema 定义
-        if (!string.IsNullOrEmpty(options.ExportSchema))
+        if (!string.IsNullOrEmpty(options.Report.ExportSchema))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string basePath = options.OutputPath ?? options.InputPath;
+            string basePath = options.Report.OutputPath ?? options.Input.InputPath;
             if (string.IsNullOrEmpty(basePath)) basePath = "database"; // 数据库直连模式下没有输入文件
-            string schemaExt = options.ExportSchema.ToLowerInvariant() switch
+            string schemaExt = options.Report.ExportSchema.ToLowerInvariant() switch
             {
                 "csharp" or "cs" => ".schema.cs",
                 "typescript" or "ts" => ".schema.d.ts",
@@ -967,12 +967,12 @@ public static class AnalysisRunner
                 "sql" or "postgres" or "postgresql" or "pg" or "mysql" or "sqlite" or "sqlserver" or "mssql" => ".schema.sql",
                 _ => ".schema.json"
             };
-            string schemaPath = options.SchemaOutputPath ?? Path.Combine(
+            string schemaPath = options.Report.SchemaOutputPath ?? Path.Combine(
                 Path.GetDirectoryName(basePath) ?? "",
                 Path.GetFileNameWithoutExtension(basePath) + schemaExt);
 
-            AnsiConsole.MarkupLine($"正在导出 [bold green]{options.ExportSchema}[/] 格式 Schema 定义至: [blue]{Markup.Escape(schemaPath)}[/] ...");
-            SchemaExporter.Export(result, options.ExportSchema, schemaPath);
+            AnsiConsole.MarkupLine($"正在导出 [bold green]{options.Report.ExportSchema}[/] 格式 Schema 定义至: [blue]{Markup.Escape(schemaPath)}[/] ...");
+            SchemaExporter.Export(result, options.Report.ExportSchema, schemaPath);
             AnsiConsole.MarkupLine("[green]Schema 定义代码成功导出！[/]");
         }
 
@@ -987,21 +987,21 @@ public static class AnalysisRunner
     /// </summary>
     internal static AnalysisFeatures? BuildAnalysisFeatures(AnalysisOptions options)
     {
-        bool anyEnabled = options.EnableCorrelation
-            || options.EnableStringPatterns
-            || options.EnableUnicodeHygiene
-            || options.EnableTimeSeries
-            || !string.IsNullOrEmpty(options.DistributionSnapshotPath)
-            || !string.IsNullOrEmpty(options.DiffDistributionBaseline);
+        bool anyEnabled = options.Advanced.EnableCorrelation
+            || options.Advanced.EnableStringPatterns
+            || options.Advanced.EnableUnicodeHygiene
+            || options.Advanced.EnableTimeSeries
+            || !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath)
+            || !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline);
         if (!anyEnabled) return null;
         return new AnalysisFeatures
         {
-            EnableCorrelation = options.EnableCorrelation,
-            EnableStringPatterns = options.EnableStringPatterns,
-            EnableUnicodeHygiene = options.EnableUnicodeHygiene,
-            EnableTimeSeries = options.EnableTimeSeries,
-            EnableDistributionSnapshot = !string.IsNullOrEmpty(options.DistributionSnapshotPath)
-                || !string.IsNullOrEmpty(options.DiffDistributionBaseline)
+            EnableCorrelation = options.Advanced.EnableCorrelation,
+            EnableStringPatterns = options.Advanced.EnableStringPatterns,
+            EnableUnicodeHygiene = options.Advanced.EnableUnicodeHygiene,
+            EnableTimeSeries = options.Advanced.EnableTimeSeries,
+            EnableDistributionSnapshot = !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath)
+                || !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline)
         };
     }
 
@@ -1012,36 +1012,36 @@ public static class AnalysisRunner
     private static void ProcessSchemaSnapshot(AnalysisResult result, AnalysisOptions options)
     {
         bool needBuildSnapshot =
-            !string.IsNullOrEmpty(options.SchemaSnapshotPath) ||
-            !string.IsNullOrEmpty(options.DiffSchemaBaseline) ||
-            !string.IsNullOrEmpty(options.SchemaDiffReportPath);
+            !string.IsNullOrEmpty(options.Schema.SchemaSnapshotPath) ||
+            !string.IsNullOrEmpty(options.Schema.DiffSchemaBaseline) ||
+            !string.IsNullOrEmpty(options.Schema.SchemaDiffReportPath);
 
         if (!needBuildSnapshot)
             return;
 
         // 来源标识：优先输入文件路径；其次数据库直连描述；最后空（snapshot 中省略）
-        string? source = !string.IsNullOrEmpty(options.InputPath)
-            ? options.InputPath
-            : (!string.IsNullOrEmpty(options.ConnectionString)
-                ? $"db://{(string.IsNullOrEmpty(options.DbProvider) ? "auto" : options.DbProvider)}?{options.Query ?? ""}"
+        string? source = !string.IsNullOrEmpty(options.Input.InputPath)
+            ? options.Input.InputPath
+            : (!string.IsNullOrEmpty(options.Input.ConnectionString)
+                ? $"db://{(string.IsNullOrEmpty(options.Input.DbProvider) ? "auto" : options.Input.DbProvider)}?{options.Input.Query ?? ""}"
                 : null);
 
         SchemaSnapshot? currentSnapshot = null;
-        if (!string.IsNullOrEmpty(options.SchemaSnapshotPath))
+        if (!string.IsNullOrEmpty(options.Schema.SchemaSnapshotPath))
         {
             currentSnapshot = SchemaSnapshotExporter.Build(result, source);
             // SchemaSnapshotExporter.Save 内部已打印成功日志
-            string? dir = Path.GetDirectoryName(options.SchemaSnapshotPath);
+            string? dir = Path.GetDirectoryName(options.Schema.SchemaSnapshotPath);
             if (!string.IsNullOrEmpty(dir))
             {
                 Directory.CreateDirectory(dir);
             }
-            SchemaSnapshotExporter.Save(result, options.SchemaSnapshotPath, source);
+            SchemaSnapshotExporter.Save(result, options.Schema.SchemaSnapshotPath, source);
         }
 
-        if (!string.IsNullOrEmpty(options.DiffSchemaBaseline))
+        if (!string.IsNullOrEmpty(options.Schema.DiffSchemaBaseline))
         {
-            var baseline = SchemaDiffer.LoadFromFile(options.DiffSchemaBaseline!);
+            var baseline = SchemaDiffer.LoadFromFile(options.Schema.DiffSchemaBaseline!);
             // 优先用刚导出的快照（确保与磁盘上的 baseline 比较时内容完全一致），否则现场构建
             currentSnapshot ??= SchemaSnapshotExporter.Build(result, source);
             var diff = SchemaDiffer.Compute(baseline, currentSnapshot);
@@ -1051,16 +1051,16 @@ public static class AnalysisRunner
             AnsiConsole.MarkupLine("[bold]── Schema 演进（vs 基线） ──[/]");
             SchemaDiffer.PrintSummary(diff);
 
-            if (!string.IsNullOrEmpty(options.SchemaDiffReportPath))
+            if (!string.IsNullOrEmpty(options.Schema.SchemaDiffReportPath))
             {
-                string? dir = Path.GetDirectoryName(options.SchemaDiffReportPath);
+                string? dir = Path.GetDirectoryName(options.Schema.SchemaDiffReportPath);
                 if (!string.IsNullOrEmpty(dir))
                 {
                     Directory.CreateDirectory(dir);
                 }
-                File.WriteAllText(options.SchemaDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
+                File.WriteAllText(options.Schema.SchemaDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
                 AnsiConsole.MarkupLine(
-                    $"[green]Schema diff 已导出至[/] [blue]{Markup.Escape(options.SchemaDiffReportPath)}[/]");
+                    $"[green]Schema diff 已导出至[/] [blue]{Markup.Escape(options.Schema.SchemaDiffReportPath)}[/]");
             }
         }
     }
@@ -1073,32 +1073,32 @@ public static class AnalysisRunner
     private static void ProcessDistributionSnapshot(AnalysisResult result, AnalysisOptions options)
     {
         bool needSnapshot =
-            !string.IsNullOrEmpty(options.DistributionSnapshotPath) ||
-            !string.IsNullOrEmpty(options.DiffDistributionBaseline) ||
-            !string.IsNullOrEmpty(options.DistributionDiffReportPath);
+            !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
+            !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline) ||
+            !string.IsNullOrEmpty(options.Distribution.DistributionDiffReportPath);
 
         if (!needSnapshot)
             return;
 
         // 来源标识：与 SchemaSnapshot 同一口径
-        string? source = !string.IsNullOrEmpty(options.InputPath)
-            ? options.InputPath
-            : (!string.IsNullOrEmpty(options.ConnectionString)
-                ? $"db://{(string.IsNullOrEmpty(options.DbProvider) ? "auto" : options.DbProvider)}?{options.Query ?? ""}"
+        string? source = !string.IsNullOrEmpty(options.Input.InputPath)
+            ? options.Input.InputPath
+            : (!string.IsNullOrEmpty(options.Input.ConnectionString)
+                ? $"db://{(string.IsNullOrEmpty(options.Input.DbProvider) ? "auto" : options.Input.DbProvider)}?{options.Input.Query ?? ""}"
                 : null);
 
         DistributionSnapshot? currentSnapshot = null;
-        if (!string.IsNullOrEmpty(options.DistributionSnapshotPath))
+        if (!string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath))
         {
             currentSnapshot = DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
-            DistributionSnapshotExporter.WriteToFile(currentSnapshot, options.DistributionSnapshotPath);
+            DistributionSnapshotExporter.WriteToFile(currentSnapshot, options.Distribution.DistributionSnapshotPath);
             AnsiConsole.MarkupLine(
-                $"[green]分布快照已导出至[/] [blue]{Markup.Escape(options.DistributionSnapshotPath)}[/] [grey]({currentSnapshot.Fields.Count} 字段)[/]");
+                $"[green]分布快照已导出至[/] [blue]{Markup.Escape(options.Distribution.DistributionSnapshotPath)}[/] [grey]({currentSnapshot.Fields.Count} 字段)[/]");
         }
 
-        if (!string.IsNullOrEmpty(options.DiffDistributionBaseline))
+        if (!string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline))
         {
-            var baseline = DistributionSnapshotExporter.LoadFromFile(options.DiffDistributionBaseline!);
+            var baseline = DistributionSnapshotExporter.LoadFromFile(options.Distribution.DiffDistributionBaseline!);
             currentSnapshot ??= DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
             var diff = DistributionDiffer.Compute(baseline, currentSnapshot);
             result.DistributionDiff = diff;
@@ -1107,16 +1107,16 @@ public static class AnalysisRunner
             AnsiConsole.MarkupLine("[bold]── 分布漂移（vs 基线） ──[/]");
             DistributionDiffer.PrintSummary(diff);
 
-            if (!string.IsNullOrEmpty(options.DistributionDiffReportPath))
+            if (!string.IsNullOrEmpty(options.Distribution.DistributionDiffReportPath))
             {
-                string? dir = Path.GetDirectoryName(options.DistributionDiffReportPath);
+                string? dir = Path.GetDirectoryName(options.Distribution.DistributionDiffReportPath);
                 if (!string.IsNullOrEmpty(dir))
                 {
                     Directory.CreateDirectory(dir);
                 }
-                File.WriteAllText(options.DistributionDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
+                File.WriteAllText(options.Distribution.DistributionDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
                 AnsiConsole.MarkupLine(
-                    $"[green]分布 diff 已导出至[/] [blue]{Markup.Escape(options.DistributionDiffReportPath)}[/]");
+                    $"[green]分布 diff 已导出至[/] [blue]{Markup.Escape(options.Distribution.DistributionDiffReportPath)}[/]");
             }
         }
     }
@@ -1232,10 +1232,10 @@ public static class AnalysisRunner
     {
         // --record-path 必须看到嵌套子对象才能正确投影；提前展平会让 $.foo.bar 这种路径找不到目标。
         // 因此启用 --record-path 时，强制不展平（让 record-path 处理完后再分析，提取出的子对象本身就是平坦的）。
-        if (!string.IsNullOrWhiteSpace(options.RecordPath))
+        if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
             return false;
 
-        return options.Flatten;
+        return options.Parse.Flatten;
     }
 
     private static IReadOnlyList<ValueParserConfig> ResolveValueParsers(AnalysisOptions options, AnalysisRules? rules)

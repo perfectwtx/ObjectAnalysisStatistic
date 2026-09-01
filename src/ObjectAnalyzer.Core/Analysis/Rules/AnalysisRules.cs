@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace ObjectAnalyzer.Analysis;
@@ -22,11 +23,11 @@ public class AnalysisRules
     public Dictionary<string, FieldRule> Fields { get; set; } = new();
 
     /// <summary>
-    /// 运行时配置（"怎么跑"）。对应 CLI / API 显式参数：CLI / API 显式值 &gt; 本节点 &gt; <see cref="AnalysisOptions"/> 内置默认。
-    /// 字段均为可空 —— null 表示"未指定"。
+    /// 运行时配置（"怎么跑"）。原始 JSON 节点，<see cref="RulesToOptionsConverter"/> 一次性解析并写入
+    /// <see cref="AnalysisOptions"/> 对应子组。不在 DTO 中展开为强类型类，避免多层转换。
     /// </summary>
     [JsonPropertyName("runtime")]
-    public AnalysisRuntime? Runtime { get; set; }
+    public JsonObject? Runtime { get; set; }
 
     /// <summary>通用值解析器：按 source + parseType 决定是否解析值，适用于 Excel / JSON / 任意输入来源。</summary>
     [JsonPropertyName("valueParsers")]

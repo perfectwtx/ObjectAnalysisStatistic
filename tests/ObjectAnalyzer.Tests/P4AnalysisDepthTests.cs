@@ -299,9 +299,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                EnableCorrelation = true,
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Advanced = { EnableCorrelation = true },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -347,9 +347,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                FuzzyDedupField = "name",
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Advanced = { FuzzyDedupField = "name" },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -389,9 +389,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                DistributionSnapshotPath = snapPath,
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Distribution = { DistributionSnapshotPath = snapPath },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -428,9 +428,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                SampleReservoir = 50,
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Sampling = { SampleReservoir = 50 },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);

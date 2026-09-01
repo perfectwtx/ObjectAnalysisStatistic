@@ -77,13 +77,13 @@ public class ProgressReportingTests
     [Fact]
     public void AnalysisRunner_RespectsShowProgressFlag()
     {
-        // 验证 AnalysisOptions.ShowProgress 默认 true，且可被外部关闭
+        // 验证 AnalysisOptions.Progress.ShowProgress 默认 true，且可被外部关闭
         var opts = new AnalysisOptions
         {
-            InputPath = Path.Combine(Path.GetTempPath(), "nonexistent.jsonl"),
+            Input = { InputPath = Path.Combine(Path.GetTempPath(), "nonexistent.jsonl") },
         };
-        Assert.True(opts.ShowProgress, "ShowProgress 默认应为 true（开启进度条）");
-        opts.ShowProgress = false;
-        Assert.False(opts.ShowProgress);
+        Assert.True(opts.Progress.ShowProgress, "ShowProgress 默认应为 true（开启进度条）");
+        opts.Progress.ShowProgress = false;
+        Assert.False(opts.Progress.ShowProgress);
     }
 }

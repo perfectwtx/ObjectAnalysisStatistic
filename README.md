@@ -919,7 +919,7 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_schema_v3.json --diff
 
 P3 落地后，分析能力补齐到数据科学常用维度：跨字段关联、形态归纳、数据卫生、相似识别、时序分析、采样可信度、分布漂移。**任一特性按需开启，关闭时无任何额外开销**。所有结果会同时出现在控制台 / JSON / HTML / Markdown 报告与 Blazor Web 界面的 "🧬 P4 深度分析" 区域。
 
-> 这些特性通过 `AnalysisOptions` 与 `AnalysisFeatures` 启用（CLI / Web UI / 库 API / Mini API 四处一致）；任一开关默认关闭，无任何额外开销。Mini API 上对应 `enableCorrelation` / `enableStringPatterns` / `enableUnicodeHygiene` / `enableTimeSeries` / `enableDistributionSnapshot` 五个 `enable*` 布尔参数。
+> 这些特性通过 `AnalysisOptions.Advanced` 子组与 `AnalysisFeatures` 启用（CLI / Web UI / 库 API / Mini API 四处一致）；任一开关默认关闭，无任何额外开销。Mini API 上对应 `enableCorrelation` / `enableStringPatterns` / `enableUnicodeHygiene` / `enableTimeSeries` / `enableDistributionSnapshot` 五个 `enable*` 布尔参数。
 
 ### 字段相关性矩阵（Pearson / Spearman）
 
@@ -927,7 +927,7 @@ P3 落地后，分析能力补齐到数据科学常用维度：跨字段关联�
 
 ```csharp
 // 库 API 示例
-var opts = new AnalysisOptions { /* ... */ EnableCorrelation = true };
+var opts = new AnalysisOptions { Advanced = { EnableCorrelation = true } };
 var result = await ObjectAnalyzer.AnalyzeAsync(objects, opts, features: new AnalysisFeatures
 {
     EnableCorrelation = true,
@@ -949,7 +949,7 @@ var result = await ObjectAnalyzer.AnalyzeAsync(objects, opts, features: new Anal
 对指定字段（如 `name` / `title` / `address`）做归一化（去空白/标点、全半角统一、大小写折叠）+ 词袋 Jaccard 相似度，将"几乎一致"的对象分组为 `FuzzyDuplicateGroup`：
 
 ```csharp
-var opts = new AnalysisOptions { FuzzyDedupField = "name" /* 或 title/address */ };
+var opts = new AnalysisOptions { Advanced = { FuzzyDedupField = "name" /* 或 title/address */ } };
 ```
 
 ### 时间序列深度分析
@@ -958,7 +958,7 @@ var opts = new AnalysisOptions { FuzzyDedupField = "name" /* 或 title/address *
 
 ### 采样置信区间
 
-启用 `--sample-reservoir` / `--sample-step` 时自动启用，对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段可信度评估，提示低覆盖字段的统计不确定性。`AnalysisOptions.LowConfidenceWidth` 控制"低可信"判定阈值（默认 0.2）。
+启用 `--sample-reservoir` / `--sample-step` 时自动启用，对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段可信度评估，提示低覆盖字段的统计不确定性。`AnalysisOptions.Sampling.LowConfidenceWidth` 控制"低可信"判定阈值（默认 0.2）。
 
 ### 分布漂移对比（草图 vs 草图）
 
@@ -966,9 +966,16 @@ var opts = new AnalysisOptions { FuzzyDedupField = "name" /* 或 title/address *
 
 ```csharp
 // 导出基线快照
-new AnalysisOptions { DistributionSnapshotPath = "snap_v1.json" };
+new AnalysisOptions { Distribution = { DistributionSnapshotPath = "snap_v1.json" } };
 // 与基线对比
-new AnalysisOptions { DiffDistributionBaseline = "snap_v1.json", DistributionDiffReportPath = "diff.json" };
+new AnalysisOptions
+{
+    Distribution =
+    {
+        DiffDistributionBaseline = "snap_v1.json",
+        DistributionDiffReportPath = "diff.json"
+    }
+};
 // result.DistributionDiff.SignificantDriftCount / .NumericDrifts / .CategoricalDrifts
 ```
 

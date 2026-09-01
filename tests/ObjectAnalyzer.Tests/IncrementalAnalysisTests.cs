@@ -359,9 +359,9 @@ public class IncrementalAnalysisTests
             File.WriteAllText(input, "{\"a\":1,\"b\":\"x\"}\n{\"a\":2,\"b\":\"y\"}\n{\"a\":3,\"b\":\"x\"}\n");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                CheckpointPath = checkpoint,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { CheckpointPath = checkpoint },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code);
             Assert.True(File.Exists(checkpoint), "检查点文件应被落盘");
@@ -391,9 +391,9 @@ public class IncrementalAnalysisTests
             File.WriteAllText(input, "{\"a\":1}");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                ResumeFrom = missing,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { ResumeFrom = missing },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(1, code);
         }
@@ -419,18 +419,18 @@ public class IncrementalAnalysisTests
             // 先在 A 上跑出检查点
             int codeA = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = inputA,
-                CheckpointPath = checkpoint,
-                ShowProgress = false
+                Input = { InputPath = inputA },
+                Incremental = { CheckpointPath = checkpoint },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, codeA);
 
             // 用 A 的检查点跑 B，必须拒绝（源文件不一致）
             int codeB = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = inputB,
-                ResumeFrom = checkpoint,
-                ShowProgress = false
+                Input = { InputPath = inputB },
+                Incremental = { ResumeFrom = checkpoint },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(1, codeB);
         }
@@ -461,9 +461,9 @@ public class IncrementalAnalysisTests
             // 第 1 段：跑前 4 条并落盘检查点
             int code1 = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                CheckpointPath = checkpoint,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { CheckpointPath = checkpoint },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code1);
             var snap1 = AnalyzerSnapshot.LoadFrom(checkpoint);
@@ -474,10 +474,9 @@ public class IncrementalAnalysisTests
             // 本 run 新增 0 条；合并后 = 4
             int code2 = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                ResumeFrom = checkpoint,
-                CheckpointPath = checkpoint + ".new",
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { ResumeFrom = checkpoint, CheckpointPath = checkpoint + ".new" },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code2);
             var snap2 = AnalyzerSnapshot.LoadFrom(checkpoint + ".new");
@@ -521,10 +520,10 @@ public class IncrementalAnalysisTests
 
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                BaselinePath = baseline,
-                OutputPath = output,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { BaselinePath = baseline },
+                Report = { OutputPath = output },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code);
 
@@ -555,9 +554,9 @@ public class IncrementalAnalysisTests
             File.WriteAllText(input, "{\"a\":1}");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                BaselinePath = missing,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { BaselinePath = missing },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(1, code);
         }
@@ -578,10 +577,9 @@ public class IncrementalAnalysisTests
             File.WriteAllText(input, "{\"a\":1}");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                ResumeFrom = path,
-                CheckpointPath = path,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Incremental = { ResumeFrom = path, CheckpointPath = path },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(1, code);
         }
@@ -616,10 +614,10 @@ public class IncrementalAnalysisTests
             // 第 1 段：跑全部 + 落盘
             int code1 = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rulesPath,
-                CheckpointPath = checkpoint,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Rules = { RulesFile = rulesPath },
+                Incremental = { CheckpointPath = checkpoint },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code1);
             var snap = AnalyzerSnapshot.LoadFrom(checkpoint);
@@ -630,11 +628,10 @@ public class IncrementalAnalysisTests
             // 合并后历史违规仍存在 1 个
             int code2 = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rulesPath,
-                ResumeFrom = checkpoint,
-                CheckpointPath = checkpoint + ".new",
-                ShowProgress = false
+                Input = { InputPath = input },
+                Rules = { RulesFile = rulesPath },
+                Incremental = { ResumeFrom = checkpoint, CheckpointPath = checkpoint + ".new" },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code2);
             var snap2 = AnalyzerSnapshot.LoadFrom(checkpoint + ".new");

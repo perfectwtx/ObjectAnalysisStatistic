@@ -27,14 +27,49 @@ public static class RulesLint
     [
         typeof(AnalysisRules), typeof(FieldRule), typeof(FieldTransform),
         typeof(PiiRule), typeof(PiiMaskConfig), typeof(AnalysisExpectations),
-        typeof(ValueParserConfig),
-        // runtime 节点（方案 A）：所有 AnalysisRuntime 子节点都是规则对象
-        typeof(AnalysisRuntime), typeof(SamplingConfig), typeof(JsonPathConfig),
-        typeof(SchemaConfig), typeof(DistributionConfig), typeof(PiiRuntimeConfig),
-        typeof(GatesConfig), typeof(P4Config), typeof(CheckpointConfig),
-        typeof(MemoryConfig), typeof(ProgressConfig), typeof(AuditConfig),
-        typeof(OutputsConfig)
+        typeof(ValueParserConfig)
     ];
+
+    /// <summary>
+    /// <c>runtime</c> 节点在重构后是 <see cref="System.Text.Json.Nodes.JsonObject"/>，
+    /// 不再通过反射枚举子键。保留一份白名单用于静态检查拼写错误 / 已废弃键。
+    /// </summary>
+    private static readonly string[] RuntimeTopLevelKeys =
+    [
+        "flatten", "csvInferNumbers", "maxValuesToShow", "maxParallelism", "allowUnknownRules",
+        "selectedFields", "filter",
+        "sampling", "jsonPath", "schema", "distribution", "pii", "gates", "p4",
+        "checkpoint", "memory", "progress", "audit", "outputs"
+    ];
+
+    private static readonly string[] SamplingKeys = ["reservoir", "step"];
+    private static readonly string[] JsonPathKeys = ["root", "record"];
+    private static readonly string[] SchemaKeys = ["snapshot", "diffBaseline", "diffReport", "allowBreakingChanges"];
+    private static readonly string[] DistributionKeys = ["snapshot", "diffBaseline", "diffReport", "lowConfidenceWidth"];
+    private static readonly string[] PiiKeys = ["off", "report", "failOnLevel"];
+    private static readonly string[] GatesKeys = ["failOnViolations", "failOnOutlierRatio"];
+    private static readonly string[] P4Keys = ["correlation", "stringPatterns", "unicodeHygiene", "timeSeries", "distributionSnapshot", "fuzzyDedupField"];
+    private static readonly string[] CheckpointKeys = ["path", "resumeFrom", "baseline"];
+    private static readonly string[] MemoryKeys = ["maxMB", "mode"];
+    private static readonly string[] ProgressKeys = ["enabled"];
+    private static readonly string[] AuditKeys = ["log", "operator"];
+    private static readonly string[] OutputsKeys = ["primary", "violations", "quality", "schemaCode"];
+
+    private static readonly Dictionary<string, string[]> RuntimeChildKeys = new()
+    {
+        ["sampling"] = SamplingKeys,
+        ["jsonPath"] = JsonPathKeys,
+        ["schema"] = SchemaKeys,
+        ["distribution"] = DistributionKeys,
+        ["pii"] = PiiKeys,
+        ["gates"] = GatesKeys,
+        ["p4"] = P4Keys,
+        ["checkpoint"] = CheckpointKeys,
+        ["memory"] = MemoryKeys,
+        ["progress"] = ProgressKeys,
+        ["audit"] = AuditKeys,
+        ["outputs"] = OutputsKeys,
+    };
 
     private static readonly Dictionary<Type, string[]> KnownNamesCache = [];
 
@@ -98,6 +133,13 @@ public static class RulesLint
                 continue;
             }
 
+            // runtime 节点：JsonObject 不再走反射，而是按白名单检查
+            if (type == typeof(AnalysisRules) && string.Equals(matched, "runtime", StringComparison.OrdinalIgnoreCase))
+            {
+                WalkRuntime(prop.Value, path, found);
+                continue;
+            }
+
             var child = ChildType(type, matched, out var isDictionary);
             if (child is null) continue;
 
@@ -123,6 +165,34 @@ public static class RulesLint
                 foreach (var item in prop.Value.EnumerateArray())
                 {
                     Walk(item, child, $"{Join(path, prop.Name)}[{i++}]", found);
+                }
+            }
+        }
+    }
+
+    private static void WalkRuntime(JsonElement el, string path, List<UnknownRuleKey> found)
+    {
+        if (el.ValueKind != JsonValueKind.Object) return;
+        var runtimePath = Join(path, "runtime");
+        foreach (var prop in el.EnumerateObject())
+        {
+            if (!RuntimeTopLevelKeys.Any(k => string.Equals(k, prop.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                found.Add(new UnknownRuleKey(runtimePath, prop.Name, Suggest(prop.Name, RuntimeTopLevelKeys)));
+                continue;
+            }
+
+            // 子节点（sampling / jsonPath / ...）：白名单校验
+            if (RuntimeChildKeys.TryGetValue(prop.Name, out var childKnown))
+            {
+                if (prop.Value.ValueKind != JsonValueKind.Object) continue;
+                var childPath = Join(runtimePath, prop.Name);
+                foreach (var sub in prop.Value.EnumerateObject())
+                {
+                    if (!childKnown.Any(k => string.Equals(k, sub.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        found.Add(new UnknownRuleKey(childPath, sub.Name, Suggest(sub.Name, childKnown)));
+                    }
                 }
             }
         }

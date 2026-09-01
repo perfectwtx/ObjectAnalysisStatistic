@@ -401,7 +401,7 @@ public class CompressedInputTests
         try
         {
             int exit = ObjectAnalyzer.Analysis.AnalysisRunner.Run(
-                new ObjectAnalyzer.Analysis.AnalysisOptions { InputPath = path });
+                new ObjectAnalyzer.Analysis.AnalysisOptions { Input = { InputPath = path } });
             Assert.Equal(0, exit);
 
             // 管线结束后文件句柄应全部释放，可立即删除

@@ -84,10 +84,9 @@ public class MemoryBudgetTests
             File.WriteAllText(input, "{\"a\":1}\n{\"a\":2}\n{\"a\":3}\n");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                MaxMemoryMB = 1, // 1MB 极小阈值，必然超限
-                MaxMemoryMode = MaxMemoryMode.Hard,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Memory = { MaxMemoryMB = 1, MaxMemoryMode = MaxMemoryMode.Hard },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(1, code);
         }
@@ -107,10 +106,9 @@ public class MemoryBudgetTests
             File.WriteAllText(input, "{\"a\":1}\n{\"a\":2}\n{\"a\":3}\n");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                MaxMemoryMB = 1024, // 1GB 充裕
-                MaxMemoryMode = MaxMemoryMode.Hard,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Memory = { MaxMemoryMB = 1024, MaxMemoryMode = MaxMemoryMode.Hard },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code);
         }
@@ -131,9 +129,9 @@ public class MemoryBudgetTests
             File.WriteAllText(input, "{\"a\":1}");
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                MaxMemoryMB = 0,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Memory = { MaxMemoryMB = 0 },
+                Progress = { ShowProgress = false }
             });
             Assert.Equal(0, code);
         }
@@ -159,10 +157,9 @@ public class MemoryBudgetTests
             }
             int code = AnalysisRunner.Run(new AnalysisOptions
             {
-                InputPath = input,
-                MaxMemoryMB = 1,
-                MaxMemoryMode = MaxMemoryMode.Soft,
-                ShowProgress = false
+                Input = { InputPath = input },
+                Memory = { MaxMemoryMB = 1, MaxMemoryMode = MaxMemoryMode.Soft },
+                Progress = { ShowProgress = false }
             });
             // 软模式不会失败。即使自动启用采样，分析也应当正常完成
             Assert.Equal(0, code);

@@ -484,44 +484,83 @@ rootCommand.SetHandler((InvocationContext context) =>
 
     var options = new AnalysisOptions
     {
-        InputPath = input?.FullName ?? "",
-        OutputPath = output?.FullName,
-        Flatten = !noFlatten,
-        CsvInferNumbers = !noCsvNumberInference,
-        MaxValuesToShow = maxValues,
-        RulesFile = rules?.FullName,
-        AllowUnknownRules = allowUnknownRules,
-        MaxDegreeOfParallelism = maxParallel,
-        Fields = fields,
-        Filter = where,
-        ViolationsPath = violations?.FullName,
-        QualityPath = quality?.FullName,
-        FailOnViolations = failOnViolations,
-        SampleReservoir = sampleReservoir,
-        SampleStep = sampleStep,
-        ExportSchema = schemaFormat,
-        SchemaOutputPath = schemaOutput,
-        ConnectionString = connection,
-        Query = query,
-        DbProvider = provider,
-        PiiPath = piiReport?.FullName,
-        PiiOff = piiOff,
-        FailOnPiiLevel = failOnPiiLevel,
-        FailOnOutlierRatio = failOnOutlierRatio,
-        SchemaSnapshotPath = schemaSnapshotPath,
-        DiffSchemaBaseline = diffSchemaBaseline,
-        SchemaDiffReportPath = schemaDiffReportPath,
-        AllowBreakingSchemaChanges = allowBreakingSchemaChanges,
-        RootPath = rootPath,
-        RecordPath = recordPath,
-        AuditLogPath = auditLogPath,
-        Operator = operatorValue,
-        ShowProgress = !noProgress,
-        CheckpointPath = checkpointPath,
-        ResumeFrom = resumeFrom,
-        BaselinePath = baselinePath,
-        MaxMemoryMB = maxMemoryMB,
-        MaxMemoryMode = maxMemoryMode
+        Input =
+        {
+            InputPath = input?.FullName ?? "",
+            ConnectionString = connection,
+            Query = query,
+            DbProvider = provider,
+            RootPath = rootPath,
+            RecordPath = recordPath
+        },
+        Parse =
+        {
+            Flatten = !noFlatten,
+            CsvInferNumbers = !noCsvNumberInference,
+            MaxValuesToShow = maxValues,
+            MaxDegreeOfParallelism = maxParallel
+        },
+        FieldSelection =
+        {
+            Fields = fields,
+            Filter = where
+        },
+        Report =
+        {
+            OutputPath = output?.FullName,
+            ViolationsPath = violations?.FullName,
+            QualityPath = quality?.FullName,
+            ExportSchema = schemaFormat,
+            SchemaOutputPath = schemaOutput
+        },
+        Rules =
+        {
+            RulesFile = rules?.FullName,
+            AllowUnknownRules = allowUnknownRules
+        },
+        Sampling =
+        {
+            SampleReservoir = sampleReservoir,
+            SampleStep = sampleStep
+        },
+        Pii =
+        {
+            PiiPath = piiReport?.FullName,
+            PiiOff = piiOff
+        },
+        Gates =
+        {
+            FailOnViolations = failOnViolations,
+            FailOnOutlierRatio = failOnOutlierRatio,
+            AllowBreakingSchemaChanges = allowBreakingSchemaChanges,
+            FailOnPiiLevel = failOnPiiLevel
+        },
+        Schema =
+        {
+            SchemaSnapshotPath = schemaSnapshotPath,
+            DiffSchemaBaseline = diffSchemaBaseline,
+            SchemaDiffReportPath = schemaDiffReportPath
+        },
+        Audit =
+        {
+            AuditLogPath = auditLogPath,
+            Operator = operatorValue
+        },
+        Progress =
+        {
+            ShowProgress = !noProgress
+        },
+        Incremental =
+        {
+            CheckpointPath = checkpointPath,
+            ResumeFrom = resumeFrom,
+            BaselinePath = baselinePath
+        },
+        Memory =
+        {
+            MaxMemoryMB = maxMemoryMB,
+            MaxMemoryMode = maxMemoryMode
+        }
     };
 
     context.ExitCode = AnalysisRunner.Run(options, cts.Token);

@@ -595,7 +595,7 @@ public class PiiTests
         string input = WriteTempJsonInput(PiiSample); // 全部样本可打码 → B 级
         try
         {
-            var options = new AnalysisOptions { InputPath = input, FailOnPiiLevel = "C" };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Gates = { FailOnPiiLevel = "C" } };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
         finally
@@ -610,7 +610,7 @@ public class PiiTests
         string input = WriteTempJsonInput(PiiSample);
         try
         {
-            var options = new AnalysisOptions { InputPath = input, FailOnPiiLevel = "B" };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Gates = { FailOnPiiLevel = "B" } };
             Assert.Equal(4, AnalysisRunner.Run(options));
         }
         finally
@@ -630,7 +630,7 @@ public class PiiTests
         string input = WriteTempJsonInput(clean);
         try
         {
-            var options = new AnalysisOptions { InputPath = input, FailOnPiiLevel = "B" };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Gates = { FailOnPiiLevel = "B" } };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
         finally
@@ -646,7 +646,7 @@ public class PiiTests
         string output = Path.ChangeExtension(Path.GetTempFileName(), ".json");
         try
         {
-            var options = new AnalysisOptions { InputPath = input, OutputPath = output, PiiOff = true };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Report = { OutputPath = output }, Pii = { PiiOff = true } };
             Assert.Equal(0, AnalysisRunner.Run(options));
 
             string json = File.ReadAllText(output);
