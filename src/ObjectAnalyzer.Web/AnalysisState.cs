@@ -186,6 +186,32 @@ public sealed class AnalysisState : IDisposable
     /// </summary>
     public string? MemoryWarning { get; set; }
 
+    // ── 规则文件预检（方案 B：开始分析前的字段匹配检查）──
+    /// <summary>
+    /// 预检警告信息：点击"开始分析"时若规则文件中的字段名与样本数据字段名无任何重叠，
+    /// 在弹出模态框前先把警告文本写入此处，便于 UI 渲染。
+    /// </summary>
+    public string? PreflightWarning { get; set; }
+
+    /// <summary>规则文件中已配置的字段名（去重、保留插入顺序）。用于在预检模态框里展示。</summary>
+    public List<string> PreflightRuleFields { get; set; } = new();
+
+    /// <summary>从数据样本中观测到的字段名（去重、保留首次出现顺序，最多 20 个）。</summary>
+    public List<string> PreflightSampleFields { get; set; } = new();
+
+    /// <summary>控制预检模态框显示。true 时阻塞分析，用户选择"继续"或"取消"后由 Home.razor 重置为 false。</summary>
+    public bool ShowPreflightModal { get; set; }
+
+    /// <summary>当前触发预检的快照（待用户确认后由 RunAnalysisConfirmed 读取并继续分析）。</summary>
+    public PreflightSnapshot? PendingPreflight { get; set; }
+
+    // ── 结果页兜底警告（方案 D：分析完成后再次校验字段是否出现）──
+    /// <summary>
+    /// 分析完成后的兜底警告：若规则文件中的字段在 <see cref="Result"/> 的 <c>FieldStatistics</c> 里
+    /// 没有任何匹配项，在结果标题下方展示一条横幅提示，避免用户误以为"分析成功"实际是规则不适用。
+    /// </summary>
+    public string? ResultWarning { get; set; }
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();
@@ -290,3 +316,38 @@ public sealed class AnalysisState : IDisposable
         try { File.Delete(path); } catch { }
     }
 }
+
+/// <summary>
+/// 预检触发后挂起的快照：把"用户在点击开始分析那一刻"已经填好的所有可调参数固化下来，
+/// 避免模态框交互期间用户继续修改 State 字段导致确认后跑的是另一份配置。
+/// </summary>
+public sealed record PreflightSnapshot(
+    string DataFilePath,
+    string Format,
+    global::ObjectAnalyzer.Parsing.ParseOptions ParseOptions,
+    global::ObjectAnalyzer.Analysis.AnalysisRules? Rules,
+    bool AllowUnknownRules,
+    string FieldsText,
+    string FilterText,
+    int MaxDegreeOfParallelism,
+    int SampleReservoir,
+    int SampleStep,
+    double LowConfidenceWidth,
+    int MemoryFallbackSampleSize,
+    bool EnableCorrelation,
+    bool EnableStringPatterns,
+    bool EnableUnicodeHygiene,
+    bool EnableTimeSeries,
+    bool EnableDistributionSnapshot,
+    string? FuzzyDedupField,
+    int CorrelationReservoir,
+    string? DistributionBaselinePath,
+    bool ShowProgress,
+    string? ResumeFromPath,
+    string? BaselinePath,
+    string? CheckpointFileName,
+    long MaxMemoryMB,
+    global::ObjectAnalyzer.Analysis.MaxMemoryMode MaxMemoryMode,
+    string RootPathText,
+    string RecordPathText,
+    IReadOnlyList<global::ObjectAnalyzer.Analysis.ValueParserConfig> EffectiveValueParsers);

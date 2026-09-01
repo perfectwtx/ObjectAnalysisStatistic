@@ -12,6 +12,59 @@
 
 <PageTitle>ObjectAnalyzer - @Loc["PageTitleText"]</PageTitle>
 
+@* ── 方案 B：规则文件预检模态框（开始分析前若规则字段与数据样本完全不匹配，提示用户） ── *@
+@if (State.ShowPreflightModal)
+{
+    <div class="preflight-backdrop" role="dialog" aria-modal="true" aria-labelledby="preflight-title">
+        <div class="preflight-modal">
+            <h3 id="preflight-title">⚠ @Loc["PreflightTitle"]</h3>
+            <p class="preflight-explain">@Loc["PreflightExplain"]</p>
+            <div class="preflight-fields">
+                <div class="preflight-col">
+                    <div class="preflight-col-title">@Loc["PreflightRuleFields"]</div>
+                    @if (State.PreflightRuleFields.Count == 0)
+                    {
+                        <span class="preflight-empty">—</span>
+                    }
+                    else
+                    {
+                        <ul class="preflight-chips">
+                            @foreach (var f in State.PreflightRuleFields)
+                            {
+                                <li class="preflight-chip rule-chip"><code>@f</code></li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="preflight-col">
+                    <div class="preflight-col-title">@Loc["PreflightSampleFields"]</div>
+                    @if (State.PreflightSampleFields.Count == 0)
+                    {
+                        <span class="preflight-empty">—</span>
+                    }
+                    else
+                    {
+                        <ul class="preflight-chips">
+                            @foreach (var f in State.PreflightSampleFields)
+                            {
+                                <li class="preflight-chip sample-chip"><code>@f</code></li>
+                            }
+                        </ul>
+                        @if (State.PreflightSampleFields.Count >= PreflightChecker.MaxDisplayedSampleFields)
+                        {
+                            <p class="preflight-hint">@Loc["PreflightSampleFieldsTruncated"]</p>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="preflight-actions">
+                <button class="btn btn-primary" @onclick="ConfirmPreflight">@Loc["PreflightContinue"]</button>
+                <button class="btn btn-outline" @onclick="CancelPreflight">@Loc["PreflightCancel"]</button>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="app-shell">
     <aside class="sidebar">
     <div class="side-brand">
@@ -362,6 +415,14 @@
     @if (State.Result != null)
     {
         <div class="results-section" data-tab="@_activeTab">
+            @* ── 方案 D：结果页兜底警告（分析完成后再次校验规则字段是否出现） ── *@
+            @if (!string.IsNullOrEmpty(State.ResultWarning))
+            {
+                <div class="result-warning" role="alert">
+                    <div class="result-warning-title">⚠ @Loc["ResultWarningTitle"]</div>
+                    <div class="result-warning-text">@State.ResultWarning</div>
+                </div>
+            }
             @* 结果标题栏 *@
             <div class="results-header">
                 <h2>@Loc["ResultsTitle"] <span class="result-file">@State.FileName</span></h2>
@@ -1341,19 +1402,10 @@
             return;
         }
 
-        State.IsLoading = true;
-        State.ErrorMessage = null;
-        State.MemoryWarning = null;
-        State.ProgressText = "";
-        State.LastCheckpointServerPath = null;
-        State.LastCheckpointSize = 0;
-        State.PageIndex = 0;
-
         // 取消上一次未完成的分析
         _analysisCts?.Cancel();
         _analysisCts?.Dispose();
         _analysisCts = new CancellationTokenSource();
-        var token = _analysisCts.Token;
         _suppressCancelMessage = false;
 
         // 捕获当前配置快照，避免后台线程与 UI 状态竞争
@@ -1389,10 +1441,9 @@
             string.Equals(State.MaxMemoryMode, "hard", StringComparison.OrdinalIgnoreCase)
                 ? Core.Analysis.MaxMemoryMode.Hard
                 : Core.Analysis.MaxMemoryMode.Soft;
-        // 检查点目标文件名（仅在用户填写 CheckpointFileName 时使用）
-        string safeCheckpointName = P6PostAnalysis.SanitizeCheckpointName(checkpointFileName);
-        string? pipelineError = null;
-        List<Dictionary<string, object?>>? previewedPreview = null;
+        // 捕获 JSONPath 投影参数
+        string rootPathText = State.RootPath;
+        string recordPathText = State.RecordPath;
 
         Core.Analysis.AnalysisRules? rules = null;
         if (rulesFilePath != null)
@@ -1405,13 +1456,212 @@
                 if (unknown.Count > 0)
                 {
                     var unknownList = string.Join(", ", unknown);
-                    State.IsLoading = false;
+                    _analysisCts?.Dispose();
+                    _analysisCts = null;
                     State.ErrorMessage = Loc.Get("ErrUnknownRules", unknownList);
                     return;
                 }
             }
             rules = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(rulesJson, Core.Analysis.AnalysisRules.RulesJsonOptions);
         }
+
+        // valueParsers 优先于扩展名推断（与下方 effectiveFormat 计算同源）
+        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = rules?.ValueParsers is { Count: > 0 }
+            ? rules.ValueParsers
+            : Array.Empty<Core.Analysis.ValueParserConfig>();
+        string effectiveFormat = effectiveValueParsers.Count > 0
+            ? "excel-json"
+            : Core.Parsing.FileParsers.DetectFormat(dataFilePath);
+
+        // record-path 必须看到嵌套子对象才能正确投影；与 CLI 行为一致
+        bool effectiveFlatten = flatten;
+        if (!string.IsNullOrWhiteSpace(recordPathText))
+        {
+            effectiveFlatten = false;
+        }
+
+        // ── 方案 B：预检 ──
+        // 用与正式分析一致的解析选项探测前 N 条记录的字段名；若规则字段完全没匹配上，
+        // 把"用错规则文件"这件事在分析开始前告诉用户。
+        // 仅在用户上传了规则文件时才做预检（无规则文件不属于本方案的覆盖范围）。
+        if (rules != null && rules.Fields.Count > 0)
+        {
+            var preflightOptions = new Core.Parsing.ParseOptions
+            {
+                Flatten = effectiveFlatten,
+                ValueParsers = effectiveValueParsers,
+                CsvInferNumbers = csvInferNumbers
+            };
+            var preflight = PreflightChecker.Check(
+                dataFilePath, rules, preflightOptions, effectiveFormat);
+
+            if (preflight.HasWarning)
+            {
+                // 预检命中：把本次配置固化为快照，等用户确认后再真正启动分析
+                State.PreflightWarning = Loc["PreflightExplain"];
+                State.PreflightRuleFields = preflight.RuleFields.ToList();
+                State.PreflightSampleFields = preflight.SampleFields.ToList();
+                State.PendingPreflight = new PreflightSnapshot(
+                    DataFilePath: dataFilePath,
+                    Format: effectiveFormat,
+                    ParseOptions: preflightOptions,
+                    Rules: rules,
+                    AllowUnknownRules: allowUnknownRules,
+                    FieldsText: fieldsText,
+                    FilterText: filterText,
+                    MaxDegreeOfParallelism: maxDegreeOfParallelism,
+                    SampleReservoir: sampleReservoir,
+                    SampleStep: sampleStep,
+                    LowConfidenceWidth: lowConfidenceWidth,
+                    MemoryFallbackSampleSize: memoryFallbackSampleSize,
+                    EnableCorrelation: enableCorrelation,
+                    EnableStringPatterns: enableStringPatterns,
+                    EnableUnicodeHygiene: enableUnicodeHygiene,
+                    EnableTimeSeries: enableTimeSeries,
+                    EnableDistributionSnapshot: enableDistributionSnapshot,
+                    FuzzyDedupField: fuzzyDedupField,
+                    CorrelationReservoir: correlationReservoir,
+                    DistributionBaselinePath: distributionBaselinePath,
+                    ShowProgress: showProgress,
+                    ResumeFromPath: resumeFromPath,
+                    BaselinePath: baselinePath,
+                    CheckpointFileName: checkpointFileName,
+                    MaxMemoryMB: maxMemoryMB,
+                    MaxMemoryMode: maxMemoryMode,
+                    RootPathText: rootPathText,
+                    RecordPathText: recordPathText,
+                    EffectiveValueParsers: effectiveValueParsers);
+                _analysisCts?.Dispose();
+                _analysisCts = null;
+                State.ShowPreflightModal = true;
+                return;
+            }
+        }
+
+        // 无规则文件 或 预检无警告：直接进入正式分析
+        var snapshot = new PreflightSnapshot(
+            DataFilePath: dataFilePath,
+            Format: effectiveFormat,
+            ParseOptions: new Core.Parsing.ParseOptions
+            {
+                Flatten = effectiveFlatten,
+                ValueParsers = effectiveValueParsers,
+                CsvInferNumbers = csvInferNumbers
+            },
+            Rules: rules,
+            AllowUnknownRules: allowUnknownRules,
+            FieldsText: fieldsText,
+            FilterText: filterText,
+            MaxDegreeOfParallelism: maxDegreeOfParallelism,
+            SampleReservoir: sampleReservoir,
+            SampleStep: sampleStep,
+            LowConfidenceWidth: lowConfidenceWidth,
+            MemoryFallbackSampleSize: memoryFallbackSampleSize,
+            EnableCorrelation: enableCorrelation,
+            EnableStringPatterns: enableStringPatterns,
+            EnableUnicodeHygiene: enableUnicodeHygiene,
+            EnableTimeSeries: enableTimeSeries,
+            EnableDistributionSnapshot: enableDistributionSnapshot,
+            FuzzyDedupField: fuzzyDedupField,
+            CorrelationReservoir: correlationReservoir,
+            DistributionBaselinePath: distributionBaselinePath,
+            ShowProgress: showProgress,
+            ResumeFromPath: resumeFromPath,
+            BaselinePath: baselinePath,
+            CheckpointFileName: checkpointFileName,
+            MaxMemoryMB: maxMemoryMB,
+            MaxMemoryMode: maxMemoryMode,
+            RootPathText: rootPathText,
+            RecordPathText: recordPathText,
+            EffectiveValueParsers: effectiveValueParsers);
+        await RunAnalysisCore(snapshot);
+    }
+
+    /// <summary>
+    /// 用户在预检模态框点击"仍然继续分析"时调用：消费已固化的快照，正式启动后台分析。
+    /// 模态框仅展示提示，不阻塞其它 UI 状态；进入此处后即与正常分析路径一致。
+    /// </summary>
+    private async Task ConfirmPreflight()
+    {
+        var snapshot = State.PendingPreflight;
+        State.ShowPreflightModal = false;
+        State.PreflightWarning = null;
+        State.PreflightRuleFields = new();
+        State.PreflightSampleFields = new();
+        State.PendingPreflight = null;
+        if (snapshot == null) return;
+        await RunAnalysisCore(snapshot);
+    }
+
+    /// <summary>
+    /// 用户在预检模态框点击"取消并修改规则"时调用：仅关闭模态框，UI 提示用户去侧栏换规则文件。
+    /// </summary>
+    private void CancelPreflight()
+    {
+        State.ShowPreflightModal = false;
+        State.PreflightWarning = null;
+        State.PreflightRuleFields = new();
+        State.PreflightSampleFields = new();
+        State.PendingPreflight = null;
+    }
+
+    /// <summary>
+    /// 实际驱动后台分析的私有方法：从 <paramref name="snapshot"/> 读取所有可调参数，避免
+    /// 在后台线程与 UI 状态之间竞争。该方法只被 <see cref="RunAnalysis"/> 与
+    /// <see cref="ConfirmPreflight"/> 调用。
+    /// </summary>
+    private async Task RunAnalysisCore(PreflightSnapshot snapshot)
+    {
+        State.IsLoading = true;
+        State.ErrorMessage = null;
+        State.MemoryWarning = null;
+        State.ResultWarning = null;
+        State.ProgressText = "";
+        State.LastCheckpointServerPath = null;
+        State.LastCheckpointSize = 0;
+        State.PageIndex = 0;
+
+        _analysisCts?.Dispose();
+        _analysisCts = new CancellationTokenSource();
+        var token = _analysisCts.Token;
+        _suppressCancelMessage = false;
+
+        // 解包快照到本地变量（与原 RunAnalysis 行为保持一致，避免回填影响快照）
+        string dataFilePath = snapshot.DataFilePath;
+        bool flatten = snapshot.ParseOptions.Flatten;
+        bool csvInferNumbers = snapshot.ParseOptions.CsvInferNumbers;
+        string? rulesFilePath = snapshot.Rules != null ? State.RulesFilePath : null;
+        bool allowUnknownRules = snapshot.AllowUnknownRules;
+        string fieldsText = snapshot.FieldsText;
+        string filterText = snapshot.FilterText;
+        int maxDegreeOfParallelism = snapshot.MaxDegreeOfParallelism;
+        int sampleReservoir = snapshot.SampleReservoir;
+        int sampleStep = snapshot.SampleStep;
+        double lowConfidenceWidth = snapshot.LowConfidenceWidth;
+        int memoryFallbackSampleSize = snapshot.MemoryFallbackSampleSize;
+        bool enableCorrelation = snapshot.EnableCorrelation;
+        bool enableStringPatterns = snapshot.EnableStringPatterns;
+        bool enableUnicodeHygiene = snapshot.EnableUnicodeHygiene;
+        bool enableTimeSeries = snapshot.EnableTimeSeries;
+        bool enableDistributionSnapshot = snapshot.EnableDistributionSnapshot;
+        string? fuzzyDedupField = snapshot.FuzzyDedupField;
+        int correlationReservoir = snapshot.CorrelationReservoir;
+        string? distributionBaselinePath = snapshot.DistributionBaselinePath;
+        bool showProgress = snapshot.ShowProgress;
+        string? resumeFromPath = snapshot.ResumeFromPath;
+        string? baselinePath = snapshot.BaselinePath;
+        string? checkpointFileName = snapshot.CheckpointFileName;
+        long maxMemoryMB = snapshot.MaxMemoryMB;
+        Core.Analysis.MaxMemoryMode maxMemoryMode = snapshot.MaxMemoryMode;
+        string rootPathText = snapshot.RootPathText;
+        string recordPathText = snapshot.RecordPathText;
+        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = snapshot.EffectiveValueParsers;
+        Core.Analysis.AnalysisRules? rules = snapshot.Rules;
+        string effectiveFormat = snapshot.Format;
+
+        string safeCheckpointName = P6PostAnalysis.SanitizeCheckpointName(checkpointFileName);
+        string? pipelineError = null;
+        List<Dictionary<string, object?>>? previewedPreview = null;
 
         // 方案 A：把 rules.runtime 节点配置合并到 AnalysisOptions（与 CLI / API 同源、同优先级链）。
         // Web 端不走 AnalysisRunner.Run，自己用局部变量驱动分析，所以这里手动做一次合并。
@@ -1468,26 +1718,8 @@
             maxDegreeOfParallelism = rtOptions.Parse.MaxDegreeOfParallelism;
         }
 
-        string effectiveFormat = rules?.ValueParsers is { Count: > 0 }
-            ? "excel-json"
-            : Core.Parsing.FileParsers.DetectFormat(dataFilePath);
-
-        // 捕获 JSONPath 投影参数
-        string rootPathText = State.RootPath;
-        string recordPathText = State.RecordPath;
         bool hasRootPath = !string.IsNullOrWhiteSpace(rootPathText);
         bool hasRecordPath = !string.IsNullOrWhiteSpace(recordPathText);
-
-        var effectiveFlatten = flatten;
-        // record-path 必须看到嵌套子对象才能正确投影；与 CLI 行为一致
-        if (hasRecordPath)
-        {
-            effectiveFlatten = false;
-        }
-
-        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = rules?.ValueParsers is { Count: > 0 }
-            ? rules.ValueParsers
-            : Array.Empty<Core.Analysis.ValueParserConfig>();
 
         try
         {
@@ -1514,10 +1746,11 @@
                 var detectedFormat = effectiveFormat;
                 var parseOptions = new Core.Parsing.ParseOptions
                 {
-                    Flatten = effectiveFlatten,
+                    Flatten = flatten,
                     ValueParsers = effectiveValueParsers,
                     SampleReservoir = sampleReservoir,
-                    SampleStep = sampleStep
+                    SampleStep = sampleStep,
+                    CsvInferNumbers = csvInferNumbers
                 };
                 objects = Core.Parsing.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
                 // jsonl/csv/excel/excel-json 已在行/记录级跳过未选中记录；其余格式做通用采样包装
@@ -1644,6 +1877,26 @@
             State.Result = result;
             State.ProgressText = "";
             _activeTab = "fields";
+
+            // ── 方案 D：结果页兜底警告 ──
+            // 再次校验：本次结果里是否出现任意规则字段？若完全没有，说明规则文件与数据不匹配。
+            // 仅在用户上传了规则文件时计算；预检未触发（例如部分匹配）时也兜底。
+            if (rules != null && rules.Fields.Count > 0 && result.FieldStatistics.Count > 0)
+            {
+                var observed = new HashSet<string>(
+                    result.FieldStatistics.Select(f => f.FieldName),
+                    StringComparer.OrdinalIgnoreCase);
+                bool anyMatched = false;
+                foreach (var field in rules.Fields.Keys)
+                {
+                    if (string.IsNullOrWhiteSpace(field)) continue;
+                    if (observed.Contains(field)) { anyMatched = true; break; }
+                }
+                if (!anyMatched)
+                {
+                    State.ResultWarning = Loc["ResultWarningExplain"];
+                }
+            }
 
             // ── P6.2 增量分析 / 断点续跑 / 基线合并：分析成功后的合并阶段 ──
             // 限制：Web 端不跳读源文件位置（仅合并聚合结果）；如需真正从源文件中间续跑请用 CLI。

@@ -231,4 +231,13 @@
   <data name="DriftMeanFmt" xml:space="preserve"><value>μ: {0:F2} → {1:F2}</value></data>
   <data name="DriftSigmaFmt" xml:space="preserve"><value>{0:F2}σ</value></data>
   <data name="DriftJaccardFmt" xml:space="preserve"><value>Jaccard = {0:F2}</value></data>
+  <data name="PreflightTitle" xml:space="preserve"><value>规则文件与数据不匹配</value></data>
+  <data name="PreflightContinue" xml:space="preserve"><value>仍然继续分析</value></data>
+  <data name="PreflightCancel" xml:space="preserve"><value>取消并修改规则</value></data>
+  <data name="PreflightRuleFields" xml:space="preserve"><value>规则文件里的字段：</value></data>
+  <data name="PreflightSampleFields" xml:space="preserve"><value>数据中观测到的字段：</value></data>
+  <data name="PreflightSampleFieldsTruncated" xml:space="preserve"><value>… 还有 {0} 个字段未列出</value></data>
+  <data name="PreflightExplain" xml:space="preserve"><value>规则文件里的所有字段名与数据样本里实际出现的字段名都没有匹配（大小写不敏感）。这通常意味着规则文件写的是另一份数据的形状，分析可能不会按预期生效。</value></data>
+  <data name="ResultWarningTitle" xml:space="preserve"><value>规则未生效</value></data>
+  <data name="ResultWarningExplain" xml:space="preserve"><value>分析已完成，但本次结果中没有出现规则文件里任何字段。规则文件可能与这份数据不匹配，请检查字段名拼写或换用对应的规则文件。</value></data>
 </root>

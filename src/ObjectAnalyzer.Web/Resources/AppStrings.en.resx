@@ -187,4 +187,13 @@
   <data name="HistogramBars" xml:space="preserve"><value>{0} buckets</value></data>
   <data name="DatetimeSpan" xml:space="preserve"><value>span {0}</value></data>
   <data name="OutlierZero" xml:space="preserve"><value>No outliers</value></data>
+  <data name="PreflightTitle" xml:space="preserve"><value>Rule file does not match the data</value></data>
+  <data name="PreflightContinue" xml:space="preserve"><value>Continue anyway</value></data>
+  <data name="PreflightCancel" xml:space="preserve"><value>Cancel and edit rule</value></data>
+  <data name="PreflightRuleFields" xml:space="preserve"><value>Fields in rule file:</value></data>
+  <data name="PreflightSampleFields" xml:space="preserve"><value>Fields observed in the data:</value></data>
+  <data name="PreflightSampleFieldsTruncated" xml:space="preserve"><value>… {0} more fields not shown</value></data>
+  <data name="PreflightExplain" xml:space="preserve"><value>None of the field names in the rule file overlap with fields observed in the data sample (case-insensitive). This usually means the rule was written for a different dataset, so the analysis may not behave as intended.</value></data>
+  <data name="ResultWarningTitle" xml:space="preserve"><value>Rule did not take effect</value></data>
+  <data name="ResultWarningExplain" xml:space="preserve"><value>Analysis finished, but none of the rule-file fields appeared in the result. The rule file may not match this dataset — please check field-name spelling or pick the matching rule file.</value></data>
 </root>

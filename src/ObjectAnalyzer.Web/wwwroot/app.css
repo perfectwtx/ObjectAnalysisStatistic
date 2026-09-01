@@ -1004,6 +1004,151 @@ a, .btn-link {
     font-size: 0.9rem;
 }
 
+/* ── 方案 B：规则文件预检模态框 ── */
+.preflight-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    animation: preflight-fade-in 0.12s ease-out;
+}
+
+@keyframes preflight-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.preflight-modal {
+    width: min(720px, 100%);
+    max-height: calc(100vh - 3rem);
+    overflow: auto;
+    background: var(--oa-surface, var(--bs-body-bg));
+    color: var(--oa-text, var(--bs-body-color));
+    border-radius: var(--oa-radius-md, 0.5rem);
+    border: 1px solid color-mix(in srgb, var(--oa-warning) 35%, transparent);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    padding: 1.4rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.preflight-modal h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--oa-warning);
+    font-weight: 600;
+}
+
+.preflight-explain {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--oa-text-muted, var(--bs-secondary-color));
+}
+
+.preflight-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+}
+
+@media (max-width: 640px) {
+    .preflight-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+.preflight-col {
+    border: 1px solid var(--oa-border, var(--bs-border-color));
+    border-radius: var(--oa-radius-sm, 0.4rem);
+    padding: 0.7rem 0.85rem;
+    background: color-mix(in srgb, var(--oa-warning) 5%, transparent);
+}
+
+.preflight-col-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--oa-text-muted, var(--bs-secondary-color));
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.preflight-chips {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.preflight-chip code {
+    font-size: 0.78rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: var(--oa-radius-sm, 0.3rem);
+    background: var(--oa-surface-2, var(--bs-tertiary-bg));
+    border: 1px solid var(--oa-border, var(--bs-border-color));
+    word-break: break-all;
+}
+
+.preflight-chip.rule-chip code {
+    color: var(--oa-warning);
+    border-color: color-mix(in srgb, var(--oa-warning) 35%, transparent);
+}
+
+.preflight-chip.sample-chip code {
+    color: var(--oa-text, var(--bs-body-color));
+}
+
+.preflight-empty {
+    color: var(--oa-text-muted, var(--bs-secondary-color));
+    font-size: 0.85rem;
+}
+
+.preflight-hint {
+    margin: 0.45rem 0 0;
+    font-size: 0.78rem;
+    color: var(--oa-text-muted, var(--bs-secondary-color));
+}
+
+.preflight-actions {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+}
+
+/* ── 方案 D：结果页兜底警告 ── */
+.result-warning {
+    margin: 0 0 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--oa-warning-soft);
+    border-left: 3px solid var(--oa-warning);
+    color: var(--oa-warning);
+    border-radius: var(--oa-radius-sm, 0.4rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.result-warning-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.result-warning-text {
+    color: var(--oa-text, var(--bs-body-color));
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
 .side-group .options-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.8rem 0.75rem;
