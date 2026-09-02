@@ -270,14 +270,15 @@
                             <li><code>nullRateMax</code><span>空值最多允许占多少比例，0.2 表示最多 20% 可以为空。</span></li>
                             <li><code>maxOutlierRatio</code><span>离群值（异常大/小的数字）最多占多少比例，0.05 表示最多 5%。</span></li>
                         </ul>
-                        <p class="rules-doc-strong">进阶用法（README 有完整说明）：</p>
+                        <p class="rules-doc-strong">进阶用法：</p>
                         <ul>
                             <li><code>redact</code><span>设为 false：这个字段只是长得像敏感信息，不要自动打码。</span></li>
                             <li><code>pii</code><span>把业务字段标记为敏感信息，并指定打码格式。</span></li>
                             <li><code>transform</code><span>统计前先做转换：jwt / aes / base64 / url / sm4 / sm2；加 parse: "json" 可以把转换结果再展开成新字段。</span></li>
-                            <li><code>selectedFields</code> / <code>filter</code><span>只统计选定的字段 / 只统计满足条件的记录（等价于 --fields 和 --where）。</span></li>
+                            <li><code>runtime.selectedFields</code> / <code>runtime.filter</code><span>只统计选定的字段 / 只统计满足条件的记录（写在 runtime 节点，等价于 --fields 和 --where）。</span></li>
                             <li><code>expectations</code><span>对整个文件提要求：minRowCount 最少行数、maxDuplicateRate 重复率上限。</span></li>
-                            <li><code>flatten</code> / <code>valueParsers</code><span>是否展开嵌套字段 / 把指定列按 JSON 解析（Excel 多列 JSON 场景）。</span></li>
+                            <li><code>runtime.flatten</code> / <code>valueParsers</code><span>是否展开嵌套字段 / 把指定 Excel 列按 JSON 解析（Excel 多列 JSON 场景）。</span></li>
+                            <li><code>runtime.deepAnalysis</code><span>深度分析开关：correlation 相关性、stringPatterns 模式归纳、timeSeries 时间序列等（默认全关）。</span></li>
                         </ul>
                     </div>
                 </details>
@@ -1258,6 +1259,9 @@
       "pattern": "^[^@]+@[^@]+$",
       "unique": true
     }
+  },
+  "runtime": {
+    "gates": { "failOnViolations": true }
   }
 }
 """;
