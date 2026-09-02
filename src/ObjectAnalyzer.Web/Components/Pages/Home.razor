@@ -50,7 +50,7 @@
                                 <li class="preflight-chip sample-chip"><code>@f</code></li>
                             }
                         </ul>
-                        @if (State.PreflightSampleFields.Count >= PreflightChecker.MaxDisplayedSampleFields)
+                        @if (State.PreflightSampleFields.Count >= Core.Analysis.PreflightChecker.MaxDisplayedSampleFields)
                         {
                             <p class="preflight-hint">@Loc["PreflightSampleFieldsTruncated"]</p>
                         }
@@ -1492,7 +1492,7 @@
                 ValueParsers = effectiveValueParsers,
                 CsvInferNumbers = csvInferNumbers
             };
-            var preflight = PreflightChecker.Check(
+            var preflight = Core.Analysis.PreflightChecker.Check(
                 dataFilePath, rules, preflightOptions, effectiveFormat);
 
             if (preflight.HasWarning)

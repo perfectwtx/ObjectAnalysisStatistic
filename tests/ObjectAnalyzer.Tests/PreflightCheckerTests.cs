@@ -1,11 +1,9 @@
-using ObjectAnalyzer.Analysis;
-using ObjectAnalyzer.Parsing;
-
-namespace ObjectAnalyzer.Web.Tests;
+namespace ObjectAnalyzer.Tests;
 
 /// <summary>
 /// PreflightChecker 单元测试：覆盖"规则字段 vs 数据样本字段"匹配逻辑的全部判定分支。
 /// Build 入口无需落盘，单测重点验证纯计算；Check 入口写一个临时 JSON 文件以验证文件 IO 路径。
+/// 位置：随 PreflightChecker 一起从 ObjectAnalyzer.Web 迁移到 ObjectAnalyzer.Core。
 /// </summary>
 public class PreflightCheckerTests
 {
@@ -80,7 +78,6 @@ public class PreflightCheckerTests
     public void Build_ParentPrefixOverlap_MarksAsMatched()
     {
         // parse:json 场景：规则字段 A.body 在结果中已被展平为 A.body.foo / A.body.bar
-        // 但在预检阶段，解析器还没走 transform，样本里仍是 A.body。
         // 这里模拟结果视角：样本里只有展平后的子字段；规则字段 A.body 应当算作命中。
         var ruleFields = new[] { "A.body" };
         var sampleFields = new[] { "A.body.foo", "A.body.bar", "A.body.baz" };

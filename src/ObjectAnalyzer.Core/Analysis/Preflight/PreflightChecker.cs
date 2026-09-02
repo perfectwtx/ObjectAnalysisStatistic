@@ -1,17 +1,20 @@
 using ObjectAnalyzer.Parsing;
 
-namespace ObjectAnalyzer.Web;
+namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
-/// 预检（方案 B + 方案 D 共享核心）：用一份小样本解析数据，再对比规则文件里的字段名，
+/// 预检：用一份小样本解析数据，再对比规则文件里的字段名，
 /// 找出"看起来规则与数据完全不匹配"的场景。
 ///
 /// 设计目标：
 /// - 零副作用：仅读取数据样本，不修改任何全局状态；
-/// - 独立可测：直接接收 <see cref="IEnumerable{Dictionary}"/> 与字段集合作为输入，
-///   单元测试可在不落盘的情况下覆盖全部判定分支；
+/// - 独立可测：<see cref="Build"/> 纯计算入口可直接在单元测试里覆盖全部判定分支，
+///   <see cref="Check"/> 包装一层文件 IO 供 CLI / API / Web 复用；
 /// - 严格不抛异常：解析失败 / 文件无法访问 / 规则文件无 fields 时一律返回
 ///   <c>HasWarning = false</c>，把"我读不出来"与"我读到但没有匹配"区分开。
+///
+/// 跨进程复用契约：所有入口返回 <see cref="PreflightResult"/>；调用方负责决定如何渲染
+/// （Spectre 控制台 / OpenAPI JSON / Blazor 模态框），Core 不持有任何 IO 资源。
 /// </summary>
 public static class PreflightChecker
 {
@@ -22,17 +25,17 @@ public static class PreflightChecker
     public const int MaxDisplayedSampleFields = 20;
 
     /// <summary>
-    /// 入口：解析数据文件取样 → 与规则文件里的字段名做大小写不敏感比对。
-    /// 返回结构化的 <see cref="PreflightResult"/>，由调用方决定如何渲染（模态框 / 横幅 / 仅日志）。
+    /// 入口：解析数据文件取样 → 与规则文件里的字段名做大小写不敏感 + 父路径比对。
+    /// 返回结构化的 <see cref="PreflightResult"/>，由调用方决定如何渲染。
     /// </summary>
-    /// <param name="dataFilePath">数据文件临时路径（Web UI 已落到 %TEMP% 的副本）。</param>
+    /// <param name="dataFilePath">数据文件路径（CLI / API / Web 各自管理生命周期）。</param>
     /// <param name="rules">已反序列化的规则文件；为 null 时直接返回 no warning。</param>
     /// <param name="parseOptions">与正式分析一致的解析选项（含 valueParsers / 展平 / 采样等）。</param>
     /// <param name="format">检测到的文件格式（excel / excel-json / jsonl / ...）。</param>
     /// <param name="sampleSize">取样条数，默认 <see cref="DefaultSampleSize"/>。</param>
     public static PreflightResult Check(
         string dataFilePath,
-        global::ObjectAnalyzer.Analysis.AnalysisRules? rules,
+        AnalysisRules? rules,
         ParseOptions parseOptions,
         string format,
         int sampleSize = DefaultSampleSize)
@@ -62,8 +65,13 @@ public static class PreflightChecker
     /// 单元测试只覆盖这一段，不依赖文件 IO。
     /// </summary>
     /// <remarks>
-    /// 大小写不敏感比对（与 <see cref="FieldTransformProcessor"/> 的 _selectedFields 行为一致）；
+    /// 大小写不敏感比对（与 <see cref="Rules.FieldTransformProcessor"/> 的 _selectedFields 行为一致）；
     /// 当样本字段为空（如空文件 / 单条空对象）也视为"无匹配"，因为我们没法验证规则是否适用。
+    ///
+    /// 父路径匹配：当规则字段带 <c>parse:json</c> 时，FieldTransformProcessor 会把值展平成
+    /// <c>A.body.foo</c> / <c>A.body.bar</c> 等子字段，原始的 <c>A.body</c> 名字在结果中已被替换。
+    /// 约定：规则字段 X 命中结果字段 Y，当且仅当 Y == X（完全相等）或 Y 以 "X." 开头
+    /// （X 是 Y 的父路径），与方案 D（结果页兜底警告）保持同一套判定语义。
     /// </remarks>
     public static PreflightResult Build(
         IEnumerable<string> ruleFieldNames,
@@ -93,11 +101,6 @@ public static class PreflightChecker
         }
 
         // 3) 比对：大小写不敏感 + 父路径匹配
-        // 关键点：当规则字段带 parse:json 时，FieldTransformProcessor 会把值展平成 A.body.foo / A.body.bar
-        // 等子字段，原始的 A.body 名字在结果中已被替换；但在预检阶段，解析器还没走 transform，
-        // 样本里仍是原始列名（如 A）。为统一方案 B 与方案 D 的判定语义，约定：
-        // 规则字段 X 命中结果字段 Y，当且仅当 Y == X（完全相等）或 Y 以 "X." 开头（X 是 Y 的父路径）。
-        // 这样无论 transform 在哪个阶段触发，"规则字段确实覆盖到数据"这件事都能被识别。
         var matched = new List<string>();
         var unmatched = new List<string>();
         foreach (var f in ruleFields)
@@ -156,20 +159,4 @@ public static class PreflightChecker
         }
         return ordered;
     }
-}
-
-/// <summary>
-/// 预检输出：把"用错规则文件"这件事拆成结构化字段，让 UI 自由渲染。
-/// </summary>
-public sealed record PreflightResult(
-    bool HasWarning,
-    IReadOnlyList<string> RuleFields,
-    IReadOnlyList<string> MatchedRuleFields,
-    IReadOnlyList<string> UnmatchedRuleFields,
-    IReadOnlyList<string> SampleFields,
-    int TruncatedSampleFieldCount)
-{
-    public static PreflightResult NoWarning() =>
-        new(false, Array.Empty<string>(), Array.Empty<string>(),
-            Array.Empty<string>(), Array.Empty<string>(), 0);
 }
