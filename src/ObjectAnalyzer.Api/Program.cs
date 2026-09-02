@@ -22,6 +22,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    // 枚举序列化为字符串（默认是数字），与 OpenAPI / Scalar / 前端字符串状态码约定一致
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 // OpenAPI 文档 + Scalar 交互式界面（/scalar）。
@@ -44,6 +46,8 @@ var api = app.MapGroup("/api");
 api.MapHealthApi();
 api.MapRulesApi();
 api.MapAnalyzeApi();
+api.MapPreflightApi();
+api.MapAsyncAnalyzeApi();
 
 app.Run();
 

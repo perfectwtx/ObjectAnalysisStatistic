@@ -314,4 +314,348 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("fields", body);
     }
+
+    // ──────────────────────────────────────────────
+    // 预检端点（/api/preflight）：与 Core 的 PreflightChecker 同一份实现
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task Preflight_NoRules_ReturnsNoWarning()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+
+        var response = await client.PostAsync("/api/preflight", form);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("preflight").GetProperty("hasWarning").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Preflight_MatchingRules_ReturnsNoWarning()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+        form.Add(new StringContent("""{"fields":{"name":{},"age":{}}}""",
+            System.Text.Encoding.UTF8, "application/json"), "rulesJson");
+
+        var response = await client.PostAsync("/api/preflight", form);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("preflight").GetProperty("hasWarning").GetBoolean());
+        Assert.Equal(2, body.GetProperty("preflight").GetProperty("matchedRuleFields").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Preflight_NoOverlap_ReturnsWarning()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+        form.Add(new StringContent("""{"fields":{"line":{},"line.body":{}}}""",
+            System.Text.Encoding.UTF8, "application/json"), "rulesJson");
+
+        var response = await client.PostAsync("/api/preflight", form);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("preflight").GetProperty("hasWarning").GetBoolean());
+        Assert.Equal(2, body.GetProperty("preflight").GetProperty("unmatchedRuleFields").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Preflight_WithoutFile_Returns400()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+
+        var response = await client.PostAsync("/api/preflight", form);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Preflight_UnknownRuleKey_Returns400()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+        form.Add(new StringContent("""{"fields":{"name":{"requird":true}}}""",
+            System.Text.Encoding.UTF8, "application/json"), "rulesJson");
+
+        var response = await client.PostAsync("/api/preflight", form);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("requird", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task PreflightConfig_InlineDataText_RespectsRules()
+    {
+        var client = CreateClient();
+        var config = new
+        {
+            dataText = "{\"name\":\"alice\",\"age\":30}",
+            format = "json",
+            rulesJson = """{"fields":{"name":{},"age":{}}}"""
+        };
+        var response = await client.PostAsync("/api/preflight/config",
+            new StringContent(JsonSerializer.Serialize(config), System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("preflight").GetProperty("hasWarning").GetBoolean());
+    }
+
+    // ──────────────────────────────────────────────
+    // 异步分析端点：/api/analyze/async + GET /cancel
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task AnalyzeAsync_Submit_ReturnsJobId()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\nbob,45\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+
+        var response = await client.PostAsync("/api/analyze/async", form);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        string? jobId = body.GetProperty("jobId").GetString();
+        Assert.NotNull(jobId);
+        Assert.Equal(32, jobId!.Length);
+        Assert.Equal("people.csv", body.GetProperty("fileName").GetString());
+        Assert.Equal("Running", body.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_Get_NonExistentJob_Returns404()
+    {
+        var client = CreateClient();
+        var response = await client.GetAsync("/api/analyze/async/nonexistent-job-id");
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_Get_ExistingJob_ReturnsSnapshot()
+    {
+        // 提交 → 立即 GET → 验证快照里有 Running 状态和 meta
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+
+        var submit = await client.PostAsync("/api/analyze/async", form);
+        Assert.True(submit.IsSuccessStatusCode, await submit.Content.ReadAsStringAsync());
+        var submitBody = await submit.Content.ReadFromJsonAsync<JsonElement>();
+        string? jobId = submitBody.GetProperty("jobId").GetString();
+        Assert.NotNull(jobId);
+
+        // 第一次 GET（作业可能还在跑，也可能已 Completed）
+        var snap = await client.GetAsync($"/api/analyze/async/{jobId}");
+        Assert.True(snap.IsSuccessStatusCode,
+            $"status={(int)snap.StatusCode} body={await snap.Content.ReadAsStringAsync()}");
+        var snapBody = await snap.Content.ReadFromJsonAsync<JsonElement>();
+        string? status = snapBody.GetProperty("status").GetString();
+        Assert.True(status is "Running" or "Completed" or "Failed" or "Cancelled",
+            $"unexpected status: {status}");
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_Cancel_NonExistentJob_Returns404()
+    {
+        var client = CreateClient();
+        var response = await client.PostAsync("/api/analyze/async/nonexistent-job-id/cancel", null);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_Cancel_Twice_SecondCallReturnsFalse()
+    {
+        // 即使作业已 Completed，cancel 端点也不报错，但第二次必须返回 cancelled=false
+        // （registry 的 Cancel 仅对非终态作业返回 true；用于验证终态语义）
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("name,age\nalice,30\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+
+        var submit = await client.PostAsync("/api/analyze/async", form);
+        Assert.True(submit.IsSuccessStatusCode);
+        string? jobId = (await submit.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("jobId").GetString();
+        Assert.NotNull(jobId);
+
+        // 等到终态
+        for (int i = 0; i < 50; i++)
+        {
+            await Task.Delay(100);
+            var snap = await (await client.GetAsync($"/api/analyze/async/{jobId}"))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            string? status = snap.GetProperty("status").GetString();
+            if (status is "Completed" or "Failed" or "Cancelled")
+            {
+                // 已终态：cancel 应返回 cancelled=false
+                var cancel = await client.PostAsync($"/api/analyze/async/{jobId}/cancel", null);
+                Assert.True(cancel.IsSuccessStatusCode);
+                var body = await cancel.Content.ReadFromJsonAsync<JsonElement>();
+                Assert.False(body.GetProperty("cancelled").GetBoolean());
+                return;
+            }
+        }
+        Assert.Fail("Job did not reach terminal state in time");
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_WithoutFile_Returns400()
+    {
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+
+        var response = await client.PostAsync("/api/analyze/async", form);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_SubmitThenPoll_ReachesCompleted()
+    {
+        // 提交 → 轮询 GET → 最终 Completed + Result 完整
+        var client = CreateClient();
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("id,name,age\n1,alice,30\n2,bob,45\n", System.Text.Encoding.UTF8, "text/csv"),
+            "file", "people.csv");
+
+        var submit = await client.PostAsync("/api/analyze/async", form);
+        Assert.True(submit.IsSuccessStatusCode);
+        string? jobId = (await submit.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("jobId").GetString();
+        Assert.NotNull(jobId);
+
+        // 轮询直到终态（最多 5 秒）
+        for (int i = 0; i < 50; i++)
+        {
+            await Task.Delay(100);
+            var poll = await client.GetAsync($"/api/analyze/async/{jobId}");
+            Assert.True(poll.IsSuccessStatusCode,
+                $"status={(int)poll.StatusCode} body={await poll.Content.ReadAsStringAsync()}");
+            var snap = await poll.Content.ReadFromJsonAsync<JsonElement>();
+            string? status = snap.GetProperty("status").GetString();
+            if (status is "Completed" or "Failed" or "Cancelled")
+            {
+                string? errorMsg = null;
+                if (snap.TryGetProperty("error", out var errProp) && errProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    errorMsg = errProp.GetString();
+                }
+                if (status != "Completed")
+                {
+                    throw new Xunit.Sdk.XunitException(
+                        $"Expected Completed but got {status}. error={errorMsg}");
+                }
+                Assert.Equal(2, snap.GetProperty("result").GetProperty("totalObjects").GetInt32());
+                return;
+            }
+        }
+        Assert.Fail("Async analysis did not reach terminal state in time");
+    }
+
+    [Fact]
+    public async Task AnalyzeAsyncConfig_InlineDataText_RunsToCompletion()
+    {
+        var client = CreateClient();
+        var config = new
+        {
+            dataText = """[{"id":1,"name":"alice","age":30},{"id":2,"name":"bob","age":45}]""",
+            format = "json"
+        };
+        var response = await client.PostAsync("/api/analyze/async/config",
+            new StringContent(JsonSerializer.Serialize(config), System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.True(response.IsSuccessStatusCode);
+        string? jobId = (await response.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("jobId").GetString();
+        Assert.NotNull(jobId);
+
+        for (int i = 0; i < 50; i++)
+        {
+            await Task.Delay(100);
+            var snap = await (await client.GetAsync($"/api/analyze/async/{jobId}"))
+                .Content.ReadFromJsonAsync<JsonElement>();
+            string? status = snap.GetProperty("status").GetString();
+            if (status == "Completed")
+            {
+                Assert.Equal(2, snap.GetProperty("result").GetProperty("totalObjects").GetInt32());
+                return;
+            }
+        }
+        Assert.Fail("Async config analysis did not complete in time");
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_ConcurrentSubmissions_AllReachCompleted()
+    {
+        // 回归：AsyncAnalyzeEndpoints 之前因 Task.Run 闭包按引用捕获 tempData / tempRules，
+        // 主线程紧接着把它们置为 null!，后台任务实际执行时可能读到 null →
+        // CompressionDetector.Detect(null) → NRE → 作业 Failed。
+        // 修复：把路径先复制到 lambda 局部变量再启动任务。
+        // 这里用并发提交放大竞争窗口，单测既验证当前实现正确，也防止未来再次回归。
+        const int concurrency = 8;
+        var client = CreateClient();
+        var jobIds = new string?[concurrency];
+
+        for (int i = 0; i < concurrency; i++)
+        {
+            using var form = new MultipartFormDataContent();
+            form.Add(new StringContent("id,name,age\n1,alice,30\n2,bob,45\n",
+                System.Text.Encoding.UTF8, "text/csv"), "file", "people.csv");
+            var submit = await client.PostAsync("/api/analyze/async", form);
+            Assert.True(submit.IsSuccessStatusCode, await submit.Content.ReadAsStringAsync());
+            jobIds[i] = (await submit.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("jobId").GetString();
+            Assert.NotNull(jobIds[i]);
+        }
+
+        // 并发轮询所有作业直到终态
+        var statuses = new string?[concurrency];
+        var errorMessages = new string?[concurrency];
+        for (int round = 0; round < 60; round++)
+        {
+            bool allTerminal = true;
+            for (int i = 0; i < concurrency; i++)
+            {
+                if (statuses[i] is "Completed" or "Failed" or "Cancelled")
+                    continue;
+                allTerminal = false;
+                var resp = await client.GetAsync($"/api/analyze/async/{jobIds[i]}");
+                Assert.True(resp.IsSuccessStatusCode,
+                    $"status={(int)resp.StatusCode} body={await resp.Content.ReadAsStringAsync()}");
+                var snap = await resp.Content.ReadFromJsonAsync<JsonElement>();
+                statuses[i] = snap.GetProperty("status").GetString();
+                if (statuses[i] is "Failed" or "Cancelled"
+                    && snap.TryGetProperty("error", out var errProp)
+                    && errProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    errorMessages[i] = errProp.GetString();
+                }
+            }
+            if (allTerminal) break;
+            await Task.Delay(100);
+        }
+
+        for (int i = 0; i < concurrency; i++)
+        {
+            Assert.Equal("Completed", statuses[i]);
+        }
+    }
 }

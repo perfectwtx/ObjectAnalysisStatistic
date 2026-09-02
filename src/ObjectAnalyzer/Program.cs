@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Text.Json;
+using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Security;
 using Spectre.Console;
 
@@ -172,6 +173,14 @@ var maxMemoryModeOption = new Option<string>(
     description: "P6.3：超限行为（需配合 --max-memory）。soft=警告并自动启用 50K 蓄水池采样；hard=立即以退出码 1 结束。默认 soft。",
     getDefaultValue: () => "soft");
 
+var preflightOnlyOption = new Option<bool>(
+    name: "--preflight-only",
+    description: "仅做预检：解析数据样本与规则字段对比，输出匹配情况后退出，不进行正式分析。CI 中可在跑全量前先确认规则与数据是否匹配。");
+
+var yesOption = new Option<bool>(
+    aliases: CliAliases.Yes,
+    description: "跳过交互式确认（包括预检警告、覆盖已存在文件等），适合 CI / 脚本场景。");
+
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
@@ -211,6 +220,8 @@ rootCommand.AddOption(resumeOption);
 rootCommand.AddOption(baselineOption);
 rootCommand.AddOption(maxMemoryOption);
 rootCommand.AddOption(maxMemoryModeOption);
+rootCommand.AddOption(preflightOnlyOption);
+rootCommand.AddOption(yesOption);
 
 // ── KMS 离线密钥工具：kms-secret ──
 // 用环境变量口令对明文密钥加密，输出可直接写入规则文件 transform 的 kms:offline/... 引用。
@@ -385,6 +396,8 @@ rootCommand.SetHandler((InvocationContext context) =>
         "hard" => MaxMemoryMode.Hard,
         _ => MaxMemoryMode.Soft
     };
+    var preflightOnly = parseResult.GetValueForOption(preflightOnlyOption);
+    var yes = parseResult.GetValueForOption(yesOption);
 
     if (generateTestExcel)
     {
@@ -481,6 +494,49 @@ rootCommand.SetHandler((InvocationContext context) =>
     }
 
     var (schemaFormat, schemaOutput) = SplitColonSuffix(exportSchema);
+
+    // ── 预检（与 Web 端的 PreflightChecker 共享 Core 同一份实现）──
+    // 触发条件：有规则文件 + 文件型输入（数据库场景不参与预检）。
+    // 行为：
+    //   - --preflight-only：跑预检后退出，不进行正式分析
+    //   - 警告时：交互式提示继续/取消（--yes 跳过；CI 模式自动通过）
+    //   - 无警告：直接继续
+    if (rules != null && input != null && !string.IsNullOrEmpty(connection))
+    {
+        AnsiConsole.MarkupLine("[yellow]警告: --connection 模式下预检不可用，跳过预检。[/]");
+    }
+    else if (rules != null && input != null)
+    {
+        var preflightOutcome = RunPreflight(input, rules, noFlatten, allowUnknownRules, noCsvNumberInference);
+        if (preflightOutcome == PreflightOutcome.AbortWithError)
+        {
+            context.ExitCode = 1;
+            return;
+        }
+        if (preflightOutcome == PreflightOutcome.WarningFound)
+        {
+            if (preflightOnly)
+            {
+                AnsiConsole.MarkupLine("[red]预检失败（--preflight-only 模式已退出，不进行正式分析）。[/]");
+                context.ExitCode = 2;
+                return;
+            }
+            if (yes)
+            {
+                AnsiConsole.MarkupLine("[yellow]--yes 已设置，继续分析（不交互确认）。[/]");
+            }
+            else
+            {
+                bool proceed = AnsiConsole.Confirm("[yellow]规则与数据字段不匹配。是否继续分析？[/]", defaultValue: false);
+                if (!proceed)
+                {
+                    AnsiConsole.MarkupLine("[grey]已取消。[/]");
+                    context.ExitCode = 130; // 标准 SIGINT 退出码
+                    return;
+                }
+            }
+        }
+    }
 
     var options = new AnalysisOptions
     {
@@ -597,6 +653,103 @@ static (string? path, string? suffix) SplitColonSuffix(string? value)
     return (value, null);
 }
 
+// <summary>
+// 加载规则文件并运行预检：以 Spectre 表格形式输出对比结果。
+// 与 Web 端使用同一份 ObjectAnalyzer.Analysis.PreflightChecker 实现。
+// </summary>
+static PreflightOutcome RunPreflight(
+    FileInfo input, FileInfo rulesFile, bool noFlatten, bool allowUnknownRules, bool noCsvInferNumbers)
+{
+    // 1) 加载规则（与 AnalysisRunner 走同一路径：RulesLint 先扫未知键，再 JSON 反序列化）
+    string rulesText = File.ReadAllText(rulesFile.FullName);
+    if (!allowUnknownRules)
+    {
+        var unknown = RulesLint.Scan(rulesText);
+        if (unknown.Count > 0)
+        {
+            AnsiConsole.MarkupLine("[red]规则文件含有未识别的键：[/]");
+            foreach (var key in unknown)
+            {
+                AnsiConsole.MarkupLine($"  [red]-[/] {Markup.Escape(key.Path + "." + key.Name)}");
+            }
+            AnsiConsole.MarkupLine("[grey]提示: --allow-unknown-rules 可绕过此检查（不推荐）。[/]");
+            return PreflightOutcome.AbortWithError;
+        }
+    }
+    AnalysisRules? rules;
+    try
+    {
+        rules = JsonSerializer.Deserialize<AnalysisRules>(rulesText, AnalysisRules.RulesJsonOptions);
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]规则文件反序列化失败: {Markup.Escape(ex.Message)}[/]");
+        return PreflightOutcome.AbortWithError;
+    }
+    if (rules == null)
+    {
+        AnsiConsole.MarkupLine("[red]规则文件反序列化结果为空。[/]");
+        return PreflightOutcome.AbortWithError;
+    }
+
+    // 2) 构造 ParseOptions：复用与正式分析一致的解析参数（valueParsers / 展平 / CSV 推断）
+    var parseOptions = new ParseOptions
+    {
+        Flatten = !noFlatten,
+        ValueParsers = rules.ValueParsers ?? new List<ValueParserConfig>(),
+        CsvInferNumbers = !noCsvInferNumbers
+    };
+    var format = FileParsers.DetectFormat(input.FullName);
+    // 规则带 valueParsers 时切换为 excel-json
+    if (rules.ValueParsers is { Count: > 0 } && format == "excel") format = "excel-json";
+
+    // 3) 跑预检 + 输出
+    var result = PreflightChecker.Check(input.FullName, rules, parseOptions, format);
+    RenderPreflightResult(rules, result, format, input.FullName);
+
+    return result.HasWarning ? PreflightOutcome.WarningFound : PreflightOutcome.NoRulesOrNoWarning;
+}
+
+// <summary>
+// 把 PreflightResult 渲染为 Spectre 表格：左侧规则字段（已用颜色区分匹配/未匹配），右侧样本字段。
+// </summary>
+static void RenderPreflightResult(AnalysisRules rules, PreflightResult result, string format, string dataPath)
+{
+    AnsiConsole.MarkupLine($"[blue]预检：[/] 数据格式 [yellow]{Markup.Escape(format)}[/]，规则字段 {rules.Fields.Count} 个，样本字段 {result.SampleFields.Count} 个" +
+        (result.TruncatedSampleFieldCount > 0 ? $"（已截断 {result.TruncatedSampleFieldCount} 个未展示）" : ""));
+
+    var table = new Table().Border(TableBorder.Rounded);
+    table.AddColumn("[bold]规则字段[/]");
+    table.AddColumn(new TableColumn("[bold]状态[/]").Centered());
+    table.AddColumn("[bold]样本字段（前 20）[/]");
+
+    string sampleList = result.SampleFields.Count > 0
+        ? string.Join("\n", result.SampleFields.Select(Markup.Escape))
+        : "[grey]（无样本字段）[/]";
+    if (result.TruncatedSampleFieldCount > 0)
+    {
+        sampleList += $"\n[grey]…还有 {result.TruncatedSampleFieldCount} 个未展示[/]";
+    }
+
+    // 单行展示：左侧列出全部规则字段 + 状态，右侧列出样本字段
+    var ruleFieldMarkup = result.RuleFields.Count > 0
+        ? string.Join("\n", result.RuleFields.Select(Markup.Escape))
+        : "[grey]（无规则字段）[/]";
+    var statusMarkup = result.HasWarning
+        ? "[red]无匹配[/]"
+        : result.MatchedRuleFields.Count == 0
+            ? "[grey]无规则[/]"
+            : $"[green]已匹配 {result.MatchedRuleFields.Count}/{result.RuleFields.Count}[/]";
+
+    table.AddRow(ruleFieldMarkup, statusMarkup, sampleList);
+    AnsiConsole.Write(table);
+
+    if (result.HasWarning)
+    {
+        AnsiConsole.MarkupLine("[red]规则与数据无任何字段匹配，建议检查规则文件或换用对应数据。[/]");
+    }
+}
+
 static class CliAliases
 {
     public static readonly string[] Input = { "--input", "-i" };
@@ -610,4 +763,15 @@ static class CliAliases
     public static readonly string[] Violations = { "--violations", "-v" };
     public static readonly string[] Quality = { "--quality", "-q" };
     public static readonly string[] ExportSchema = { "--export-schema", "-s" };
+    public static readonly string[] Yes = { "--yes", "-y" };
+}
+
+/// <summary>
+/// 预检结果分类：用于 CLI 决定是直接放行、警告后询问，还是直接退出。
+/// </summary>
+internal enum PreflightOutcome
+{
+    NoRulesOrNoWarning,  // 没有规则文件 / 预检无警告
+    WarningFound,        // 有警告（规则与数据不匹配）
+    AbortWithError       // 加载规则失败（语法错误 / 未知键）
 }
