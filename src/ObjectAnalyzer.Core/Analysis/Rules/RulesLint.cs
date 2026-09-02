@@ -38,7 +38,7 @@ public static class RulesLint
     [
         "flatten", "csvInferNumbers", "maxValuesToShow", "maxParallelism", "allowUnknownRules",
         "selectedFields", "filter",
-        "sampling", "jsonPath", "schema", "distribution", "pii", "gates", "p4",
+        "sampling", "jsonPath", "schema", "distribution", "pii", "gates", "deepAnalysis",
         "checkpoint", "memory", "progress", "audit", "outputs"
     ];
 
@@ -48,7 +48,7 @@ public static class RulesLint
     private static readonly string[] DistributionKeys = ["snapshot", "diffBaseline", "diffReport", "lowConfidenceWidth"];
     private static readonly string[] PiiKeys = ["off", "report", "failOnLevel"];
     private static readonly string[] GatesKeys = ["failOnViolations", "failOnOutlierRatio"];
-    private static readonly string[] P4Keys = ["correlation", "stringPatterns", "unicodeHygiene", "timeSeries", "distributionSnapshot", "fuzzyDedupField"];
+    private static readonly string[] DeepAnalysisKeys = ["correlation", "stringPatterns", "unicodeHygiene", "timeSeries", "distributionSnapshot", "fuzzyDedupField"];
     private static readonly string[] CheckpointKeys = ["path", "resumeFrom", "baseline"];
     private static readonly string[] MemoryKeys = ["maxMB", "mode"];
     private static readonly string[] ProgressKeys = ["enabled"];
@@ -63,7 +63,7 @@ public static class RulesLint
         ["distribution"] = DistributionKeys,
         ["pii"] = PiiKeys,
         ["gates"] = GatesKeys,
-        ["p4"] = P4Keys,
+        ["deepAnalysis"] = DeepAnalysisKeys,
         ["checkpoint"] = CheckpointKeys,
         ["memory"] = MemoryKeys,
         ["progress"] = ProgressKeys,

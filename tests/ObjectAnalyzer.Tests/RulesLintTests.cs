@@ -1,4 +1,4 @@
-using ObjectAnalyzer.Analysis.Rules;
+﻿using ObjectAnalyzer.Analysis.Rules;
 
 namespace ObjectAnalyzer.Tests;
 
@@ -85,7 +85,7 @@ public class RulesLintTests
             "distribution": { "snapshot": "d.json", "diffBaseline": "db.json", "diffReport": "dr.json", "lowConfidenceWidth": 0.1 },
             "pii": { "off": false, "report": "pii.json", "failOnLevel": "B" },
             "gates": { "failOnViolations": true, "failOnOutlierRatio": 0.1 },
-            "p4": { "correlation": true, "stringPatterns": true, "unicodeHygiene": false, "timeSeries": true, "distributionSnapshot": true, "fuzzyDedupField": "name" },
+            "deepAnalysis": { "correlation": true, "stringPatterns": true, "unicodeHygiene": false, "timeSeries": true, "distributionSnapshot": true, "fuzzyDedupField": "name" },
             "checkpoint": { "path": "ck.json", "resumeFrom": "r.json", "baseline": "b.json" },
             "memory": { "maxMB": 1024, "mode": "hard" },
             "progress": { "enabled": false },

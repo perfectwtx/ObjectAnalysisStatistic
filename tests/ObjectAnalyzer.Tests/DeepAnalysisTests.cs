@@ -1,4 +1,4 @@
-namespace ObjectAnalyzer.Tests;
+﻿namespace ObjectAnalyzer.Tests;
 
 using System;
 using System.Collections.Generic;
@@ -10,11 +10,11 @@ using ObjectAnalyzer.Analysis.Options;
 using Xunit;
 
 /// <summary>
-/// P4 分析深度增强测试：字段相关性、模糊去重、字符串模式、Unicode 卫生、时间序列、
+/// 深度分析测试：字段相关性、模糊去重、字符串模式、Unicode 卫生、时间序列、
 /// 分布快照 / diff、采样置信区间、AnalysisRunner 集成（CLI 端到端）。
 /// </summary>
 [Collection(AnalysisRunnerSequentialGroup.Name)]
-public class P4AnalysisDepthTests
+public class DeepAnalysisTests
 {
     // ──────────────────────────────────────────────
     // 字段相关性（Pearson / Spearman）
@@ -287,8 +287,8 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_CorrelationFlag_BuildsAndWritesReport()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-corr-{Guid.NewGuid():N}.json");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-corr-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-corr-{Guid.NewGuid():N}.json");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-corr-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -329,8 +329,8 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_FuzzyDedupField_PopulatesFuzzyDuplicates()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-fuzz-{Guid.NewGuid():N}.json");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-fuzz-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-fuzz-{Guid.NewGuid():N}.json");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-fuzz-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -377,9 +377,9 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_DistributionSnapshot_WritesSnapshotFile()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-snap-{Guid.NewGuid():N}.json");
-        string snapPath = Path.Combine(Path.GetTempPath(), $"p4-snap-{Guid.NewGuid():N}.json");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-out-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-snap-{Guid.NewGuid():N}.json");
+        string snapPath = Path.Combine(Path.GetTempPath(), $"deep-snap-{Guid.NewGuid():N}.json");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-out-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -413,8 +413,8 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_SamplingConfidence_PopulatedWhenSamplingEnabled()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-sample-{Guid.NewGuid():N}.jsonl");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-sample-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-sample-{Guid.NewGuid():N}.jsonl");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-sample-{Guid.NewGuid():N}.json");
 
         try
         {

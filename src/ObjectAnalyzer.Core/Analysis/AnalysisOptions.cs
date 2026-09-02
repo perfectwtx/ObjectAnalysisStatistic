@@ -1,4 +1,4 @@
-using ObjectAnalyzer.Analysis.Options;
+﻿using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Analysis.Rules;
 
 namespace ObjectAnalyzer.Analysis;
@@ -53,7 +53,7 @@ public sealed class AnalysisOptions
     // ── 分布漂移 ──
     public DistributionDriftOptions Distribution { get; set; } = new();
 
-    // ── P4 深度分析 ──
+    // ── 深度分析 深度分析 ──
     public AdvancedAnalysisOptions Advanced { get; set; } = new();
 
     // ── 审计日志 ──

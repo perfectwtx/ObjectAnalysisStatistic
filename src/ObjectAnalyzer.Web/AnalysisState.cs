@@ -1,4 +1,4 @@
-using AnalysisResult = global::ObjectAnalyzer.Analysis.AnalysisResult;
+﻿using AnalysisResult = global::ObjectAnalyzer.Analysis.AnalysisResult;
 using FieldStatistic = global::ObjectAnalyzer.Analysis.FieldStatistic;
 
 namespace ObjectAnalyzer.Web;
@@ -59,7 +59,7 @@ public sealed class AnalysisState : IDisposable
     /// 确认可忽略时勾选此项放行。</summary>
     public bool AllowUnknownRules { get; set; }
 
-    // ── P4 深度分析开关（默认全关，与 v1.x 行为一致；开启后填充"深度分析"选项卡）──
+    // ── 深度分析开关（默认全关，与 v1.x 行为一致；开启后填充"深度分析"选项卡）──
     public bool EnableCorrelation { get; set; }                  // --correlation
     public bool EnableStringPatterns { get; set; }               // --string-patterns
     public bool EnableUnicodeHygiene { get; set; }               // --unicode-hygiene
@@ -74,8 +74,8 @@ public sealed class AnalysisState : IDisposable
     /// 大数据集且内存紧张时可调小；调大能更精确但耗内存。普通用户无需调整。</summary>
     public int CorrelationReservoir { get; set; } = 20_000;
 
-    /// <summary>任一 P4 开关被勾选（用于在 UI 标识需要走 AdvancedAnalysisOptions 路径）。</summary>
-    public bool HasAnyP4Switch =>
+    /// <summary>任一 深度分析开关被勾选（用于在 UI 标识需要走 AdvancedAnalysisOptions 路径）。</summary>
+    public bool HasAnyDeepAnalysisSwitch =>
         EnableCorrelation || EnableStringPatterns
         || EnableUnicodeHygiene || EnableTimeSeries
         || EnableDistributionSnapshot;

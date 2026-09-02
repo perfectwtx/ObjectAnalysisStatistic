@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -96,7 +96,7 @@ public static class AnalyzeEndpoints
         // ── 分析：强类型 JSON body（数据文本内嵌 + 全强类型配置）──
         // 请求体为纯 JSON，直接反序列化为强类型 AnalyzeConfigRequest：
         // 数据文本走 dataText（JSON/JSONL/CSV/XML/YAML），其余全部是强类型字段——
-        // 分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + P4 开关）+ 内联 rules 规则对象。
+        // 分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + 深度分析开关）+ 内联 rules 规则对象。
         // OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。
         routes.MapPost("/analyze/config",
             async Task<Results<Ok<AnalyzeRawResponse>, BadRequest<ErrorResponse>>> (
@@ -133,7 +133,7 @@ public static class AnalyzeEndpoints
         .WithTags("分析")
         .WithSummary("分析强类型 JSON 请求体")
         .WithDescription("请求体为纯 JSON，直接绑定为强类型 AnalyzeConfigRequest：dataText 内嵌数据文本（JSON/JSONL/CSV/XML/YAML），" +
-            "format 指定格式（留空自动检测）。其余全部是强类型字段——分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + P4 开关）" +
+            "format 指定格式（留空自动检测）。其余全部是强类型字段——分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + 深度分析开关）" +
             "与内联 rules 规则对象（flatten/valueParsers/fields/filter/expectations）。" +
             "OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。响应为 camelCase JSON，字段级违规内嵌于 result.fieldStatistics。")
         .DisableAntiforgery();

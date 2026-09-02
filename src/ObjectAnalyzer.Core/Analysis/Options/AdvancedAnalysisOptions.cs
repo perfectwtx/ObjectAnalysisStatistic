@@ -1,7 +1,7 @@
-namespace ObjectAnalyzer.Analysis.Options;
+﻿namespace ObjectAnalyzer.Analysis.Options;
 
 /// <summary>
-/// P4 深度分析开关集合（默认全关，开启会增加运行时间与内存）。
+/// 深度分析 深度分析开关集合（默认全关，开启会增加运行时间与内存）。
 /// </summary>
 public sealed class AdvancedAnalysisOptions
 {

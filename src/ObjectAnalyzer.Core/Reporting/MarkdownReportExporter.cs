@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using Spectre.Console;
 
@@ -189,7 +189,7 @@ public static class MarkdownReportExporter
         // Schema 演进小节
         WriteSchemaDiffSection(writer, result);
 
-        // P4 增强小节
+        // 深度分析增强小节
         WriteSamplingConfidenceSection(writer, result);
         WriteCorrelationSection(writer, result);
         WriteFuzzyDedupSection(writer, result);
@@ -286,7 +286,7 @@ public static class MarkdownReportExporter
     }
 
     // ─────────────────────────────────────────────────────
-    // P4 增强小节
+    // 深度分析增强小节
     // ─────────────────────────────────────────────────────
 
     private static void WriteSamplingConfidenceSection(TextWriter writer, AnalysisResult result)

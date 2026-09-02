@@ -1,11 +1,11 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using Microsoft.AspNetCore.Http;
 
 namespace ObjectAnalyzer.Api;
 
 /// <summary>multipart 分析表单（字段注释会进入 OpenAPI / Scalar 文档）。</summary>
 /// <remarks>
-/// 继承 <see cref="AnalyzeRequestOptions"/> 得到全部分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + P4 开关），
+/// 继承 <see cref="AnalyzeRequestOptions"/> 得到全部分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + 深度分析开关），
 /// 仅追加 multipart 专属字段（数据文件 / 规则文件 / 内联规则 / 未知键开关）。
 /// </remarks>
 public sealed class AnalyzeForm : AnalyzeRequestOptions

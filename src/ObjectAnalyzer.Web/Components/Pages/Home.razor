@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @using Core = global::ObjectAnalyzer
 @using global::ObjectAnalyzer.Analysis
 @using Microsoft.AspNetCore.Components.Forms
@@ -143,7 +143,7 @@
                     <span>@Loc["OptParallel"]</span>
                     <input type="number" value="@State.MaxDegreeOfParallelism" @oninput="OnParallelChange" min="-1" max="64" placeholder="-1" title="@Loc["OptParallelTitle"]" />
                 </label>
-                <div class="side-subgroup-title">@Loc["GroupP4Depth"]</div>
+                <div class="side-subgroup-title">@Loc["GroupDeepAnalysis"]</div>
                 <label class="option-item checkbox-item">
                     <input type="checkbox" checked="@State.EnableCorrelation" @onchange="OnEnableCorrelationChange" title="@Loc["OptEnableCorrelationTitle"]" />
                     <span>@Loc["OptEnableCorrelation"]</span>
@@ -914,80 +914,80 @@
                 </div>
             </div>
 
-            @* P4 深度分析 section：相关性 + 模式 + Unicode 卫生 + 模糊去重 + 采样置信 + 分布漂移 *@
-            <div class="p4-section">
-                <div class="p4-header">
-                    <h2>🧬 @Loc["P4InsightsTitle"]</h2>
-                    <p class="p4-hint">@Loc["P4InsightsHint"]</p>
+            @* 深度分析 section：相关性 + 模式 + Unicode 卫生 + 模糊去重 + 采样置信 + 分布漂移 *@
+            <div class="deep-section">
+                <div class="deep-header">
+                    <h2>🧬 @Loc["DeepAnalysisInsightsTitle"]</h2>
+                    <p class="deep-hint">@Loc["DeepAnalysisInsightsHint"]</p>
                 </div>
 
-                <div class="p4-grid">
+                <div class="deep-grid">
                     @* 字段相关性矩阵卡片 *@
-                    <div class="p4-card">
+                    <div class="deep-card">
                         <h3>🔗 @Loc["CorrelationCard"]</h3>
                         @{
                             var corr = State.Result.CorrelationMatrix;
                         }
                         @if (corr == null || corr.Fields.Count == 0)
                         {
-                            <p class="p4-empty">@Loc["NoCorrelation"]</p>
+                            <p class="deep-empty">@Loc["NoCorrelation"]</p>
                         }
                         else
                         {
-                            <div class="p4-card-stats">
-                                <span class="p4-stat-num">@corr.Fields.Count</span>
-                                <span class="p4-stat-label">@Loc["FieldsLabel"]</span>
-                                <span class="p4-meta-sep">·</span>
-                                <span class="p4-stat-num">@corr.Samples</span>
-                                <span class="p4-stat-label">@Loc["SamplesLabel"]</span>
+                            <div class="deep-card-stats">
+                                <span class="deep-stat-num">@corr.Fields.Count</span>
+                                <span class="deep-stat-label">@Loc["FieldsLabel"]</span>
+                                <span class="deep-meta-sep">·</span>
+                                <span class="deep-stat-num">@corr.Samples</span>
+                                <span class="deep-stat-label">@Loc["SamplesLabel"]</span>
                             </div>
                             @if (corr.StrongPairs.Count > 0)
                             {
-                                <ul class="p4-list">
+                                <ul class="deep-list">
                                     @foreach (var p in corr.StrongPairs.Take(6))
                                     {
                                         var pColor = (p.Pearson ?? 0) >= 0.7 ? "corr-pos" : (p.Pearson ?? 0) <= -0.7 ? "corr-neg" : "";
                                         <li>
-                                            <code class="p4-field">@p.FieldA</code>
-                                            <span class="p4-arrow">↔</span>
-                                            <code class="p4-field">@p.FieldB</code>
-                                            <span class="p4-corr @pColor">r = @p.Pearson?.ToString("F2")</span>
+                                            <code class="deep-field">@p.FieldA</code>
+                                            <span class="deep-arrow">↔</span>
+                                            <code class="deep-field">@p.FieldB</code>
+                                            <span class="deep-corr @pColor">r = @p.Pearson?.ToString("F2")</span>
                                         </li>
                                     }
                                 </ul>
                             }
                             else
                             {
-                                <p class="p4-empty">@Loc["NoStrongPairs"]</p>
+                                <p class="deep-empty">@Loc["NoStrongPairs"]</p>
                             }
                         }
                     </div>
 
                     @* 字符串模式归纳卡片 *@
-                    <div class="p4-card">
+                    <div class="deep-card">
                         <h3>🔤 @Loc["StringPatternsCard"]</h3>
                         @{
                             var sp = State.Result.StringPatterns;
                         }
                         @if (sp == null || sp.Count == 0)
                         {
-                            <p class="p4-empty">@Loc["NoStringPatterns"]</p>
+                            <p class="deep-empty">@Loc["NoStringPatterns"]</p>
                         }
                         else
                         {
-                            <div class="p4-card-stats">
-                                <span class="p4-stat-num">@sp.Count</span>
-                                <span class="p4-stat-label">@Loc["FieldsLabel"]</span>
+                            <div class="deep-card-stats">
+                                <span class="deep-stat-num">@sp.Count</span>
+                                <span class="deep-stat-label">@Loc["FieldsLabel"]</span>
                             </div>
-                            <ul class="p4-list">
+                            <ul class="deep-list">
                                 @foreach (var (field, profile) in sp.OrderByDescending(p => p.Value.TotalSamples).Take(6))
                                 {
                                     <li>
-                                        <code class="p4-field">@field</code>
+                                        <code class="deep-field">@field</code>
                                         @if (profile.DominantPattern != null)
                                         {
                                             <code class="pattern-template">@profile.DominantPattern.Template</code>
-                                            <span class="p4-meta">@Loc.Get("PatternCountFmt", profile.DominantPattern.Count, profile.TotalSamples)</span>
+                                            <span class="deep-meta">@Loc.Get("PatternCountFmt", profile.DominantPattern.Count, profile.TotalSamples)</span>
                                         }
                                     </li>
                                 }
@@ -996,7 +996,7 @@
                     </div>
 
                     @* Unicode 卫生检查卡片 *@
-                    <div class="p4-card">
+                    <div class="deep-card">
                         <h3>🧹 @Loc["UnicodeHygieneCard"]</h3>
                         @{
                             var uh = State.Result.UnicodeHygiene;
@@ -1009,19 +1009,19 @@
                         }
                         @if (uh == null || uh.Count == 0)
                         {
-                            <p class="p4-empty">@Loc["NoHygieneIssues"]</p>
+                            <p class="deep-empty">@Loc["NoHygieneIssues"]</p>
                         }
                         else if (dirtyFields.Count == 0)
                         {
-                            <p class="p4-empty" style="color:#15803d">✅ @Loc["HygieneAllClean"]</p>
+                            <p class="deep-empty" style="color:#15803d">✅ @Loc["HygieneAllClean"]</p>
                         }
                         else
                         {
-                            <div class="p4-card-stats">
-                                <span class="p4-stat-num">@dirtyFields.Count</span>
-                                <span class="p4-stat-label">@Loc["HygieneDirtyLabel"]</span>
+                            <div class="deep-card-stats">
+                                <span class="deep-stat-num">@dirtyFields.Count</span>
+                                <span class="deep-stat-label">@Loc["HygieneDirtyLabel"]</span>
                             </div>
-                            <ul class="p4-list">
+                            <ul class="deep-list">
                                 @foreach (var (field, r) in dirtyFields.Take(6))
                                 {
                                     var flags = new List<string>();
@@ -1037,9 +1037,9 @@
                                         flags.Add(Loc.Get("HygieneMixedCase", r.MixedCaseCount));
                                     string flagStr = flags.Count > 0 ? string.Join("; ", flags) : "—";
                                     <li>
-                                        <code class="p4-field">@field</code>
-                                        <span class="p4-score @(r.HygieneScore >= 70 ? "score-mid" : "score-low")">@Loc.Get("HygieneScoreFmt", r.HygieneScore ?? 0)</span>
-                                        <div class="p4-meta-sub">@flagStr</div>
+                                        <code class="deep-field">@field</code>
+                                        <span class="deep-score @(r.HygieneScore >= 70 ? "score-mid" : "score-low")">@Loc.Get("HygieneScoreFmt", r.HygieneScore ?? 0)</span>
+                                        <div class="deep-meta-sub">@flagStr</div>
                                     </li>
                                 }
                             </ul>
@@ -1047,35 +1047,35 @@
                     </div>
 
                     @* 模糊去重卡片 *@
-                    <div class="p4-card">
+                    <div class="deep-card">
                         <h3>👥 @Loc["FuzzyDedupCard"]</h3>
                         @{
                             var fd = State.Result.FuzzyDuplicates;
                         }
                         @if (fd == null)
                         {
-                            <p class="p4-empty">@Loc["NoFuzzyDedup"]</p>
+                            <p class="deep-empty">@Loc["NoFuzzyDedup"]</p>
                         }
                         else
                         {
-                            <div class="p4-card-stats">
-                                <span class="p4-stat-num">@fd.GroupCount</span>
-                                <span class="p4-stat-label">@Loc["FuzzyGroupsLabel"]</span>
-                                <span class="p4-meta-sep">·</span>
-                                <span class="p4-stat-num">@fd.SimilarDuplicates</span>
-                                <span class="p4-stat-label">@Loc["FuzzySimLabel"]</span>
+                            <div class="deep-card-stats">
+                                <span class="deep-stat-num">@fd.GroupCount</span>
+                                <span class="deep-stat-label">@Loc["FuzzyGroupsLabel"]</span>
+                                <span class="deep-meta-sep">·</span>
+                                <span class="deep-stat-num">@fd.SimilarDuplicates</span>
+                                <span class="deep-stat-label">@Loc["FuzzySimLabel"]</span>
                             </div>
                             @if (fd.Groups.Count > 0)
                             {
-                                <ul class="p4-list">
+                                <ul class="deep-list">
                                     @foreach (var g in fd.Groups.Take(6))
                                     {
                                         <li>
-                                            <code class="p4-field">@TruncatePlain(g.CanonicalKey, 40)</code>
-                                            <span class="p4-meta">@Loc.Get("FuzzyGroupSizeFmt", g.Count)</span>
+                                            <code class="deep-field">@TruncatePlain(g.CanonicalKey, 40)</code>
+                                            <span class="deep-meta">@Loc.Get("FuzzyGroupSizeFmt", g.Count)</span>
                                             @if (g.Examples.Count > 1)
                                             {
-                                                <div class="p4-meta-sub">
+                                                <div class="deep-meta-sub">
                                                     @string.Join(", ", g.Examples.Take(3).Select(e => $"\"{TruncatePlain(e, 20)}\""))
                                                 </div>
                                             }
@@ -1087,29 +1087,29 @@
                     </div>
 
                     @* 时间序列深度分析卡片 *@
-                    <div class="p4-card">
+                    <div class="deep-card">
                         <h3>📊 @Loc["TimeSeriesDeepCard"]</h3>
                         @{
                             var ts = State.Result.TimeSeriesAnalyses;
                         }
                         @if (ts == null || ts.Count == 0)
                         {
-                            <p class="p4-empty">@Loc["NoTimeSeriesDeep"]</p>
+                            <p class="deep-empty">@Loc["NoTimeSeriesDeep"]</p>
                         }
                         else
                         {
-                            <ul class="p4-list">
+                            <ul class="deep-list">
                                 @foreach (var (field, t) in ts.Take(6))
                                 {
                                     var trendColor = t.Trend == "rising" ? "trend-up" : t.Trend == "falling" ? "trend-down" : "trend-flat";
                                     <li>
-                                        <code class="p4-field">@field</code>
-                                        <span class="p4-trend @trendColor">@Loc.Get("TimeSeriesTrendFmt", t.Trend)</span>
+                                        <code class="deep-field">@field</code>
+                                        <span class="deep-trend @trendColor">@Loc.Get("TimeSeriesTrendFmt", t.Trend)</span>
                                         @if (t.DetectedPeriod.HasValue)
                                         {
-                                            <span class="p4-meta">@Loc.Get("TimeSeriesPeriodFmt", t.DetectedPeriod)</span>
+                                            <span class="deep-meta">@Loc.Get("TimeSeriesPeriodFmt", t.DetectedPeriod)</span>
                                         }
-                                        <div class="p4-meta-sub">@Loc.Get("TimeSeriesSpanFmt", t.BucketCount, t.BucketSpan)</div>
+                                        <div class="deep-meta-sub">@Loc.Get("TimeSeriesSpanFmt", t.BucketCount, t.BucketSpan)</div>
                                     </li>
                                 }
                             </ul>
@@ -1117,32 +1117,32 @@
                     </div>
 
                     @* 采样置信度卡片 *@
-                    <div class="p4-card">
+                    <div class="deep-card">
                         <h3>🎯 @Loc["SamplingConfidenceCard"]</h3>
                         @{
                             var sc = State.Result.SamplingConfidence;
                         }
                         @if (sc == null)
                         {
-                            <p class="p4-empty">@Loc["NoSamplingConfidence"]</p>
+                            <p class="deep-empty">@Loc["NoSamplingConfidence"]</p>
                         }
                         else
                         {
-                            <div class="p4-card-stats">
-                                <span class="p4-stat-num">@sc.EffectiveSampleSize</span>
-                                <span class="p4-stat-label">@Loc["EffectiveNLabel"]</span>
+                            <div class="deep-card-stats">
+                                <span class="deep-stat-num">@sc.EffectiveSampleSize</span>
+                                <span class="deep-stat-label">@Loc["EffectiveNLabel"]</span>
                             </div>
-                            <p class="p4-summary">@sc.Summary</p>
+                            <p class="deep-summary">@sc.Summary</p>
                             @if (sc.LowConfidenceFields.Count > 0)
                             {
-                                <ul class="p4-list">
+                                <ul class="deep-list">
                                     @foreach (var f in sc.LowConfidenceFields.Take(6))
                                     {
                                         <li>
-                                            <code class="p4-field">@f</code>
+                                            <code class="deep-field">@f</code>
                                             @if (sc.CoverageIntervals.TryGetValue(f, out var ci))
                                             {
-                                                <span class="p4-meta">@Loc.Get("ConfidenceRangeFmt", ci.Lower, ci.Upper)</span>
+                                                <span class="deep-meta">@Loc.Get("ConfidenceRangeFmt", ci.Lower, ci.Upper)</span>
                                             }
                                         </li>
                                     }
@@ -1152,7 +1152,7 @@
                     </div>
 
                     @* 分布漂移卡片（与 Schema Diff 类似但基于草图对比） *@
-                    <div class="p4-card p4-card-wide">
+                    <div class="deep-card deep-card-wide">
                         <h3>📉 @Loc["DistributionDiffCard"]</h3>
 
                         <div class="p3-baseline-row">
@@ -1169,36 +1169,36 @@
                         }
                         @if (dd == null)
                         {
-                            <p class="p4-empty">@Loc["NoDistributionDiff"]</p>
+                            <p class="deep-empty">@Loc["NoDistributionDiff"]</p>
                         }
                         else
                         {
-                            <div class="p4-card-stats">
-                                <span class="p4-stat-num">@dd.SignificantDriftCount</span>
-                                <span class="p4-stat-label">@Loc["DriftCountLabel"]</span>
+                            <div class="deep-card-stats">
+                                <span class="deep-stat-num">@dd.SignificantDriftCount</span>
+                                <span class="deep-stat-label">@Loc["DriftCountLabel"]</span>
                             </div>
-                            <div class="p4-row">
-                                <span class="p4-meta">@Loc["BaselineLabel"]:</span>
+                            <div class="deep-row">
+                                <span class="deep-meta">@Loc["BaselineLabel"]:</span>
                                 <code>@dd.BaselineSource</code>
                             </div>
-                            <div class="p4-row">
-                                <span class="p4-meta">@Loc["CurrentLabel"]:</span>
+                            <div class="deep-row">
+                                <span class="deep-meta">@Loc["CurrentLabel"]:</span>
                                 <code>@dd.CurrentSource</code>
                             </div>
                             @if (dd.NumericDrifts.Count > 0)
                             {
-                                <details class="p4-diff-group" open>
+                                <details class="deep-diff-group" open>
                                     <summary>🔢 @Loc.Get("NumericDriftTitle", dd.NumericDrifts.Count)</summary>
-                                    <ul class="p4-list">
+                                    <ul class="deep-list">
                                         @foreach (var d in dd.NumericDrifts.Take(8))
                                         {
                                             var sevClass = d.MeanShiftSigma >= 2 ? "drift-high" : d.MeanShiftSigma >= 1 ? "drift-mid" : "";
                                             <li>
-                                                <code class="p4-field">@d.Path</code>
-                                                <span class="p4-meta">@Loc.Get("DriftMeanFmt", d.BaselineMean ?? 0, d.CurrentMean ?? 0)</span>
+                                                <code class="deep-field">@d.Path</code>
+                                                <span class="deep-meta">@Loc.Get("DriftMeanFmt", d.BaselineMean ?? 0, d.CurrentMean ?? 0)</span>
                                                 @if (d.MeanShiftSigma.HasValue)
                                                 {
-                                                    <span class="p4-shift @sevClass">@Loc.Get("DriftSigmaFmt", d.MeanShiftSigma.Value)</span>
+                                                    <span class="deep-shift @sevClass">@Loc.Get("DriftSigmaFmt", d.MeanShiftSigma.Value)</span>
                                                 }
                                             </li>
                                         }
@@ -1207,16 +1207,16 @@
                             }
                             @if (dd.DistinctDrifts.Count > 0)
                             {
-                                <details class="p4-diff-group">
+                                <details class="deep-diff-group">
                                     <summary>🔠 @Loc.Get("DistinctDriftTitle", dd.DistinctDrifts.Count)</summary>
-                                    <ul class="p4-list">
+                                    <ul class="deep-list">
                                         @foreach (var d in dd.DistinctDrifts.Take(8))
                                         {
                                             <li>
-                                                <code class="p4-field">@d.Path</code>
+                                                <code class="deep-field">@d.Path</code>
                                                 @if (d.Jaccard.HasValue)
                                                 {
-                                                    <span class="p4-meta">@Loc.Get("DriftJaccardFmt", d.Jaccard.Value)</span>
+                                                    <span class="deep-meta">@Loc.Get("DriftJaccardFmt", d.Jaccard.Value)</span>
                                                 }
                                             </li>
                                         }
@@ -1421,7 +1421,7 @@
         int sampleStep = State.SampleStep;
         double lowConfidenceWidth = State.LowConfidenceWidth;
         int memoryFallbackSampleSize = State.MemoryFallbackSampleSize;
-        // P4 深度分析开关：任一为真才构造 AdvancedAnalysisOptions 走对应分支
+        // 深度分析开关：任一为真才构造 AdvancedAnalysisOptions 走对应分支
         bool enableCorrelation = State.EnableCorrelation;
         bool enableStringPatterns = State.EnableStringPatterns;
         bool enableUnicodeHygiene = State.EnableUnicodeHygiene;
@@ -1843,7 +1843,7 @@
                     }
                     return o;
                 });
-                // 任一 P4 深度分析开关被勾选时构造 AdvancedAnalysisOptions 走对应分支；全关时传 null，与 v1.x 行为一致
+                // 任一 深度分析开关被勾选时构造 AdvancedAnalysisOptions 走对应分支；全关时传 null，与 v1.x 行为一致
                 Core.Analysis.Options.AdvancedAnalysisOptions? features =
                     (enableCorrelation || enableStringPatterns
                         || enableUnicodeHygiene || enableTimeSeries

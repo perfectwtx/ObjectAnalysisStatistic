@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -70,7 +70,7 @@
   <data name="OptCsvInferNumbersTitle" xml:space="preserve"><value>Auto-infer numeric CSV columns (30→30, 3.14→3.14). Off keeps everything as string.</value></data>
   <data name="OptAllowUnknownRules" xml:space="preserve"><value>Tolerate unknown rule keys</value></data>
   <data name="OptAllowUnknownRulesTitle" xml:space="preserve"><value>Continue when rules contain unknown keys (default: rejected, to avoid silently dropped rules)</value></data>
-  <data name="GroupP4Depth" xml:space="preserve"><value>P4 Deep analysis</value></data>
+  <data name="GroupDeepAnalysis" xml:space="preserve"><value>Deep Analysis</value></data>
   <data name="OptEnableCorrelation" xml:space="preserve"><value>Field correlation matrix</value></data>
   <data name="OptEnableCorrelationTitle" xml:space="preserve"><value>Compute Pearson / Spearman correlations between numeric fields, find strongly related pairs</value></data>
   <data name="OptEnableStringPatterns" xml:space="preserve"><value>String pattern inference</value></data>

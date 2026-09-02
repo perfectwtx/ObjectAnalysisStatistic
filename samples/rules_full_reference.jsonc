@@ -186,8 +186,8 @@
       "failOnOutlierRatio": null      // 任一数值字段 IQR 异常值比例 > 阈值（退出码 5）
     },
 
-    // ── P4 深度分析（默认全关；开启会增加运行时间与内存）──
-    "p4": {
+    // ── 深度分析（默认全关；开启会增加运行时间与内存）──
+    "deepAnalysis": {
       "correlation": false,           // Pearson + Spearman 相关性矩阵
       "stringPatterns": false,        // 字符串形态模板归纳
       "unicodeHygiene": false,        // Unicode 卫生检查

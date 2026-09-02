@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -18,7 +18,7 @@ public static class AnalysisRunner
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    // P4 分布快照：缓存最近一次 AnalyzeDetailed 暴露的草图，供 ProcessDistributionSnapshot 使用
+    // 深度分析 分布快照：缓存最近一次 AnalyzeDetailed 暴露的草图，供 ProcessDistributionSnapshot 使用
     [ThreadStatic]
     private static Dictionary<string, MergeableQuantileSketch>? _lastQuantileSketches;
     [ThreadStatic]

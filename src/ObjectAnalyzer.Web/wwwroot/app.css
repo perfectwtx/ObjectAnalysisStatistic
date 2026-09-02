@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════
+﻿/* ═══════════════════════════════════════════════════════════════
    ObjectAnalyzer Web — Design System
    基于 Bootstrap 5.3（data-bs-theme 驱动明暗主题），组件仅引用设计令牌。
    结构约定：一个顶级类型一个文件；本文件按「令牌 → 基础 → 组件 → 区块」组织。
@@ -617,10 +617,10 @@ a, .btn-link {
 }
 
 /* 选项卡可见性：data-tab 决定明细区块显示 */
-.results-section[data-tab="fields"] :is(.p3-section, .p4-section, .duplicates-section, .preview-section),
+.results-section[data-tab="fields"] :is(.p3-section, .deep-section, .duplicates-section, .preview-section),
 .results-section[data-tab="deep"] :is(.toolbar, .field-table, .duplicates-section, .preview-section),
-.results-section[data-tab="dups"] :is(.toolbar, .field-table, .p3-section, .p4-section, .preview-section),
-.results-section[data-tab="preview"] :is(.toolbar, .field-table, .duplicates-section, .p3-section, .p4-section) {
+.results-section[data-tab="dups"] :is(.toolbar, .field-table, .p3-section, .deep-section, .preview-section),
+.results-section[data-tab="preview"] :is(.toolbar, .field-table, .duplicates-section, .p3-section, .deep-section) {
     display: none;
 }
 
@@ -1207,7 +1207,7 @@ a, .btn-link {
 
 .results-header h2,
 .p3-header h2,
-.p4-header h2 {
+.deep-header h2 {
     position: relative;
     font-size: 1.3rem;
     font-weight: 750;
@@ -1219,7 +1219,7 @@ a, .btn-link {
 
 .results-header h2::before,
 .p3-header h2::before,
-.p4-header h2::before {
+.deep-header h2::before {
     content: "";
     position: absolute;
     left: 0;
@@ -1917,7 +1917,7 @@ a, .btn-link {
 
 /* ─── 12. P3 高级分析 ─── */
 .p3-section,
-.p4-section {
+.deep-section {
     margin-top: 2rem;
     padding: 1.5rem;
     background: var(--oa-surface);
@@ -1930,12 +1930,12 @@ a, .btn-link {
     border-top: 3px solid #6366f1;
 }
 
-.p4-section {
+.deep-section {
     border-top: 3px solid #0d9488;
 }
 
 .p3-header,
-.p4-header {
+.deep-header {
     margin-bottom: 1.1rem;
 }
 
@@ -1948,21 +1948,21 @@ a, .btn-link {
 }
 
 .p3-hint,
-.p4-hint {
+.deep-hint {
     font-size: 0.84rem;
     color: var(--oa-text-3);
     margin: 0.2rem 0 0;
 }
 
 .p3-grid,
-.p4-grid {
+.deep-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
 }
 
 .p3-card,
-.p4-card {
+.deep-card {
     background: var(--oa-surface-2);
     border: 1px solid var(--oa-border);
     border-radius: var(--oa-radius-md);
@@ -1971,18 +1971,18 @@ a, .btn-link {
 }
 
 .p3-card:hover,
-.p4-card:hover {
+.deep-card:hover {
     border-color: var(--oa-accent-border);
     box-shadow: var(--oa-shadow-sm);
 }
 
 .p3-card-wide,
-.p4-card-wide {
+.deep-card-wide {
     grid-column: span 2;
 }
 
 .p3-card h3,
-.p4-card h3 {
+.deep-card h3 {
     font-size: 0.95rem;
     font-weight: 650;
     color: var(--oa-text-1);
@@ -1990,7 +1990,7 @@ a, .btn-link {
 }
 
 .p3-empty,
-.p4-empty {
+.deep-empty {
     color: var(--oa-text-3);
     font-size: 0.85rem;
     font-style: italic;
@@ -1998,7 +1998,7 @@ a, .btn-link {
 }
 
 .p3-card-stats,
-.p4-card-stats {
+.deep-card-stats {
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
@@ -2019,7 +2019,7 @@ a, .btn-link {
     color: #a5b4fc;
 }
 
-.p4-stat-num {
+.deep-stat-num {
     font-size: 1.4rem;
     font-weight: 750;
     color: #0d9488;
@@ -2027,18 +2027,18 @@ a, .btn-link {
     font-variant-numeric: tabular-nums;
 }
 
-[data-bs-theme="dark"] .p4-stat-num {
+[data-bs-theme="dark"] .deep-stat-num {
     color: #5eead4;
 }
 
 .p3-stat-label,
-.p4-stat-label {
+.deep-stat-label {
     font-size: 0.78rem;
     color: var(--oa-text-3);
 }
 
 .p3-list,
-.p4-list {
+.deep-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -2048,7 +2048,7 @@ a, .btn-link {
 }
 
 .p3-list li,
-.p4-list li {
+.deep-list li {
     padding: 0.42rem 0.6rem;
     background: var(--oa-surface);
     border: 1px solid var(--oa-border);
@@ -2058,7 +2058,7 @@ a, .btn-link {
 }
 
 .p3-field,
-.p4-field {
+.deep-field {
     background: var(--oa-accent-soft);
     color: var(--oa-accent);
     padding: 0.1rem 0.42rem;
@@ -2069,14 +2069,14 @@ a, .btn-link {
 }
 
 .p3-meta,
-.p4-meta {
+.deep-meta {
     color: var(--oa-text-2);
     font-size: 0.8rem;
     margin-left: 0.5rem;
 }
 
 .p3-meta-sub,
-.p4-meta-sub {
+.deep-meta-sub {
     color: var(--oa-text-3);
     font-size: 0.74rem;
     margin-top: 0.2rem;
@@ -2084,7 +2084,7 @@ a, .btn-link {
 }
 
 .p3-meta-sep,
-.p4-meta-sep {
+.deep-meta-sep {
     color: var(--oa-text-3);
     margin: 0 0.2rem;
 }
@@ -2114,14 +2114,14 @@ a, .btn-link {
     max-width: 100%;
 }
 
-/* P4 专属元素 */
-.p4-summary {
+/* 深度分析专属元素 */
+.deep-summary {
     font-size: 0.86rem;
     color: var(--oa-text-2);
     margin: 0.2rem 0 0;
 }
 
-.p4-row {
+.deep-row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -2130,27 +2130,27 @@ a, .btn-link {
     color: var(--oa-text-1);
 }
 
-.p4-score {
+.deep-score {
     font-weight: 700;
     color: var(--oa-info);
     font-variant-numeric: tabular-nums;
 }
 
-.p4-corr {
+.deep-corr {
     font-weight: 600;
     color: var(--oa-accent);
 }
 
-.p4-arrow {
+.deep-arrow {
     color: var(--oa-text-3);
 }
 
-.p4-trend {
+.deep-trend {
     font-weight: 550;
     color: var(--oa-info);
 }
 
-.p4-shift {
+.deep-shift {
     font-family: var(--oa-font-mono);
     color: var(--oa-text-2);
     font-size: 0.8rem;
@@ -2229,7 +2229,7 @@ a, .btn-link {
 }
 
 .p3-diff-group,
-.p4-diff-group {
+.deep-diff-group {
     margin-top: 0.5rem;
     padding: 0.4rem 0.65rem;
     background: var(--oa-surface-2);
@@ -2238,7 +2238,7 @@ a, .btn-link {
 }
 
 .p3-diff-group > summary,
-.p4-diff-group > summary {
+.deep-diff-group > summary {
     cursor: pointer;
     font-weight: 600;
     font-size: 0.88rem;
@@ -2248,7 +2248,7 @@ a, .btn-link {
 }
 
 .p3-diff-group > summary:hover,
-.p4-diff-group > summary:hover {
+.deep-diff-group > summary:hover {
     color: var(--oa-accent);
 }
 
@@ -2477,12 +2477,12 @@ a, .btn-link {
     }
 
     .p3-grid,
-    .p4-grid {
+    .deep-grid {
         grid-template-columns: 1fr;
     }
 
     .p3-card-wide,
-    .p4-card-wide {
+    .deep-card-wide {
         grid-column: span 1;
     }
 }

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -79,7 +79,7 @@ public static class PiiRedactor
             FieldStatistics = maskedStats,
             QualityViolations = maskedQuality,
             SchemaDiff = result.SchemaDiff,
-            // ── P4 字段透传：打码不影响 P4 报告内容（相关性矩阵、模糊去重、模式、Unicode 卫生等不含原始值）──
+            // ── 深度分析 字段透传：打码不影响 深度分析 报告内容（相关性矩阵、模糊去重、模式、Unicode 卫生等不含原始值）──
             CorrelationMatrix = result.CorrelationMatrix,
             FuzzyDuplicates = result.FuzzyDuplicates,
             StringPatterns = result.StringPatterns,

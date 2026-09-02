@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -70,7 +70,7 @@
   <data name="OptCsvInferNumbersTitle" xml:space="preserve"><value>CSV 数字列自动推断为数值类型（30→30，3.14→3.14），关掉则按字符串统计</value></data>
   <data name="OptAllowUnknownRules" xml:space="preserve"><value>容忍规则里不认识的键</value></data>
   <data name="OptAllowUnknownRulesTitle" xml:space="preserve"><value>规则拼错/已废弃时仍然继续分析（默认会拦截，避免规则看似生效实则被静默忽略）</value></data>
-  <data name="GroupP4Depth" xml:space="preserve"><value>P4 深度分析</value></data>
+  <data name="GroupDeepAnalysis" xml:space="preserve"><value>深度分析</value></data>
   <data name="OptEnableCorrelation" xml:space="preserve"><value>字段相关性矩阵</value></data>
   <data name="OptEnableCorrelationTitle" xml:space="preserve"><value>计算数值字段 Pearson / Spearman 相关性，找出强相关对</value></data>
   <data name="OptEnableStringPatterns" xml:space="preserve"><value>字符串模式归纳</value></data>
@@ -187,8 +187,8 @@
   <data name="HistogramBars" xml:space="preserve"><value>{0} 个时间桶</value></data>
   <data name="DatetimeSpan" xml:space="preserve"><value>跨度 {0}</value></data>
   <data name="OutlierZero" xml:space="preserve"><value>无离群点</value></data>
-  <data name="P4InsightsTitle" xml:space="preserve"><value>P4 深度分析</value></data>
-  <data name="P4InsightsHint" xml:space="preserve"><value>字段相关性、字符串模式、Unicode 卫生、模糊去重、采样置信、分布漂移</value></data>
+  <data name="DeepAnalysisInsightsTitle" xml:space="preserve"><value>深度分析</value></data>
+  <data name="DeepAnalysisInsightsHint" xml:space="preserve"><value>字段相关性、字符串模式、Unicode 卫生、模糊去重、采样置信、分布漂移</value></data>
   <data name="CorrelationCard" xml:space="preserve"><value>字段相关性矩阵</value></data>
   <data name="StringPatternsCard" xml:space="preserve"><value>字符串模式归纳</value></data>
   <data name="UnicodeHygieneCard" xml:space="preserve"><value>Unicode 卫生检查</value></data>

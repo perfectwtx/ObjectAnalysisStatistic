@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using ObjectAnalyzer.Analysis;
 
@@ -108,13 +108,13 @@ public class AnalysisOptionsApplyRuntimeTests
     }
 
     [Fact]
-    public void ApplyRuntime_P4DepthEnablesP4Flags()
+    public void ApplyRuntime_DeepAnalysisDepthEnablesFlags()
     {
         var options = NewDefaults();
 
         Apply(options, """
         {
-          "p4": {
+          "deepAnalysis": {
             "correlation": true,
             "stringPatterns": true,
             "unicodeHygiene": true,
@@ -273,7 +273,7 @@ public class AnalysisOptionsApplyRuntimeTests
           "distribution": { "snapshot": "d.json" },
           "pii": { "off": true },
           "gates": { "failOnViolations": true, "failOnOutlierRatio": 0.1 },
-          "p4": { "correlation": true },
+          "deepAnalysis": { "correlation": true },
           "checkpoint": { "path": "ck.snap" },
           "memory": { "maxMB": 512, "mode": "soft" },
           "progress": { "enabled": false },

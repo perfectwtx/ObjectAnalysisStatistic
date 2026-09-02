@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using MiniExcelLibs;
 using Spectre.Console;
 
@@ -6,7 +6,7 @@ namespace ObjectAnalyzer.Reporting;
 
 /// <summary>
 /// 将分析结果导出为 Excel 工作簿（.xlsx，多 sheet），便于在 Excel/WPS/LibreOffice 中
-/// 直接浏览、筛选、做透视与图表。覆盖字段统计、重复对象、违规清单及 P4 七项分析。
+/// 直接浏览、筛选、做透视与图表。覆盖字段统计、重复对象、违规清单及 深度分析七项。
 /// </summary>
 public static class ExcelReportExporter
 {
@@ -54,12 +54,12 @@ public static class ExcelReportExporter
             new() { ["指标"] = "字段总数", ["值"] = r.FieldStatistics.Count },
             new() { ["指标"] = "质量违规字段数", ["值"] = r.QualityViolations.Select(v => v.Field).Distinct().Count() },
             new() { ["指标"] = "质量违规总数", ["值"] = r.QualityViolations.Count },
-            new() { ["指标"] = "P4 字符串模式字段数", ["值"] = r.StringPatterns?.Count ?? 0 },
-            new() { ["指标"] = "P4 Unicode 卫生字段数", ["值"] = r.UnicodeHygiene?.Count ?? 0 },
-            new() { ["指标"] = "P4 模糊去重组数", ["值"] = r.FuzzyDuplicates?.Groups.Count ?? 0 },
-            new() { ["指标"] = "P4 相关性矩阵字段数", ["值"] = r.CorrelationMatrix?.Fields.Count ?? 0 },
-            new() { ["指标"] = "P4 时间序列字段数", ["值"] = r.TimeSeriesAnalyses?.Count ?? 0 },
-            new() { ["指标"] = "P4 分布漂移显著字段数", ["值"] = r.DistributionDiff?.SignificantDriftCount ?? 0 },
+            new() { ["指标"] = "深度分析字符串模式字段数", ["值"] = r.StringPatterns?.Count ?? 0 },
+            new() { ["指标"] = "深度分析 Unicode 卫生字段数", ["值"] = r.UnicodeHygiene?.Count ?? 0 },
+            new() { ["指标"] = "深度分析模糊去重组数", ["值"] = r.FuzzyDuplicates?.Groups.Count ?? 0 },
+            new() { ["指标"] = "深度分析相关性矩阵字段数", ["值"] = r.CorrelationMatrix?.Fields.Count ?? 0 },
+            new() { ["指标"] = "深度分析时间序列字段数", ["值"] = r.TimeSeriesAnalyses?.Count ?? 0 },
+            new() { ["指标"] = "深度分析分布漂移显著字段数", ["值"] = r.DistributionDiff?.SignificantDriftCount ?? 0 },
         };
         if (!string.IsNullOrEmpty(r.FilterExpression))
         {
@@ -125,7 +125,7 @@ public static class ExcelReportExporter
         }).ToList();
     }
 
-    // ───────────── P4：字符串模式 ─────────────
+    // ───────────── 深度分析：字符串模式 ─────────────
 
     private static void AppendStringPatternsSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {
@@ -146,7 +146,7 @@ public static class ExcelReportExporter
         sheets["字符串模式"] = rows;
     }
 
-    // ───────────── P4：Unicode 卫生 ─────────────
+    // ───────────── 深度分析：Unicode 卫生 ─────────────
 
     private static void AppendUnicodeHygieneSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {
@@ -169,7 +169,7 @@ public static class ExcelReportExporter
         sheets["Unicode 卫生"] = rows;
     }
 
-    // ───────────── P4：模糊去重 ─────────────
+    // ───────────── 深度分析：模糊去重 ─────────────
 
     private static void AppendFuzzyDedupSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {
@@ -184,7 +184,7 @@ public static class ExcelReportExporter
         sheets["模糊去重"] = rows;
     }
 
-    // ───────────── P4：字段相关性 ─────────────
+    // ───────────── 深度分析：字段相关性 ─────────────
 
     private static void AppendCorrelationSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {
@@ -235,7 +235,7 @@ public static class ExcelReportExporter
         return rows;
     }
 
-    // ───────────── P4：时间序列深度 ─────────────
+    // ───────────── 深度分析：时间序列深度 ─────────────
 
     private static void AppendTimeSeriesSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {
@@ -256,7 +256,7 @@ public static class ExcelReportExporter
         }).ToList();
     }
 
-    // ───────────── P4：分布漂移 ─────────────
+    // ───────────── 深度分析：分布漂移 ─────────────
 
     private static void AppendDistributionDiffSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {
@@ -312,7 +312,7 @@ public static class ExcelReportExporter
         }
     }
 
-    // ───────────── P4：采样置信 ─────────────
+    // ───────────── 深度分析：采样置信 ─────────────
 
     private static void AppendSamplingConfidenceSheet(Dictionary<string, object> sheets, AnalysisResult r)
     {

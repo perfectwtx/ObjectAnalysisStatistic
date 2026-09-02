@@ -91,15 +91,15 @@ public static class RulesToOptionsConverter
             ApplyNullableDouble(gates, "failOnOutlierRatio", options.Gates, g => g.FailOnOutlierRatio, (g, v) => g.FailOnOutlierRatio = v);
         }
 
-        // ── P4 深度分析 ──
-        if (rt["p4"] is JsonObject p4)
+        // ── 深度分析 ──
+        if (rt["deepAnalysis"] is JsonObject deep)
         {
-            ApplyBool(p4, "correlation", options.Advanced, a => a.EnableCorrelation, (a, v) => a.EnableCorrelation = v);
-            ApplyBool(p4, "stringPatterns", options.Advanced, a => a.EnableStringPatterns, (a, v) => a.EnableStringPatterns = v);
-            ApplyBool(p4, "unicodeHygiene", options.Advanced, a => a.EnableUnicodeHygiene, (a, v) => a.EnableUnicodeHygiene = v);
-            ApplyBool(p4, "timeSeries", options.Advanced, a => a.EnableTimeSeries, (a, v) => a.EnableTimeSeries = v);
-            ApplyBool(p4, "distributionSnapshot", options.Advanced, a => a.EnableDistributionSnapshot, (a, v) => a.EnableDistributionSnapshot = v);
-            ApplyString(p4, "fuzzyDedupField", options.Advanced, a => a.FuzzyDedupField, (a, v) => a.FuzzyDedupField = v);
+            ApplyBool(deep, "correlation", options.Advanced, a => a.EnableCorrelation, (a, v) => a.EnableCorrelation = v);
+            ApplyBool(deep, "stringPatterns", options.Advanced, a => a.EnableStringPatterns, (a, v) => a.EnableStringPatterns = v);
+            ApplyBool(deep, "unicodeHygiene", options.Advanced, a => a.EnableUnicodeHygiene, (a, v) => a.EnableUnicodeHygiene = v);
+            ApplyBool(deep, "timeSeries", options.Advanced, a => a.EnableTimeSeries, (a, v) => a.EnableTimeSeries = v);
+            ApplyBool(deep, "distributionSnapshot", options.Advanced, a => a.EnableDistributionSnapshot, (a, v) => a.EnableDistributionSnapshot = v);
+            ApplyString(deep, "fuzzyDedupField", options.Advanced, a => a.FuzzyDedupField, (a, v) => a.FuzzyDedupField = v);
         }
 
         // ── 检查点 / 续跑 / 基线 ──

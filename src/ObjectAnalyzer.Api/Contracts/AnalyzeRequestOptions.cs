@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Analysis.Options;
 
@@ -52,7 +52,7 @@ public class AnalyzeRequestOptions
     [Description("最大并行线程数（-1 = 全部核心）")]
     public int? MaxDegreeOfParallelism { get; init; }
 
-    // ── P4 深度分析开关（默认全关，行为与 v1.x 一致，无额外开销）──
+    // ── 深度分析开关（默认全关，行为与 v1.x 一致，无额外开销）──
 
     /// <summary>输出数值字段 Pearson / Spearman 相关性矩阵。</summary>
     public bool? EnableCorrelation { get; init; }

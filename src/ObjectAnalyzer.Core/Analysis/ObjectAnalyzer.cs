@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Text;
@@ -70,7 +70,7 @@ public static partial class ObjectAnalyzer
     }
 
     /// <summary>
-    /// P4 增强入口：在返回 <see cref="AnalysisResult"/> 的同时，暴露每字段的 t-digest 草图与 HyperLogLog 草图，
+    /// 深度分析 增强入口：在返回 <see cref="AnalysisResult"/> 的同时，暴露每字段的 t-digest 草图与 HyperLogLog 草图，
     /// 供 <c>--export-distribution-snapshot</c> / <c>--diff-distribution</c> 做分布快照与漂移检测。
     /// 调用方无需草图时使用 <see cref="Analyze"/> 即可。
     /// </summary>
@@ -114,7 +114,7 @@ public static partial class ObjectAnalyzer
         long globalTotalObjects = 0;
         var mergeLock = new object();
 
-        // P4 全局合并结果（MergeLocalState 持有；Analyze 末尾读取并清空）
+        // 深度分析 全局合并结果（MergeLocalState 持有；Analyze 末尾读取并清空）
         FieldCorrelationCollector? globalCorrelationCollector = null;
         Dictionary<string, StringPatternProfiler>? globalStringPatterns = null;
         Dictionary<string, UnicodeHygieneReport>? globalUnicodeHygiene = null;
@@ -173,7 +173,7 @@ public static partial class ObjectAnalyzer
                     globalMetrics.MergeFrom(localMetrics);
                 }
 
-                // P4 增强：合并线程局部收集器
+                // 深度分析 增强：合并线程局部收集器
                 // 相关性：每个线程的收集器持有该线程处理的对象的"行样本"切片；
                 // 把所有线程的收集器按"对象顺序"追加合并，保证 Pearson/Spearman 计算使用全量数据。
                 if (local.CorrelationCollector != null)
@@ -241,7 +241,7 @@ public static partial class ObjectAnalyzer
                     var sortedEntries = obj.ToArray();
                     Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
 
-                    // P4 相关性收集：每对象一行 (field → double?) 样本；
+                    // 深度分析 相关性收集：每对象一行 (field → double?) 样本；
                     // 仅在 features.EnableCorrelation 为 true 时分配，避免默认路径上增加 GC 压力。
                     Dictionary<string, double?>? correlationRow = features?.EnableCorrelation == true
                         ? new Dictionary<string, double?>(StringComparer.Ordinal)
@@ -294,7 +294,7 @@ public static partial class ObjectAnalyzer
                         // 收集数值与字符串度量指标
                         RecordValueMetrics(value, valStr, fieldName, metrics);
 
-                        // P4 增强：相关性 / 模式 / 卫生（仅在 features 启用时执行）
+                        // 深度分析 增强：相关性 / 模式 / 卫生（仅在 features 启用时执行）
                         RecordFeatureMetrics(localState, value, valStr, fieldName, correlationRow, features);
 
                         // 质量检查 v2：minValue/maxValue 越界精确计数（热路径，不受唯一值截断影响）
@@ -311,7 +311,7 @@ public static partial class ObjectAnalyzer
                         }
                     }
 
-                    // P4 相关性：把这一行所有字段的数值样本一次性送给收集器
+                    // 深度分析 相关性：把这一行所有字段的数值样本一次性送给收集器
                     if (correlationRow != null)
                     {
                         (localState.CorrelationCollector ??= new FieldCorrelationCollector(features!.CorrelationReservoir))
@@ -540,7 +540,7 @@ public static partial class ObjectAnalyzer
             ? new List<FieldViolation>()
             : QualityChecks.Evaluate(globalTotalObjects, totalUniqueObjects, results, rules);
 
-        // P4 后置处理：构建新报告（仅 features 启用时计算，否则全部为 null）
+        // 深度分析 后置处理：构建新报告（仅 features 启用时计算，否则全部为 null）
         FieldCorrelationMatrix? correlationMatrix = null;
         Dictionary<string, StringPatternProfile>? stringPatterns = null;
         Dictionary<string, UnicodeHygieneReport>? unicodeHygiene = null;
@@ -806,7 +806,7 @@ public static partial class ObjectAnalyzer
     }
 
     /// <summary>
-    /// P4 分析深度增强：把当前字段值登记到相应线程局部收集器中。
+    /// 深度分析 分析深度增强：把当前字段值登记到相应线程局部收集器中。
     /// 仅在 <paramref name="features"/> 启用了对应特性时执行，否则直接返回。
     /// </summary>
     private static void RecordFeatureMetrics(
