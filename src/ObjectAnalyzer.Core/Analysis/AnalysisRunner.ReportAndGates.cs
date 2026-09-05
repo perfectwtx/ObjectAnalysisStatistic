@@ -229,107 +229,11 @@ public static partial class AnalysisRunner
     }
 
     /// <summary>
-    /// CI 质量门禁评估：按 数据质量(3) → 数据安全合规(4) → 异常值(5) → Schema 演进(6) 的顺序
-    /// 逐条检查，首个命中的门禁决定退出码。结果（退出码）是数据，便于 W4 演进为门禁注册表。
+    /// CI 质量门禁评估：W4 门禁注册表逐条检查（数据质量 3 → 合规 4 → 异常值 5 → Schema 演进 6），
+    /// 首个触发的门禁决定退出码；退出码与审计摘要均为门禁的数据属性。
     /// </summary>
-    private static int EvaluateQualityGates(AnalysisResult result, AnalysisOptions options)
+    private static (int ExitCode, string? FailureMessage) EvaluateQualityGates(AnalysisResult result, AnalysisOptions options)
     {
-        int exitCode = 0;
-        // CI 数据质量门禁：存在任一质量违规（枚举/范围/模式/必填/唯一/null 率/数据集期望）时以非零退出码结束
-        if (options.Gates.FailOnViolations && result.QualityViolations.Count > 0)
-        {
-            long occurrenceCount = result.QualityViolations.Sum(v => v.Count);
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[red]数据质量未通过（{result.QualityViolations.Count} 条质量违规 / 涉及 {occurrenceCount} 行或值），退出码 3。[/]");
-            foreach (var violation in result.QualityViolations.Take(5))
-            {
-                string scope = string.IsNullOrEmpty(violation.Field)
-                    ? QualityCheckTypes.Label(violation.Check)
-                    : $"{violation.Field}: {QualityCheckTypes.Label(violation.Check)}";
-                AnalysisServices.Current.Console.MarkupLine($"  [red]·[/] {MarkupText.Escape(scope)} — {MarkupText.Escape(violation.Message)}");
-            }
-
-            if (result.QualityViolations.Count > 5)
-            {
-                AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {result.QualityViolations.Count - 5} 条，详见 --violations 导出[/]");
-            }
-
-            exitCode = 3;
-        }
-
-        // CI 数据安全合规门禁：合规等级达到或劣于阈值时以非零退出码结束（与 --fail-on-violations 对称）
-        if (exitCode == 0 && !string.IsNullOrWhiteSpace(options.Gates.FailOnPiiLevel))
-        {
-            var piiReport = PiiReport.Build(result);
-            if (piiReport.PiiFieldCount > 0 &&
-                PiiSeverityRank(piiReport.ComplianceLevel) >= PiiSeverityRank(options.Gates.FailOnPiiLevel))
-            {
-                AnalysisServices.Current.Console.MarkupLine(
-                    $"[red]数据安全合规未通过（合规等级 {piiReport.ComplianceLevel}，发现 {piiReport.PiiFieldCount} 个敏感字段 / {piiReport.PiiValueCount} 个敏感值），退出码 4。[/]");
-                exitCode = 4;
-            }
-        }
-
-        // CI 异常值门禁：任一数值字段异常值比例超阈值时以退出码 5 结束
-        if (exitCode == 0 && options.Gates.FailOnOutlierRatio.HasValue)
-        {
-            double threshold = options.Gates.FailOnOutlierRatio.Value;
-            var offenders = result.FieldStatistics
-                .Where(s => s.OutlierRatio.HasValue && s.OutlierRatio.Value > threshold)
-                .ToList();
-            if (offenders.Count > 0)
-            {
-                AnalysisServices.Current.Console.MarkupLine(
-                    $"[red]异常值未通过（阈值 {threshold:P1}，发现 {offenders.Count} 个字段超限），退出码 5。[/]");
-                foreach (var s in offenders.Take(5))
-                {
-                    AnalysisServices.Current.Console.MarkupLine(
-                        $"  [red]·[/] [cyan]{MarkupText.Escape(s.FieldName)}[/]: {s.OutlierRatio:P1} (区间 {MarkupText.Escape(s.OutlierBounds ?? "-")}, {s.OutlierCount} 样本, {s.OutlierMethod} 近似)");
-                }
-                if (offenders.Count > 5)
-                {
-                    AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {offenders.Count - 5} 个字段，详见报告[/]");
-                }
-                exitCode = 5;
-            }
-        }
-
-        // CI Schema 演进门禁：--allow-breaking-schema-changes=false 时，含破坏性变更以退出码 6 结束
-        if (exitCode == 0 && !options.Gates.AllowBreakingSchemaChanges && result.SchemaDiff != null && result.SchemaDiff.HasBreakingChanges)
-        {
-            int removed = result.SchemaDiff.RemovedFields.Count;
-            int breakingChanges = result.SchemaDiff.ChangedFields.Count(c => c.Breaking);
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[red]Schema 演进门禁未通过（--allow-breaking-schema-changes=false，发现 {removed} 个删除字段、{breakingChanges} 个破坏性变更字段），退出码 6。[/]");
-            foreach (var f in result.SchemaDiff.RemovedFields.Take(5))
-            {
-                AnalysisServices.Current.Console.MarkupLine(
-                    $"  [red]-[/] [cyan]{MarkupText.Escape(f.Path)}[/]: {MarkupText.Escape(f.PrimaryType)} (coverage {f.Coverage:P1})");
-            }
-            foreach (var c in result.SchemaDiff.ChangedFields.Where(c => c.Breaking).Take(5))
-            {
-                AnalysisServices.Current.Console.MarkupLine($"  [red]~[/] [cyan]{MarkupText.Escape(c.Path)}[/]");
-                foreach (var item in c.Changes)
-                {
-                    if (item.Breaking)
-                    {
-                        AnalysisServices.Current.Console.MarkupLine($"      [red]·[/] {MarkupText.Escape(item.Property)}: {MarkupText.Escape(item.Description)}");
-                    }
-                }
-            }
-            exitCode = 6;
-        }
-
-        return exitCode;
+        return QualityGateRegistry.Evaluate(result, options);
     }
-
-    /// <summary>门禁退出码对应的审计摘要（0 = 成功，无摘要）。</summary>
-    private static string? GateFailureMessage(int exitCode) => exitCode switch
-    {
-        3 => "数据质量门禁未通过",
-        4 => "数据安全合规门禁未通过",
-        5 => "异常值门禁未通过",
-        6 => "Schema 演进门禁未通过",
-        _ => null
-    };
 }

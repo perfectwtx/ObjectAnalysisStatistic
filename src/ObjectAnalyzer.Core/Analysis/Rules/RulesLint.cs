@@ -34,42 +34,15 @@ public static class RulesLint
     /// <c>runtime</c> 节点在重构后是 <see cref="System.Text.Json.Nodes.JsonObject"/>，
     /// 不再通过反射枚举子键。保留一份白名单用于静态检查拼写错误 / 已废弃键。
     /// </summary>
+    // W6 单轨：runtime 白名单自 RulesToOptionsConverter.KnownRuntimeKeys 自动推导，
+    // 转换器新增/删除键时 lint 同步生效，不再双维护（对拍测试锁定与参考模板一致）。
     private static readonly string[] RuntimeTopLevelKeys =
-    [
-        "flatten", "csvInferNumbers", "maxValuesToShow", "maxParallelism", "allowUnknownRules",
-        "selectedFields", "filter",
-        "sampling", "jsonPath", "schema", "distribution", "pii", "gates", "deepAnalysis",
-        "checkpoint", "memory", "progress", "audit", "outputs"
-    ];
+        RulesToOptionsConverter.KnownRuntimeKeys.Keys.ToArray();
 
-    private static readonly string[] SamplingKeys = ["reservoir", "step"];
-    private static readonly string[] JsonPathKeys = ["root", "record"];
-    private static readonly string[] SchemaKeys = ["snapshot", "diffBaseline", "diffReport", "allowBreakingChanges"];
-    private static readonly string[] DistributionKeys = ["snapshot", "diffBaseline", "diffReport", "lowConfidenceWidth"];
-    private static readonly string[] PiiKeys = ["off", "report", "failOnLevel"];
-    private static readonly string[] GatesKeys = ["failOnViolations", "failOnOutlierRatio"];
-    private static readonly string[] DeepAnalysisKeys = ["correlation", "stringPatterns", "unicodeHygiene", "timeSeries", "distributionSnapshot", "fuzzyDedupField"];
-    private static readonly string[] CheckpointKeys = ["path", "resumeFrom", "baseline"];
-    private static readonly string[] MemoryKeys = ["maxMB", "mode"];
-    private static readonly string[] ProgressKeys = ["enabled"];
-    private static readonly string[] AuditKeys = ["log", "operator"];
-    private static readonly string[] OutputsKeys = ["primary", "violations", "quality", "schemaCode"];
-
-    private static readonly Dictionary<string, string[]> RuntimeChildKeys = new()
-    {
-        ["sampling"] = SamplingKeys,
-        ["jsonPath"] = JsonPathKeys,
-        ["schema"] = SchemaKeys,
-        ["distribution"] = DistributionKeys,
-        ["pii"] = PiiKeys,
-        ["gates"] = GatesKeys,
-        ["deepAnalysis"] = DeepAnalysisKeys,
-        ["checkpoint"] = CheckpointKeys,
-        ["memory"] = MemoryKeys,
-        ["progress"] = ProgressKeys,
-        ["audit"] = AuditKeys,
-        ["outputs"] = OutputsKeys,
-    };
+    private static readonly Dictionary<string, string[]> RuntimeChildKeys =
+        RulesToOptionsConverter.KnownRuntimeKeys
+            .Where(kv => kv.Value is { Length: > 0 })
+            .ToDictionary(kv => kv.Key, kv => kv.Value!, StringComparer.OrdinalIgnoreCase);
 
     private static readonly Dictionary<Type, string[]> KnownNamesCache = [];
 

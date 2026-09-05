@@ -48,6 +48,32 @@ public class RulesLintTests
     }
 
     [Fact]
+    public void Scan_AllKnownRuntimeKeys_AreRecognized()
+    {
+        // W6 单轨对拍：lint 白名单自 RulesToOptionsConverter.KnownRuntimeKeys 推导。
+        // 本测试从同一键集合动态生成全键探针——推导断裂或键集合缺失时立即失败。
+        var runtime = new System.Text.Json.Nodes.JsonObject();
+        foreach (var (key, children) in RulesToOptionsConverter.KnownRuntimeKeys)
+        {
+            if (children is null)
+            {
+                runtime[key] = true;
+                continue;
+            }
+
+            var child = new System.Text.Json.Nodes.JsonObject();
+            foreach (var c in children)
+            {
+                child[c] = true;
+            }
+            runtime[key] = child;
+        }
+
+        var doc = new System.Text.Json.Nodes.JsonObject { ["runtime"] = runtime };
+        Assert.Empty(RulesLint.Scan(doc.ToJsonString()));
+    }
+
+    [Fact]
     public void Scan_MalformedJson_ReturnsEmpty()
     {
         // 语法错误由反序列化负责报错，这里不重复报

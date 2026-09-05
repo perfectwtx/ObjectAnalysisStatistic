@@ -94,8 +94,8 @@ public static partial class AnalysisRunner
             // P6.2：--resume / --baseline 结果合并 + --checkpoint 落盘 + 合并后报告覆写
             MergeIncrementalResults(options, result, preflight.ResumeSnapshot, preflight.StartFromPosition, runContext);
 
-            int exitCode = EvaluateQualityGates(result, options);
-            WriteAuditEvent(audit, options, rules, runId, sw, "analysis_finish", exitCode, result, GateFailureMessage(exitCode));
+            (int exitCode, string? gateMessage) = EvaluateQualityGates(result, options);
+            WriteAuditEvent(audit, options, rules, runId, sw, "analysis_finish", exitCode, result, gateMessage);
             return exitCode;
         }
         catch (OperationCanceledException)
@@ -227,14 +227,6 @@ public static partial class AnalysisRunner
             throw;
         }
     }
-
-    /// <summary>合规等级严重度排序：A=0（干净）&lt; B=1（敏感已打码）&lt; C=2（需人工复核）。</summary>
-    private static int PiiSeverityRank(string level) => level switch
-    {
-        "C" => 2,
-        "B" => 1,
-        _ => 0
-    };
 
     private static AnalysisRules LoadRules(string rulesPath, bool allowUnknownRules = false)
     {

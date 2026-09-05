@@ -20,6 +20,39 @@ namespace ObjectAnalyzer.Analysis;
 public static class RulesToOptionsConverter
 {
     /// <summary>
+    /// runtime 节点的已知键集合（W6 单轨的单一事实来源）：
+    /// 顶层键 → 子键数组；叶子键（无子对象）值为 null。
+    /// <para>
+    /// <see cref="Apply"/> 读取的每一个键都必须在此声明——
+    /// RulesLint 的白名单由此推导，不再双维护；对拍测试
+    /// （RulesLintTests / AnalysisPipelineTests 全量参考模板扫描）锁定两侧一致。
+    /// </para>
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string[]?> KnownRuntimeKeys =
+        new Dictionary<string, string[]?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["flatten"] = null,
+            ["csvInferNumbers"] = null,
+            ["maxValuesToShow"] = null,
+            ["maxParallelism"] = null,
+            ["allowUnknownRules"] = null,
+            ["selectedFields"] = null,
+            ["filter"] = null,
+            ["sampling"] = ["reservoir", "step"],
+            ["jsonPath"] = ["root", "record"],
+            ["schema"] = ["snapshot", "diffBaseline", "diffReport", "allowBreakingChanges"],
+            ["distribution"] = ["snapshot", "diffBaseline", "diffReport", "lowConfidenceWidth"],
+            ["pii"] = ["off", "report", "failOnLevel"],
+            ["gates"] = ["failOnViolations", "failOnOutlierRatio"],
+            ["deepAnalysis"] = ["correlation", "stringPatterns", "unicodeHygiene", "timeSeries", "distributionSnapshot", "fuzzyDedupField"],
+            ["checkpoint"] = ["path", "resumeFrom", "baseline"],
+            ["memory"] = ["maxMB", "mode"],
+            ["progress"] = ["enabled"],
+            ["audit"] = ["log", "operator"],
+            ["outputs"] = ["primary", "violations", "quality", "schemaCode"],
+        };
+
+    /// <summary>
     /// 把 <paramref name="rules"/> 的 runtime 节点合并到 <paramref name="options"/>。
     /// 仅当子组字段仍为"内置默认"时才会被 runtime 覆盖。
     /// </summary>
