@@ -1,9 +1,10 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Text.Json;
+using ObjectAnalyzer;
 using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Security;
-using Spectre.Console;
+using ObjectAnalyzer.Reporting;using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 

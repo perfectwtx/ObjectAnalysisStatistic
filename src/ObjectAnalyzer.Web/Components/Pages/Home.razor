@@ -1659,71 +1659,71 @@
         Core.Analysis.MaxMemoryMode maxMemoryMode = snapshot.MaxMemoryMode;
         string rootPathText = snapshot.RootPathText;
         string recordPathText = snapshot.RecordPathText;
-        IReadOnlyList<Core.Analysis.ValueParserConfig> effectiveValueParsers = snapshot.EffectiveValueParsers;
         Core.Analysis.AnalysisRules? rules = snapshot.Rules;
         string effectiveFormat = snapshot.Format;
 
         string safeCheckpointName = P6PostAnalysis.SanitizeCheckpointName(checkpointFileName);
-        string? pipelineError = null;
         List<Dictionary<string, object?>>? previewedPreview = null;
 
-        // 方案 A：把 rules.runtime 节点配置合并到 AnalysisOptions（与 CLI / API 同源、同优先级链）。
-        // Web 端不走 AnalysisRunner.Run，自己用局部变量驱动分析，所以这里手动做一次合并。
-        // 合并后只覆盖"默认"字段，UI 已显式设置的值不会被覆盖。
-        if (rules?.Runtime != null)
+        // W1 统一管线：构造 AnalysisOptions（IR）——Web UI 显式值优先，rules.runtime 经
+        // RulesToOptionsConverter 合并（与 CLI / API 同源、同优先级链；合并只覆盖"默认"字段，
+        // UI 已显式设置的值不会被覆盖）。解析/投影/转换/采样/统计全部交给 AnalysisPipeline。
+        var analysisOptions = new Core.Analysis.AnalysisOptions
         {
-            var rtOptions = new Core.Analysis.AnalysisOptions
+            Input =
             {
-                Input = { InputPath = dataFilePath },
-                Parse =
-                {
-                    Flatten = flatten,
-                    CsvInferNumbers = csvInferNumbers,
-                    MaxValuesToShow = 5,
-                    MaxDegreeOfParallelism = maxDegreeOfParallelism
-                },
-                Rules = { RulesFile = rulesFilePath, AllowUnknownRules = allowUnknownRules },
-                FieldSelection =
-                {
-                    Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
-                    Filter = string.IsNullOrWhiteSpace(filterText) ? null : filterText
-                },
-                Sampling =
-                {
-                    SampleReservoir = sampleReservoir,
-                    SampleStep = sampleStep,
-                    LowConfidenceWidth = lowConfidenceWidth,
-                    MemoryFallbackSampleSize = memoryFallbackSampleSize
-                },
-                Progress = { ShowProgress = showProgress },
-                Advanced =
-                {
-                    EnableCorrelation = enableCorrelation,
-                    EnableStringPatterns = enableStringPatterns,
-                    EnableUnicodeHygiene = enableUnicodeHygiene,
-                    EnableTimeSeries = enableTimeSeries,
-                    EnableDistributionSnapshot = enableDistributionSnapshot,
-                    FuzzyDedupField = fuzzyDedupField,
-                    CorrelationReservoir = correlationReservoir
-                },
-                Distribution = { DiffDistributionBaseline = distributionBaselinePath },
-                Incremental =
-                {
-                    ResumeFrom = resumeFromPath,
-                    BaselinePath = baselinePath,
-                    CheckpointPath = string.IsNullOrWhiteSpace(safeCheckpointName) ? null : safeCheckpointName
-                },
-                Memory = { MaxMemoryMB = maxMemoryMB, MaxMemoryMode = maxMemoryMode }
-            };
-            Core.Analysis.RulesToOptionsConverter.Apply(rtOptions, rules);
-            // 把 options 合并后回填到本地变量
-            sampleReservoir = rtOptions.Sampling.SampleReservoir;
-            sampleStep = rtOptions.Sampling.SampleStep;
-            maxDegreeOfParallelism = rtOptions.Parse.MaxDegreeOfParallelism;
+                InputPath = dataFilePath,
+                RootPath = string.IsNullOrWhiteSpace(rootPathText) ? null : rootPathText,
+                RecordPath = string.IsNullOrWhiteSpace(recordPathText) ? null : recordPathText
+            },
+            Parse =
+            {
+                Flatten = flatten,
+                CsvInferNumbers = csvInferNumbers,
+                MaxValuesToShow = 5,
+                MaxDegreeOfParallelism = maxDegreeOfParallelism
+            },
+            Rules = { RulesFile = rulesFilePath, AllowUnknownRules = allowUnknownRules },
+            FieldSelection =
+            {
+                Fields = string.IsNullOrWhiteSpace(fieldsText) ? null : fieldsText,
+                Filter = string.IsNullOrWhiteSpace(filterText) ? null : filterText
+            },
+            Sampling =
+            {
+                SampleReservoir = sampleReservoir,
+                SampleStep = sampleStep,
+                LowConfidenceWidth = lowConfidenceWidth,
+                MemoryFallbackSampleSize = memoryFallbackSampleSize
+            },
+            Progress = { ShowProgress = showProgress },
+            Advanced =
+            {
+                EnableCorrelation = enableCorrelation,
+                EnableStringPatterns = enableStringPatterns,
+                EnableUnicodeHygiene = enableUnicodeHygiene,
+                EnableTimeSeries = enableTimeSeries,
+                EnableDistributionSnapshot = enableDistributionSnapshot,
+                FuzzyDedupField = fuzzyDedupField,
+                CorrelationReservoir = correlationReservoir
+            },
+            Distribution = { DiffDistributionBaseline = distributionBaselinePath },
+            Incremental =
+            {
+                ResumeFrom = resumeFromPath,
+                BaselinePath = baselinePath,
+                CheckpointPath = string.IsNullOrWhiteSpace(safeCheckpointName) ? null : safeCheckpointName
+            },
+            Memory = { MaxMemoryMB = maxMemoryMB, MaxMemoryMode = maxMemoryMode }
+        };
+        if (rules != null)
+        {
+            Core.Analysis.RulesToOptionsConverter.Apply(analysisOptions, rules);
         }
-
-        bool hasRootPath = !string.IsNullOrWhiteSpace(rootPathText);
-        bool hasRecordPath = !string.IsNullOrWhiteSpace(recordPathText);
+        // 把 options 合并后回填到本地变量（供采样校验与 checkpoint 提示使用）
+        sampleReservoir = analysisOptions.Sampling.SampleReservoir;
+        sampleStep = analysisOptions.Sampling.SampleStep;
+        maxDegreeOfParallelism = analysisOptions.Parse.MaxDegreeOfParallelism;
 
         try
         {
@@ -1731,9 +1731,7 @@
             Core.Analysis.Sampling.Validate(sampleReservoir, sampleStep);
 
             // ── P6.1 进度回调：IProgress<long> → State.ProgressText（Progress<T> 自动捕获 SynchronizationContext 切回 UI 线程）──
-            // ── P6.3 内存预算：在每批后 Check，超 soft 阈值时输出警告；超 hard 阈值在 Analyze 结束后 ThrowIfHardExceeded 抛错 ──
-            // 闭包逻辑已拆到 P6ProgressReporter.Build（独立可测），此处只把 State 写入函数注入。
-            // 注意：MemoryBudget 与 Progress 必须在 Task.Run 外构造并捕获，这样闭包共享同一实例；否则 progress 回调无法触达 memoryBudget。
+            // ── P6.3 内存预算：Check 保留在 Web 侧进度桥接（P6ProgressReporter），维持内存告警 UI 语义；hard 抛错在分析结束后统一执行 ──
             var memoryBudget = new Core.Analysis.MemoryBudget(maxMemoryMB, maxMemoryMode);
             var progress = new Progress<long>(P6ProgressReporter.Build(
                 showProgress: showProgress,
@@ -1742,140 +1740,24 @@
                 memoryWarningSink: warning => State.MemoryWarning ??= warning,
                 localize: Loc.Get));
 
-            var result = await Task.Run(() =>
+            // W1 统一分析管线：解析 → JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计。
+            // Web 只注入进度桥接与预览捕获，不再维护自有流程（与 CLI / API 同一条计算路径）。
+            var runContext = new Core.Analysis.Pipeline.AnalysisRunContext
             {
-                IEnumerable<Dictionary<string, object?>> objects;
+                ProgressBridge = progress,
+                PreviewSink = list => previewedPreview = list.ToList(),
+                PreviewLimit = 20
+            };
 
-                // 懒管道：直接传递 IEnumerable，避免为大文件物化 List
-                var detectedFormat = effectiveFormat;
-                var parseOptions = new Core.Parsing.ParseOptions
-                {
-                    Flatten = flatten,
-                    ValueParsers = effectiveValueParsers,
-                    SampleReservoir = sampleReservoir,
-                    SampleStep = sampleStep,
-                    CsvInferNumbers = csvInferNumbers
-                };
-                objects = Core.Parsing.FileParsers.ParseByFormat(dataFilePath, detectedFormat, parseOptions);
-                // jsonl/csv/excel/excel-json 已在行/记录级跳过未选中记录；其余格式做通用采样包装
-                if (Core.Analysis.Sampling.IsEnabled(sampleReservoir, sampleStep)
-                    && detectedFormat is not ("jsonl" or "csv" or "excel" or "excel-json"))
-                {
-                    objects = Core.Analysis.Sampling.Apply(objects, sampleReservoir, sampleStep);
-                }
+            var pipelineResult = await Task.Run(
+                () => Core.Analysis.Pipeline.AnalysisPipeline.Execute(analysisOptions, rules, runContext, token),
+                token);
 
-                // JSONPath 投影：仅分析指定节点下的值
-                if (hasRootPath)
-                {
-                    // 整体 JSON 文件才支持 root-path（其他格式无文件根概念）
-                    if (detectedFormat is "json")
-                    {
-                        try
-                        {
-                            Core.Parsing.JsonPathProjector.TryValidate(rootPathText);
-                            string json = File.ReadAllText(dataFilePath);
-                            var root = System.Text.Json.Nodes.JsonNode.Parse(json);
-                            var projected = Core.Parsing.JsonPathProjector.ApplyRootPath(root, rootPathText);
-                            objects = projected;
-                        }
-                        catch (Exception ex)
-                        {
-                            pipelineError = Loc.Get("ErrRootPath", rootPathText, ex.Message);
-                            objects = Array.Empty<Dictionary<string, object?>>();
-                        }
-                    }
-                    else
-                    {
-                        pipelineError = Loc.Get("WarnRootPathIgnored", detectedFormat);
-                    }
-                }
-                if (hasRecordPath)
-                {
-                    try
-                    {
-                        Core.Parsing.JsonPathProjector.TryValidate(recordPathText);
-                        var materialized = objects as IReadOnlyList<Dictionary<string, object?>> ?? objects.ToList();
-                        var projected = new List<Dictionary<string, object?>>(materialized.Count);
-                        int noMatch = 0;
-                        foreach (var rec in materialized)
-                        {
-                            var matches = Core.Parsing.JsonPathProjector.ApplyRecordPath(rec, recordPathText);
-                            if (matches.Count == 0) noMatch++;
-                            projected.AddRange(matches);
-                        }
-                        if (noMatch > 0)
-                        {
-                            pipelineError = Loc.Get("WarnRecordPathNoMatch", noMatch, materialized.Count, recordPathText);
-                        }
-                        objects = projected;
-                    }
-                    catch (Exception ex)
-                    {
-                        pipelineError = Loc.Get("ErrRecordPath", recordPathText, ex.Message);
-                        objects = Array.Empty<Dictionary<string, object?>>();
-                    }
-                }
+            Core.Analysis.AnalysisResult result = pipelineResult.Result;
+            // P6.3 内存预算 hard 模式：分析循环结束后由本机检查点统一抛错（避免在 progress 回调线程上抛）
+            memoryBudget.ThrowIfHardExceeded();
+            effectiveFormat = runContext.EffectiveFormat ?? effectiveFormat;
 
-                var parallelOptions = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = maxDegreeOfParallelism >= 1
-                        ? maxDegreeOfParallelism
-                        : Environment.ProcessorCount
-                };
-
-                // 字段选择 + 值转换 + 过滤（--fields / 规则文件 selectedFields / transform / --where / 规则文件 filter）
-                var transformProcessor = new Core.Analysis.FieldTransformProcessor(
-                    rules,
-                    SplitFields(fieldsText),
-                    filterText);
-                if (transformProcessor.HasSelectionOrTransforms)
-                {
-                    objects = transformProcessor.Wrap(objects);
-                }
-
-                // 在懒管道流经时捕获前若干行作为预览样本
-                const int previewLimit = 20;
-                var preview = new List<Dictionary<string, object?>>(previewLimit);
-                var previewed = objects.Select(o =>
-                {
-                    if (preview.Count < previewLimit)
-                    {
-                        lock (preview)
-                        {
-                            if (preview.Count < previewLimit) preview.Add(o);
-                        }
-                    }
-                    return o;
-                });
-                // 任一 深度分析开关被勾选时构造 AdvancedAnalysisOptions 走对应分支；全关时传 null，与 v1.x 行为一致
-                Core.Analysis.Options.AdvancedAnalysisOptions? features =
-                    (enableCorrelation || enableStringPatterns
-                        || enableUnicodeHygiene || enableTimeSeries
-                        || enableDistributionSnapshot
-                        || !string.IsNullOrWhiteSpace(fuzzyDedupField))
-                        ? new Core.Analysis.Options.AdvancedAnalysisOptions
-                        {
-                            EnableCorrelation = enableCorrelation,
-                            EnableStringPatterns = enableStringPatterns,
-                            EnableUnicodeHygiene = enableUnicodeHygiene,
-                            EnableTimeSeries = enableTimeSeries,
-                            EnableDistributionSnapshot = enableDistributionSnapshot,
-                            FuzzyDedupField = fuzzyDedupField,
-                            CorrelationReservoir = correlationReservoir
-                        }
-                        : null;
-                var analysisResult = Core.Analysis.ObjectAnalyzer.Analyze(previewed, rules, parallelOptions, features: features, progress: progress, token);
-                transformProcessor.ApplyFailures(analysisResult);
-                // ── P6.3 内存预算 hard 模式：分析循环结束后由本机检查点统一抛错（避免在 progress 回调线程上抛）──
-                memoryBudget.ThrowIfHardExceeded();
-                previewedPreview = preview;
-                return analysisResult;
-            }, token);
-
-            if (pipelineError != null)
-            {
-                State.ErrorMessage = pipelineError;
-            }
             State.Preview = previewedPreview;
             SeedPreviewSelection();
             State.Result = result;
@@ -2723,15 +2605,6 @@
     {
         if (path == null) return;
         try { File.Delete(path); } catch { }
-    }
-
-    private static List<string>? SplitFields(string? fields)
-    {
-        if (string.IsNullOrWhiteSpace(fields))
-            return null;
-        return fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
     }
 
     private static string FormatPercent(double coverage)

@@ -17,28 +17,6 @@ public static class AnalysisRunner
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    // 深度分析 分布快照：缓存最近一次 AnalyzeDetailed 暴露的草图，供 ProcessDistributionSnapshot 使用
-    [ThreadStatic]
-    private static Dictionary<string, MergeableQuantileSketch>? _lastQuantileSketches;
-    [ThreadStatic]
-    private static Dictionary<string, HyperLogLog>? _lastDistinctSketches;
-
-    // P6.2：增量分析 / 断点续跑上下文（单次 Run 期间的状态）。
-    // - ResumeSnapshot：--resume 加载的快照，提供 SourcePosition 供 parser 跳过已处理数据
-    // - LastRecordCount：本 run 内已分析记录数（来自进度回调，闭区间等于 analyzer 的 globalTotalObjects）
-    // - EffectiveFormat：本 run 解析时实际使用的格式（写入新快照的 SourceFormat 字段）
-    private sealed class IncrementalContext
-    {
-        public AnalyzerSnapshot? ResumeSnapshot;
-        public long LastRecordCount;
-        public string? EffectiveFormat;
-    }
-
-    // P6.3：内存预算监控（--max-memory / --max-memory-mode）
-    // 在 ProcessAndReport 入口预检 + 每个分块结束后增量采样；超限时按模式软/硬失败。
-    // 软模式额外在入口处若检测已超阈值则自动启用采样，让分析在有限内存下继续。
-    private static MemoryBudget? s_activeMemoryBudget;
-
     /// <summary>
     /// Runs the analysis pipeline. Returns 0 on success, 1 on failure, 2 on cancellation.
     /// 当 <see cref="AnalysisOptions.AuditLogPath"/> 非空时，写入 NDJSON 审计日志。
@@ -203,18 +181,10 @@ public static class AnalysisRunner
                 $"[green][[检查点]][/] 从 {MarkupText.Escape(options.Incremental.ResumeFrom!)} 恢复分析，已处理 {startFromPosition:N0} 条记录，本次从该位置继续");
         }
 
-        var incremental = new IncrementalContext
-        {
-            ResumeSnapshot = resumeSnapshot,
-            LastRecordCount = 0,
-            EffectiveFormat = null
-        };
-
         // P6.3：实例化内存预算（--max-memory）。0 表示不监控；其余值生效。
         MemoryBudget? memoryBudget = options.Memory.MaxMemoryMB > 0
             ? new MemoryBudget(options.Memory.MaxMemoryMB, options.Memory.MaxMemoryMode)
             : null;
-        s_activeMemoryBudget = memoryBudget;
 
         // JSONPath 表达式语法预检（fail-fast，避免解析到一半才发现）
         if (!string.IsNullOrWhiteSpace(options.Input.RootPath))
@@ -274,60 +244,18 @@ public static class AnalysisRunner
                 }
             }
 
-            IEnumerable<Dictionary<string, object?>> parsedObjects;
-            var effectiveValueParsers = ResolveValueParsers(options, rules);
-
-            // JSONPath 投影：先在文件根应用（仅当 --root-path 存在且非数据库/类型模式），
-            // 此时跳过原解析器以避免对文件整体读两次；最后在每条记录上应用（--record-path）。
-            // 匹配空集时仅警告。
-            bool hasRootPath = !string.IsNullOrWhiteSpace(options.Input.RootPath);
-            if (hasRootPath)
+            // W1 统一分析管线：解析 → JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计。
+            // 运行期状态（内存预算 / 续跑位置）随 AnalysisRunContext 传入，回填 EffectiveFormat / LastRecordCount。
+            var runContext = new AnalysisRunContext
             {
-                // 数据库直连：DbDataReader 惰性流式读取查询结果
-                if (dbMode)
-                {
-                    parsedObjects = ParseFromDatabase(options, startFromPosition);
-                }
-                else
-                {
-                    string fmt = FileParsers.DetectFormat(options.Input.InputPath);
-                    if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db")
-                    {
-                        AnalysisServices.Current.Console.MarkupLine(
-                            $"[yellow]警告: --root-path 在 [red]{fmt}[/] 格式下没有文件根概念，将被忽略（仅 --record-path 生效）[/]");
-                        parsedObjects = ParseByFormat(options, rules, effectiveValueParsers, startFromPosition, incremental);
-                    }
-                    else
-                    {
-                        AnalysisServices.Current.Console.MarkupLine(
-                            $"[grey][[JSONPath]][/] 正在文件根应用 [blue]{MarkupText.Escape(options.Input.RootPath!)}[/] ...");
-                        parsedObjects = LoadAndApplyRootPath(options.Input.InputPath, options.Input.RootPath!);
-                    }
-                }
-            }
-            else
-            {
-                // 数据库直连：DbDataReader 惰性流式读取查询结果
-                if (dbMode)
-                {
-                    parsedObjects = ParseFromDatabase(options, startFromPosition);
-                }
-                else
-                {
-                    parsedObjects = ParseByFormat(options, rules, effectiveValueParsers, startFromPosition, incremental);
-                }
-            }
+                MemoryBudget = memoryBudget,
+                StartFromPosition = startFromPosition
+            };
+            PipelineResult pipelineResult = AnalysisPipeline.Execute(options, rules, runContext, cancellationToken);
+            AnalysisResult result = pipelineResult.Result;
 
-            // record-path 始终生效（即使在 root-path 之后）
-            if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
-            {
-                AnalysisServices.Current.Console.MarkupLine(
-                    $"[grey][[JSONPath]][/] 正在每条记录上应用 [blue]{MarkupText.Escape(options.Input.RecordPath!)}[/] ...");
-                parsedObjects = ApplyRecordPathStream(parsedObjects, options.Input.RecordPath!);
-            }
-
-            // 公共后处理：分析 → 报告 → 导出 → Schema 代码导出
-            AnalysisResult result = ProcessAndReport(parsedObjects, options, rules, incremental, cancellationToken);
+            // W1 收尾：呈现 / 导出 / Schema 与分布快照（宿主职责，留在 CLI 侧）
+            ProcessAndReport(pipelineResult, options, rules, runContext, cancellationToken);
 
             // P6.2：--resume 合并快照中的已聚合结果（FieldStatistic / Welford / 直方图 / 枚举违规均可增量合并）
             if (resumeSnapshot != null)
@@ -356,8 +284,8 @@ public static class AnalysisRunner
             // P6.2：--checkpoint 落盘当前快照（用于下次 --resume）
             if (!string.IsNullOrEmpty(options.Incremental.CheckpointPath))
             {
-                long totalProcessed = startFromPosition + incremental.LastRecordCount;
-                string fmt = incremental.EffectiveFormat
+                long totalProcessed = startFromPosition + runContext.LastRecordCount;
+                string fmt = runContext.EffectiveFormat
                     ?? (string.IsNullOrEmpty(options.Input.InputPath) ? "db" : FileParsers.DetectFormat(options.Input.InputPath));
                 var snapshot = new AnalyzerSnapshot
                 {
@@ -595,280 +523,22 @@ public static class AnalysisRunner
     }
 
     /// <summary>
-    /// Detects format from file extension and parses the file accordingly.
-    /// Uses the parser registry in FileParsers (IFileParser pattern).
-    /// P6.2：startFromPosition（来自 --resume 快照）>0 时，Parser 跳过前 N 条记录后再 yield。
+    /// W1 收尾：呈现 / 导出（宿主职责）。计算路径由 <see cref="AnalysisPipeline.Execute"/> 统一完成；
+    /// 本方法只负责分析完成后的控制台呈现、报告导出与 Schema / 分布快照。
     /// </summary>
-    private static IEnumerable<Dictionary<string, object?>> ParseByFormat(
+    private static void ProcessAndReport(
+        PipelineResult pipelineResult,
         AnalysisOptions options,
-        AnalysisRules? rules = null,
-        IReadOnlyList<ValueParserConfig>? valueParsers = null,
-        long startFromPosition = 0,
-        IncrementalContext? incremental = null)
+        AnalysisRules? rules,
+        AnalysisRunContext runContext,
+        CancellationToken cancellationToken)
     {
-        string format = ResolveEffectiveFormat(options, rules);
-        if (incremental != null) incremental.EffectiveFormat = format;
-
-        if (RequiresExcelJsonValueParsing(rules))
-        {
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[规则驱动]][/] 因规则文件配置了 valueParsers，使用格式 '[blue]{format}[/]' 进行解析。");
-        }
-        else
-        {
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
-        }
-
-        AnalysisServices.Current.Console.MarkupLine($"正在读取并解析文件: [blue]{MarkupText.Escape(options.Input.InputPath)}[/] ...");
-
-        var compression = CompressionDetector.Detect(options.Input.InputPath);
-        if (compression != CompressionType.None)
-        {
-            string label = compression switch
-            {
-                CompressionType.GZip => "gzip",
-                CompressionType.BZip2 => "bzip2",
-                CompressionType.Zip => "zip",
-                _ => "压缩"
-            };
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[自动解压]][/] 检测到 {label} 压缩文件，正在流式解压后解析（保持行级流式，超大文件内存有界）...");
-
-            // zip 含多个数据条目时提示确定性选择结果，避免“为什么统计的是这个文件”的困惑
-            if (compression == CompressionType.Zip &&
-                InputSource.PreviewZipEntries(options.Input.InputPath) is { } preview &&
-                preview.Others.Count > 0)
-            {
-                AnalysisServices.Current.Console.MarkupLine(
-                    $"[grey][[自动解压]][/] zip 含 {preview.Others.Count + 1} 个数据条目，已选择 [blue]{MarkupText.Escape(preview.Chosen)}[/]（其余条目忽略）");
-            }
-        }
-        var parseOptions = new ParseOptions
-        {
-            Flatten = ResolveFlatten(options),
-            ValueParsers = valueParsers ?? Array.Empty<ValueParserConfig>(),
-            CsvInferNumbers = options.Parse.CsvInferNumbers,
-            SampleReservoir = options.Sampling.SampleReservoir,
-            SampleStep = options.Sampling.SampleStep,
-            StartFromLine = startFromPosition
-        };
-        IEnumerable<Dictionary<string, object?>> parsed = FileParsers.ParseByFormat(options.Input.InputPath, format, parseOptions);
-
-        // jsonl / csv / excel / excel-json 已在行/记录级跳过未选中记录；
-        // 其余整体物化格式（json / xml / yaml）在解析完成后统一做采样包装。
-        bool parserAlreadySampled = format is "jsonl" or "csv" or "excel" or "excel-json";
-        return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled);
-    }
-
-    private static string ResolveEffectiveFormat(AnalysisOptions options, AnalysisRules? rules)
-    {
-        if (RequiresExcelJsonValueParsing(rules))
-        {
-            return "excel-json";
-        }
-
-        return FileParsers.DetectFormat(options.Input.InputPath);
-    }
-
-    private static bool RequiresExcelJsonValueParsing(AnalysisRules? rules)
-    {
-        return rules?.ValueParsers is { Count: > 0 };
-    }
-
-    private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options, long startFromPosition = 0)
-    {
-        var provider = DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString!);
-        AnalysisServices.Current.Console.MarkupLine($"[grey][[数据库直连]][/] 使用 [blue]{DatabaseReader.DisplayName(provider)}[/] 数据源，流式读取查询结果...");
-        AnalysisServices.Current.Console.MarkupLine($"正在直连数据库并执行查询: [blue]{MarkupText.Escape(options.Input.Query!)}[/] ...");
-
-        if (startFromPosition > 0)
-        {
-            // P6.2 限制：数据库直连目前不支持行级 skip（DbDataReader 不暴露随机访问能力）。
-            // 若用户用 --resume 加载了文件快照但却直连数据库，最安全的做法是直接报错，避免错误地合并不相关结果。
-            throw new NotSupportedException(
-                "--resume 不支持数据库直连模式（--connection + --query）；DbDataReader 不暴露行级跳过能力。");
-        }
-
-        IEnumerable<Dictionary<string, object?>> parsed =
-            DatabaseReader.ReadRows(options.Input.ConnectionString!, provider, options.Input.Query!);
-
-        return ApplySamplingIfEnabled(parsed, options, parserAlreadySampled: false);
-    }
-
-    private static IEnumerable<Dictionary<string, object?>> ApplySamplingIfEnabled(
-        IEnumerable<Dictionary<string, object?>> parsed,
-        AnalysisOptions options,
-        bool parserAlreadySampled)
-    {
-        if (!Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
-            return parsed;
-
-        AnnounceSampling(options);
-        return parserAlreadySampled
-            ? parsed
-            : Sampling.Apply(parsed, options.Sampling.SampleReservoir, options.Sampling.SampleStep);
-    }
-
-    private static void AnnounceSampling(AnalysisOptions options)
-    {
-        if (options.Sampling.SampleReservoir > 0)
-        {
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[采样]][/] 蓄水池随机抽样：从海量数据中均匀抽取最多 [blue]{options.Sampling.SampleReservoir}[/] 条进行统计与 Schema 概览。");
-        }
-        else
-        {
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.Sampling.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
-        }
-    }
-
-    /// <summary>
-    /// Common post-processing: analyze objects, print console report, export reports and optional schema.
-    /// P6.2：通过 <paramref name="incremental"/> 上报本 run 内已分析记录数（供 --checkpoint 落盘）。
-    /// </summary>
-    private static AnalysisResult ProcessAndReport(
-        IEnumerable<Dictionary<string, object?>> parsedObjects,
-        AnalysisOptions options,
-        AnalysisRules? rules = null,
-        IncrementalContext? incremental = null,
-        CancellationToken cancellationToken = default)
-    {
-        // 规则已在 Run() 中提前加载；如调用方未提供，则按需加载
-        rules ??= !string.IsNullOrEmpty(options.Rules.RulesFile)
-            ? LoadRules(options.Rules.RulesFile, options.Rules.AllowUnknownRules)
-            : null;
-
-        // 过滤条件：--where 优先
-        string? effectiveFilter = options.FieldSelection.Filter;
-
-        // 字段选择 + 值转换 + 过滤（--fields / 规则文件 runtime.selectedFields / transform / --where / 规则文件 runtime.filter）
-        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.FieldSelection.Fields), effectiveFilter);
-        if (effectiveFilter != null)
-        {
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[过滤]][/] 已应用过滤条件: [blue]{MarkupText.Escape(effectiveFilter)}[/]");
-        }
-        if (transformProcessor.HasSelectionOrTransforms)
-        {
-            parsedObjects = transformProcessor.Wrap(parsedObjects);
-        }
-
-        // 模糊去重需要多次枚举解析后对象（在 Analyze 之前完成）。
-        // 物化一次既保证模糊去重的随机访问、也避免 Analyzer 重复解析；
-        // 数据量 < 1MB 时物化成本可忽略；后续如需扩展可加 --fuzzy-dedup-stream 改为单遍流式。
-        bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField);
-        bool needDistributionSketches =
-            !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
-            !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline);
-        List<Dictionary<string, object?>> materialized = (needFuzzyDedup || needDistributionSketches)
-            ? parsedObjects.ToList()
-            : new List<Dictionary<string, object?>>();
-
-        // 模糊去重（仅在 --fuzzy-dedup-field 指定时执行）
-        FuzzyDuplicateReport? fuzzyReport = null;
-        if (needFuzzyDedup)
-        {
-            string field = options.Advanced.FuzzyDedupField!;
-            AnalysisServices.Current.Console.MarkupLine($"[grey][[模糊去重]][/] 正在对字段 [blue]{MarkupText.Escape(field)}[/] 做形态变体聚类...");
-            fuzzyReport = FuzzyDuplicateDetector.Detect(materialized, obj =>
-            {
-                if (obj.TryGetValue(field, out var v)) return v?.ToString();
-                return null;
-            });
-        }
-
-        AnalysisResult result = null!;
-
-        // P6.1：进度条 / ETA 集成。
-        // 优先用"已知总量"驱动 maxValue（materialized 列表直接用 Count；其余场景不强行预扫描——
-        // 50GB JSONL 再读一遍数行需要 30+ 秒，得不偿失）；
-        // 未知时退化为纯对象计数 + spinner，RemainingTimeColumn 仍可基于速率给出粗略 ETA。
-        long? expectedTotal = options.Progress.ShowProgress ? EstimateTotalObjects(materialized) : null;
-
-        if (options.Progress.ShowProgress)
-        {
-            // 进度 UI 由宿主的 IProgressReporter 实现渲染（CLI：Spectre 进度条；API/Web：静默）。
-            // 已知总量作为进度条上限传入；描述文本传纯文本（宿主自行决定是否加样式）。
-            AnalysisServices.Current.Progress.Run(
-                string.IsNullOrEmpty(options.Input.InputPath)
-                    ? "分析中（数据库直连）"
-                    : $"分析中 {Path.GetFileName(options.Input.InputPath)}",
-                expectedTotal,
-                showProgress: true,
-                work: ReportProgress);
-        }
-        else
-        {
-            AnalysisServices.Current.Progress.Run(
-                "正在并行计算对象字段分布、数据极值与语义模式...",
-                null,
-                showProgress: false,
-                work: ReportProgress);
-        }
-
-        // 分析工作本体（两个进度分支共用）：进度回调同时驱动增量计数与内存采样
-        void ReportProgress(IProgress<long>? uiProgress)
-        {
-            // P6.2：即使进度条关闭，也要追踪记录数（--checkpoint 落盘依赖 LastRecordCount）
-            IProgress<long>? progress = uiProgress is null && incremental == null && s_activeMemoryBudget is null
-                ? null
-                : new Progress<long>(objects =>
-                {
-                    uiProgress?.Report(objects);
-                    if (incremental != null) incremental.LastRecordCount = objects;
-                    // P6.3：无 UI 模式同样周期采样内存
-                    if (s_activeMemoryBudget is { IsEnabled: true } mem)
-                    {
-                        mem.Check(objects, out _);
-                    }
-                });
-
-            var parallelOptions = new ParallelOptions
-            {
-                MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
-                    ? options.Parse.MaxDegreeOfParallelism
-                    : -1
-            };
-            var features = options.Advanced;
-            if (needDistributionSketches)
-            {
-                var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
-                result = detailed.Result;
-                _lastQuantileSketches = detailed.QuantileSketches;
-                _lastDistinctSketches = detailed.DistinctSketches;
-            }
-            else
-            {
-                result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress, cancellationToken);
-                _lastQuantileSketches = null;
-                _lastDistinctSketches = null;
-            }
-        }
-
-        // 模糊去重结果挂到 result 上
-        if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
-
-        // 采样置信区间：仅当启用 sampling 时计算（对每字段覆盖率做 Wilson 95% 评估）
-        if (Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
-        {
-            long effective = options.Sampling.SampleReservoir > 0
-                ? options.Sampling.SampleReservoir
-                : Math.Max(1, result.TotalObjects / Math.Max(1, options.Sampling.SampleStep));
-            long estimated = result.TotalObjects;
-            var fieldCounts = result.FieldStatistics
-                .Select(s => (s.FieldName, s.Count));
-            result.SamplingConfidence = SamplingConfidenceCalculator.Build(
-                method: options.Sampling.SampleReservoir > 0 ? "reservoir" : "systematic",
-                sampleSize: effective,
-                estimatedTotal: estimated,
-                fieldCounts: fieldCounts,
-                total: estimated);
-        }
-
-        // 转换失败次数与转换类型回填到统计结果
-        transformProcessor.ApplyFailures(result);
-        result.FilterExpression = effectiveFilter;
+        AnalysisResult result = pipelineResult.Result;
 
         AnalysisServices.Current.Console.MarkupLine("[green]分析完成！[/]\n");
 
         // P6.3：内存预算总结（仅当启用了 --max-memory 时打印）
-        if (s_activeMemoryBudget is { IsEnabled: true } finalBudget)
+        if (runContext.MemoryBudget is { IsEnabled: true } finalBudget)
         {
             AnalysisServices.Current.Console.MarkupLine(
                 $"[grey][[内存]][/] 本次分析峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.Memory.MaxMemoryMB:N0} MB，模式 {options.Memory.MaxMemoryMode}）");
@@ -882,7 +552,7 @@ public static class AnalysisRunner
         ProcessSchemaSnapshot(result, options);
 
         // 分布快照导出 / diff 计算（与 SchemaSnapshot 互补：看分布变化）
-        ProcessDistributionSnapshot(result, options);
+        ProcessDistributionSnapshot(result, options, pipelineResult.QuantileSketches, pipelineResult.DistinctSketches);
 
         // 输出控制台统计结果（--pii-off 时保留原始值）。呈现由宿主注入的 IResultPresenter 完成
         // （CLI：Spectre 富渲染；API/Web：静默或结构化推送）。
@@ -949,7 +619,6 @@ public static class AnalysisRunner
 
         // Schema 快照导出 / diff 计算（独立于代码生成器 SchemaExporter）
         // 已在 ProcessAndReport 前置阶段完成（见 ProcessAndReport 顶部），此处保留注释便于阅读。
-        return result;
     }
 
     /// <summary>
@@ -1017,7 +686,11 @@ public static class AnalysisRunner
     /// 与 <see cref="ProcessSchemaSnapshot"/> 互补：后者看结构变化，本方法看分布变化（覆盖率 / 均值 / 分位 / distinct）。
     /// 失败抛 FileNotFoundException / InvalidDataException，由调用方转为退出码 1。
     /// </summary>
-    private static void ProcessDistributionSnapshot(AnalysisResult result, AnalysisOptions options)
+    private static void ProcessDistributionSnapshot(
+        AnalysisResult result,
+        AnalysisOptions options,
+        Dictionary<string, MergeableQuantileSketch>? quantileSketches,
+        Dictionary<string, HyperLogLog>? distinctSketches)
     {
         bool needSnapshot =
             !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
@@ -1037,7 +710,7 @@ public static class AnalysisRunner
         DistributionSnapshot? currentSnapshot = null;
         if (!string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath))
         {
-            currentSnapshot = DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
+            currentSnapshot = DistributionSnapshotExporter.Build(result, quantileSketches, distinctSketches, source);
             DistributionSnapshotExporter.WriteToFile(currentSnapshot, options.Distribution.DistributionSnapshotPath);
             AnalysisServices.Current.Console.MarkupLine(
                 $"[green]分布快照已导出至[/] [blue]{MarkupText.Escape(options.Distribution.DistributionSnapshotPath)}[/] [grey]({currentSnapshot.Fields.Count} 字段)[/]");
@@ -1046,7 +719,7 @@ public static class AnalysisRunner
         if (!string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline))
         {
             var baseline = DistributionSnapshotExporter.LoadFromFile(options.Distribution.DiffDistributionBaseline!);
-            currentSnapshot ??= DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
+            currentSnapshot ??= DistributionSnapshotExporter.Build(result, quantileSketches, distinctSketches, source);
             var diff = DistributionDiffer.Compute(baseline, currentSnapshot);
             result.DistributionDiff = diff;
 
@@ -1097,22 +770,6 @@ public static class AnalysisRunner
                 $"[red]错误: --baseline 文件解析失败: {MarkupText.Escape(ex.Message)}[/]");
             throw;
         }
-    }
-
-    /// <summary>
-    /// P6.1：估算分析对象总数（用于 Progress bar 的 maxValue / ETA）。
-    /// 策略：
-    /// 1) 已物化的列表（fuzzy dedup / distribution sketches 路径）→ 直接返回 Count；
-    /// 2) 其它路径返回 null，让 Progress 显示纯对象计数 + 速率，RemainingTimeColumn 仍可估算。
-    /// 不对 50GB JSONL 做二次扫描数行——开销得不偿失。
-    /// </summary>
-    private static long? EstimateTotalObjects(List<Dictionary<string, object?>> materialized)
-    {
-        if (materialized != null && materialized.Count > 0)
-        {
-            return materialized.Count;
-        }
-        return null;
     }
 
     /// <summary>合规等级严重度排序：A=0（干净）&lt; B=1（敏感已打码）&lt; C=2（需人工复核）。</summary>
@@ -1173,123 +830,5 @@ public static class AnalysisRunner
 
         AnalysisServices.Current.Console.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;
-    }
-
-    private static bool ResolveFlatten(AnalysisOptions options)
-    {
-        // --record-path 必须看到嵌套子对象才能正确投影；提前展平会让 $.foo.bar 这种路径找不到目标。
-        // 因此启用 --record-path 时，强制不展平（让 record-path 处理完后再分析，提取出的子对象本身就是平坦的）。
-        if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
-            return false;
-
-        return options.Parse.Flatten;
-    }
-
-    private static IReadOnlyList<ValueParserConfig> ResolveValueParsers(AnalysisOptions options, AnalysisRules? rules)
-    {
-        if (rules?.ValueParsers is { Count: > 0 })
-        {
-            return rules.ValueParsers
-                .Where(p => !string.IsNullOrWhiteSpace(p.Source))
-                .Select(p => new ValueParserConfig
-                {
-                    Source = p.Source.Trim(),
-                    ParseType = string.IsNullOrWhiteSpace(p.ParseType) ? "auto" : p.ParseType.Trim(),
-                    Flatten = p.Flatten,
-                    Header = p.Header
-                })
-                .ToList();
-        }
-
-        return Array.Empty<ValueParserConfig>();
-    }
-
-    private static List<string>? SplitFields(string? fields)
-    {
-        if (string.IsNullOrWhiteSpace(fields))
-            return null;
-        return fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private static IEnumerable<Dictionary<string, object?>> LoadAndApplyRootPath(string path, string expression)
-    {
-        // 整体读入 JSON：JSONPath 投影必须访问整个文档，无法流式。
-        // 仅当输入是 JSON 整体文件时才走这条路径（其他格式已在调用方过滤）。
-        byte[] bytes;
-        using (var fs = File.OpenRead(path))
-        using (var ms = new MemoryStream())
-        {
-            fs.CopyTo(ms);
-            bytes = ms.ToArray();
-        }
-        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
-        {
-            bytes = bytes.AsSpan(3).ToArray();
-        }
-
-        JsonNode? root;
-        try
-        {
-            root = JsonNode.Parse(bytes);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidDataException("JSON 根节点解析失败。", ex);
-        }
-
-        var records = JsonPathProjector.ApplyRootPath(root, expression);
-        if (records.Count == 0)
-        {
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[yellow]警告: --root-path 表达式 {MarkupText.Escape(expression)} 匹配到 0 个节点；将分析空集[/]");
-        }
-        else
-        {
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[green][[JSONPath]][/] --root-path 提取了 [blue]{records.Count}[/] 条记录");
-        }
-        return records;
-    }
-
-    /// <summary>
-    /// 流式地把 record-path 应用到每条记录上：每条记录可能 fan-out 为多条，因此这里只能把 source 物化为 list；
-    /// 调用方传入的 source 在大多数解析路径上（jsonl/csv/excel/db/typed）已经是 list，因此实际成本可控。
-    /// </summary>
-    private static List<Dictionary<string, object?>> ApplyRecordPathStream(
-        IEnumerable<Dictionary<string, object?>> source,
-        string expression)
-    {
-        var materialized = source as IReadOnlyList<Dictionary<string, object?>> ?? source.ToList();
-        var projected = new List<Dictionary<string, object?>>(materialized.Count);
-        int noMatch = 0;
-        foreach (var record in materialized)
-        {
-            var matches = JsonPathProjector.ApplyRecordPath(record, expression);
-            if (matches.Count == 0)
-            {
-                noMatch++;
-                continue;
-            }
-            projected.AddRange(matches);
-        }
-
-        if (noMatch > 0)
-        {
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[yellow]警告: --record-path 表达式 {MarkupText.Escape(expression)} 在 {noMatch}/{materialized.Count} 条记录上无匹配；这些记录被跳过[/]");
-        }
-        if (projected.Count == 0 && materialized.Count > 0)
-        {
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[yellow]警告: --record-path 匹配到 0 个节点；将分析空集[/]");
-        }
-        else
-        {
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[green][[JSONPath]][/] --record-path 产出 [blue]{projected.Count}[/] 条记录（输入 {materialized.Count} 条）");
-        }
-        return projected;
     }
 }

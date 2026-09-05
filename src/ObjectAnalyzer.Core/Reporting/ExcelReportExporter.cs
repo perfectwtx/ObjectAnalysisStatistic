@@ -11,7 +11,7 @@ public static class ExcelReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.MarkupLine($"正在将 Excel 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在将 Excel 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
 
         // MiniExcel 的 sheet 顺序按 Dictionary 插入顺序输出
         var sheets = new Dictionary<string, object>();
@@ -38,7 +38,7 @@ public static class ExcelReportExporter
 
         // 无需特别配置：MiniExcel 默认就会按数据内容自适应列宽
         MiniExcel.SaveAs(outputPath, sheets, overwriteFile: true);
-        AnsiConsole.MarkupLine($"[green]Excel 报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]Excel 报告成功保存！[/]");
     }
 
     // ───────────── 摘要 ─────────────

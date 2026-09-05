@@ -61,8 +61,7 @@ public static class AsyncAnalyzeEndpoints
                     rulesObj = rules;
                 }
 
-                var format = FileParsers.DetectFormat(tempData);
-                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, rulesObj);
+                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, formatOverride: null);
                 var options = form.ToAnalysisOptions(tempData, rulesObj);
 
                 // 注册异步作业；AnalysisJobRegistry 会持有 CancellationTokenSource，
@@ -83,7 +82,7 @@ public static class AsyncAnalyzeEndpoints
                 var jobIdForTask = jobId;
                 var dataPathForTask = tempData;
                 var rulesPathForTask = tempRules;
-                _ = Task.Run(() => RunJob(jobIdForTask, dataPathForTask, rulesPathForTask, format, rulesObj, options, cts.Token),
+                _ = Task.Run(() => RunJob(jobIdForTask, dataPathForTask, rulesPathForTask, rulesObj, options, cts.Token),
                     CancellationToken.None);
                 // 任务已接手这两个路径，避免下面 catch/finally 再去删。
                 tempData = null!;
@@ -134,11 +133,9 @@ public static class AsyncAnalyzeEndpoints
             {
                 await File.WriteAllTextAsync(tempData, config.DataText, cancellationToken);
 
-                var format = string.IsNullOrWhiteSpace(config.Format)
-                    ? FileParsers.DetectFormat(tempData)
-                    : config.Format.Trim().ToLowerInvariant();
-                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, config.Rules);
+                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, config.Rules, config.Format);
                 var options = config.ToAnalysisOptions(tempData, config.Rules);
+                options.Input.Format = config.Format;
 
                 jobId = AnalysisJobRegistry.Instance.Register(
                     cts,
@@ -152,7 +149,7 @@ public static class AsyncAnalyzeEndpoints
                 // 同 multipart 端点：路径必须先复制到 lambda 局部变量，否则闭包按引用捕获
                 // 的外层 tempData 在主线程置 null 后会让后台任务拿到空字符串 → NRE。
                 var dataPathForTask = tempData;
-                _ = Task.Run(() => RunJob(jobIdForTask, dataPathForTask, null, format, config.Rules, options, cts.Token),
+                _ = Task.Run(() => RunJob(jobIdForTask, dataPathForTask, null, config.Rules, options, cts.Token),
                     CancellationToken.None);
                 tempData = null!;
 
@@ -234,14 +231,13 @@ public static class AsyncAnalyzeEndpoints
         string jobId,
         string dataPath,
         string? rulesPath,
-        string format,
         AnalysisRules? rules,
         AnalysisOptions options,
         CancellationToken token)
     {
         try
         {
-            var result = AnalysisCore.AnalyzeFile(dataPath, format, rules, options, token);
+            var result = AnalysisCore.AnalyzeFile(dataPath, rules, options, token);
             AnalysisJobRegistry.Instance.Complete(jobId, result);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)

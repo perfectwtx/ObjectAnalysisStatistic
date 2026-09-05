@@ -7,13 +7,13 @@ public static class HtmlReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.MarkupLine($"正在将 HTML 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在将 HTML 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
         // 逐段写入，避免大报告整体常驻内存
         using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
         {
             WriteHtml(writer, result);
         }
-        AnsiConsole.MarkupLine($"[green]HTML 报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]HTML 报告成功保存！[/]");
     }
 
     private static void WriteHtml(TextWriter writer, AnalysisResult result)

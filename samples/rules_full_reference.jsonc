@@ -106,15 +106,14 @@
 
   // 全局过滤条件：只统计满足表达式的记录（等价 CLI --where，CLI 优先级更高）。
   // 支持 == != > < >= <=、in / not in、like / not like、AND / OR 与括号，字段名大小写不敏感。
-  // ⚠ 已知问题：与 "runtime": { "flatten": true } 同时配置时，字段级质量检查
-  //   （pattern/enum/范围等）会被跳过——需要字段质量检查时请先注释掉本行（默认注释）。
+  // ✓ 曾与 flatten 同时配置时跳过字段级质量检查，W1 管道统一阶段已修复并有回归测试锁定。
   /*
   "filter": "age >= 18 AND status in ['active']",
   */
 
-  // 值解析器：把指定 Excel 列的值按 JSON 解析后再统计（Excel 多列 JSON 专用场景）。
-  // ⚠ 注意：一旦配置 valueParsers，分析器会强制按 excel-json 格式解析——
-  //    仅适用于「单元格内含 JSON」的 Excel 文件，普通 JSON / JSONL / CSV 请勿配置（默认注释）。
+  // 值解析器：把指定 Excel / CSV 列的值按 JSON 解析后再统计（单元格内嵌 JSON 专用场景）。
+  // ✓ 注意：仅在输入为电子表格类格式（excel / csv）时才切换 excel-json 解析器；
+  //    普通 JSON / JSONL / XML / YAML 配置了 valueParsers 也按原格式解析（W1 已修复强制改写问题）。
   /*
   "valueParsers": [
     { "source": "payload", "parseType": "auto", "flatten": true, "header": 0 }

@@ -60,13 +60,12 @@ public static class AnalyzeEndpoints
                     rulesObj = JsonSerializer.Deserialize<AnalysisRules>(rulesText, AnalysisRules.RulesJsonOptions);
                 }
 
-                var format = FileParsers.DetectFormat(tempData);
                 // 规则带 valueParsers 时实际走的是 excel-json 解析器，响应里如实回写，
                 // 免得 UI 显示 "excel" 而字段却已按 JSON 展开，看着像抽风
-                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, rulesObj);
+                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, formatOverride: null);
                 // multipart 表单字段通过继承复用，AnalysisOptions 一次性构造（含 rules.runtime 合并）
                 var options = form.ToAnalysisOptions(tempData, rulesObj);
-                var result = AnalysisCore.AnalyzeFile(tempData, format, rulesObj, options, cancellationToken);
+                var result = AnalysisCore.AnalyzeFile(tempData, rulesObj, options, cancellationToken);
 
                 return TypedResults.Ok(new AnalyzeResponse(
                     FileName: file.FileName,
@@ -111,12 +110,9 @@ public static class AnalyzeEndpoints
             {
                 await File.WriteAllTextAsync(tempData, config.DataText, cancellationToken);
 
-                var format = string.IsNullOrWhiteSpace(config.Format)
-                    ? FileParsers.DetectFormat(tempData)
-                    : config.Format.Trim().ToLowerInvariant();
-                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(format, config.Rules);
+                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, config.Rules, config.Format);
                 var options = config.ToAnalysisOptions(tempData, config.Rules);
-                var result = AnalysisCore.AnalyzeFile(tempData, format, config.Rules, options, cancellationToken);
+                var result = AnalysisCore.AnalyzeFile(tempData, config.Rules, options, cancellationToken);
 
                 return TypedResults.Ok(new AnalyzeRawResponse(
                     effectiveFormat, config.Rules is not null ? "inline" : null, result));
@@ -177,11 +173,12 @@ public static class AnalyzeEndpoints
 
                 var requestedFormat = format.Trim().ToLowerInvariant();
                 // 规则带 valueParsers 时实际走 excel-json 解析器，响应里如实回写
-                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(requestedFormat, rulesObj);
+                var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, requestedFormat);
 
                 // 查询参数 + 规则一次性构造 AnalysisOptions（含 rules.runtime 合并）
                 var analysisOptions = options.ToAnalysisOptions(tempData, rulesObj);
-                var result = AnalysisCore.AnalyzeFile(tempData, requestedFormat, rulesObj, analysisOptions, cancellationToken);
+                analysisOptions.Input.Format = requestedFormat;
+                var result = AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, cancellationToken);
 
                 return TypedResults.Ok(new AnalyzeRawResponse(
                     effectiveFormat, rulesObj is null ? null : "inline", result));

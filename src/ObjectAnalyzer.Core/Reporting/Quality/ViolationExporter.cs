@@ -79,7 +79,7 @@ public static class ViolationExporter
         string json = JsonSerializer.Serialize(payload, JsonSharedOptions.Write);
         File.WriteAllText(outputPath, json);
 
-        AnsiConsole.MarkupLine(
-            $"已导出 [yellow]{totalViolations}[/] 条质量违规（{datasetEntries.Count} 条数据集期望）至: [blue]{Markup.Escape(outputPath)}[/]");
+        AnalysisServices.Current.Console.MarkupLine(
+            $"已导出 [yellow]{totalViolations}[/] 条质量违规（{datasetEntries.Count} 条数据集期望）至: [blue]{MarkupText.Escape(outputPath)}[/]");
     }
 }
