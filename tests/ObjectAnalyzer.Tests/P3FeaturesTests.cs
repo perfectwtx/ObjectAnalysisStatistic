@@ -9,7 +9,7 @@ using ObjectAnalyzer.Analysis;
 /// <summary>
 /// P3 高级分析能力测试：日期/时间深度剖析、异常值检测（IQR）、Schema 快照 + Diff 集成。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class P3FeaturesTests
 {
     // ──────────────────────────────────────────────

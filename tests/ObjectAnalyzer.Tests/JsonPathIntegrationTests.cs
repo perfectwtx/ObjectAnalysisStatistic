@@ -2,9 +2,8 @@ namespace ObjectAnalyzer.Tests;
 
 /// <summary>
 /// JSONPath 投影集成测试：使用 AnalysisRunner 端到端验证 --root-path / --record-path。
-/// 这些测试使用 [Collection(AnalysisRunnerSequentialGroup.Name)] 强制串行执行，避免 AnsiConsole 争用。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class JsonPathIntegrationTests
 {
     [Fact]

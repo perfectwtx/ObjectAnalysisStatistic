@@ -9,9 +9,8 @@ namespace ObjectAnalyzer.Tests;
 /// - AnalysisResult.MergeFrom 顶层合并
 /// - AnalysisRunner --checkpoint / --resume / --baseline 端到端
 /// - 错误路径（--resume 源文件不一致 / 快照不存在）
-/// 所有调用 AnalysisRunner.Run 的测试加入 AnalysisRunnerSequentialGroup 集合以避免 AnsiConsole 并发问题。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class IncrementalAnalysisTests
 {
     // ──────────────────────────────────────────────

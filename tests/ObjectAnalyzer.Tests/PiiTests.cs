@@ -5,7 +5,7 @@ namespace ObjectAnalyzer.Tests;
 /// <summary>
 /// PII 识别 / 打码遮蔽 / 报告脱敏 / 数据安全合规等级报告测试。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class PiiTests
 {
     private static readonly List<Dictionary<string, object?>> PiiSample = new()

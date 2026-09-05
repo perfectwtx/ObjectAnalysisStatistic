@@ -3,9 +3,8 @@ namespace ObjectAnalyzer.Tests;
 /// <summary>
 /// P6.3 内存预算测试：--max-memory / --max-memory-mode soft|hard
 /// 覆盖单元测试（MemoryBudget 类本身）+ 端到端测试（AnalysisRunner 集成）。
-/// 所有调用 AnalysisRunner.Run 的测试加入 AnalysisRunnerSequentialGroup 集合以避免 AnsiConsole 并发问题。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class MemoryBudgetTests
 {
     // ──────────────────────────────────────────────

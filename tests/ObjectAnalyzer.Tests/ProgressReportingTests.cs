@@ -4,7 +4,7 @@ namespace ObjectAnalyzer.Tests;
 /// P6.1：进度条 / ETA 集成测试。
 /// 验证 <see cref="ObjectAnalyzer.Analyze"/> 在分块处理时通过 <see cref="IProgress{T}"/> 上报对象计数。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class ProgressReportingTests
 {
     private static List<Dictionary<string, object?>> MakeData(int count)

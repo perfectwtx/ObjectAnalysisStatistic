@@ -4,7 +4,6 @@ namespace ObjectAnalyzer.Tests;
 
 /// <summary>
 /// 数据血缘与审计日志测试：覆盖 NDJSON 写盘 / 不含 PII / 选项完整 / AnalysisRunner 集成。
-/// 所有调用 AnalysisRunner.Run 的测试加入 AnalysisRunnerSequentialGroup 集合以避免 AnsiConsole 并发问题。
 /// </summary>
 public class AuditLoggerTests
 {

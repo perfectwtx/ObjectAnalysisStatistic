@@ -13,7 +13,7 @@ using Xunit;
 /// 深度分析测试：字段相关性、模糊去重、字符串模式、Unicode 卫生、时间序列、
 /// 分布快照 / diff、采样置信区间、AnalysisRunner 集成（CLI 端到端）。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class DeepAnalysisTests
 {
     // ──────────────────────────────────────────────
