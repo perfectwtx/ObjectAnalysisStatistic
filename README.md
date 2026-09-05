@@ -1011,6 +1011,8 @@ dotnet run --project src/ObjectAnalyzer.Api      # 启动后访问 http://localh
 | `GET /api/health`                   | 健康检查（状态 + 版本）                                                                                                                                                                                                                                                                                                                                                                |
 | `POST /api/analyze`                 | multipart 上传数据文件（字段 `file`；可选 `rules` 文件或 `rulesJson` 内联规则），支持 `flatten` / `maxValues` / `fields` / `filter` / `rootPath` / `recordPath` / `sampleReservoir` / `sampleStep` / `maxParallel` / `csvInferNumbers` 表单参数；5 个 P4 深度分析开关（`enableCorrelation` / `enableStringPatterns` / `enableUnicodeHygiene` / `enableTimeSeries` / `enableDistributionSnapshot`）按需开启 → 返回完整分析结果 |
 | `POST /api/analyze/raw?format=json` | 请求体即数据文本（JSON / JSONL / CSV…），选项走查询参数（同 multipart 字段名 + `enable*` 系列 P4 开关） → 分析结果                                                                                                                                                                                                                                                                                           |
+| `POST /api/analyze/async`、`/api/analyze/async/config` | 异步分析（multipart / 纯 JSON body 两种提交）：返回 `jobId`；进度经 `GET /api/analyze/async/{jobId}` 轮询（`processedObjects`）或 SSE 推送；`POST …/{jobId}/cancel` 取消 |
+| `GET /api/analyze/async/{jobId}/events` | **SSE 进度推送**（text/event-stream）：`event: progress`（500ms 周期，data 为 `{processedObjects, status}`）→ 终态发 `event: complete`（含 `error` 摘要）后关闭；作业不存在发 `event: gone`。结果本体统一经 `GET /{jobId}` 拉取 |
 | `POST /api/rules/validate`          | 校验规则 JSON（支持注释）。默认严格（`?strict=true`）：未知键直接 400 + 按编辑距离给建议键名；传 `?strict=false` 放行仅返回警告；可选 `allowUnknownRules=true` 与之等价                                                                                                                                                                                                                                                       |
 | `GET /api/rules/reference`          | 返回全量规则参考模板（samples/rules\_full\_reference.jsonc）                                                                                                                                                                                                                                                                                                                             |
 
@@ -1037,7 +1039,24 @@ curl -X POST http://localhost:5200/api/rules/validate \
      -d @samples/test_rules.json
 ```
 
-响应为 camelCase JSON：`{ fileName, format, result: { totalObjects, totalUniqueObjects, fieldStatistics, … } }`——字段级违规与统计信息内嵌于 `result`，前端可直接渲染。
+响应为 camelCase JSON，**v2 契约按 React 前端五块页面组织**：
+
+```json
+{
+  "fileName": "people.json",
+  "format": "json",
+  "overview":   { "totalObjects": 3, "totalUniqueObjects": 3, "totalDuplicateGroups": 0, "fieldCount": 2, "violationCount": 1 },
+  "preview":    { "columns": ["name", "age"], "rows": [{ "name": "alice", "age": 30 }], "truncated": false },
+  "fields":     [ { "fieldName": "age", "primaryType": "Number", "valueCounts": {…}, … } ],
+  "deepAnalysis": null,
+  "quality":    { "hasViolations": true, "countsByCheck": { "range": 1 }, "violations": [ … ] },
+  "result":     { "totalObjects": 3, "fieldStatistics": […], "qualityViolations": […] }
+}
+```
+
+- `overview` / `preview` / `fields` / `deepAnalysis` / `quality` 分别对应前端五块页面（概览统计 / 数据预览 / 字段明细 / 深度分析 / 质量报告）；未启用深度分析时 `deepAnalysis` 键整体省略（省略 null 契约）。
+- `result` 保留完整原始 AnalysisResult（兼容字段，前端可渐进迁移）。
+- 异步作业：`GET /api/analyze/async/{jobId}` 返回 `{ status, processedObjects, preview(原始行数组), result, error }`；实时进度订阅 `GET …/{jobId}/events`（SSE）。
 
 **接口文档**：启动后访问 [`/scalar`](http://localhost:5200/scalar)（Scalar 交互式文档界面，可直接调试），OpenAPI 3.1 JSON 位于 `/openapi/v1.json`。
 

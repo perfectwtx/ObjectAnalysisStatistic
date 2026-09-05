@@ -62,12 +62,27 @@ public sealed class AnalysisJobRegistry
         }
     }
 
-    /// <summary>把分析结果写回作业快照，供异步端点的 GET 拉取。</summary>
-    public void Complete(string jobId, AnalysisResult result)
+    /// <summary>
+    /// 上报作业进度（已处理记录数）。供宿主把管线进度桥接到注册中心，
+    /// 状态查询与 SSE 事件流据此回显。作业不存在时静默忽略。
+    /// </summary>
+    public void ReportProgress(string jobId, long processedObjects)
     {
         if (string.IsNullOrEmpty(jobId)) return;
         if (!_jobs.TryGetValue(jobId, out var job)) return;
-        job.MarkCompleted(result);
+        job.ProcessedObjects = processedObjects;
+    }
+
+    /// <summary>把分析结果写回作业快照，供异步端点的 GET 拉取。</summary>
+    public void Complete(string jobId, AnalysisResult result)
+        => Complete(jobId, result, preview: null);
+
+    /// <summary>把分析结果与数据预览样本一并写回作业快照（W8：数据预览页）。</summary>
+    public void Complete(string jobId, AnalysisResult result, IReadOnlyList<Dictionary<string, object?>>? preview)
+    {
+        if (string.IsNullOrEmpty(jobId)) return;
+        if (!_jobs.TryGetValue(jobId, out var job)) return;
+        job.MarkCompleted(result, preview);
     }
 
     /// <summary>把异常写回作业快照（供异步端点返回 500）。</summary>
@@ -111,8 +126,12 @@ public sealed class AnalysisJobRegistry
         public DateTimeOffset? TerminalAt { get; private set; }
         public AnalysisStatus Status { get; private set; } = AnalysisStatus.Running;
         public AnalysisResult? Result { get; private set; }
+        public IReadOnlyList<Dictionary<string, object?>>? Preview { get; private set; }
         public Exception? Error { get; private set; }
         public string? ProgressText { get; set; }
+
+        /// <summary>已处理记录数（管线进度桥接写入；volatile 仅供 SSE/轮询读取）。</summary>
+        public long ProcessedObjects;
 
         public AnalysisJob(string id, CancellationTokenSource cts, AnalysisJobMeta meta, DateTimeOffset createdAt)
         {
@@ -134,10 +153,11 @@ public sealed class AnalysisJobRegistry
         public bool IsTerminal =>
             Status is AnalysisStatus.Completed or AnalysisStatus.Failed or AnalysisStatus.Cancelled;
 
-        public void MarkCompleted(AnalysisResult result)
+        public void MarkCompleted(AnalysisResult result, IReadOnlyList<Dictionary<string, object?>>? preview)
         {
             if (IsTerminal) return;
             Result = result;
+            Preview = preview;
             Status = AnalysisStatus.Completed;
             TerminalAt = DateTimeOffset.UtcNow;
         }
@@ -162,7 +182,9 @@ public sealed class AnalysisJobRegistry
             CreatedAt: CreatedAt,
             TerminalAt: TerminalAt,
             ProgressText: ProgressText,
+            ProcessedObjects: Interlocked.Read(ref ProcessedObjects),
             Result: Result,
+            Preview: Preview,
             Error: Error);
     }
 }
@@ -183,7 +205,7 @@ public sealed record AnalysisJobMeta(
     string? OperatorId,
     DateTimeOffset SubmittedAt);
 
-/// <summary>作业快照：状态查询 / 拉取结果时使用，Result 终态前为 null。</summary>
+/// <summary>作业快照：状态查询 / 拉取结果时使用，Result / Preview 终态前为 null。</summary>
 public sealed record AnalysisJobSnapshot(
     string Id,
     AnalysisStatus Status,
@@ -191,5 +213,7 @@ public sealed record AnalysisJobSnapshot(
     DateTimeOffset CreatedAt,
     DateTimeOffset? TerminalAt,
     string? ProgressText,
+    long ProcessedObjects,
     AnalysisResult? Result,
+    IReadOnlyList<Dictionary<string, object?>>? Preview,
     Exception? Error);

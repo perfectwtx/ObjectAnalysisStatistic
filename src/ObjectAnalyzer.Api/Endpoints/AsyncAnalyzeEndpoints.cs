@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using System.Text.Json;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Parsing;
 
@@ -21,6 +22,13 @@ namespace ObjectAnalyzer.Api;
 /// </summary>
 public static class AsyncAnalyzeEndpoints
 {
+    // SSE 事件 payload 的序列化选项：camelCase + 非 null 输出（与 API 契约同风格）
+    private static readonly JsonSerializerOptions s_sseJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     public static IEndpointRouteBuilder MapAsyncAnalyzeApi(this IEndpointRouteBuilder routes)
     {
         // ── 异步分析：multipart 上传 ──
@@ -195,7 +203,9 @@ public static class AsyncAnalyzeEndpoints
                 CreatedAt: snap.CreatedAt,
                 TerminalAt: snap.TerminalAt,
                 ProgressText: snap.ProgressText,
+                ProcessedObjects: snap.ProcessedObjects,
                 Result: snap.Result,
+                Preview: snap.Preview,
                 Error: errorMessage));
         })
         .WithTags("异步分析")
@@ -206,6 +216,62 @@ public static class AsyncAnalyzeEndpoints
         - Completed 时 Result 携带完整 AnalysisResult；
         - Failed 时 Error 含异常类型与消息；
         - Cancelled 是用户主动中断的状态。
+        """);
+
+        // ── SSE 事件流（W8 进度推送）──
+        routes.MapGet("/analyze/async/{jobId}/events", async (string jobId, HttpContext http) =>
+        {
+            http.Response.Headers.ContentType = "text/event-stream";
+            http.Response.Headers.CacheControl = "no-cache";
+            http.Response.Headers.Connection = "keep-alive";
+
+            async Task WriteEventAsync(string eventName, string json, CancellationToken ct)
+            {
+                await http.Response.WriteAsync($"event: {eventName}\n", ct);
+                await http.Response.WriteAsync($"data: {json}\n\n", ct);
+                await http.Response.Body.FlushAsync(ct);
+            }
+
+            static string SnapJson(AnalysisJobSnapshot snap) => JsonSerializer.Serialize(new
+            {
+                processedObjects = snap.ProcessedObjects,
+                status = snap.Status.ToString(),
+                error = snap.Error is { } e ? $"{e.GetType().Name}: {e.Message}" : null
+            }, s_sseJsonOptions);
+
+            try
+            {
+                var ct = http.RequestAborted;
+                while (true)
+                {
+                    var snap = AnalysisJobRegistry.Instance.Get(jobId);
+                    if (snap is null)
+                    {
+                        await WriteEventAsync("gone", "{\"reason\": \"job not found or swept\"}", ct);
+                        return;
+                    }
+
+                    bool terminal = snap.Status != AnalysisStatus.Running;
+                    await WriteEventAsync(terminal ? "complete" : "progress", SnapJson(snap), ct);
+                    if (terminal)
+                        return;
+
+                    await Task.Delay(500, ct);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 客户端断开：正常结束 SSE 流
+            }
+        })
+        .WithTags("异步分析")
+        .WithSummary("订阅异步作业事件流（SSE）")
+        .WithDescription("""
+        text/event-stream 事件流（W8 进度推送）：
+        - event: progress  — data 为 {processedObjects, status}（每 500ms 一次，值变化也照发，前端可自行节流）；
+        - event: complete  — 终态事件，data 为 {processedObjects, status, error}；收到后应关闭 EventSource 并 GET /{jobId} 拉取结果；
+        - event: gone      — 作业不存在或已被清理（超过 5 分钟保留窗口）。
+        客户端断开时服务端自动结束流。结果本体不随事件推送（可能为数 MB），统一走状态查询端点。
         """);
 
         // ── 取消作业 ──
@@ -237,8 +303,13 @@ public static class AsyncAnalyzeEndpoints
     {
         try
         {
-            var result = AnalysisCore.AnalyzeFile(dataPath, rules, options, token);
-            AnalysisJobRegistry.Instance.Complete(jobId, result);
+            // W8：管线进度经 progressBridge 桥接到注册中心（GET /{jobId} 的 ProcessedObjects
+            // 与 SSE 事件流消费）；预览样本随 Complete 一并写回。
+            var progressBridge = new Progress<long>(
+                count => AnalysisJobRegistry.Instance.ReportProgress(jobId, count));
+
+            var outcome = AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge);
+            AnalysisJobRegistry.Instance.Complete(jobId, outcome.Result, outcome.Preview);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {

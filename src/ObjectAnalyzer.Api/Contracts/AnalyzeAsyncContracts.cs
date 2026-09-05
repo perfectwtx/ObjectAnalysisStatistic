@@ -42,7 +42,9 @@ public sealed record AnalyzeJobSnapshotResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? TerminalAt,
     string? ProgressText,
+    long ProcessedObjects,
     AnalysisResult? Result,
+    IReadOnlyList<Dictionary<string, object?>>? Preview,
     string? Error)
 {
     /// <summary>作业 ID。</summary>

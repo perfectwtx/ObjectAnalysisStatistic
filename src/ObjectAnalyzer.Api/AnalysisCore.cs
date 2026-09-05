@@ -10,16 +10,38 @@ namespace ObjectAnalyzer.Api;
 // ── 分析执行核心：规则解析 → 预检 → W1 统一分析管线（解析 → 投影 → 转换/过滤 → 采样 → 统计）──
 internal static class AnalysisCore
 {
-    public static AnalysisResult AnalyzeFile(
+    /// <summary>
+    /// 分析执行结果：结果本体 + 数据预览样本（W8 五页面视图的"数据预览"来源）。
+    /// </summary>
+    internal sealed record AnalyzeOutcome(
+        AnalysisResult Result,
+        IReadOnlyList<Dictionary<string, object?>> Preview,
+        string? EffectiveFormat);
+
+    /// <summary>预览捕获条数（与 AnalyzePreviewView.DefaultLimit 对齐）。</summary>
+    internal const int PreviewLimit = AnalyzePreviewView.DefaultLimit;
+
+    public static AnalyzeOutcome AnalyzeFile(
         string dataPath,
         AnalysisRules? rules,
         AnalysisOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IProgress<long>? progressBridge = null)
     {
         // W1 统一管线：解析分发（含 root-path / record-path 投影）、采样顺序、
         // 缺陷 1/2 修复全部收敛在 AnalysisPipeline，API 不再维护自有流程。
         // 格式由管线从 dataPath 探测（含 valueParsers 驱动的 excel-json 切换）。
-        return AnalysisPipeline.Execute(options, rules, runContext: null, cancellationToken).Result;
+        // W8：经 PreviewSink 捕获流经管线的前 N 条记录（转换/过滤后），供前端"数据预览"页；
+        //     异步作业经 progressBridge 把已处理记录数桥接到 AnalysisJobRegistry（SSE / 轮询）。
+        var preview = new List<Dictionary<string, object?>>(PreviewLimit);
+        var runContext = new AnalysisRunContext
+        {
+            ProgressBridge = progressBridge,
+            PreviewSink = captured => preview.AddRange(captured),
+            PreviewLimit = PreviewLimit
+        };
+        var pipelineResult = AnalysisPipeline.Execute(options, rules, runContext, cancellationToken);
+        return new AnalyzeOutcome(pipelineResult.Result, preview, runContext.EffectiveFormat);
     }
 
     /// <summary>

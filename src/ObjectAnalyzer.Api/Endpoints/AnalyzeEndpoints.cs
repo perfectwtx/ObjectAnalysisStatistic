@@ -18,7 +18,7 @@ public static class AnalyzeEndpoints
     {
         // ── 分析：multipart 上传 ──
         routes.MapPost("/analyze",
-            async Task<Results<Ok<AnalyzeResponse>, BadRequest<ErrorResponse>>> (
+            async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
             [FromForm] AnalyzeForm form,
             HttpRequest request,
             CancellationToken cancellationToken) =>
@@ -65,13 +65,12 @@ public static class AnalyzeEndpoints
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, formatOverride: null);
                 // multipart 表单字段通过继承复用，AnalysisOptions 一次性构造（含 rules.runtime 合并）
                 var options = form.ToAnalysisOptions(tempData, rulesObj);
-                var result = AnalysisCore.AnalyzeFile(tempData, rulesObj, options, cancellationToken);
+                var outcome = AnalysisCore.AnalyzeFile(tempData, rulesObj, options, cancellationToken);
 
-                return TypedResults.Ok(new AnalyzeResponse(
-                    FileName: file.FileName,
-                    Format: effectiveFormat,
-                    RulesSource: rulesSource,
-                    Result: result));
+                // W8 五页面视图：概览 / 预览 / 字段 / 深度分析 / 质量 + 完整 result 兼容保留
+                return TypedResults.Ok(AnalyzeViewResponse.From(
+                    outcome.Result, outcome.Preview, effectiveFormat,
+                    fileName: file.FileName, rulesSource: rulesSource));
             }
             catch (Exception ex)
             {
@@ -98,7 +97,7 @@ public static class AnalyzeEndpoints
         // 分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + 深度分析开关）+ 内联 rules 规则对象。
         // OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。
         routes.MapPost("/analyze/config",
-            async Task<Results<Ok<AnalyzeRawResponse>, BadRequest<ErrorResponse>>> (
+            async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
             [FromBody] AnalyzeConfigRequest config,
             CancellationToken cancellationToken) =>
         {
@@ -112,10 +111,11 @@ public static class AnalyzeEndpoints
 
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, config.Rules, config.Format);
                 var options = config.ToAnalysisOptions(tempData, config.Rules);
-                var result = AnalysisCore.AnalyzeFile(tempData, config.Rules, options, cancellationToken);
+                var outcome = AnalysisCore.AnalyzeFile(tempData, config.Rules, options, cancellationToken);
 
-                return TypedResults.Ok(new AnalyzeRawResponse(
-                    effectiveFormat, config.Rules is not null ? "inline" : null, result));
+                return TypedResults.Ok(AnalyzeViewResponse.From(
+                    outcome.Result, outcome.Preview, effectiveFormat,
+                    fileName: "(inline)", rulesSource: config.Rules is not null ? "inline" : null));
             }
             catch (Exception ex)
             {
@@ -139,7 +139,7 @@ public static class AnalyzeEndpoints
         // 规则通过查询参数 rulesJson / allowUnknownRules 传入。
         // 这样查询参数集合与 /analyze、/analyze/config 的字段一一对应，新增选项时三个端点同步。
         routes.MapPost("/analyze/raw",
-            async Task<Results<Ok<AnalyzeRawResponse>, BadRequest<ErrorResponse>>> (
+            async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
             HttpRequest request,
             [AsParameters] AnalyzeRequestOptions options,
             [Description("数据格式：json / jsonl / csv / excel / xml / yaml")] string format,
@@ -178,10 +178,11 @@ public static class AnalyzeEndpoints
                 // 查询参数 + 规则一次性构造 AnalysisOptions（含 rules.runtime 合并）
                 var analysisOptions = options.ToAnalysisOptions(tempData, rulesObj);
                 analysisOptions.Input.Format = requestedFormat;
-                var result = AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, cancellationToken);
+                var outcome = AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, cancellationToken);
 
-                return TypedResults.Ok(new AnalyzeRawResponse(
-                    effectiveFormat, rulesObj is null ? null : "inline", result));
+                return TypedResults.Ok(AnalyzeViewResponse.From(
+                    outcome.Result, outcome.Preview, effectiveFormat,
+                    fileName: "(inline)", rulesSource: rulesObj is null ? null : "inline"));
             }
             catch (Exception ex)
             {
