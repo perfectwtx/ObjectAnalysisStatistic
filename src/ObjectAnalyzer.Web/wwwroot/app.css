@@ -1591,7 +1591,30 @@ a, .btn-link {
     font-variant-numeric: tabular-nums;
 }
 
-/* 覆盖率拆分标注：值 null / 字段缺失（两种未有效覆盖原因） */
+/* 覆盖率堆叠条 null 段（琥珀色，紧跟实际覆盖段之后） */
+.coverage-fill-null {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(217, 119, 6, 0.75);
+    transition: width 0.3s ease;
+}
+
+/* 覆盖率明细行：实际 / null / 缺失（两种未有效覆盖原因） */
+.coverage-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 2px;
+    font-size: 0.68rem;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+
+.coverage-actual {
+    color: var(--oa-text-2);
+}
+
 .coverage-null,
 .coverage-missing {
     display: inline-block;

@@ -602,20 +602,37 @@
                                     }
                                 </td>
                                 <td>
+                                    @{
+                                        // 覆盖率三段拆分：实际（非空）= Count - NullCount；null 覆盖率 = NullCount；缺失 = Total - Count
+                                        long fieldMissing = Math.Max(0, State.Result.TotalObjects - field.Count);
+                                        long fieldNonNull = Math.Max(0, field.Count - field.NullCount);
+                                        double total = State.Result.TotalObjects;
+                                        double actualPct = total > 0 ? fieldNonNull * 100.0 / total : 0;
+                                        double nullPct = total > 0 ? field.NullCount * 100.0 / total : 0;
+                                        double missingPct = total > 0 ? fieldMissing * 100.0 / total : 0;
+                                        bool hasUncovered = field.NullCount > 0 || fieldMissing > 0;
+                                    }
                                     <div class="coverage-bar">
-                                        <div class="coverage-fill" style="width: @(field.Coverage * 100)%"></div>
+                                        <div class="coverage-fill" style="width: @(fieldNonNull * 100.0 / (total > 0 ? total : 1))%"></div>
+                                        @if (field.NullCount > 0)
+                                        {
+                                            <div class="coverage-fill-null" style="left: @(fieldNonNull * 100.0 / (total > 0 ? total : 1))%; width: @nullPct%"></div>
+                                        }
                                         <span>@field.Count/@State.Result.TotalObjects (@FormatPercent(field.Coverage))</span>
                                     </div>
-                                    @{
-                                        long fieldMissing = Math.Max(0, State.Result.TotalObjects - field.Count);
-                                        if (field.NullCount > 0)
-                                        {
-                                            <span class="coverage-null" title="@Loc.Get("CoverageNull", field.NullCount)">null @field.NullCount</span>
-                                        }
-                                        if (fieldMissing > 0)
-                                        {
-                                            <span class="coverage-missing" title="@Loc.Get("CoverageMissing", fieldMissing)">@Loc.Get("CoverageMissing", fieldMissing)</span>
-                                        }
+                                    @if (hasUncovered)
+                                    {
+                                        <div class="coverage-breakdown">
+                                            <span class="coverage-actual">@Loc["ActualCoverage"] @FormatPercent(actualPct)（@fieldNonNull/@State.Result.TotalObjects）</span>
+                                            @if (field.NullCount > 0)
+                                            {
+                                                <span class="coverage-null">@Loc.Get("CoverageNullRate", nullPct, field.NullCount)</span>
+                                            }
+                                            @if (fieldMissing > 0)
+                                            {
+                                                <span class="coverage-missing">@Loc.Get("CoverageMissingRate", missingPct, fieldMissing)</span>
+                                            }
+                                        </div>
                                     }
                                 </td>
                                 <td>
@@ -2264,7 +2281,10 @@
             .ToList();
 
         var fieldNames = topFields.Select(f => f.FieldName).ToArray();
-        var coverages = topFields.Select(f => Math.Round(f.Coverage * 100, 1)).ToArray();
+        // 图表口径与字段表格一致：实际覆盖率 = 非空记录数 / 总数（null 与键缺失不计入）
+        var coverages = topFields.Select(f => result.TotalObjects > 0
+            ? Math.Round(Math.Max(0, f.Count - f.NullCount) * 100.0 / result.TotalObjects, 1)
+            : 0).ToArray();
         await Js.InvokeVoidAsync("objectAnalyzer.renderCoverageChart", fieldNames, coverages);
 
         var typeTop = topFields.Take(10).ToList();

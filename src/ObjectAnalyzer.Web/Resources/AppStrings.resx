@@ -146,8 +146,9 @@
   <data name="FieldName" xml:space="preserve"><value>字段名</value></data>
   <data name="SemanticType" xml:space="preserve"><value>语义推断</value></data>
   <data name="Coverage" xml:space="preserve"><value>覆盖率</value></data>
-  <data name="CoverageNull" xml:space="preserve"><value>值 null {0} 条</value></data>
-  <data name="CoverageMissing" xml:space="preserve"><value>字段缺失 {0} 条</value></data>
+  <data name="ActualCoverage" xml:space="preserve"><value>实际覆盖率</value></data>
+  <data name="CoverageNullRate" xml:space="preserve"><value>null 覆盖率 {0:F1}%（{1} 条）</value></data>
+  <data name="CoverageMissingRate" xml:space="preserve"><value>字段缺失 {0:F1}%（{1} 条）</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>主导类型</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>默认值</value></data>
   <data name="UniqueValues" xml:space="preserve"><value>唯一值数量</value></data>
