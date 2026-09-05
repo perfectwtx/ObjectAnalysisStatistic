@@ -1,9 +1,17 @@
+using ObjectAnalyzer.Abstractions;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
-public static class ConsoleReporter
+/// <summary>
+/// CLI 侧的分析结果呈现器：Spectre 富渲染（表格 / 面板 / 图表），实现 Core 的 IResultPresenter 端口。
+/// </summary>
+public sealed class ConsoleReporter : IResultPresenter
 {
+    /// <summary>向用户呈现分析结果（默认按 PII 策略打码）。</summary>
+    public void Present(AnalysisResult result, AnalysisOptions options) =>
+        Print(result, options.Parse.MaxValuesToShow, redactPii: !options.Pii.PiiOff);
+
     public static void Print(AnalysisResult result, int maxValuesToShow, bool redactPii = true)
     {
         result = PiiRedactor.Redact(result, redactPii);

@@ -7,6 +7,14 @@ using Spectre.Console;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+// 宿主端口接线：CLI 用 Spectre 富渲染（进度条/表格），Core 通过 Abstractions 端口回调
+ObjectAnalyzer.Abstractions.AnalysisServices.Use(new()
+{
+    Console = new SpectreConsoleAdapter(),
+    Progress = new SpectreProgressReporter(),
+    Presenter = new ConsoleReporter(),
+});
+
 // 支持 Ctrl+C 优雅取消长任务
 var cts = new CancellationTokenSource();
 
