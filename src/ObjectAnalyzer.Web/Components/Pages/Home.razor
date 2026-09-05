@@ -604,33 +604,27 @@
                                 <td>
                                     @{
                                         // 覆盖率三段拆分：实际（非空）= Count - NullCount；null 覆盖率 = NullCount；缺失 = Total - Count
-                                        long fieldMissing = Math.Max(0, State.Result.TotalObjects - field.Count);
-                                        long fieldNonNull = Math.Max(0, field.Count - field.NullCount);
-                                        double total = State.Result.TotalObjects;
-                                        double actualPct = total > 0 ? fieldNonNull * 100.0 / total : 0;
-                                        double nullPct = total > 0 ? field.NullCount * 100.0 / total : 0;
-                                        double missingPct = total > 0 ? fieldMissing * 100.0 / total : 0;
-                                        bool hasUncovered = field.NullCount > 0 || fieldMissing > 0;
+                                        var cov = FieldCoverageMath.Compute(field, State.Result.TotalObjects);
                                     }
                                     <div class="coverage-bar">
-                                        <div class="coverage-fill" style="width: @(fieldNonNull * 100.0 / (total > 0 ? total : 1))%"></div>
+                                        <div class="coverage-fill" style="width: @cov.ActualPercent%"></div>
                                         @if (field.NullCount > 0)
                                         {
-                                            <div class="coverage-fill-null" style="left: @(fieldNonNull * 100.0 / (total > 0 ? total : 1))%; width: @nullPct%"></div>
+                                            <div class="coverage-fill-null" style="left: @cov.ActualPercent%; width: @cov.NullPercent%"></div>
                                         }
                                         <span>@field.Count/@State.Result.TotalObjects (@FormatPercent(field.Coverage))</span>
                                     </div>
-                                    @if (hasUncovered)
+                                    @if (cov.HasUncovered)
                                     {
                                         <div class="coverage-breakdown">
-                                            <span class="coverage-actual">@Loc["ActualCoverage"] @FormatPercent(actualPct)（@fieldNonNull/@State.Result.TotalObjects）</span>
+                                            <span class="coverage-actual">@Loc["ActualCoverage"] @FormatPercent(cov.ActualPercent)（@cov.NonNullCount/@State.Result.TotalObjects）</span>
                                             @if (field.NullCount > 0)
                                             {
-                                                <span class="coverage-null">@Loc.Get("CoverageNullRate", nullPct, field.NullCount)</span>
+                                                <span class="coverage-null">@Loc.Get("CoverageNullRate", cov.NullPercent, field.NullCount)</span>
                                             }
-                                            @if (fieldMissing > 0)
+                                            @if (cov.MissingCount > 0)
                                             {
-                                                <span class="coverage-missing">@Loc.Get("CoverageMissingRate", missingPct, fieldMissing)</span>
+                                                <span class="coverage-missing">@Loc.Get("CoverageMissingRate", cov.MissingPercent, cov.MissingCount)</span>
                                             }
                                         </div>
                                     }
