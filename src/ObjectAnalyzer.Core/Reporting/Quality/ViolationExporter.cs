@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 

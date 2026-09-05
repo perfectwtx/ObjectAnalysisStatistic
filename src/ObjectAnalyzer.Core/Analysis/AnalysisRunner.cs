@@ -5,7 +5,6 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Security;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -59,8 +58,8 @@ public static class AnalysisRunner
         catch (Exception ex)
         {
             // 审计日志路径不可写不应阻塞分析主流程；但要给操作者明确提示
-            AnsiConsole.MarkupLine(
-                $"[yellow]警告: 审计日志初始化失败 ({Markup.Escape(ex.Message)})；本次运行不写入审计记录。[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[yellow]警告: 审计日志初始化失败 ({MarkupText.Escape(ex.Message)})；本次运行不写入审计记录。[/]");
             audit = null;
         }
 
@@ -85,7 +84,7 @@ public static class AnalysisRunner
         bool dbMode = !string.IsNullOrEmpty(options.Input.ConnectionString);
         if (!dbMode && !File.Exists(options.Input.InputPath))
         {
-            AnsiConsole.MarkupLine($"[red]错误: 输入文件不存在: {Markup.Escape(options.Input.InputPath)}[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[red]错误: 输入文件不存在: {MarkupText.Escape(options.Input.InputPath)}[/]");
             return 1;
         }
 
@@ -99,7 +98,7 @@ public static class AnalysisRunner
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // 规则文件解析/预验证失败（含无效 pattern）快速失败，避免带病分析
-                AnsiConsole.MarkupLine($"[red]错误: 规则文件加载失败: {Markup.Escape(ex.Message)}[/]");
+                AnalysisServices.Current.Console.MarkupLine($"[red]错误: 规则文件加载失败: {MarkupText.Escape(ex.Message)}[/]");
                 return 1;
             }
         }
@@ -121,7 +120,7 @@ public static class AnalysisRunner
         {
             if (string.IsNullOrEmpty(options.Input.Query))
             {
-                AnsiConsole.MarkupLine("[red]错误: 使用 --connection 直连数据库时必须指定 --query。[/]");
+                AnalysisServices.Current.Console.MarkupLine("[red]错误: 使用 --connection 直连数据库时必须指定 --query。[/]");
                 return 1;
             }
             try
@@ -130,7 +129,7 @@ public static class AnalysisRunner
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]错误: {Markup.Escape(ex.Message)}[/]");
+                AnalysisServices.Current.Console.MarkupLine($"[red]错误: {MarkupText.Escape(ex.Message)}[/]");
                 return 1;
             }
         }
@@ -138,35 +137,35 @@ public static class AnalysisRunner
         // Schema diff 基线文件预检
         if (!string.IsNullOrEmpty(options.Schema.DiffSchemaBaseline) && !File.Exists(options.Schema.DiffSchemaBaseline))
         {
-            AnsiConsole.MarkupLine(
-                $"[red]错误: --diff-schema 基线文件不存在: {Markup.Escape(options.Schema.DiffSchemaBaseline)}[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[red]错误: --diff-schema 基线文件不存在: {MarkupText.Escape(options.Schema.DiffSchemaBaseline)}[/]");
             return 1;
         }
 
         // P6.2：--resume 预检：快照文件存在性 + 源文件一致性 + 防止 --resume / --baseline / --checkpoint 自相矛盾
         if (!string.IsNullOrEmpty(options.Incremental.ResumeFrom) && !File.Exists(options.Incremental.ResumeFrom))
         {
-            AnsiConsole.MarkupLine(
-                $"[red]错误: --resume 快照文件不存在: {Markup.Escape(options.Incremental.ResumeFrom)}[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[red]错误: --resume 快照文件不存在: {MarkupText.Escape(options.Incremental.ResumeFrom)}[/]");
             return 1;
         }
         if (!string.IsNullOrEmpty(options.Incremental.BaselinePath) && !File.Exists(options.Incremental.BaselinePath))
         {
-            AnsiConsole.MarkupLine(
-                $"[red]错误: --baseline 基线文件不存在: {Markup.Escape(options.Incremental.BaselinePath)}[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[red]错误: --baseline 基线文件不存在: {MarkupText.Escape(options.Incremental.BaselinePath)}[/]");
             return 1;
         }
         if (!string.IsNullOrEmpty(options.Incremental.CheckpointPath) && !string.IsNullOrEmpty(options.Incremental.ResumeFrom) &&
             string.Equals(Path.GetFullPath(options.Incremental.CheckpointPath), Path.GetFullPath(options.Incremental.ResumeFrom), StringComparison.OrdinalIgnoreCase))
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 "[red]错误: --checkpoint 与 --resume 指向同一文件；为避免相互覆盖，请使用不同路径。[/]");
             return 1;
         }
         if (!string.IsNullOrEmpty(options.Incremental.BaselinePath) && !string.IsNullOrEmpty(options.Incremental.ResumeFrom) &&
             string.Equals(Path.GetFullPath(options.Incremental.BaselinePath), Path.GetFullPath(options.Incremental.ResumeFrom), StringComparison.OrdinalIgnoreCase))
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 "[red]错误: --baseline 与 --resume 指向同一文件；语义冲突，请使用不同路径。[/]");
             return 1;
         }
@@ -182,7 +181,7 @@ public static class AnalysisRunner
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]错误: --resume 快照解析失败: {Markup.Escape(ex.Message)}[/]");
+                AnalysisServices.Current.Console.MarkupLine($"[red]错误: --resume 快照解析失败: {MarkupText.Escape(ex.Message)}[/]");
                 return 1;
             }
 
@@ -193,15 +192,15 @@ public static class AnalysisRunner
                 string snapAbs = Path.GetFullPath(resumeSnapshot.SourcePath);
                 if (!string.Equals(currentAbs, snapAbs, StringComparison.OrdinalIgnoreCase))
                 {
-                    AnsiConsole.MarkupLine(
-                        $"[red]错误: --resume 快照的源文件与当前输入不匹配（快照: {Markup.Escape(snapAbs)}，当前: {Markup.Escape(currentAbs)}）[/]");
+                    AnalysisServices.Current.Console.MarkupLine(
+                        $"[red]错误: --resume 快照的源文件与当前输入不匹配（快照: {MarkupText.Escape(snapAbs)}，当前: {MarkupText.Escape(currentAbs)}）[/]");
                     return 1;
                 }
             }
 
             startFromPosition = Math.Max(0, resumeSnapshot.SourcePosition);
-            AnsiConsole.MarkupLine(
-                $"[green][[检查点]][/] 从 {Markup.Escape(options.Incremental.ResumeFrom!)} 恢复分析，已处理 {startFromPosition:N0} 条记录，本次从该位置继续");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[green][[检查点]][/] 从 {MarkupText.Escape(options.Incremental.ResumeFrom!)} 恢复分析，已处理 {startFromPosition:N0} 条记录，本次从该位置继续");
         }
 
         var incremental = new IncrementalContext
@@ -226,7 +225,7 @@ public static class AnalysisRunner
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]错误: --root-path {Markup.Escape(ex.Message)}[/]");
+                AnalysisServices.Current.Console.MarkupLine($"[red]错误: --root-path {MarkupText.Escape(ex.Message)}[/]");
                 return 1;
             }
         }
@@ -238,7 +237,7 @@ public static class AnalysisRunner
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[red]错误: --record-path {Markup.Escape(ex.Message)}[/]");
+                AnalysisServices.Current.Console.MarkupLine($"[red]错误: --record-path {MarkupText.Escape(ex.Message)}[/]");
                 return 1;
             }
         }
@@ -264,7 +263,7 @@ public static class AnalysisRunner
                     if (!userRequestedSampling)
                     {
                         options.Sampling.SampleReservoir = options.Sampling.MemoryFallbackSampleSize;
-                        AnsiConsole.MarkupLine(
+                        AnalysisServices.Current.Console.MarkupLine(
                             $"[grey][[内存]][/] 检测到启动时已接近 [blue]--max-memory {options.Memory.MaxMemoryMB:N0} MB[/]；已自动切换为蓄水池采样 [blue]{options.Sampling.SampleReservoir:N0}[/] 条以保护进程。");
                     }
                 }
@@ -294,14 +293,14 @@ public static class AnalysisRunner
                     string fmt = FileParsers.DetectFormat(options.Input.InputPath);
                     if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db")
                     {
-                        AnsiConsole.MarkupLine(
+                        AnalysisServices.Current.Console.MarkupLine(
                             $"[yellow]警告: --root-path 在 [red]{fmt}[/] 格式下没有文件根概念，将被忽略（仅 --record-path 生效）[/]");
                         parsedObjects = ParseByFormat(options, rules, effectiveValueParsers, startFromPosition, incremental);
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine(
-                            $"[grey][[JSONPath]][/] 正在文件根应用 [blue]{Markup.Escape(options.Input.RootPath!)}[/] ...");
+                        AnalysisServices.Current.Console.MarkupLine(
+                            $"[grey][[JSONPath]][/] 正在文件根应用 [blue]{MarkupText.Escape(options.Input.RootPath!)}[/] ...");
                         parsedObjects = LoadAndApplyRootPath(options.Input.InputPath, options.Input.RootPath!);
                     }
                 }
@@ -322,8 +321,8 @@ public static class AnalysisRunner
             // record-path 始终生效（即使在 root-path 之后）
             if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
             {
-                AnsiConsole.MarkupLine(
-                    $"[grey][[JSONPath]][/] 正在每条记录上应用 [blue]{Markup.Escape(options.Input.RecordPath!)}[/] ...");
+                AnalysisServices.Current.Console.MarkupLine(
+                    $"[grey][[JSONPath]][/] 正在每条记录上应用 [blue]{MarkupText.Escape(options.Input.RecordPath!)}[/] ...");
                 parsedObjects = ApplyRecordPathStream(parsedObjects, options.Input.RecordPath!);
             }
 
@@ -333,10 +332,10 @@ public static class AnalysisRunner
             // P6.2：--resume 合并快照中的已聚合结果（FieldStatistic / Welford / 直方图 / 枚举违规均可增量合并）
             if (resumeSnapshot != null)
             {
-                AnsiConsole.MarkupLine(
+                AnalysisServices.Current.Console.MarkupLine(
                     $"[green][[检查点]][/] 正在合并已处理的 {resumeSnapshot.Result.TotalObjects:N0} 条记录结果（含 {resumeSnapshot.Result.FieldStatistics.Count} 个字段）...");
                 result.MergeFrom(resumeSnapshot.Result);
-                AnsiConsole.MarkupLine(
+                AnalysisServices.Current.Console.MarkupLine(
                     $"[green][[检查点]][/] 合并后共 {result.TotalObjects:N0} 条记录");
             }
 
@@ -346,10 +345,10 @@ public static class AnalysisRunner
                 var baseline = LoadAnalysisResultFromFile(options.Incremental.BaselinePath!);
                 if (baseline != null)
                 {
-                    AnsiConsole.MarkupLine(
-                        $"[green][[基线]][/] 正在合并基线 {Markup.Escape(options.Incremental.BaselinePath!)} 的 {baseline.TotalObjects:N0} 条记录结果...");
+                    AnalysisServices.Current.Console.MarkupLine(
+                        $"[green][[基线]][/] 正在合并基线 {MarkupText.Escape(options.Incremental.BaselinePath!)} 的 {baseline.TotalObjects:N0} 条记录结果...");
                     result.MergeFrom(baseline);
-                    AnsiConsole.MarkupLine(
+                    AnalysisServices.Current.Console.MarkupLine(
                         $"[green][[基线]][/] 合并后共 {result.TotalObjects:N0} 条记录");
                 }
             }
@@ -371,13 +370,13 @@ public static class AnalysisRunner
                 try
                 {
                     snapshot.SaveTo(options.Incremental.CheckpointPath!);
-                    AnsiConsole.MarkupLine(
-                        $"[green][[检查点]][/] 已落盘分析快照至 [blue]{Markup.Escape(options.Incremental.CheckpointPath!)}[/]（共 {totalProcessed:N0} 条记录，{result.FieldStatistics.Count} 个字段）");
+                    AnalysisServices.Current.Console.MarkupLine(
+                        $"[green][[检查点]][/] 已落盘分析快照至 [blue]{MarkupText.Escape(options.Incremental.CheckpointPath!)}[/]（共 {totalProcessed:N0} 条记录，{result.FieldStatistics.Count} 个字段）");
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine(
-                        $"[yellow]警告: 检查点写入失败 ({Markup.Escape(ex.Message)})；本次结果已输出但下次无法 --resume 续跑。[/]");
+                    AnalysisServices.Current.Console.MarkupLine(
+                        $"[yellow]警告: 检查点写入失败 ({MarkupText.Escape(ex.Message)})；本次结果已输出但下次无法 --resume 续跑。[/]");
                 }
             }
 
@@ -392,8 +391,8 @@ public static class AnalysisRunner
                 }
                 catch (Exception ex)
                 {
-                    AnsiConsole.MarkupLine(
-                        $"[yellow]警告: 合并后报告覆写失败 ({Markup.Escape(ex.Message)})；{Markup.Escape(options.Report.OutputPath!)} 仍为合并前结果。[/]");
+                    AnalysisServices.Current.Console.MarkupLine(
+                        $"[yellow]警告: 合并后报告覆写失败 ({MarkupText.Escape(ex.Message)})；{MarkupText.Escape(options.Report.OutputPath!)} 仍为合并前结果。[/]");
                 }
             }
 
@@ -402,19 +401,19 @@ public static class AnalysisRunner
             if (options.Gates.FailOnViolations && result.QualityViolations.Count > 0)
             {
                 long occurrenceCount = result.QualityViolations.Sum(v => v.Count);
-                AnsiConsole.MarkupLine(
+                AnalysisServices.Current.Console.MarkupLine(
                     $"[red]数据质量未通过（{result.QualityViolations.Count} 条质量违规 / 涉及 {occurrenceCount} 行或值），退出码 3。[/]");
                 foreach (var violation in result.QualityViolations.Take(5))
                 {
                     string scope = string.IsNullOrEmpty(violation.Field)
                         ? QualityCheckTypes.Label(violation.Check)
                         : $"{violation.Field}: {QualityCheckTypes.Label(violation.Check)}";
-                    AnsiConsole.MarkupLine($"  [red]·[/] {Markup.Escape(scope)} — {Markup.Escape(violation.Message)}");
+                    AnalysisServices.Current.Console.MarkupLine($"  [red]·[/] {MarkupText.Escape(scope)} — {MarkupText.Escape(violation.Message)}");
                 }
 
                 if (result.QualityViolations.Count > 5)
                 {
-                    AnsiConsole.MarkupLine($"  [grey]... 还有 {result.QualityViolations.Count - 5} 条，详见 --violations 导出[/]");
+                    AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {result.QualityViolations.Count - 5} 条，详见 --violations 导出[/]");
                 }
 
                 exitCode = 3;
@@ -427,7 +426,7 @@ public static class AnalysisRunner
                 if (piiReport.PiiFieldCount > 0 &&
                     PiiSeverityRank(piiReport.ComplianceLevel) >= PiiSeverityRank(options.Gates.FailOnPiiLevel))
                 {
-                    AnsiConsole.MarkupLine(
+                    AnalysisServices.Current.Console.MarkupLine(
                         $"[red]数据安全合规未通过（合规等级 {piiReport.ComplianceLevel}，发现 {piiReport.PiiFieldCount} 个敏感字段 / {piiReport.PiiValueCount} 个敏感值），退出码 4。[/]");
                     exitCode = 4;
                 }
@@ -442,16 +441,16 @@ public static class AnalysisRunner
                     .ToList();
                 if (offenders.Count > 0)
                 {
-                    AnsiConsole.MarkupLine(
+                    AnalysisServices.Current.Console.MarkupLine(
                         $"[red]异常值未通过（阈值 {threshold:P1}，发现 {offenders.Count} 个字段超限），退出码 5。[/]");
                     foreach (var s in offenders.Take(5))
                     {
-                        AnsiConsole.MarkupLine(
-                            $"  [red]·[/] [cyan]{Markup.Escape(s.FieldName)}[/]: {s.OutlierRatio:P1} (区间 {Markup.Escape(s.OutlierBounds ?? "-")}, {s.OutlierCount} 样本, {s.OutlierMethod} 近似)");
+                        AnalysisServices.Current.Console.MarkupLine(
+                            $"  [red]·[/] [cyan]{MarkupText.Escape(s.FieldName)}[/]: {s.OutlierRatio:P1} (区间 {MarkupText.Escape(s.OutlierBounds ?? "-")}, {s.OutlierCount} 样本, {s.OutlierMethod} 近似)");
                     }
                     if (offenders.Count > 5)
                     {
-                        AnsiConsole.MarkupLine($"  [grey]... 还有 {offenders.Count - 5} 个字段，详见报告[/]");
+                        AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {offenders.Count - 5} 个字段，详见报告[/]");
                     }
                     exitCode = 5;
                 }
@@ -462,21 +461,21 @@ public static class AnalysisRunner
             {
                 int removed = result.SchemaDiff.RemovedFields.Count;
                 int breakingChanges = result.SchemaDiff.ChangedFields.Count(c => c.Breaking);
-                AnsiConsole.MarkupLine(
+                AnalysisServices.Current.Console.MarkupLine(
                     $"[red]Schema 演进门禁未通过（--allow-breaking-schema-changes=false，发现 {removed} 个删除字段、{breakingChanges} 个破坏性变更字段），退出码 6。[/]");
                 foreach (var f in result.SchemaDiff.RemovedFields.Take(5))
                 {
-                    AnsiConsole.MarkupLine(
-                        $"  [red]-[/] [cyan]{Markup.Escape(f.Path)}[/]: {Markup.Escape(f.PrimaryType)} (coverage {f.Coverage:P1})");
+                    AnalysisServices.Current.Console.MarkupLine(
+                        $"  [red]-[/] [cyan]{MarkupText.Escape(f.Path)}[/]: {MarkupText.Escape(f.PrimaryType)} (coverage {f.Coverage:P1})");
                 }
                 foreach (var c in result.SchemaDiff.ChangedFields.Where(c => c.Breaking).Take(5))
                 {
-                    AnsiConsole.MarkupLine($"  [red]~[/] [cyan]{Markup.Escape(c.Path)}[/]");
+                    AnalysisServices.Current.Console.MarkupLine($"  [red]~[/] [cyan]{MarkupText.Escape(c.Path)}[/]");
                     foreach (var item in c.Changes)
                     {
                         if (item.Breaking)
                         {
-                            AnsiConsole.MarkupLine($"      [red]·[/] {Markup.Escape(item.Property)}: {Markup.Escape(item.Description)}");
+                            AnalysisServices.Current.Console.MarkupLine($"      [red]·[/] {MarkupText.Escape(item.Property)}: {MarkupText.Escape(item.Description)}");
                         }
                     }
                 }
@@ -500,15 +499,15 @@ public static class AnalysisRunner
         }
         catch (OperationCanceledException)
         {
-            AnsiConsole.MarkupLine("[yellow]分析已取消。[/]");
+            AnalysisServices.Current.Console.MarkupLine("[yellow]分析已取消。[/]");
             WriteAuditEvent(audit, options, rules, runId, sw, "analysis_cancel", exitCode: 2, result: null, message: "用户取消");
             return 2;
         }
         catch (MaxMemoryExceededException ex)
         {
             // P6.3：--max-memory hard 模式超限
-            AnsiConsole.MarkupLine(
-                $"[red][[内存]] 退出码 1: {Markup.Escape(ex.Message)}[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[red][[内存]] 退出码 1: {MarkupText.Escape(ex.Message)}[/]");
             WriteAuditEvent(audit, options, rules, runId, sw, "analysis_error", exitCode: 1, result: null, message: ex.Message);
             return 1;
         }
@@ -612,14 +611,14 @@ public static class AnalysisRunner
 
         if (RequiresExcelJsonValueParsing(rules))
         {
-            AnsiConsole.MarkupLine($"[grey][[规则驱动]][/] 因规则文件配置了 valueParsers，使用格式 '[blue]{format}[/]' 进行解析。");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[规则驱动]][/] 因规则文件配置了 valueParsers，使用格式 '[blue]{format}[/]' 进行解析。");
         }
         else
         {
-            AnsiConsole.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[自动检测]][/] 使用格式 '[blue]{format}[/]' 进行解析。");
         }
 
-        AnsiConsole.MarkupLine($"正在读取并解析文件: [blue]{Markup.Escape(options.Input.InputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在读取并解析文件: [blue]{MarkupText.Escape(options.Input.InputPath)}[/] ...");
 
         var compression = CompressionDetector.Detect(options.Input.InputPath);
         if (compression != CompressionType.None)
@@ -631,15 +630,15 @@ public static class AnalysisRunner
                 CompressionType.Zip => "zip",
                 _ => "压缩"
             };
-            AnsiConsole.MarkupLine($"[grey][[自动解压]][/] 检测到 {label} 压缩文件，正在流式解压后解析（保持行级流式，超大文件内存有界）...");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[自动解压]][/] 检测到 {label} 压缩文件，正在流式解压后解析（保持行级流式，超大文件内存有界）...");
 
             // zip 含多个数据条目时提示确定性选择结果，避免“为什么统计的是这个文件”的困惑
             if (compression == CompressionType.Zip &&
                 InputSource.PreviewZipEntries(options.Input.InputPath) is { } preview &&
                 preview.Others.Count > 0)
             {
-                AnsiConsole.MarkupLine(
-                    $"[grey][[自动解压]][/] zip 含 {preview.Others.Count + 1} 个数据条目，已选择 [blue]{Markup.Escape(preview.Chosen)}[/]（其余条目忽略）");
+                AnalysisServices.Current.Console.MarkupLine(
+                    $"[grey][[自动解压]][/] zip 含 {preview.Others.Count + 1} 个数据条目，已选择 [blue]{MarkupText.Escape(preview.Chosen)}[/]（其余条目忽略）");
             }
         }
         var parseOptions = new ParseOptions
@@ -677,8 +676,8 @@ public static class AnalysisRunner
     private static IEnumerable<Dictionary<string, object?>> ParseFromDatabase(AnalysisOptions options, long startFromPosition = 0)
     {
         var provider = DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString!);
-        AnsiConsole.MarkupLine($"[grey][[数据库直连]][/] 使用 [blue]{DatabaseReader.DisplayName(provider)}[/] 数据源，流式读取查询结果...");
-        AnsiConsole.MarkupLine($"正在直连数据库并执行查询: [blue]{Markup.Escape(options.Input.Query!)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"[grey][[数据库直连]][/] 使用 [blue]{DatabaseReader.DisplayName(provider)}[/] 数据源，流式读取查询结果...");
+        AnalysisServices.Current.Console.MarkupLine($"正在直连数据库并执行查询: [blue]{MarkupText.Escape(options.Input.Query!)}[/] ...");
 
         if (startFromPosition > 0)
         {
@@ -712,11 +711,11 @@ public static class AnalysisRunner
     {
         if (options.Sampling.SampleReservoir > 0)
         {
-            AnsiConsole.MarkupLine($"[grey][[采样]][/] 蓄水池随机抽样：从海量数据中均匀抽取最多 [blue]{options.Sampling.SampleReservoir}[/] 条进行统计与 Schema 概览。");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[采样]][/] 蓄水池随机抽样：从海量数据中均匀抽取最多 [blue]{options.Sampling.SampleReservoir}[/] 条进行统计与 Schema 概览。");
         }
         else
         {
-            AnsiConsole.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.Sampling.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[采样]][/] 等距系统抽样：每 [blue]{options.Sampling.SampleStep}[/] 条记录取 1 条进行统计与 Schema 概览。");
         }
     }
 
@@ -743,7 +742,7 @@ public static class AnalysisRunner
         var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.FieldSelection.Fields), effectiveFilter);
         if (effectiveFilter != null)
         {
-            AnsiConsole.MarkupLine($"[grey][[过滤]][/] 已应用过滤条件: [blue]{Markup.Escape(effectiveFilter)}[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[过滤]][/] 已应用过滤条件: [blue]{MarkupText.Escape(effectiveFilter)}[/]");
         }
         if (transformProcessor.HasSelectionOrTransforms)
         {
@@ -766,7 +765,7 @@ public static class AnalysisRunner
         if (needFuzzyDedup)
         {
             string field = options.Advanced.FuzzyDedupField!;
-            AnsiConsole.MarkupLine($"[grey][[模糊去重]][/] 正在对字段 [blue]{Markup.Escape(field)}[/] 做形态变体聚类...");
+            AnalysisServices.Current.Console.MarkupLine($"[grey][[模糊去重]][/] 正在对字段 [blue]{MarkupText.Escape(field)}[/] 做形态变体聚类...");
             fuzzyReport = FuzzyDuplicateDetector.Detect(materialized, obj =>
             {
                 if (obj.TryGetValue(field, out var v)) return v?.ToString();
@@ -784,91 +783,62 @@ public static class AnalysisRunner
 
         if (options.Progress.ShowProgress)
         {
-            AnsiConsole.Progress()
-                .AutoClear(false)
-                .HideCompleted(false)
-                .Columns(
-                    new TaskDescriptionColumn { Alignment = Justify.Left },
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new RemainingTimeColumn(),
-                    new SpinnerColumn(Spinner.Known.Dots))
-                .Start(ctx =>
-                {
-                    string desc = string.IsNullOrEmpty(options.Input.InputPath)
-                        ? "[green]分析中[/] [grey](数据库直连)[/]"
-                        : $"[green]分析中[/] [grey]{Markup.Escape(Path.GetFileName(options.Input.InputPath))}[/]";
-                    var task = ctx.AddTask(desc, maxValue: expectedTotal ?? 100);
-                    var progress = new Progress<long>(objects =>
-                    {
-                        task.Value = objects;
-                        if (incremental != null) incremental.LastRecordCount = objects;
-                    });
-
-                    var parallelOptions = new ParallelOptions
-                    {
-                        MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
-                            ? options.Parse.MaxDegreeOfParallelism
-                            : -1
-                    };
-                    var features = options.Advanced;
-                    if (needDistributionSketches)
-                    {
-                        var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
-                        result = detailed.Result;
-                        _lastQuantileSketches = detailed.QuantileSketches;
-                        _lastDistinctSketches = detailed.DistinctSketches;
-                    }
-                    else
-                    {
-                        result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress, cancellationToken);
-                        _lastQuantileSketches = null;
-                        _lastDistinctSketches = null;
-                    }
-                    // 确保 100% 收尾（未知总量时 task.Value 可能停在 < maxValue 处）
-                    if (task.Value < task.MaxValue) task.Value = task.MaxValue;
-                });
+            // 进度 UI 由宿主的 IProgressReporter 实现渲染（CLI：Spectre 进度条；API/Web：静默）。
+            // 已知总量作为进度条上限传入；描述文本传纯文本（宿主自行决定是否加样式）。
+            AnalysisServices.Current.Progress.Run(
+                string.IsNullOrEmpty(options.Input.InputPath)
+                    ? "分析中（数据库直连）"
+                    : $"分析中 {Path.GetFileName(options.Input.InputPath)}",
+                expectedTotal,
+                showProgress: true,
+                work: ReportProgress);
         }
         else
         {
-            AnsiConsole.Status()
-                .Spinner(Spinner.Known.Dots)
-                .SpinnerStyle(Style.Parse("green"))
-                .Start("正在并行计算对象字段分布、数据极值与语义模式...", ctx =>
+            AnalysisServices.Current.Progress.Run(
+                "正在并行计算对象字段分布、数据极值与语义模式...",
+                null,
+                showProgress: false,
+                work: ReportProgress);
+        }
+
+        // 分析工作本体（两个进度分支共用）：进度回调同时驱动增量计数与内存采样
+        void ReportProgress(IProgress<long>? uiProgress)
+        {
+            // P6.2：即使进度条关闭，也要追踪记录数（--checkpoint 落盘依赖 LastRecordCount）
+            IProgress<long>? progress = uiProgress is null && incremental == null && s_activeMemoryBudget is null
+                ? null
+                : new Progress<long>(objects =>
                 {
-                    var parallelOptions = new ParallelOptions
+                    uiProgress?.Report(objects);
+                    if (incremental != null) incremental.LastRecordCount = objects;
+                    // P6.3：无 UI 模式同样周期采样内存
+                    if (s_activeMemoryBudget is { IsEnabled: true } mem)
                     {
-                        MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
-                            ? options.Parse.MaxDegreeOfParallelism
-                            : -1
-                    };
-                    var features = options.Advanced;
-                    // P6.2：即使进度条关闭，也要追踪记录数（--checkpoint 落盘依赖 LastRecordCount）
-                    IProgress<long>? progress = incremental == null && s_activeMemoryBudget is null
-                        ? null
-                        : new Progress<long>(objects =>
-                        {
-                            if (incremental != null) incremental.LastRecordCount = objects;
-                            // P6.3：spinner 模式同样周期采样内存
-                            if (s_activeMemoryBudget is { IsEnabled: true } mem)
-                            {
-                                mem.Check(objects, out _);
-                            }
-                        });
-                    if (needDistributionSketches)
-                    {
-                        var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
-                        result = detailed.Result;
-                        _lastQuantileSketches = detailed.QuantileSketches;
-                        _lastDistinctSketches = detailed.DistinctSketches;
-                    }
-                    else
-                    {
-                        result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress, cancellationToken);
-                        _lastQuantileSketches = null;
-                        _lastDistinctSketches = null;
+                        mem.Check(objects, out _);
                     }
                 });
+
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
+                    ? options.Parse.MaxDegreeOfParallelism
+                    : -1
+            };
+            var features = options.Advanced;
+            if (needDistributionSketches)
+            {
+                var detailed = ObjectAnalyzer.AnalyzeDetailed(materialized, rules, parallelOptions, features, progress, cancellationToken);
+                result = detailed.Result;
+                _lastQuantileSketches = detailed.QuantileSketches;
+                _lastDistinctSketches = detailed.DistinctSketches;
+            }
+            else
+            {
+                result = ObjectAnalyzer.Analyze(parsedObjects, rules, parallelOptions, features, progress, cancellationToken);
+                _lastQuantileSketches = null;
+                _lastDistinctSketches = null;
+            }
         }
 
         // 模糊去重结果挂到 result 上
@@ -895,12 +865,12 @@ public static class AnalysisRunner
         transformProcessor.ApplyFailures(result);
         result.FilterExpression = effectiveFilter;
 
-        AnsiConsole.MarkupLine("[green]分析完成！[/]\n");
+        AnalysisServices.Current.Console.MarkupLine("[green]分析完成！[/]\n");
 
         // P6.3：内存预算总结（仅当启用了 --max-memory 时打印）
         if (s_activeMemoryBudget is { IsEnabled: true } finalBudget)
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 $"[grey][[内存]][/] 本次分析峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.Memory.MaxMemoryMB:N0} MB，模式 {options.Memory.MaxMemoryMode}）");
             // hard 模式：分析完成后若曾触发 HardLimitExceeded（来自 progress 回调内的 Check），
             // 此处由主流程显式抛错；不能放在 progress 回调里直接 throw——会变成"未观察异常"逃出主流程。
@@ -914,8 +884,9 @@ public static class AnalysisRunner
         // 分布快照导出 / diff 计算（与 SchemaSnapshot 互补：看分布变化）
         ProcessDistributionSnapshot(result, options);
 
-        // 输出控制台统计结果（--pii-off 时保留原始值）
-        ConsoleReporter.Print(result, options.Parse.MaxValuesToShow, redactPii: !options.Pii.PiiOff);
+        // 输出控制台统计结果（--pii-off 时保留原始值）。呈现由宿主注入的 IResultPresenter 完成
+        // （CLI：Spectre 富渲染；API/Web：静默或结构化推送）。
+        AnalysisServices.Current.Presenter.Present(result, options);
 
         // 输出数据安全合规摘要（发现敏感字段时提示打码与合规导出；--pii-off 时跳过）
         if (!options.Pii.PiiOff)
@@ -971,9 +942,9 @@ public static class AnalysisRunner
                 Path.GetDirectoryName(basePath) ?? "",
                 Path.GetFileNameWithoutExtension(basePath) + schemaExt);
 
-            AnsiConsole.MarkupLine($"正在导出 [bold green]{options.Report.ExportSchema}[/] 格式 Schema 定义至: [blue]{Markup.Escape(schemaPath)}[/] ...");
+            AnalysisServices.Current.Console.MarkupLine($"正在导出 [bold green]{options.Report.ExportSchema}[/] 格式 Schema 定义至: [blue]{MarkupText.Escape(schemaPath)}[/] ...");
             SchemaExporter.Export(result, options.Report.ExportSchema, schemaPath);
-            AnsiConsole.MarkupLine("[green]Schema 定义代码成功导出！[/]");
+            AnalysisServices.Current.Console.MarkupLine("[green]Schema 定义代码成功导出！[/]");
         }
 
         // Schema 快照导出 / diff 计算（独立于代码生成器 SchemaExporter）
@@ -1023,8 +994,8 @@ public static class AnalysisRunner
             var diff = SchemaDiffer.Compute(baseline, currentSnapshot);
             result.SchemaDiff = diff;
 
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[bold]── Schema 演进（vs 基线） ──[/]");
+            AnalysisServices.Current.Console.WriteLine();
+            AnalysisServices.Current.Console.MarkupLine("[bold]── Schema 演进（vs 基线） ──[/]");
             SchemaDiffer.PrintSummary(diff);
 
             if (!string.IsNullOrEmpty(options.Schema.SchemaDiffReportPath))
@@ -1035,8 +1006,8 @@ public static class AnalysisRunner
                     Directory.CreateDirectory(dir);
                 }
                 File.WriteAllText(options.Schema.SchemaDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
-                AnsiConsole.MarkupLine(
-                    $"[green]Schema diff 已导出至[/] [blue]{Markup.Escape(options.Schema.SchemaDiffReportPath)}[/]");
+                AnalysisServices.Current.Console.MarkupLine(
+                    $"[green]Schema diff 已导出至[/] [blue]{MarkupText.Escape(options.Schema.SchemaDiffReportPath)}[/]");
             }
         }
     }
@@ -1068,8 +1039,8 @@ public static class AnalysisRunner
         {
             currentSnapshot = DistributionSnapshotExporter.Build(result, _lastQuantileSketches, _lastDistinctSketches, source);
             DistributionSnapshotExporter.WriteToFile(currentSnapshot, options.Distribution.DistributionSnapshotPath);
-            AnsiConsole.MarkupLine(
-                $"[green]分布快照已导出至[/] [blue]{Markup.Escape(options.Distribution.DistributionSnapshotPath)}[/] [grey]({currentSnapshot.Fields.Count} 字段)[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[green]分布快照已导出至[/] [blue]{MarkupText.Escape(options.Distribution.DistributionSnapshotPath)}[/] [grey]({currentSnapshot.Fields.Count} 字段)[/]");
         }
 
         if (!string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline))
@@ -1079,8 +1050,8 @@ public static class AnalysisRunner
             var diff = DistributionDiffer.Compute(baseline, currentSnapshot);
             result.DistributionDiff = diff;
 
-            AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[bold]── 分布漂移（vs 基线） ──[/]");
+            AnalysisServices.Current.Console.WriteLine();
+            AnalysisServices.Current.Console.MarkupLine("[bold]── 分布漂移（vs 基线） ──[/]");
             DistributionDiffer.PrintSummary(diff);
 
             if (!string.IsNullOrEmpty(options.Distribution.DistributionDiffReportPath))
@@ -1091,18 +1062,18 @@ public static class AnalysisRunner
                     Directory.CreateDirectory(dir);
                 }
                 File.WriteAllText(options.Distribution.DistributionDiffReportPath, JsonSerializer.Serialize(diff, s_diffJsonOptions), new UTF8Encoding(false));
-                AnsiConsole.MarkupLine(
-                    $"[green]分布 diff 已导出至[/] [blue]{Markup.Escape(options.Distribution.DistributionDiffReportPath)}[/]");
+                AnalysisServices.Current.Console.MarkupLine(
+                    $"[green]分布 diff 已导出至[/] [blue]{MarkupText.Escape(options.Distribution.DistributionDiffReportPath)}[/]");
             }
         }
     }
 
     private static void PrintError(Exception ex)
     {
-        AnsiConsole.MarkupLine($"[red]发生错误: {Markup.Escape(ex.Message)}[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[red]发生错误: {MarkupText.Escape(ex.Message)}[/]");
         if (ex.InnerException != null)
         {
-            AnsiConsole.MarkupLine($"[red]内部错误: {Markup.Escape(ex.InnerException.Message)}[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[red]内部错误: {MarkupText.Escape(ex.InnerException.Message)}[/]");
         }
     }
 
@@ -1122,8 +1093,8 @@ public static class AnalysisRunner
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine(
-                $"[red]错误: --baseline 文件解析失败: {Markup.Escape(ex.Message)}[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[red]错误: --baseline 文件解析失败: {MarkupText.Escape(ex.Message)}[/]");
             throw;
         }
     }
@@ -1159,7 +1130,7 @@ public static class AnalysisRunner
             throw new FileNotFoundException($"规则文件不存在: {rulesPath}");
         }
 
-        AnsiConsole.MarkupLine($"正在加载规则文件: [blue]{Markup.Escape(rulesPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在加载规则文件: [blue]{MarkupText.Escape(rulesPath)}[/] ...");
         var json = File.ReadAllText(rulesPath);
 
         // 未知键（拼错 / 已废弃）在反序列化时会被 STJ 静默忽略，这里先扫一遍原文拦下来：
@@ -1170,7 +1141,7 @@ public static class AnalysisRunner
             if (unknowns.Count > 0)
             {
                 throw new InvalidOperationException(
-                    $"规则文件 {Markup.Escape(rulesPath)} 校验失败：{RulesLint.Describe(unknowns)}");
+                    $"规则文件 {MarkupText.Escape(rulesPath)} 校验失败：{RulesLint.Describe(unknowns)}");
             }
         }
 
@@ -1200,7 +1171,7 @@ public static class AnalysisRunner
         // 明文字符串仅存在于本次进程的内存规则模型上，规则 JSON 不会被改写为明文。
         KmsRuleResolver.Resolve(rules);
 
-        AnsiConsole.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
+        AnalysisServices.Current.Console.MarkupLine($"已加载 [green]{rules.Fields.Count}[/] 条字段规则。");
         return rules;
     }
 
@@ -1271,12 +1242,12 @@ public static class AnalysisRunner
         var records = JsonPathProjector.ApplyRootPath(root, expression);
         if (records.Count == 0)
         {
-            AnsiConsole.MarkupLine(
-                $"[yellow]警告: --root-path 表达式 {Markup.Escape(expression)} 匹配到 0 个节点；将分析空集[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[yellow]警告: --root-path 表达式 {MarkupText.Escape(expression)} 匹配到 0 个节点；将分析空集[/]");
         }
         else
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 $"[green][[JSONPath]][/] --root-path 提取了 [blue]{records.Count}[/] 条记录");
         }
         return records;
@@ -1306,17 +1277,17 @@ public static class AnalysisRunner
 
         if (noMatch > 0)
         {
-            AnsiConsole.MarkupLine(
-                $"[yellow]警告: --record-path 表达式 {Markup.Escape(expression)} 在 {noMatch}/{materialized.Count} 条记录上无匹配；这些记录被跳过[/]");
+            AnalysisServices.Current.Console.MarkupLine(
+                $"[yellow]警告: --record-path 表达式 {MarkupText.Escape(expression)} 在 {noMatch}/{materialized.Count} 条记录上无匹配；这些记录被跳过[/]");
         }
         if (projected.Count == 0 && materialized.Count > 0)
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 $"[yellow]警告: --record-path 匹配到 0 个节点；将分析空集[/]");
         }
         else
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 $"[green][[JSONPath]][/] --record-path 产出 [blue]{projected.Count}[/] 条记录（输入 {materialized.Count} 条）");
         }
         return projected;

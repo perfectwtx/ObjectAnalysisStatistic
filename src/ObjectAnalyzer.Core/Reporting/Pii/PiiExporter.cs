@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -16,12 +15,12 @@ public static class PiiExporter
         string json = JsonSerializer.Serialize(report, JsonSharedOptions.Write);
         File.WriteAllText(outputPath, json);
 
-        AnsiConsole.MarkupLine(
+        AnalysisServices.Current.Console.MarkupLine(
             report.PiiFieldCount == 0
                 ? $"[green]数据安全合规等级: A（未发现敏感字段）。[/]"
                 : $"[yellow]数据安全合规等级: [bold]{report.ComplianceLevel}[/]"
-                  + $"（{Markup.Escape(report.ComplianceLevelLabel)}）：{report.PiiFieldCount} 个敏感字段，"
+                  + $"（{MarkupText.Escape(report.ComplianceLevelLabel)}）：{report.PiiFieldCount} 个敏感字段，"
                   + $"共 {report.PiiValueCount} 个敏感值，全部自动打码。[/]");
-        AnsiConsole.MarkupLine($"已导出数据安全合规报告至: [blue]{Markup.Escape(outputPath)}[/]");
+        AnalysisServices.Current.Console.MarkupLine($"已导出数据安全合规报告至: [blue]{MarkupText.Escape(outputPath)}[/]");
     }
 }

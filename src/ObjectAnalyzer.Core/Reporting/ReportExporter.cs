@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -39,13 +38,13 @@ public static class ReportExporter
 
     private static void SaveJson(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.Markup($"正在将详细分析报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
-        AnsiConsole.WriteLine();
+        AnalysisServices.Current.Console.Write($"正在将详细分析报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.WriteLine();
         // 直接序列化到文件流，避免先构造完整 JSON 字符串
         using (var stream = File.Create(outputPath))
         {
             JsonSerializer.Serialize(stream, result, JsonSharedOptions.Write);
         }
-        AnsiConsole.MarkupLine($"[green]报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]报告成功保存！[/]");
     }
 }

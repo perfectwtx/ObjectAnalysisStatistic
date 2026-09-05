@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using MiniExcelLibs;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 

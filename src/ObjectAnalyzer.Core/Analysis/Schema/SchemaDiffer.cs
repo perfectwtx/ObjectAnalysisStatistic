@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -215,58 +214,58 @@ public static class SchemaDiffer
         int total = diff.AddedFields.Count + diff.RemovedFields.Count + diff.ChangedFields.Count;
         if (total == 0)
         {
-            AnsiConsole.MarkupLine("[green]✓ Schema 无差异（与基线一致）。[/]");
+            AnalysisServices.Current.Console.MarkupLine("[green]✓ Schema 无差异（与基线一致）。[/]");
             return;
         }
 
         string breakingTag = diff.HasBreakingChanges ? "[red]（含破坏性变更）[/]" : "[grey]（非破坏性）[/]";
-        AnsiConsole.MarkupLine(
+        AnalysisServices.Current.Console.MarkupLine(
             $"[bold]Schema 差异[/] {breakingTag} — 新增 {diff.AddedFields.Count} / 删除 {diff.RemovedFields.Count} / 变更 {diff.ChangedFields.Count}");
 
         if (diff.AddedFields.Count > 0)
         {
-            AnsiConsole.MarkupLine($"[green]+ 新增字段[/] [grey]({diff.AddedFields.Count})[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[green]+ 新增字段[/] [grey]({diff.AddedFields.Count})[/]");
             foreach (var f in diff.AddedFields.Take(maxPerCategory))
             {
-                AnsiConsole.MarkupLine(
-                    $"  [green]+[/] [cyan]{Markup.Escape(f.Path)}[/]: {Markup.Escape(f.PrimaryType)} [grey](coverage {f.Coverage:P1})[/]");
+                AnalysisServices.Current.Console.MarkupLine(
+                    $"  [green]+[/] [cyan]{MarkupText.Escape(f.Path)}[/]: {MarkupText.Escape(f.PrimaryType)} [grey](coverage {f.Coverage:P1})[/]");
             }
             if (diff.AddedFields.Count > maxPerCategory)
             {
-                AnsiConsole.MarkupLine($"  [grey]... 还有 {diff.AddedFields.Count - maxPerCategory} 个新增字段[/]");
+                AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {diff.AddedFields.Count - maxPerCategory} 个新增字段[/]");
             }
         }
 
         if (diff.RemovedFields.Count > 0)
         {
-            AnsiConsole.MarkupLine($"[red]- 删除字段[/] [grey]({diff.RemovedFields.Count})[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[red]- 删除字段[/] [grey]({diff.RemovedFields.Count})[/]");
             foreach (var f in diff.RemovedFields.Take(maxPerCategory))
             {
-                AnsiConsole.MarkupLine(
-                    $"  [red]-[/] [cyan]{Markup.Escape(f.Path)}[/]: {Markup.Escape(f.PrimaryType)} [grey](coverage {f.Coverage:P1})[/]");
+                AnalysisServices.Current.Console.MarkupLine(
+                    $"  [red]-[/] [cyan]{MarkupText.Escape(f.Path)}[/]: {MarkupText.Escape(f.PrimaryType)} [grey](coverage {f.Coverage:P1})[/]");
             }
             if (diff.RemovedFields.Count > maxPerCategory)
             {
-                AnsiConsole.MarkupLine($"  [grey]... 还有 {diff.RemovedFields.Count - maxPerCategory} 个删除字段[/]");
+                AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {diff.RemovedFields.Count - maxPerCategory} 个删除字段[/]");
             }
         }
 
         if (diff.ChangedFields.Count > 0)
         {
-            AnsiConsole.MarkupLine($"[yellow]~ 变更字段[/] [grey]({diff.ChangedFields.Count})[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[yellow]~ 变更字段[/] [grey]({diff.ChangedFields.Count})[/]");
             foreach (var c in diff.ChangedFields.Take(maxPerCategory))
             {
                 string tag = c.Breaking ? "[red]✗[/]" : "[yellow]~[/]";
-                AnsiConsole.MarkupLine($"  {tag} [cyan]{Markup.Escape(c.Path)}[/]");
+                AnalysisServices.Current.Console.MarkupLine($"  {tag} [cyan]{MarkupText.Escape(c.Path)}[/]");
                 foreach (var item in c.Changes)
                 {
                     string itemTag = item.Breaking ? "[red]✗[/]" : "[grey]·[/]";
-                    AnsiConsole.MarkupLine($"      {itemTag} {Markup.Escape(item.Property)}: {Markup.Escape(item.Description)}");
+                    AnalysisServices.Current.Console.MarkupLine($"      {itemTag} {MarkupText.Escape(item.Property)}: {MarkupText.Escape(item.Description)}");
                 }
             }
             if (diff.ChangedFields.Count > maxPerCategory)
             {
-                AnsiConsole.MarkupLine($"  [grey]... 还有 {diff.ChangedFields.Count - maxPerCategory} 个变更字段[/]");
+                AnalysisServices.Current.Console.MarkupLine($"  [grey]... 还有 {diff.ChangedFields.Count - maxPerCategory} 个变更字段[/]");
             }
         }
     }

@@ -2,7 +2,6 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -20,11 +19,11 @@ public static class PdfReportExporter
 
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.MarkupLine($"正在将 PDF 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在将 PDF 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
 
         var doc = Document.Create(c => Compose(c, result));
         doc.GeneratePdf(outputPath);
-        AnsiConsole.MarkupLine($"[green]PDF 报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]PDF 报告成功保存！[/]");
     }
 
     // ────── 整体文档结构 ──────
