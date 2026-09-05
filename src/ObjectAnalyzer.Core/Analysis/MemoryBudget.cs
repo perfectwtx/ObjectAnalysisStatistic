@@ -1,5 +1,3 @@
-using Spectre.Console;
-
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
@@ -34,6 +32,10 @@ public sealed class MemoryBudget(long maxMemoryMB, MaxMemoryMode mode)
     private bool _alreadyWarned; // soft 模式下仅打印一次警告
     private bool _samplingTriggered; // soft 模式下仅触发一次自动启用采样
     private long _peakBytes; // 用于审计/报告：本 run 内存峰值
+
+    /// <summary>控制台输出（soft 模式超限时打印警告）。默认静默，可由宿主注入。</summary>
+    public void SetConsole(IAnalysisConsole? console) => _console = console ?? SilentConsole.Instance;
+    private IAnalysisConsole _console = SilentConsole.Instance;
 
     /// <summary>本次 run 是否启用了内存监控。</summary>
     public bool IsEnabled => MaxMemoryMB > 0;
@@ -86,7 +88,7 @@ public sealed class MemoryBudget(long maxMemoryMB, MaxMemoryMode mode)
             _alreadyWarned = true;
             _samplingTriggered = true;
             samplingAutoEnable = true;
-            AnsiConsole.MarkupLine(
+            _console.MarkupLine(
                 $"[yellow][[内存]][/] 警告: 内存使用 [red]{currentMB:F1} MB[/] 已超出 --max-memory {MaxMemoryMB:N0} MB 软阈值 " +
                 $"(已分析 {objectCount:N0} 条对象)。自动启用蓄水池采样 50,000 条以保护进程，后续分析结果将基于采样而非全集。");
         }
