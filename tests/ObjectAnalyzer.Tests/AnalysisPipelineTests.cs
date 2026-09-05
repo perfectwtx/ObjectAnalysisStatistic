@@ -183,6 +183,55 @@ public class AnalysisPipelineTests
         finally { TryDelete(input); TryDelete(rulesPath); TryDelete(violations); }
     }
 
+    // ── 覆盖率拆分：值为 null 与 字段不存在（键缺失）是两种不同的未覆盖 ──
+
+    [Fact]
+    public void Coverage_SplitsNullAndAbsentCounts()
+    {
+        // 5 条记录：a 有值 ×2、a 为 null ×1、a 键缺失 ×2（{} 与仅含 b 的行）
+        string input = TempPath(".jsonl");
+        try
+        {
+            File.WriteAllText(input, "{\"a\":1}\n{\"a\":2}\n{\"a\":null}\n{}\n{\"b\":\"x\"}\n");
+
+            var result = Pipeline.Execute(NewOptions(input), rules: null, runContext: null).Result;
+            var a = result.FieldStatistics.First(f => f.FieldName == "a");
+
+            Assert.Equal(3, a.Count);                       // 出现次数（含 null）
+            Assert.Equal(1, a.NullCount);                   // 值为 null（Count 的子集）
+            Assert.Equal(2, result.TotalObjects - a.Count); // 字段不存在（键缺失）
+            Assert.Equal(0.6, a.Coverage, precision: 5);    // 覆盖率仍按出现次数口径
+        }
+        finally { TryDelete(input); }
+    }
+
+    [Fact]
+    public void FieldStatistic_MergeFrom_SumsNullCount()
+    {
+        var a = new AnalysisResult
+        {
+            TotalObjects = 3,
+            FieldStatistics = new List<FieldStatistic>
+            {
+                new() { FieldName = "x", Count = 2, NullCount = 1 }
+            }
+        };
+        var b = new AnalysisResult
+        {
+            TotalObjects = 2,
+            FieldStatistics = new List<FieldStatistic>
+            {
+                new() { FieldName = "x", Count = 1, NullCount = 1 }
+            }
+        };
+
+        a.MergeFrom(b);
+
+        var x = a.FieldStatistics.Single(f => f.FieldName == "x");
+        Assert.Equal(3, x.Count);
+        Assert.Equal(2, x.NullCount);
+    }
+
     // ── 三宿主行为一致性：管线结果与 CLI 宿主结果逐字节一致 ──
 
     [Fact]

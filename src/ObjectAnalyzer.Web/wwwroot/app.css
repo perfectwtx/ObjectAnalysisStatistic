@@ -1591,6 +1591,25 @@ a, .btn-link {
     font-variant-numeric: tabular-nums;
 }
 
+/* 覆盖率拆分标注：值 null / 字段缺失（两种未有效覆盖原因） */
+.coverage-null,
+.coverage-missing {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    color: var(--oa-text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.coverage-null {
+    color: var(--oa-warning, #d97706);
+}
+
+.coverage-missing {
+    color: var(--oa-danger, #dc2626);
+}
+
 /* ─── 10. 徽章与标签系统 ─── */
 .type-badge {
     display: inline-block;

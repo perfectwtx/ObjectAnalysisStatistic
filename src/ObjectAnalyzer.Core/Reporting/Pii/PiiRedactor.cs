@@ -98,6 +98,7 @@ public static class PiiRedactor
         {
             FieldName = source.FieldName,
             Count = source.Count,
+            NullCount = source.NullCount,
             Coverage = source.Coverage,
             ValueCountsTruncated = source.ValueCountsTruncated,
             MinNumber = source.MinNumber,

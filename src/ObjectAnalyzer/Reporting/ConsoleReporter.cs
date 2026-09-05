@@ -80,7 +80,12 @@ public sealed class ConsoleReporter : IResultPresenter
             }
             string truncatedInfo = stat.ValueCountsTruncated ? " [orange1][[唯一值已截断]][/]" : "";
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"[blue]{t.Key}[/]({t.Value})"));
-            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}{ruleInfo}{transformInfo}{truncatedInfo}");
+            // 覆盖率拆分：未覆盖的两种原因分列——值为 null（Count 的子集）与 字段不存在（键缺失 = 总数 - Count）
+            long missingCount = Math.Max(0, result.TotalObjects - stat.Count);
+            string coverageBreakdown = (stat.NullCount > 0 || missingCount > 0)
+                ? $"（null {stat.NullCount} · 字段缺失 {missingCount}）"
+                : "";
+            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){coverageBreakdown}{defaultInfo}{ruleInfo}{transformInfo}{truncatedInfo}");
             AnsiConsole.MarkupLine($"  类型分布: {types}");
 
             // 数值极值与长度指标

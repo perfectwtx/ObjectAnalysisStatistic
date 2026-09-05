@@ -606,6 +606,17 @@
                                         <div class="coverage-fill" style="width: @(field.Coverage * 100)%"></div>
                                         <span>@field.Count/@State.Result.TotalObjects (@FormatPercent(field.Coverage))</span>
                                     </div>
+                                    @{
+                                        long fieldMissing = Math.Max(0, State.Result.TotalObjects - field.Count);
+                                        if (field.NullCount > 0)
+                                        {
+                                            <span class="coverage-null" title="@Loc.Get("CoverageNull", field.NullCount)">null @field.NullCount</span>
+                                        }
+                                        if (fieldMissing > 0)
+                                        {
+                                            <span class="coverage-missing" title="@Loc.Get("CoverageMissing", fieldMissing)">@Loc.Get("CoverageMissing", fieldMissing)</span>
+                                        }
+                                    }
                                 </td>
                                 <td>
                                     @foreach (var tc in field.TypeCounts.OrderByDescending(t => t.Value))

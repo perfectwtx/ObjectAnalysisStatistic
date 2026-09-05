@@ -10,6 +10,12 @@ public class FieldStatistic
     public long Count { get; set; }
     public double Coverage { get; set; } // 字段在所有对象中的覆盖率 (0.0 - 1.0)
 
+    /// <summary>
+    /// 字段值为显式 null 的记录数（Count 的子集）。与"字段不存在"（键缺失，
+    /// 即 TotalObjects - Count）相对——两者是未有效覆盖的两种不同原因。
+    /// </summary>
+    public long NullCount { get; set; }
+
     /// <remarks>
     /// 由分析器在内部填充，外部调用者应视为只读。
     /// </remarks>
@@ -186,6 +192,7 @@ public class FieldStatistic
         RangeViolationCount += other.RangeViolationCount;
         TransformFailureCount += other.TransformFailureCount;
         NullAppeared = NullAppeared || other.NullAppeared;
+        NullCount += other.NullCount;
 
         // Min / Max
         if (other.MinNumber is not null)

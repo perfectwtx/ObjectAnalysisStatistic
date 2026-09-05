@@ -148,6 +148,7 @@ public static partial class ObjectAnalyzer
                     {
                         globalStat.TypeCounts[tc.Key] = globalStat.TypeCounts.GetValueOrDefault(tc.Key) + tc.Value;
                     }
+                    globalStat.NullCount += localStat.NullCount;
 
                     foreach (var vc in localStat.ValueCounts)
                     {
@@ -285,6 +286,7 @@ public static partial class ObjectAnalyzer
 
                         string valType = GetValueType(value);
                         stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
+                        if (valType == "Null") stat.NullCount++;
 
                         if (ShouldTruncate(stat, valStr, maxTracked))
                         {

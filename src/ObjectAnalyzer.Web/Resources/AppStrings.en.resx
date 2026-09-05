@@ -146,6 +146,8 @@
   <data name="FieldName" xml:space="preserve"><value>Field</value></data>
   <data name="SemanticType" xml:space="preserve"><value>Semantic type</value></data>
   <data name="Coverage" xml:space="preserve"><value>Coverage</value></data>
+  <data name="CoverageNull" xml:space="preserve"><value>null in {0} rows</value></data>
+  <data name="CoverageMissing" xml:space="preserve"><value>missing in {0} rows</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>Dominant type</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>Default value</value></data>
   <data name="UniqueValues" xml:space="preserve"><value>Unique count</value></data>

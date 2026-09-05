@@ -6,6 +6,7 @@
 
 ### Added
 - **API v2 契约：五页面视图响应 + SSE 进度推送（W8）**：同步分析端点（`/api/analyze`、`/api/analyze/raw`、`/api/analyze/config`）统一返回 `AnalyzeViewResponse`——按 React 前端五块页面组织（`overview` 概览统计 / `preview` 数据预览 / `fields` 字段明细 / `deepAnalysis` 深度分析（未启用时省略）/ `quality` 质量报告），并保留 `result`（完整 AnalysisResult）兼容字段；数据预览经管线 `PreviewSink` 捕获转换/过滤后的前 20 条记录。异步作业：`AnalysisJobRegistry` 新增 `ReportProgress` 进度计数与预览承载，快照回显 `processedObjects` 与 `preview`（原始行数组）；新增 `GET /api/analyze/async/{jobId}/events` SSE 事件流（`progress` 500ms 周期 → 终态 `complete` → 关闭；未知作业 `gone`），前端据此后端轮询可逐步迁移到推送。
+- **覆盖率拆分显示：值为 null vs 字段不存在**：`FieldStatistic` 新增 `NullCount`（值为显式 null 的记录数，是 `Count` 的子集）——"未覆盖"从此可区分两种原因：值为 null（`nullCount`）与键缺失（`totalObjects - count`）。引擎并行合并 / 增量合并（`MergeFrom`）/ PII 克隆全链路同步该指标；CLI 字段详情显示为 `覆盖率: 2/3 (66.7%)（null 1 · 字段缺失 1）`，Web 字段表格在覆盖率条下方追加 `null N`（琥珀色）与 `字段缺失 N`（红色）标注（中英双语），API 响应的 `fieldStatistics` 自动携带 `nullCount`。质量检查的 required / nullRate 口径不变（null 与缺失均计为坏行）。
 - **统一分析管线 `AnalysisPipeline`（W1）**：解析分发（数据库直连 / root-path 整体投影 / 常规文件）→ JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计收敛为一条计算路径，CLI / API / Web 三宿主共用；运行期状态（内存预算 / 续跑位置 / 进度桥接 / 预览捕获）经 `AnalysisRunContext` 显式传递。新增"三宿主行为一致性"测试（同输入下管线直调与 CLI 宿主产出逐字节一致的结果 JSON）。
 - **宿主端口抽象 `ObjectAnalyzer.Abstractions`**：`IAnalysisConsole` / `IProgressReporter` / `IResultPresenter` + 组合根 `AnalysisServices`——控制台渲染、进度 UI、结果呈现由宿主注入（CLI：Spectre 富渲染；API/Web/测试：静默或桥接），Core 不再耦合任何渲染库。
 - **导出注册表（W4）**：`IResultExporter`（`Format` / `CanHandle` / `Save`）+ `ReportExporter` 路由器（html / markdown / csv / excel / pdf 内置 + JSON 兜底）；新增报告格式 = `ReportExporter.Register` 一个实现。
