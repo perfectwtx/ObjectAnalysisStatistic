@@ -14,6 +14,12 @@ public sealed class ParseBehaviorOptions
     /// <summary>每字段最多展示的 distinct 数（控制台 / 报告）。与 <c>--max-values</c> 对应。</summary>
     public int MaxValuesToShow { get; set; } = 5;
 
+    /// <summary>
+    /// 每字段唯一值跟踪上限（超出裁剪进 [Other values] 桶）。与 MaxValuesToShow 正交：
+    /// 后者只影响控制台展示数量，本项决定分析引擎实际跟踪的唯一值规模（影响内存与精度）。
+    /// </summary>
+    public int MaxTrackedValues { get; set; } = 1000;
+
     /// <summary>最大并行线程数，-1 = 使用所有核。与 <c>--parallel</c> 对应。</summary>
     public int MaxDegreeOfParallelism { get; set; } = -1;
 }

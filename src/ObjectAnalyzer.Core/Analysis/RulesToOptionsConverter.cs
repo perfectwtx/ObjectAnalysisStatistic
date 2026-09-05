@@ -34,6 +34,7 @@ public static class RulesToOptionsConverter
             ["flatten"] = null,
             ["csvInferNumbers"] = null,
             ["maxValuesToShow"] = null,
+            ["maxTrackedValues"] = null,
             ["maxParallelism"] = null,
             ["allowUnknownRules"] = null,
             ["selectedFields"] = null,
@@ -67,6 +68,7 @@ public static class RulesToOptionsConverter
         ApplyBool(rt, "flatten", options.Parse, p => p.Flatten, (p, v) => p.Flatten = v, defaultValue: true);
         ApplyBool(rt, "csvInferNumbers", options.Parse, p => p.CsvInferNumbers, (p, v) => p.CsvInferNumbers = v, defaultValue: true);
         ApplyInt(rt, "maxValuesToShow", options.Parse, p => p.MaxValuesToShow, 5, (p, v) => p.MaxValuesToShow = v);
+        ApplyInt(rt, "maxTrackedValues", options.Parse, p => p.MaxTrackedValues, 1000, (p, v) => p.MaxTrackedValues = v);
         ApplyInt(rt, "maxParallelism", options.Parse, p => p.MaxDegreeOfParallelism, -1, (p, v) => p.MaxDegreeOfParallelism = v);
         ApplyBool(rt, "allowUnknownRules", options.Rules, p => p.AllowUnknownRules, (p, v) => p.AllowUnknownRules = v);
 

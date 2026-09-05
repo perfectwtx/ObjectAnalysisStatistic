@@ -33,8 +33,13 @@ var noFlattenOption = new Option<bool>(
 
 var maxValuesOption = new Option<int>(
     aliases: CliAliases.MaxValues,
-    description: "控制台报告中每个字段最多展示的唯一值数量。",
+    description: "控制台报告中每个字段最多展示的唯一值数量（仅影响展示；导出报告与 API/Web 结果不受影响，分析上限见 --max-tracked-values）。",
     getDefaultValue: () => 5);
+
+var maxTrackedValuesOption = new Option<int>(
+    aliases: CliAliases.MaxTrackedValues,
+    description: "分析引擎每字段实际跟踪的唯一值上限，超出部分归入 [Other values] 桶（影响内存占用与 valueCounts 精度）。",
+    getDefaultValue: () => 1000);
 
 var generateTestExcelOption = new Option<bool>(
     name: "--generate-test-excel",
@@ -195,6 +200,7 @@ rootCommand.AddOption(inputOption);
 rootCommand.AddOption(outputOption);
 rootCommand.AddOption(noFlattenOption);
 rootCommand.AddOption(maxValuesOption);
+rootCommand.AddOption(maxTrackedValuesOption);
 rootCommand.AddOption(generateTestExcelOption);
 rootCommand.AddOption(rulesOption);
 rootCommand.AddOption(allowUnknownRulesOption);
@@ -367,6 +373,7 @@ rootCommand.SetHandler((InvocationContext context) =>
     var output = parseResult.GetValueForOption(outputOption);
     var noFlatten = parseResult.GetValueForOption(noFlattenOption);
     var maxValues = parseResult.GetValueForOption(maxValuesOption);
+    var maxTrackedValues = parseResult.GetValueForOption(maxTrackedValuesOption);
     var generateTestExcel = parseResult.GetValueForOption(generateTestExcelOption);
     var rules = parseResult.GetValueForOption(rulesOption);
     var allowUnknownRules = parseResult.GetValueForOption(allowUnknownRulesOption);
@@ -563,6 +570,7 @@ rootCommand.SetHandler((InvocationContext context) =>
             Flatten = !noFlatten,
             CsvInferNumbers = !noCsvNumberInference,
             MaxValuesToShow = maxValues,
+            MaxTrackedValues = maxTrackedValues,
             MaxDegreeOfParallelism = maxParallel
         },
         FieldSelection =
@@ -764,6 +772,7 @@ static class CliAliases
     public static readonly string[] Input = { "--input", "-i" };
     public static readonly string[] Output = { "--output", "-o" };
     public static readonly string[] MaxValues = { "--max-values", "-m" };
+    public static readonly string[] MaxTrackedValues = { "--max-tracked-values" };
     public static readonly string[] Class = { "--class", "-c" };
     public static readonly string[] Rules = { "--rules", "-r" };
     public static readonly string[] Fields = { "--fields", "-F" };

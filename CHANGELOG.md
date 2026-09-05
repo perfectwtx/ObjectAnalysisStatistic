@@ -2,6 +2,30 @@
 
 本项目使用 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 规范。
 
+## [2.0.0] — 架构重构（破坏性）
+
+### Added
+- **统一分析管线 `AnalysisPipeline`（W1）**：解析分发（数据库直连 / root-path 整体投影 / 常规文件）→ JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计收敛为一条计算路径，CLI / API / Web 三宿主共用；运行期状态（内存预算 / 续跑位置 / 进度桥接 / 预览捕获）经 `AnalysisRunContext` 显式传递。新增"三宿主行为一致性"测试（同输入下管线直调与 CLI 宿主产出逐字节一致的结果 JSON）。
+- **宿主端口抽象 `ObjectAnalyzer.Abstractions`**：`IAnalysisConsole` / `IProgressReporter` / `IResultPresenter` + 组合根 `AnalysisServices`——控制台渲染、进度 UI、结果呈现由宿主注入（CLI：Spectre 富渲染；API/Web/测试：静默或桥接），Core 不再耦合任何渲染库。
+- **导出注册表（W4）**：`IResultExporter`（`Format` / `CanHandle` / `Save`）+ `ReportExporter` 路由器（html / markdown / csv / excel / pdf 内置 + JSON 兜底）；新增报告格式 = `ReportExporter.Register` 一个实现。
+- **门禁注册表（W4）**：`IQualityGate` + `QualityGateRegistry`——数据质量(3) / 数据安全合规(4) / 异常值(5) / Schema 演进(6) 四门禁数据化（退出码与审计摘要均为门禁属性），新增门禁 = 注册新实现。
+- **规则单轨（W6）**：`RulesToOptionsConverter.KnownRuntimeKeys` 成为 runtime 键面的单一事实来源，`RulesLint` 白名单改为自动推导；新增 runtime 键 `maxTrackedValues`（引擎唯一值跟踪上限）时白名单同步生效。
+- **CLI 新选项 `--max-tracked-values <N>`**（默认 1000）：与分析上限正交化——`--max-values` 明确为"仅控制台展示数量"，不再让人误以为它截断导出结果；规则文件 runtime 节点同步支持 `maxTrackedValues`。
+- **API 显式格式覆盖**：`AnalysisOptions.Input.Format`（raw 文本端点场景）；管线解析格式 = 显式覆盖 > 扩展名探测。
+
+### Changed（破坏性）
+- **采样顺序统一**：JSON/XML/YAML 等整体物化格式的采样统一移到「字段过滤之后」（样本取自过滤后总体）；JSONL/CSV/Excel 保持解析器内行级采样的流式优化。与 v1.x 相比，"采样 + filter"组合的样本量语义更正确，但结果数值可能与 v1.x 不同。
+- **`ObjectAnalyzer.Analyze / AnalyzeDetailed` 新增可选参数 `maxTrackedValues`**（默认 1000，置于 `CancellationToken` 前）；引擎每字段唯一值跟踪上限由编译期常量改为可配置。
+- **Core 静态可变状态清零**：删除 `AnalysisRunner` 的 `[ThreadStatic]` 草图缓存与 `s_activeMemoryBudget`（草图经 `PipelineResult` 显式传递）；`AnalysisRunner.RunCore`（440 行）拆为 `Preflight` / `Resume` / `ReportAndGates` 三个 partial 阶段。直接引用这些私有实现的下游代码（不存在于本仓库）需改为公开接口。
+- **测试全量并行**：删除 `AnalysisRunnerSequentialGroup` 串行集合（其 AnsiConsole 争用理由随端口化失效），600+ 测试可并行执行。
+
+### Fixed
+- **缺陷 2（valueParsers 强制改写格式）**：普通 JSON/JSONL/XML/YAML 配置 `valueParsers` 曾被强制按 excel-json 解析（报"字典键 '1' 缺失"），且 API 侧行为与 CLI 不一致。现仅在电子表格类格式（excel / csv）时切换 excel-json，普通格式按原格式解析；CLI / API / Web 三宿主同源。
+- **缺陷 1（filter + flatten 跳过字段级质量检查）**：验证已在管道中修复（范围/枚举/模式检查在过滤+展平后的对象流上正常执行），并以回归测试锁定。
+
+### Removed
+- **`ObjectAnalyzer.Core` 移除 Spectre.Console 包依赖**（约 230KB）：145+ 处 `AnsiConsole.*` 调用点全部迁移至宿主端口；Core 现为纯计算库。
+
 ## [Unreleased]
 
 ### Added

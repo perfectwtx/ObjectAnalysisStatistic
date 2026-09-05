@@ -103,7 +103,8 @@ public static class AnalysisPipeline
             if (needDistributionSketches)
             {
                 var detailed = ObjectAnalyzer.AnalyzeDetailed(
-                    materialized, rules, parallelOptions, options.Advanced, progress, cancellationToken);
+                    materialized, rules, parallelOptions, options.Advanced, progress,
+                    options.Parse.MaxTrackedValues, cancellationToken);
                 result = detailed.Result;
                 quantileSketches = detailed.QuantileSketches;
                 distinctSketches = detailed.DistinctSketches;
@@ -111,7 +112,8 @@ public static class AnalysisPipeline
             else
             {
                 result = ObjectAnalyzer.Analyze(
-                    objects, rules, parallelOptions, options.Advanced, progress, cancellationToken);
+                    objects, rules, parallelOptions, options.Advanced, progress,
+                    options.Parse.MaxTrackedValues, cancellationToken);
             }
         });
 

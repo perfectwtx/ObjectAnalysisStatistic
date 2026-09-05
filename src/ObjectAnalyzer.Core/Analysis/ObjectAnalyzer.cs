@@ -64,9 +64,10 @@ public static partial class ObjectAnalyzer
         ParallelOptions? parallelOptions = null,
         AdvancedAnalysisOptions? features = null,
         IProgress<long>? progress = null,
+        int? maxTrackedValues = null,
         CancellationToken cancellationToken = default)
     {
-        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress).Result;
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress, maxTrackedValues).Result;
     }
 
     /// <summary>
@@ -84,9 +85,10 @@ public static partial class ObjectAnalyzer
         ParallelOptions? parallelOptions = null,
         AdvancedAnalysisOptions? features = null,
         IProgress<long>? progress = null,
+        int? maxTrackedValues = null,
         CancellationToken cancellationToken = default)
     {
-        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress);
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress, maxTrackedValues);
     }
 
     /// <summary>
@@ -103,8 +105,11 @@ public static partial class ObjectAnalyzer
         ParallelOptions? parallelOptions,
         AdvancedAnalysisOptions? features,
         CancellationToken cancellationToken,
-        IProgress<long>? progress = null)
+        IProgress<long>? progress = null,
+        int? maxTrackedValues = null)
     {
+        // W8：每字段唯一值跟踪上限可由宿主配置（--max-tracked-values），缺省沿用引擎常量
+        int maxTracked = maxTrackedValues ?? MaxTrackedUniqueValues;
         var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
         var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
 
@@ -146,7 +151,7 @@ public static partial class ObjectAnalyzer
 
                     foreach (var vc in localStat.ValueCounts)
                     {
-                        if (ShouldTruncate(globalStat, vc.Key))
+                        if (ShouldTruncate(globalStat, vc.Key, maxTracked))
                         {
                             globalStat.ValueCountsTruncated = true;
                             globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
@@ -281,7 +286,7 @@ public static partial class ObjectAnalyzer
                         string valType = GetValueType(value);
                         stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
 
-                        if (ShouldTruncate(stat, valStr))
+                        if (ShouldTruncate(stat, valStr, maxTracked))
                         {
                             stat.ValueCountsTruncated = true;
                             stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
@@ -1118,12 +1123,12 @@ public static partial class ObjectAnalyzer
         catch { return "[unserializable]"; }
     }
 
-    private static bool ShouldTruncate(FieldStatistic stat, string value)
+    private static bool ShouldTruncate(FieldStatistic stat, string value, int maxTracked)
     {
         if (stat.ValueCounts.ContainsKey(value)) return false;
         int tracked = stat.ValueCounts.Count -
             (stat.ValueCounts.ContainsKey("[Other values]") ? 1 : 0);
-        return tracked >= MaxTrackedUniqueValues;
+        return tracked >= maxTracked;
     }
 
     private static string InferPrimaryTypeFromEnum(List<System.Text.Json.JsonElement> enumElements)

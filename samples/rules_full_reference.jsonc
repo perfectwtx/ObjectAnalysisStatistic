@@ -136,7 +136,8 @@
     // ── 解析行为 ──
     "flatten": true,                 // 嵌套属性是否展平为 a.b.c
     "csvInferNumbers": true,         // CSV 数字列是否推断为 long / double
-    "maxValuesToShow": 5,            // 每字段最多展示的 distinct 数
+    "maxValuesToShow": 5,            // 控制台每字段最多展示的 distinct 数（仅展示；导出结果不受影响）
+    "maxTrackedValues": 1000,        // 分析引擎每字段实际跟踪的唯一值上限，超出归入 [Other values]
     "maxParallelism": -1,            // 最大并行线程数（-1 = 全部核心）
     "allowUnknownRules": false,      // 规则文件里有未知键时是否放行（默认 false 严格）
 

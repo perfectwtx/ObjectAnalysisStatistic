@@ -160,7 +160,8 @@ dotnet run --project src/ObjectAnalyzer -- [选项]
 | `--input <FILE>`                    | `-i` | 输入文件路径（JSON / JSONL / CSV / Excel / XML / YAML；支持 .gz / .bz2 / .zip 压缩包直读）                                                                                                                                                                                         | 必填            |
 | `--output <FILE>`                   | `-o` | 输出报告文件路径（`.json` / `.html` / `.md` / `.csv` / `.xlsx` / `.pdf`）                                                                                                                                                                                                    | 无             |
 | `--no-flatten`                      | —    | 解析 JSON 时不扁平化嵌套属性路径                                                                                                                                                                                                                                                | `false`（即扁平化） |
-| `--max-values <N>`                  | `-m` | 控制台报告中每个字段最多展示的唯一值数量                                                                                                                                                                                                                                               | `5`           |
+| `--max-values <N>`                  | `-m` | 控制台报告中每个字段最多展示的唯一值数量（仅影响展示，导出报告 / API / Web 结果不受影响）                                                                                                                               | `5`           |
+| `--max-tracked-values <N>`          | — | 分析引擎每字段实际跟踪的唯一值上限，超出归入 `[Other values]` 桶（影响内存与 valueCounts 精度）                                                                                                                       | `1000`        |
 | `--rules <FILE>`                    | `-r` | 指定字段规则配置文件路径 (.json)，用于定义默认值、主导类型、枚举与质量检查约束（pattern/范围/必填/唯一/null率 + 数据集期望）、字段值转换及值解析规则                                                                                                                                                                            | 无             |
 | `--allow-unknown-rules`             | —    | 放行规则文件里的未知键（拼错或已废弃）。默认严格——遇到未知键直接报错中止，按编辑距离给出建议键名，因为这些键会被静默忽略，规则看似生效实则没有；规则原文走 `RulesLint` 旁检查，不动反序列化                                                                                                                                                | `false`（严格）   |
 | `--no-csv-number-inference`         | —    | 关闭 CSV 数值推断：数字列一律按字符串统计。默认开启——CSV 无类型信息，不推断的话数值列 `primaryType` 永远是 `String`，均值/标准差/分位数/相关性等数值剖析全部失效                                                                                                                                                                | `false`（开启）   |
@@ -415,7 +416,8 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 {
   "fields": { "age": { "minValue": 0, "maxValue": 150 } },
   "runtime": {
-    "maxValuesToShow": 20,            // 等价 --max-values
+    "maxValuesToShow": 20,            // 等价 --max-values（仅控制台展示）
+    "maxTrackedValues": 1000,         // 等价 --max-tracked-values（引擎唯一值跟踪上限）
     "memory":   { "maxMB": 1024, "mode": "hard" },
     "progress": { "enabled": false },  // 等价 --no-progress（CI 友好）
     "checkpoint": { "path": "ck.snapshot" },  // 等价 --checkpoint
@@ -435,7 +437,8 @@ Web 版除支持全部 CLI 选项外，还提供字段覆盖率/类型分布图�
 | --------------- | ----------------------------- | --------------------------------- | ---------------------------- | ----------- |
 | 嵌套展平            | `flatten`                     | `--no-flatten`                    | `flatten`                    | `true`      |
 | CSV 数值推断        | `csvInferNumbers`             | `--no-csv-number-inference`       | `csvInferNumbers`            | `true`      |
-| 每字段 distinct 上限 | `maxValuesToShow`             | `--max-values` / `-m`             | `maxValuesToShow`            | `5`         |
+| 控制台 distinct 展示数 | `maxValuesToShow`           | `--max-values` / `-m`             | `maxValuesToShow`            | `5`         |
+| 引擎唯一值跟踪上限 | `maxTrackedValues`             | `--max-tracked-values`            | —（引擎默认）               | `1000`      |
 | 最大并行度           | `maxParallelism`              | `--parallel` / `-p`               | `maxDegreeOfParallelism`     | `-1`（全部核）   |
 | 未知规则放行          | `allowUnknownRules`           | `--allow-unknown-rules`           | `allowUnknownRules`          | `false`（严格） |
 | 仅统计字段           | `selectedFields`              | `--fields` / `-F`                 | `fields`（逗号分隔）               | 不限          |
