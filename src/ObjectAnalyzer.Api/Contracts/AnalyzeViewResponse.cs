@@ -40,13 +40,17 @@ public sealed record AnalyzeViewResponse
     /// <summary>完整原始分析结果（兼容保留；与上方分节视图同源）。</summary>
     public required AnalysisResult Result { get; init; }
 
+    /// <summary>出站打码状态：true = 敏感值已按策略打码（默认）；false = 请求显式关闭了打码（piiOff=true），响应含原始值。</summary>
+    public bool PiiRedacted { get; init; } = true;
+
     /// <summary>从分析结果 + 预览样本组装五页面视图。</summary>
     public static AnalyzeViewResponse From(
         AnalysisResult result,
         IReadOnlyList<Dictionary<string, object?>>? preview,
         string format,
         string? fileName = null,
-        string? rulesSource = null)
+        string? rulesSource = null,
+        bool piiRedacted = true)
     {
         return new AnalyzeViewResponse
         {
@@ -58,7 +62,8 @@ public sealed record AnalyzeViewResponse
             Fields = result.FieldStatistics,
             DeepAnalysis = AnalyzeDeepAnalysisView.From(result),
             Quality = AnalyzeQualityView.From(result),
-            Result = result
+            Result = result,
+            PiiRedacted = piiRedacted
         };
     }
 }

@@ -206,7 +206,8 @@ public static class AsyncAnalyzeEndpoints
                 ProcessedObjects: snap.ProcessedObjects,
                 Result: snap.Result,
                 Preview: snap.Preview,
-                Error: errorMessage));
+                Error: errorMessage,
+                PiiRedacted: snap.PiiRedacted));
         })
         .WithTags("异步分析")
         .WithSummary("查询异步作业状态")
@@ -309,7 +310,8 @@ public static class AsyncAnalyzeEndpoints
                 count => AnalysisJobRegistry.Instance.ReportProgress(jobId, count));
 
             var outcome = AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge);
-            AnalysisJobRegistry.Instance.Complete(jobId, outcome.Result, outcome.Preview);
+            // 结果 / 预览已在 AnalyzeFile 的出站打码关卡处理过；piiRedacted 一并写回供 GET 回显留痕
+            AnalysisJobRegistry.Instance.Complete(jobId, outcome.Result, outcome.Preview, outcome.PiiRedacted);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {

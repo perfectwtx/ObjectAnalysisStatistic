@@ -70,7 +70,8 @@ public static class AnalyzeEndpoints
                 // W8 五页面视图：概览 / 预览 / 字段 / 深度分析 / 质量 + 完整 result 兼容保留
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat,
-                    fileName: file.FileName, rulesSource: rulesSource));
+                    fileName: file.FileName, rulesSource: rulesSource,
+                    piiRedacted: outcome.PiiRedacted));
             }
             catch (Exception ex)
             {
@@ -86,6 +87,7 @@ public static class AnalyzeEndpoints
         .WithSummary("分析数据文件（multipart 上传）")
         .WithDescription("上传数据文件并执行完整分析：字段统计与覆盖率、类型/语义推断、值分布、数值深度剖析（均值/标准差/分位数/直方图）、重复对象、默认值推断等。" +
             "可选规则文件或内联规则 JSON 启用枚举校验/范围检查/打码/值转换/数据集期望。" +
+            "响应（含数据预览）默认已按 PII 策略出站打码；传 piiOff=true 显式关闭，响应以 piiRedacted=false 留痕。" +
             "规则里若出现后端不认识的键（拼错/已废弃），默认直接返回 400 并列出 unknowns，" +
             "避免规则看似生效实则被静默忽略；确认无需处理时传 allowUnknownRules=true。" +
             "响应为 camelCase JSON，字段级违规内嵌于 result.fieldStatistics。")
@@ -111,11 +113,15 @@ public static class AnalyzeEndpoints
 
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, config.Rules, config.Format);
                 var options = config.ToAnalysisOptions(tempData, config.Rules);
+                // 显式格式必须透传给管线（异步 config 端点同此）：.txt 临时文件无法按扩展名探测，
+                // 漏设会回落到 JSONL 解析器，数组型 dataText 会误报"根节点必须是一个对象"
+                options.Input.Format = config.Format;
                 var outcome = AnalysisCore.AnalyzeFile(tempData, config.Rules, options, cancellationToken);
 
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat,
-                    fileName: "(inline)", rulesSource: config.Rules is not null ? "inline" : null));
+                    fileName: "(inline)", rulesSource: config.Rules is not null ? "inline" : null,
+                    piiRedacted: outcome.PiiRedacted));
             }
             catch (Exception ex)
             {
@@ -182,7 +188,8 @@ public static class AnalyzeEndpoints
 
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat,
-                    fileName: "(inline)", rulesSource: rulesObj is null ? null : "inline"));
+                    fileName: "(inline)", rulesSource: rulesObj is null ? null : "inline",
+                    piiRedacted: outcome.PiiRedacted));
             }
             catch (Exception ex)
             {

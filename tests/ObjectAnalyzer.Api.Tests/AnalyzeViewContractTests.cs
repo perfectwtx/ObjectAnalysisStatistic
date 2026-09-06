@@ -76,13 +76,14 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("people.json", body.GetProperty("fileName").GetString());
 
-        // 数据预览页：列按首次出现顺序 + 行保持原始类型
+        // 数据预览页：列按首次出现顺序；PII 字段（name 命中姓名语义）已按出站策略打码，
+        // 非 PII 字段保持原始类型
         var preview = body.GetProperty("preview");
         var columns = preview.GetProperty("columns").EnumerateArray().Select(c => c.GetString()).ToList();
         Assert.Equal(s_expectedPreviewColumns, columns);
         var rows = preview.GetProperty("rows");
         Assert.Equal(3, rows.GetArrayLength());
-        Assert.Equal("alice", rows[0].GetProperty("name").GetString());
+        Assert.Equal("a***e", rows[0].GetProperty("name").GetString());
         Assert.Equal(30, rows[0].GetProperty("age").GetInt32());
         Assert.False(preview.GetProperty("truncated").GetBoolean());
     }

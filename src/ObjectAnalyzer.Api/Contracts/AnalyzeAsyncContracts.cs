@@ -45,7 +45,8 @@ public sealed record AnalyzeJobSnapshotResponse(
     long ProcessedObjects,
     AnalysisResult? Result,
     IReadOnlyList<Dictionary<string, object?>>? Preview,
-    string? Error)
+    string? Error,
+    bool PiiRedacted = true)
 {
     /// <summary>作业 ID。</summary>
     public string Id { get; init; } = Id;
@@ -70,6 +71,9 @@ public sealed record AnalyzeJobSnapshotResponse(
 
     /// <summary>失败时为 "TypeName: message"；其它状态为 null。</summary>
     public string? Error { get; init; } = Error;
+
+    /// <summary>出站打码状态：true = 敏感值已按策略打码（默认）；false = 作业提交时显式关闭了打码（piiOff），响应含原始值。</summary>
+    public bool PiiRedacted { get; init; } = PiiRedacted;
 }
 
 /// <summary>POST /api/analyze/async/{jobId}/cancel 响应。</summary>

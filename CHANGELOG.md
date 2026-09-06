@@ -31,6 +31,8 @@
 ## [Unreleased]
 
 ### Added
+- **API 出站打码关卡（delivery boundary）**：确立「分析内核永远处理原始值，打码是出站边界的职责」——所有结果离开服务前在 `AnalysisCore.AnalyzeFile` 构造 `AnalyzeOutcome` 处统一打码（同步三端点与异步作业同源，新增端点天然继承，结构上不可能再「忘记调用」），结果与数据预览双覆盖。新增 `PiiPolicy`（打码策略一次解析：字段级 `redact:false` 白名单 → 规则 `pii` 声明 → 内置语义类型，作为所有出站形态的唯一判定来源）与 `PreviewRedactor`（预览行按策略打码；数值标量先转不变文化字符串再打码，杜绝数值形态原文出站）；`PiiRedactor` 改为消费策略（`Redact(result, bool)` 重载保留，CLI 四个报告出口零改动）。`AnalysisJobRegistry` 快照与异步 GET 响应同步携带 `piiRedacted` 标记。测试：`PiiPolicyTests`（策略解析优先级 / 空策略直通 / 预览打码）与 `PiiRedactionEndpointTests` 4 个端点契约用例。
+- **API 请求级 `piiOff` 开关 + 响应回显 `piiRedacted`**：三个同步端点（multipart 表单 / JSON body / 查询参数）与异步作业统一支持显式关闭出站打码（与 CLI `--pii-off` 对称）；关闭时响应标记 `piiRedacted=false` 并写服务器日志留痕（CLI 侧审计快照本就记录 `piiOff`）。`/api/analyze` 端点文档补充打码行为说明。
 - **Mini API 项目 `src/ObjectAnalyzer.Api`（对接 React 前端）**：独立于 Blazor 界面的 HTTP 分析接口，默认监听 `http://localhost:5200`，CORS 已放行 Vite 开发服务器（localhost:5173）：
   - `POST /api/analyze`：multipart 上传数据文件（+ 可选规则文件/内联 rulesJson），支持 flatten / maxValues / fields / filter / 两级 JSONPath / 采样 / 并行度等全部分析参数 → camelCase 完整分析结果；
   - `POST /api/analyze/raw?format=`：请求体即数据文本（JSON/JSONL/CSV…）；
@@ -42,6 +44,9 @@
 - **Mini API：`POST /api/analyze/raw` 支持规则**：原先该端点硬编码传 `rules: null`，粘贴/直连场景用不了 `fields` 的 transform、枚举、范围校验，更用不了 `valueParsers`。请求体已被数据文本占用，故规则走查询参数 `rulesJson=`（**受请求行长度限制，Kestrel 默认约 8KB；规则较长请改用 multipart 的 `/api/analyze`**），并配套 `allowUnknownRules`；未知键检查与 multipart 版本同源（默认 400 + unknowns）。响应 `AnalyzeRawResponse` 新增可选 `rulesSource`（未传规则时省略，避免前端把「没规则」误判成「规则没生效」）。测试：`AnalyzeRaw_WithRulesJson_AppliesValueParsers` / `AnalyzeRaw_UnknownRuleKey_Returns400` / `AnalyzeRaw_WithoutRules_OmitsRulesSource`。
 
 ### Fixed
+- **API 分析响应默认出站打码（破坏性行为变更，原为安全缺陷）**：此前 PII 打码只发生在 CLI 报告导出阶段（`PiiRedactor` 仅被 CLI 的 4 个报告出口调用），API 拿到 `AnalysisResult` 后直接序列化返回——配置 PII 规则后响应的值分布 / 重复对象 JSON / 违规样本 / 数据预览全是原始值。现在默认打码生效（含此前完全缺失的数据预览打码）；依赖原始值的消费方需显式传 `piiOff=true`，响应以 `piiRedacted=false` 留痕。
+- **打码副本漏抄统计属性（打码字段主导类型回落 "Unknown"）**：`PiiRedactor.CloneWithMask` 原以手工属性清单构造打码副本，漏抄 `PrimaryType`、日期剖析（`dateTimeCount`/`minDateTime`/`maxDateTime`/`dateHistogram`）、异常值四项与 `rangeViolationCount`，且 `histogram` 与原对象共享引用——该缺陷在 CLI 路径早已存在，API 默认打码后全面显形。`FieldStatistic` 新增 `CloneForRedaction()`（`MemberwiseClone` 浅拷贝全部标量统计、可变集合一律换新实例断开共享），`CloneWithMask` 只重填打码相关部分，未来新增属性自动携带。回归测试：`PiiRedactor_MaskedClone_PreservesPrimaryType` / `_PreservesDateTimeAndRangeStats` / `_DetachesMutableCollections`。
+- **同步 `/api/analyze/config` 漏传 `format` 给管线**（异步 config 端点有、同步端点没有）：`.txt` 临时文件按扩展名嗅探不出格式即回落 JSONL 解析器，数组型 `dataText` 误报「根节点必须是一个对象」；现与异步端点对齐显式透传 `options.Input.Format`。
 - **Mini API 修复「规则里配了 `valueParsers` 却不生效」**：CLI 的 `AnalysisRunner.ResolveEffectiveFormat` 在检测到规则含 `valueParsers` 时会强制切到 `excel-json` 解析器（把 Excel/CSV 单元格里的 JSON 文本解析成对象再展开），但 API 的 `AnalysisCore.AnalyzeFile` 一直直接用扩展名检测出的格式去解析 —— `.xlsx` → `excel`，走的是 `ExcelCsvFileParser`，而该解析器只拿 `valueParsers` 判断表头模式、压根不做 JSON 解析。结果就是整串 JSON 被当成普通文本统计，字段还叫 `A`，规则里的 `fields["A.body"].transform` 永远匹配不上（同一份文件 + 同一份规则，CLI 正常展开、API 全空）。现新增 `AnalysisCore.ResolveEffectiveFormat`（与 CLI 同一套判定），multipart / raw 两条路径统一走它；响应里的 `format` 如实回写实际使用的解析器（`excel-json`），方便前端判断规则是否真的生效。回归测试 `Analyze_ValueParsersRule_ForcesExcelJsonParsing`：CSV 单元格内嵌 JSON + `valueParsers` + `fields["A.body"].transform`，断言能展开出 `A.body.mountain` 且不再残留原始文本列 `A`。
 - **检查点文件名清洗跨平台一致化（修复 CI/Linux 失败）**：`P6PostAnalysis.SanitizeCheckpointName` 原使用 `Path.GetInvalidFileNameChars()`，该集合随运行 OS 变化——Linux 上 `<>:"|?*` 与反斜杠均合法，导致同一输入在 GitHub Actions（Linux）与本地（Windows）被清洗成不同结果，并削弱路径穿越防护的一致性。改为跨平台固定字符集（Windows 非法字符 + 正/反斜杠 + 控制字符），`P6PostAnalysisTests` 4 个按 Windows 语义编写的用例现可在任意 OS 通过，并新增 `Sanitize_CrossPlatformRejectsWindowsInvalidChars` 锁定该行为；顺带合并此前误插入的重复 `[Unreleased]` 标题。
 

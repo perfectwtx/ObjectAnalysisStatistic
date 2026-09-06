@@ -69,6 +69,13 @@ public class AnalyzeRequestOptions
     /// <summary>导出分布快照，用于漂移检测。</summary>
     public bool? EnableDistributionSnapshot { get; init; }
 
+    // ── 出站打码 ──
+
+    /// <summary>全局关闭 PII 出站打码：响应（含数据预览）返回原始敏感值。默认 false（打码生效）。
+    /// 开启后响应会标记 piiRedacted=false，并写入服务器日志留痕。</summary>
+    [Description("关闭 PII 出站打码，响应返回原始敏感值（默认 false = 打码生效）")]
+    public bool? PiiOff { get; init; }
+
     /// <summary>
     /// 把请求选项（可空）展开为 <see cref="AnalysisOptions"/>（带默认），
     /// 并按需把规则文件 runtime 节点合并进来——返回的对象可直接喂给分析流水线。
@@ -99,7 +106,8 @@ public class AnalyzeRequestOptions
                 EnableUnicodeHygiene = EnableUnicodeHygiene ?? false,
                 EnableTimeSeries = EnableTimeSeries ?? false,
                 EnableDistributionSnapshot = EnableDistributionSnapshot ?? false
-            }
+            },
+            Pii = { PiiOff = PiiOff ?? false }
         };
 
         if (rules?.Runtime != null)

@@ -4,6 +4,7 @@ using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Analysis.Pipeline;
 using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Parsing;
+using ObjectAnalyzer.Reporting;
 
 namespace ObjectAnalyzer.Api;
 
@@ -12,11 +13,17 @@ internal static class AnalysisCore
 {
     /// <summary>
     /// 分析执行结果：结果本体 + 数据预览样本（W8 五页面视图的"数据预览"来源）。
+    /// <para>
+    /// <see cref="Result"/> 与 <see cref="Preview"/> 已经过出站打码关卡（见 <see cref="AnalyzeFile"/>）；
+    /// <see cref="Pii"/> 是本次运行解析出的打码策略，<see cref="PiiRedacted"/> 供响应回显留痕。
+    /// </para>
     /// </summary>
     internal sealed record AnalyzeOutcome(
         AnalysisResult Result,
         IReadOnlyList<Dictionary<string, object?>> Preview,
-        string? EffectiveFormat);
+        string? EffectiveFormat,
+        PiiPolicy Pii,
+        bool PiiRedacted);
 
     /// <summary>预览捕获条数（与 AnalyzePreviewView.DefaultLimit 对齐）。</summary>
     internal const int PreviewLimit = AnalyzePreviewView.DefaultLimit;
@@ -41,7 +48,25 @@ internal static class AnalysisCore
             PreviewLimit = PreviewLimit
         };
         var pipelineResult = AnalysisPipeline.Execute(options, rules, runContext, cancellationToken);
-        return new AnalyzeOutcome(pipelineResult.Result, preview, runContext.EffectiveFormat);
+
+        // ── 出站打码关卡（delivery boundary）──
+        // 分析内核始终处理原始值；任何结果离开服务前在这里统一按策略打码，
+        // 覆盖全部同步 / 异步端点（新增端点天然继承，无需各自记得调用）。
+        // piiOff=true 是显式退出：原始敏感值出站，PiiRedacted=false 留痕并写服务器日志。
+        var policy = PiiPolicy.Resolve(pipelineResult.Result);
+        if (options.Pii.PiiOff)
+        {
+            Console.Error.WriteLine($"[pii] 出站打码已关闭（piiOff=true），原始敏感值随响应出站：{dataPath}");
+            return new AnalyzeOutcome(pipelineResult.Result, preview, runContext.EffectiveFormat,
+                policy, PiiRedacted: false);
+        }
+
+        return new AnalyzeOutcome(
+            PiiRedactor.Redact(pipelineResult.Result, policy),
+            PreviewRedactor.Redact(preview, policy),
+            runContext.EffectiveFormat,
+            policy,
+            PiiRedacted: true);
     }
 
     /// <summary>
