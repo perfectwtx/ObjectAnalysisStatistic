@@ -234,10 +234,15 @@
                         }
                     </div>
                 </div>
+                <RuleEditor OnApply="ApplyEditorRules" />
                 <label class="option-item">
                     <span>@Loc["RulesPasteTitle"]</span>
                     <textarea class="rules-textarea" rows="9" value="@_rulesText" @oninput="OnRulesTextChange" placeholder='{"fields": { "age": { "primaryType": "Number", "minValue": 0 } }}' spellcheck="false"></textarea>
                 </label>
+                @if (_rulesPasteStatus != null)
+                {
+                    <div class="ed-status @(_rulesPasteOk ? "ed-ok" : "ed-error")">@_rulesPasteStatus</div>
+                }
                 <div class="side-row">
                     <button class="btn btn-primary btn-sm" @onclick="ApplyRulesText">@Loc["RulesApply"]</button>
                     <button class="btn btn-outline btn-sm" @onclick="ClearRulesText">@Loc["ClearRulesFile"]</button>
@@ -1335,9 +1340,50 @@
     private void SetTab(string tab) => _activeTab = tab;
 
     private string? _rulesText;
+    private string? _rulesPasteStatus;
+    private bool _rulesPasteOk;
 
-    /// <summary>手动粘贴的规则 JSON → 校验后写入临时文件，走统一规则加载路径。</summary>
-    private void OnRulesTextChange(ChangeEventArgs e) => _rulesText = e.Value?.ToString();
+    /// <summary>手动粘贴的规则 JSON → 输入即实时校验（语法 + 未知键 + 往返反序列化），应用后写入临时文件。</summary>
+    private void OnRulesTextChange(ChangeEventArgs e)
+    {
+        _rulesText = e.Value?.ToString();
+        ValidateRulesTextLive();
+    }
+
+    /// <summary>实时校验：未知键与语法错误在输入时即刻可见，不必等到点「应用规则」才发现。</summary>
+    private void ValidateRulesTextLive()
+    {
+        _rulesPasteStatus = null;
+        _rulesPasteOk = false;
+        if (string.IsNullOrWhiteSpace(_rulesText))
+            return;
+
+        var unknowns = Core.Analysis.Rules.RulesLint.Scan(_rulesText);
+        if (unknowns.Count > 0)
+        {
+            _rulesPasteStatus = Core.Analysis.Rules.RulesLint.Describe(unknowns);
+            return;
+        }
+
+        try
+        {
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<Core.Analysis.AnalysisRules>(_rulesText, Core.Analysis.AnalysisRules.RulesJsonOptions);
+            _rulesPasteOk = true;
+            _rulesPasteStatus = Loc.Get("EdPasteOk", parsed?.Fields.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            _rulesPasteStatus = ErrorSanitizer.Format(ex);
+        }
+    }
+
+    /// <summary>表单编辑器产出 → 同步进粘贴框（便于查看/微调）→ 走与粘贴完全相同的应用路径。</summary>
+    private void ApplyEditorRules(string rulesJson)
+    {
+        _rulesText = rulesJson;
+        ValidateRulesTextLive();
+        ApplyRulesText();
+    }
 
     private void ApplyRulesText()
     {

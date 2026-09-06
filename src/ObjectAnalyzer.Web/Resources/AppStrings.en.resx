@@ -199,4 +199,59 @@
   <data name="PreflightExplain" xml:space="preserve"><value>None of the field names in the rule file overlap with fields observed in the data sample (case-insensitive). This usually means the rule was written for a different dataset, so the analysis may not behave as intended.</value></data>
   <data name="ResultWarningTitle" xml:space="preserve"><value>Rule did not take effect</value></data>
   <data name="ResultWarningExplain" xml:space="preserve"><value>Analysis finished, but none of the rule-file fields appeared in the result. The rule file may not match this dataset — please check field-name spelling or pick the matching rule file.</value></data>
+  <data name="EdTitle" xml:space="preserve"><value>Rule editor (visual)</value></data>
+  <data name="EdHint" xml:space="preserve"><value>Fill in item by item — the rules JSON is generated and validated live. Use the paste box below for hand-written rules.</value></data>
+  <data name="EdFieldsSection" xml:space="preserve"><value>Field rules (fields)</value></data>
+  <data name="EdAddField" xml:space="preserve"><value>Add field rule</value></data>
+  <data name="EdFieldName" xml:space="preserve"><value>Field name</value></data>
+  <data name="EdFieldNamePlaceholder" xml:space="preserve"><value>e.g. age / user.phone</value></data>
+  <data name="EdFieldNameNew" xml:space="preserve"><value>New field rule</value></data>
+  <data name="EdRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="EdPrimaryType" xml:space="preserve"><value>Primary type</value></data>
+  <data name="EdPrimaryTypeAny" xml:space="preserve"><value>Any</value></data>
+  <data name="EdMinValue" xml:space="preserve"><value>Min value</value></data>
+  <data name="EdMaxValue" xml:space="preserve"><value>Max value</value></data>
+  <data name="EdDefaultValue" xml:space="preserve"><value>Default value</value></data>
+  <data name="EdEnumValues" xml:space="preserve"><value>Enum values (comma-separated)</value></data>
+  <data name="EdPattern" xml:space="preserve"><value>Regex pattern</value></data>
+  <data name="EdNullRateMax" xml:space="preserve"><value>Null rate max (0–1)</value></data>
+  <data name="EdMaxOutlierRatio" xml:space="preserve"><value>Outlier ratio max (0–1)</value></data>
+  <data name="EdRequired" xml:space="preserve"><value>Required</value></data>
+  <data name="EdUnique" xml:space="preserve"><value>Unique</value></data>
+  <data name="EdRedactWhitelist" xml:space="preserve"><value>Skip auto masking (redact:false)</value></data>
+  <data name="EdPiiEnable" xml:space="preserve"><value>Mark as PII</value></data>
+  <data name="EdPiiLabel" xml:space="preserve"><value>Label</value></data>
+  <data name="EdPiiLabelPlaceholder" xml:space="preserve"><value>Internal ID</value></data>
+  <data name="EdPiiMaskChar" xml:space="preserve"><value>Mask char</value></data>
+  <data name="EdPiiMaskAll" xml:space="preserve"><value>Mask all</value></data>
+  <data name="EdKeepPrefix" xml:space="preserve"><value>Keep prefix chars</value></data>
+  <data name="EdKeepSuffix" xml:space="preserve"><value>Keep suffix chars</value></data>
+  <data name="EdTransform" xml:space="preserve"><value>Transform</value></data>
+  <data name="EdTransformNone" xml:space="preserve"><value>None</value></data>
+  <data name="EdTransformClaim" xml:space="preserve"><value>JWT claim</value></data>
+  <data name="EdTransformParseJson" xml:space="preserve"><value>Parse result as JSON</value></data>
+  <data name="EdTransformKey" xml:space="preserve"><value>Key</value></data>
+  <data name="EdTransformIv" xml:space="preserve"><value>IV</value></data>
+  <data name="EdTransformMode" xml:space="preserve"><value>Mode (cbc/ecb)</value></data>
+  <data name="EdTransformPadding" xml:space="preserve"><value>Padding (pkcs7/none)</value></data>
+  <data name="EdTransformFormat" xml:space="preserve"><value>Format (base64/hex)</value></data>
+  <data name="EdTransformPrivKey" xml:space="preserve"><value>Private key</value></data>
+  <data name="EdTransformPubKey" xml:space="preserve"><value>Public key</value></data>
+  <data name="EdKmsHint" xml:space="preserve"><value>Keys should use kms: references (generated via kms-secret); requires the OA_KMS_PASSPHRASE env var.</value></data>
+  <data name="EdParsersSection" xml:space="preserve"><value>Value parsers (JSON in Excel/CSV cells)</value></data>
+  <data name="EdAddParser" xml:space="preserve"><value>Add parser</value></data>
+  <data name="EdVpSource" xml:space="preserve"><value>source (column)</value></data>
+  <data name="EdVpParseType" xml:space="preserve"><value>parseType</value></data>
+  <data name="EdVpHeader" xml:space="preserve"><value>header (header row)</value></data>
+  <data name="EdVpFlatten" xml:space="preserve"><value>Force flatten</value></data>
+  <data name="EdExpectations" xml:space="preserve"><value>Expectations</value></data>
+  <data name="EdMinRowCount" xml:space="preserve"><value>Min row count</value></data>
+  <data name="EdMaxDuplicateRate" xml:space="preserve"><value>Max duplicate rate (0–1)</value></data>
+  <data name="EdGeneratedOk" xml:space="preserve"><value>Rules valid ({0} field rules)</value></data>
+  <data name="EdMoreErrors" xml:space="preserve"><value>… {0} more issues</value></data>
+  <data name="EdJsonPreview" xml:space="preserve"><value>Generated JSON</value></data>
+  <data name="EdApply" xml:space="preserve"><value>Apply to analysis</value></data>
+  <data name="EdPasteOk" xml:space="preserve"><value>✓ Rules JSON valid ({0} field rules)</value></data>
+  <data name="EdErrFieldNoName" xml:space="preserve"><value>There is a field rule without a name</value></data>
+  <data name="EdErrFieldDup" xml:space="preserve"><value>Duplicate field name: {0}</value></data>
 </root>

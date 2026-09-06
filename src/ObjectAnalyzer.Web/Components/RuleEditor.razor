@@ -1,0 +1,494 @@
+@* ─────────────────────────────────────────────────────────────────────────────
+   可视化规则编辑器（B3）：fields / valueParsers / expectations 表单化编辑，
+   实时生成并校验规则 JSON（语法 + 未知键 + 往返反序列化），经 OnApply 交回宿主
+   走与「粘贴规则」完全相同的临时文件应用路径。
+   数字一律用字符串草稿 + InvariantCulture 解析，避免 @bind 的区域性坑；
+   密钥类字段仅原样透传，推荐值是 kms: 引用（需 OA_KMS_PASSPHRASE）。
+───────────────────────────────────────────────────────────────────────────── *@
+@using System.Globalization
+@using System.Text.Encodings.Web
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using ObjectAnalyzer.Analysis
+@inject LocalizationService Loc
+
+<details class="option-group">
+    <summary><span class="opt-group-title">@Loc["EdTitle"]</span><span class="opt-group-hint">@Loc["EdHint"]</span></summary>
+    <div class="rule-editor">
+
+        @* ── 字段规则 ── *@
+        <div class="side-subgroup-title">@Loc["EdFieldsSection"]</div>
+        @foreach (var f in _fields)
+        {
+            <details class="option-group" open="@f.Expanded">
+                <summary>
+                    <span class="opt-group-title">@(string.IsNullOrWhiteSpace(f.Name) ? Loc["EdFieldNameNew"] : f.Name)</span>
+                    <button class="clear-btn" title="@Loc["EdRemove"]" @onclick="() => RemoveField(f)" @onclick:stopPropagation="true">✕</button>
+                </summary>
+                <div class="options-grid">
+                    <label class="option-item">
+                        <span>@Loc["EdFieldName"]</span>
+                        <input type="text" @bind="f.Name" @bind:event="oninput" placeholder="@Loc["EdFieldNamePlaceholder"]" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdPrimaryType"]</span>
+                        <select @bind="f.PrimaryType">
+                            <option value="">@Loc["EdPrimaryTypeAny"]</option>
+                            <option value="String">String</option>
+                            <option value="Number">Number</option>
+                            <option value="Boolean">Boolean</option>
+                            <option value="DateTime">DateTime</option>
+                        </select>
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdMinValue"]</span>
+                        <input type="text" @bind="f.MinValueRaw" @bind:event="oninput" placeholder="0" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdMaxValue"]</span>
+                        <input type="text" @bind="f.MaxValueRaw" @bind:event="oninput" placeholder="150" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdDefaultValue"]</span>
+                        <input type="text" @bind="f.DefaultValueRaw" @bind:event="oninput" placeholder="Unknown" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdEnumValues"]</span>
+                        <input type="text" @bind="f.EnumValuesRaw" @bind:event="oninput" placeholder="Male, Female" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdPattern"]</span>
+                        <input type="text" @bind="f.Pattern" @bind:event="oninput" placeholder="^1[3-9]\d{9}$" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdNullRateMax"]</span>
+                        <input type="text" @bind="f.NullRateMaxRaw" @bind:event="oninput" placeholder="0.1" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdMaxOutlierRatio"]</span>
+                        <input type="text" @bind="f.MaxOutlierRatioRaw" @bind:event="oninput" placeholder="0.05" />
+                    </label>
+                    <label class="option-item checkbox-item">
+                        <input type="checkbox" @bind="f.Required" />
+                        <span>@Loc["EdRequired"]</span>
+                    </label>
+                    <label class="option-item checkbox-item">
+                        <input type="checkbox" @bind="f.Unique" />
+                        <span>@Loc["EdUnique"]</span>
+                    </label>
+                    <label class="option-item checkbox-item">
+                        <input type="checkbox" @bind="f.RedactWhitelist" />
+                        <span>@Loc["EdRedactWhitelist"]</span>
+                    </label>
+
+                    <label class="option-item checkbox-item">
+                        <input type="checkbox" @bind="f.PiiEnabled" />
+                        <span>@Loc["EdPiiEnable"]</span>
+                    </label>
+                    @if (f.PiiEnabled)
+                    {
+                        <label class="option-item">
+                            <span>@Loc["EdPiiLabel"]</span>
+                            <input type="text" @bind="f.PiiLabel" @bind:event="oninput" placeholder="@Loc["EdPiiLabelPlaceholder"]" />
+                        </label>
+                        <label class="option-item">
+                            <span>@Loc["EdPiiMaskChar"]</span>
+                            <input type="text" @bind="f.PiiMaskChar" @bind:event="oninput" placeholder="*" />
+                        </label>
+                        <label class="option-item">
+                            <span>@Loc["EdKeepPrefix"]</span>
+                            <input type="text" @bind="f.PiiKeepPrefixRaw" @bind:event="oninput" placeholder="0" />
+                        </label>
+                        <label class="option-item">
+                            <span>@Loc["EdKeepSuffix"]</span>
+                            <input type="text" @bind="f.PiiKeepSuffixRaw" @bind:event="oninput" placeholder="0" />
+                        </label>
+                        <label class="option-item checkbox-item">
+                            <input type="checkbox" @bind="f.PiiMaskAll" />
+                            <span>@Loc["EdPiiMaskAll"]</span>
+                        </label>
+                    }
+
+                    <label class="option-item">
+                        <span>@Loc["EdTransform"]</span>
+                        <select @bind="f.TransformType">
+                            <option value="">@Loc["EdTransformNone"]</option>
+                            <option value="jwt">jwt</option>
+                            <option value="base64">base64</option>
+                            <option value="url">url</option>
+                            <option value="aes">aes</option>
+                            <option value="sm4">sm4</option>
+                            <option value="sm2">sm2</option>
+                        </select>
+                    </label>
+                    @if (!string.IsNullOrWhiteSpace(f.TransformType))
+                    {
+                        @if (f.TransformType == "jwt")
+                        {
+                            <label class="option-item">
+                                <span>@Loc["EdTransformClaim"]</span>
+                                <input type="text" @bind="f.TransformClaim" @bind:event="oninput" placeholder="sub" />
+                            </label>
+                        }
+                        @if (f.TransformType is "aes" or "sm4")
+                        {
+                            <label class="option-item">
+                                <span>@Loc["EdTransformKey"]</span>
+                                <input type="text" @bind="f.TransformKey" @bind:event="oninput" placeholder="kms:offline/1-base64:..." />
+                            </label>
+                            <label class="option-item">
+                                <span>@Loc["EdTransformMode"]</span>
+                                <input type="text" @bind="f.TransformMode" @bind:event="oninput" placeholder="cbc" />
+                            </label>
+                        }
+                        @if (f.TransformType == "aes")
+                        {
+                            <label class="option-item">
+                                <span>@Loc["EdTransformIv"]</span>
+                                <input type="text" @bind="f.TransformIv" @bind:event="oninput" placeholder="kms:offline/1-base64:..." />
+                            </label>
+                            <label class="option-item">
+                                <span>@Loc["EdTransformPadding"]</span>
+                                <input type="text" @bind="f.TransformPadding" @bind:event="oninput" placeholder="pkcs7" />
+                            </label>
+                            <label class="option-item">
+                                <span>@Loc["EdTransformFormat"]</span>
+                                <input type="text" @bind="f.TransformFormat" @bind:event="oninput" placeholder="base64" />
+                            </label>
+                        }
+                        @if (f.TransformType == "sm2")
+                        {
+                            <label class="option-item">
+                                <span>@Loc["EdTransformPrivKey"]</span>
+                                <input type="text" @bind="f.TransformPrivateKey" @bind:event="oninput" />
+                            </label>
+                            <label class="option-item">
+                                <span>@Loc["EdTransformPubKey"]</span>
+                                <input type="text" @bind="f.TransformPublicKey" @bind:event="oninput" />
+                            </label>
+                        }
+                        <label class="option-item checkbox-item">
+                            <input type="checkbox" @bind="f.TransformParseJson" />
+                            <span>@Loc["EdTransformParseJson"]</span>
+                        </label>
+                        @if (f.TransformType is "aes" or "sm4" or "sm2")
+                        {
+                            <p class="rules-doc-hint">@Loc["EdKmsHint"]</p>
+                        }
+                    }
+                </div>
+            </details>
+        }
+        <div class="side-row">
+            <input type="text" @bind="_newFieldName" @bind:event="oninput" placeholder="@Loc["EdFieldNamePlaceholder"]" />
+            <button class="btn btn-outline btn-sm" @onclick="AddField">@Loc["EdAddField"]</button>
+        </div>
+
+        @* ── 值解析器 ── *@
+        <details class="option-group">
+            <summary><span class="opt-group-title">@Loc["EdParsersSection"]</span></summary>
+            @foreach (var p in _parsers)
+            {
+                <div class="options-grid">
+                    <label class="option-item">
+                        <span>@Loc["EdVpSource"]</span>
+                        <input type="text" @bind="p.Source" @bind:event="oninput" placeholder="payload" />
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdVpParseType"]</span>
+                        <select @bind="p.ParseType">
+                            <option value="auto">auto</option>
+                            <option value="json">json</option>
+                            <option value="json-string">json-string</option>
+                            <option value="none">none</option>
+                        </select>
+                    </label>
+                    <label class="option-item">
+                        <span>@Loc["EdVpHeader"]</span>
+                        <input type="text" @bind="p.HeaderRaw" @bind:event="oninput" placeholder="1" />
+                    </label>
+                    <label class="option-item checkbox-item">
+                        <input type="checkbox" @bind="p.ForceFlatten" />
+                        <span>@Loc["EdVpFlatten"]</span>
+                    </label>
+                    <div class="side-row">
+                        <button class="clear-btn" title="@Loc["EdRemove"]" @onclick="() => RemoveParser(p)">✕ @Loc["EdRemove"]</button>
+                    </div>
+                </div>
+            }
+            <div class="side-row">
+                <button class="btn btn-outline btn-sm" @onclick="AddParser">@Loc["EdAddParser"]</button>
+            </div>
+        </details>
+
+        @* ── 数据集期望 ── *@
+        <details class="option-group">
+            <summary><span class="opt-group-title">@Loc["EdExpectations"]</span></summary>
+            <div class="options-grid">
+                <label class="option-item">
+                    <span>@Loc["EdMinRowCount"]</span>
+                    <input type="text" @bind="_minRowCountRaw" @bind:event="oninput" placeholder="100" />
+                </label>
+                <label class="option-item">
+                    <span>@Loc["EdMaxDuplicateRate"]</span>
+                    <input type="text" @bind="_maxDuplicateRateRaw" @bind:event="oninput" placeholder="0.05" />
+                </label>
+            </div>
+        </details>
+
+        @* ── 实时校验状态 + JSON 预览 + 应用 ── *@
+        @if (_errors.Count > 0)
+        {
+            <div class="ed-status ed-error">
+                @foreach (var e in _errors.Take(3))
+                {
+                    <div>✗ @e</div>
+                }
+                @if (_errors.Count > 3)
+                {
+                    <div>… @Loc.Get("EdMoreErrors", _errors.Count - 3)</div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="ed-status ed-ok">✓ @Loc.Get("EdGeneratedOk", _fields.Count(f => !string.IsNullOrWhiteSpace(f.Name)))</div>
+        }
+        <details class="option-group">
+            <summary><span class="opt-group-title">@Loc["EdJsonPreview"]</span></summary>
+            <textarea class="rules-textarea" rows="8" readonly>@_generatedJson</textarea>
+        </details>
+        <div class="side-row">
+            <button class="btn btn-primary btn-sm" disabled="@(_errors.Count > 0)" @onclick="Apply">@Loc["EdApply"]</button>
+        </div>
+    </div>
+</details>
+
+@code {
+    [Parameter] public EventCallback<string> OnApply { get; set; }
+
+    private readonly List<FieldDraft> _fields = new();
+    private readonly List<ParserDraft> _parsers = new();
+    private string? _newFieldName;
+    private string? _minRowCountRaw;
+    private string? _maxDuplicateRateRaw;
+    private List<string> _errors = new();
+    private string _generatedJson = "{}";
+
+    /// <summary>与规则加载同源、但省略 null / 空集合，生成干净可读的规则 JSON。</summary>
+    private static readonly JsonSerializerOptions s_writeOptions = new(AnalysisRules.RulesJsonOptions)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    protected override void OnInitialized() => Rebuild();
+
+    private void AddField()
+    {
+        _fields.Add(new FieldDraft { Name = _newFieldName?.Trim() ?? "" });
+        _newFieldName = null;
+        Rebuild();
+    }
+
+    private void RemoveField(FieldDraft f) { _fields.Remove(f); Rebuild(); }
+
+    private void AddParser()
+    {
+        _parsers.Add(new ParserDraft());
+        Rebuild();
+    }
+
+    private void RemoveParser(ParserDraft p) { _parsers.Remove(p); Rebuild(); }
+
+    private void Rebuild()
+    {
+        (_rules, _errors) = BuildRules();
+        _generatedJson = _rules is null ? "{}" : JsonSerializer.Serialize(_rules, s_writeOptions);
+    }
+
+    private AnalysisRules? _rules;
+
+    private (AnalysisRules?, List<string>) BuildRules()
+    {
+        var errors = new List<string>();
+        var rules = new AnalysisRules();
+
+        foreach (var f in _fields)
+        {
+            string name = f.Name?.Trim() ?? "";
+            if (name.Length == 0)
+            {
+                errors.Add(string.Format(CultureInfo.InvariantCulture, Loc["EdErrFieldNoName"]));
+                continue;
+            }
+            if (rules.Fields.ContainsKey(name))
+            {
+                errors.Add(string.Format(CultureInfo.InvariantCulture, Loc["EdErrFieldDup"], name));
+                continue;
+            }
+
+            var rule = new FieldRule();
+            if (!string.IsNullOrWhiteSpace(f.PrimaryType))
+                rule.PrimaryType = f.PrimaryType;
+            if (f.Required) rule.Required = true;
+            if (f.Unique) rule.Unique = true;
+            if (f.RedactWhitelist) rule.Redact = false;
+            if (!string.IsNullOrWhiteSpace(f.DefaultValueRaw))
+                rule.DefaultValue = f.DefaultValueRaw;
+            if (!string.IsNullOrWhiteSpace(f.Pattern))
+                rule.Pattern = f.Pattern;
+
+            if (TryParseDouble(f.MinValueRaw, out var min, errors, name, "minValue")) rule.MinValue = min;
+            if (TryParseDouble(f.MaxValueRaw, out var max, errors, name, "maxValue")) rule.MaxValue = max;
+            if (TryParseDouble(f.NullRateMaxRaw, out var nullRate, errors, name, "nullRateMax")) rule.NullRateMax = nullRate;
+            if (TryParseDouble(f.MaxOutlierRatioRaw, out var outlier, errors, name, "maxOutlierRatio")) rule.MaxOutlierRatio = outlier;
+
+            if (!string.IsNullOrWhiteSpace(f.EnumValuesRaw))
+            {
+                var values = new List<System.Text.Json.JsonElement>();
+                foreach (var token in f.EnumValuesRaw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                {
+                    // 数字字面量按数值元素生成，文本按字符串（与混合类型枚举语义一致）
+                    if (long.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
+                        values.Add(JsonSerializer.SerializeToElement<object?>(l));
+                    else if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                        values.Add(JsonSerializer.SerializeToElement<object?>(d));
+                    else
+                        values.Add(JsonSerializer.SerializeToElement<object?>(token));
+                }
+                if (values.Count > 0)
+                    rule.EnumValues = values;
+            }
+
+            if (f.PiiEnabled)
+            {
+                var mask = new PiiMaskConfig();
+                if (!string.IsNullOrWhiteSpace(f.PiiMaskChar)) mask.MaskChar = f.PiiMaskChar;
+                if (f.PiiMaskAll) mask.MaskAll = true;
+                if (TryParseInt(f.PiiKeepPrefixRaw, out var kp, errors, name, "mask.keepPrefix")) mask.KeepPrefix = kp;
+                if (TryParseInt(f.PiiKeepSuffixRaw, out var ks, errors, name, "mask.keepSuffix")) mask.KeepSuffix = ks;
+                rule.Pii = new PiiRule { Label = string.IsNullOrWhiteSpace(f.PiiLabel) ? null : f.PiiLabel, Mask = mask };
+            }
+
+            if (!string.IsNullOrWhiteSpace(f.TransformType))
+            {
+                var transformType = f.TransformType.Trim();
+                var t = new FieldTransform { Type = transformType };
+                if (!string.IsNullOrWhiteSpace(f.TransformClaim)) t.Claim = f.TransformClaim;
+                if (f.TransformParseJson) t.Parse = "json";
+                if (!string.IsNullOrWhiteSpace(f.TransformKey)) t.Key = f.TransformKey;
+                if (!string.IsNullOrWhiteSpace(f.TransformIv)) t.Iv = f.TransformIv;
+                if (!string.IsNullOrWhiteSpace(f.TransformMode)) t.Mode = f.TransformMode;
+                if (!string.IsNullOrWhiteSpace(f.TransformPadding)) t.Padding = f.TransformPadding;
+                if (!string.IsNullOrWhiteSpace(f.TransformFormat)) t.Format = f.TransformFormat;
+                if (!string.IsNullOrWhiteSpace(f.TransformPrivateKey)) t.PrivateKey = f.TransformPrivateKey;
+                if (!string.IsNullOrWhiteSpace(f.TransformPublicKey)) t.PublicKey = f.TransformPublicKey;
+                rule.Transform = t;
+            }
+
+            rules.Fields[name] = rule;
+        }
+
+        var parsers = new List<ValueParserConfig>();
+        foreach (var p in _parsers)
+        {
+            var source = p.Source?.Trim();
+            if (string.IsNullOrWhiteSpace(source))
+                continue;
+            var cfg = new ValueParserConfig { Source = source, ParseType = p.ParseType };
+            if (p.ForceFlatten) cfg.Flatten = true;
+            if (TryParseInt(p.HeaderRaw, out var h, errors, source, "header")) cfg.Header = h;
+            parsers.Add(cfg);
+        }
+        if (parsers.Count > 0)
+            rules.ValueParsers = parsers;
+
+        AnalysisExpectations? expectations = null;
+        if (TryParseLong(_minRowCountRaw, out var minRows, errors, "expectations", "minRowCount"))
+            (expectations ??= new AnalysisExpectations()).MinRowCount = minRows;
+        if (TryParseDouble(_maxDuplicateRateRaw, out var dupRate, errors, "expectations", "maxDuplicateRate"))
+            (expectations ??= new AnalysisExpectations()).MaxDuplicateRate = dupRate;
+        if (expectations is not null)
+            rules.Expectations = expectations;
+
+        return (rules, errors);
+    }
+
+    private static bool TryParseDouble(string? raw, out double value, List<string> errors, string owner, string field)
+    {
+        value = 0;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        if (double.TryParse(raw.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value)) return true;
+        errors.Add($"{owner}: {field} «{raw}» 不是数字");
+        return false;
+    }
+
+    private static bool TryParseInt(string? raw, out int value, List<string> errors, string owner, string field)
+    {
+        value = 0;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        if (int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value)) return true;
+        errors.Add($"{owner}: {field} «{raw}» 不是整数");
+        return false;
+    }
+
+    private static bool TryParseLong(string? raw, out long value, List<string> errors, string owner, string field)
+    {
+        value = 0;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        if (long.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value)) return true;
+        errors.Add($"{owner}: {field} «{raw}» 不是整数");
+        return false;
+    }
+
+    private async Task Apply()
+    {
+        Rebuild();
+        if (_errors.Count > 0) return;
+        await OnApply.InvokeAsync(_generatedJson);
+    }
+
+    /// <summary>表单草稿：全部字符串承载，构建时统一解析，避免输入中途的类型错误。</summary>
+    private sealed class FieldDraft
+    {
+        public string? Name;
+        public string? PrimaryType;
+        public string? MinValueRaw;
+        public string? MaxValueRaw;
+        public string? DefaultValueRaw;
+        public string? EnumValuesRaw;
+        public string? Pattern;
+        public string? NullRateMaxRaw;
+        public string? MaxOutlierRatioRaw;
+        public bool Required;
+        public bool Unique;
+        public bool RedactWhitelist;
+        public bool PiiEnabled;
+        public string? PiiLabel;
+        public string? PiiMaskChar;
+        public string? PiiKeepPrefixRaw;
+        public string? PiiKeepSuffixRaw;
+        public bool PiiMaskAll;
+        public string? TransformType;
+        public string? TransformClaim;
+        public bool TransformParseJson;
+        public string? TransformKey;
+        public string? TransformIv;
+        public string? TransformMode;
+        public string? TransformPadding;
+        public string? TransformFormat;
+        public string? TransformPrivateKey;
+        public string? TransformPublicKey;
+        public bool Expanded = true;
+    }
+
+    private sealed class ParserDraft
+    {
+        public string? Source;
+        public string ParseType = "auto";
+        public string? HeaderRaw;
+        public bool ForceFlatten;
+    }
+}

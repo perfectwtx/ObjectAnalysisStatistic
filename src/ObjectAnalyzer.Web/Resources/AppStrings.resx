@@ -243,4 +243,59 @@
   <data name="PreflightExplain" xml:space="preserve"><value>规则文件里的所有字段名与数据样本里实际出现的字段名都没有匹配（大小写不敏感）。这通常意味着规则文件写的是另一份数据的形状，分析可能不会按预期生效。</value></data>
   <data name="ResultWarningTitle" xml:space="preserve"><value>规则未生效</value></data>
   <data name="ResultWarningExplain" xml:space="preserve"><value>分析已完成，但本次结果中没有出现规则文件里任何字段。规则文件可能与这份数据不匹配，请检查字段名拼写或换用对应的规则文件。</value></data>
+  <data name="EdTitle" xml:space="preserve"><value>表单编辑器（可视化）</value></data>
+  <data name="EdHint" xml:space="preserve"><value>逐项填写，实时生成并校验规则 JSON；手写规则用下方粘贴框。</value></data>
+  <data name="EdFieldsSection" xml:space="preserve"><value>字段规则（fields）</value></data>
+  <data name="EdAddField" xml:space="preserve"><value>添加字段规则</value></data>
+  <data name="EdFieldName" xml:space="preserve"><value>字段名</value></data>
+  <data name="EdFieldNamePlaceholder" xml:space="preserve"><value>如 age / user.phone</value></data>
+  <data name="EdFieldNameNew" xml:space="preserve"><value>新字段规则</value></data>
+  <data name="EdRemove" xml:space="preserve"><value>移除</value></data>
+  <data name="EdPrimaryType" xml:space="preserve"><value>主导类型</value></data>
+  <data name="EdPrimaryTypeAny" xml:space="preserve"><value>不限</value></data>
+  <data name="EdMinValue" xml:space="preserve"><value>数值下限</value></data>
+  <data name="EdMaxValue" xml:space="preserve"><value>数值上限</value></data>
+  <data name="EdDefaultValue" xml:space="preserve"><value>缺省补齐值</value></data>
+  <data name="EdEnumValues" xml:space="preserve"><value>枚举白名单（逗号分隔）</value></data>
+  <data name="EdPattern" xml:space="preserve"><value>正则 pattern</value></data>
+  <data name="EdNullRateMax" xml:space="preserve"><value>空值率上限（0~1）</value></data>
+  <data name="EdMaxOutlierRatio" xml:space="preserve"><value>离群占比上限（0~1）</value></data>
+  <data name="EdRequired" xml:space="preserve"><value>必填</value></data>
+  <data name="EdUnique" xml:space="preserve"><value>唯一</value></data>
+  <data name="EdRedactWhitelist" xml:space="preserve"><value>豁免自动打码（redact:false）</value></data>
+  <data name="EdPiiEnable" xml:space="preserve"><value>标记为敏感字段（pii）</value></data>
+  <data name="EdPiiLabel" xml:space="preserve"><value>敏感标签</value></data>
+  <data name="EdPiiLabelPlaceholder" xml:space="preserve"><value>内部编号</value></data>
+  <data name="EdPiiMaskChar" xml:space="preserve"><value>打码字符</value></data>
+  <data name="EdPiiMaskAll" xml:space="preserve"><value>整体打码</value></data>
+  <data name="EdKeepPrefix" xml:space="preserve"><value>保留前缀位数</value></data>
+  <data name="EdKeepSuffix" xml:space="preserve"><value>保留后缀位数</value></data>
+  <data name="EdTransform" xml:space="preserve"><value>值转换</value></data>
+  <data name="EdTransformNone" xml:space="preserve"><value>无</value></data>
+  <data name="EdTransformClaim" xml:space="preserve"><value>JWT claim</value></data>
+  <data name="EdTransformParseJson" xml:space="preserve"><value>结果按 JSON 展开</value></data>
+  <data name="EdTransformKey" xml:space="preserve"><value>密钥</value></data>
+  <data name="EdTransformIv" xml:space="preserve"><value>IV</value></data>
+  <data name="EdTransformMode" xml:space="preserve"><value>模式（cbc/ecb）</value></data>
+  <data name="EdTransformPadding" xml:space="preserve"><value>填充（pkcs7/none）</value></data>
+  <data name="EdTransformFormat" xml:space="preserve"><value>编码（base64/hex）</value></data>
+  <data name="EdTransformPrivKey" xml:space="preserve"><value>私钥</value></data>
+  <data name="EdTransformPubKey" xml:space="preserve"><value>公钥</value></data>
+  <data name="EdKmsHint" xml:space="preserve"><value>密钥推荐用 kms: 引用（kms-secret 子命令生成），需设置环境变量 OA_KMS_PASSPHRASE。</value></data>
+  <data name="EdParsersSection" xml:space="preserve"><value>值解析器（Excel/CSV 内嵌 JSON）</value></data>
+  <data name="EdAddParser" xml:space="preserve"><value>添加解析器</value></data>
+  <data name="EdVpSource" xml:space="preserve"><value>source（列）</value></data>
+  <data name="EdVpParseType" xml:space="preserve"><value>parseType</value></data>
+  <data name="EdVpHeader" xml:space="preserve"><value>header（表头行号）</value></data>
+  <data name="EdVpFlatten" xml:space="preserve"><value>强制展平</value></data>
+  <data name="EdExpectations" xml:space="preserve"><value>数据集期望（expectations）</value></data>
+  <data name="EdMinRowCount" xml:space="preserve"><value>最少行数</value></data>
+  <data name="EdMaxDuplicateRate" xml:space="preserve"><value>重复率上限（0~1）</value></data>
+  <data name="EdGeneratedOk" xml:space="preserve"><value>规则有效（{0} 个字段规则）</value></data>
+  <data name="EdMoreErrors" xml:space="preserve"><value>… 另有 {0} 项问题</value></data>
+  <data name="EdJsonPreview" xml:space="preserve"><value>生成的 JSON</value></data>
+  <data name="EdApply" xml:space="preserve"><value>应用到分析</value></data>
+  <data name="EdPasteOk" xml:space="preserve"><value>✓ 规则 JSON 有效（{0} 个字段规则）</value></data>
+  <data name="EdErrFieldNoName" xml:space="preserve"><value>存在未命名的字段规则</value></data>
+  <data name="EdErrFieldDup" xml:space="preserve"><value>字段名重复：{0}</value></data>
 </root>
