@@ -43,7 +43,11 @@
       "unique": true                // 整个字段的值不允许重复（适合订单号、编号类字段）
     },
 
-    // 场景四：标记业务敏感字段 + 自定义打码（详见 README「自定义 PII 规则」）
+    // 场景四：标记业务敏感字段 + 自定义打码（详见 README「自定义 PII 规则」）。
+    // ✓ 内置语义字段（手机号/身份证/银行卡/姓名/邮箱/SSN/IBAN/护照号）无需声明即自动识别打码；
+    //   声明 pii 可覆盖打码格式（maskChar 支持任意打码字符）并自定义合规报告里的 label；
+    //   ✓ fields 的键必须与统计字段名完全一致（嵌套/展平后的完整路径，如 user.phone）。
+    // ✓ API 分析响应默认已出站打码（结果 + 数据预览），显式传 piiOff=true 才返回原始值。
     "internalId": {
       "pii": {
         "label": "内部编号",        // 合规报告里显示的名称
@@ -101,22 +105,32 @@
   },
 
   // ─────────────────────────────────────────────
-  //  顶层配置
+  //  顶层配置（仅 fields / valueParsers / expectations / runtime 四个键）
   // ─────────────────────────────────────────────
 
-  // 全局过滤条件：只统计满足表达式的记录（等价 CLI --where，CLI 优先级更高）。
-  // 支持 == != > < >= <=、in / not in、like / not like、AND / OR 与括号，字段名大小写不敏感。
-  // ✓ 曾与 flatten 同时配置时跳过字段级质量检查，W1 管道统一阶段已修复并有回归测试锁定。
-  /*
-  "filter": "age >= 18 AND status in ['active']",
-  */
+  // ⚠ 旧版的顶层 filter / selectedFields 已移除（收敛到下方 runtime 节点）——
+  //    写在顶层属于未知键，默认直接报 400 并列出 unknowns。
 
   // 值解析器：把指定 Excel / CSV 列的值按 JSON 解析后再统计（单元格内嵌 JSON 专用场景）。
   // ✓ 注意：仅在输入为电子表格类格式（excel / csv）时才切换 excel-json 解析器；
   //    普通 JSON / JSONL / XML / YAML 配置了 valueParsers 也按原格式解析（W1 已修复强制改写问题）。
+  // ✓ excel-json 只输出声明的 source 列（其余列不进入统计）；source 定位失败会显式报错
+  //   （如「第 3 行找不到标题 'X' 的列」），不再静默跳过。
+  // 字段说明：
+  //   source    列定位：header=0 时为列字母（A/B/C），header≥1 时为表头标题文本；
+  //   parseType none=原样字符串 / auto=能按 JSON 解析则解析、失败回退原文 /
+  //             json=严格 JSON（失败报错）/ json-string=先剥一层 JSON 字符串引号再解析；
+  //   flatten   该来源的解析结果是否展平为 a.b.c（缺省沿用全局 flatten）；
+  //   header    表头所在行号：1（默认）首行是表头、数据从第 2 行开始；
+  //             N（≥2）第 N 行是表头、跳过之前的行、数据从第 N+1 行开始；
+  //             0 无表头、首行即数据。
+  //             excel-json 下每个 valueParser 独立声明自己的表头行（同一张表的不同列可有不同表头行）；
+  //             通用 excel/csv 解析为整表语义（多个 source 声明不一致时取第一个声明的值）。
   /*
   "valueParsers": [
-    { "source": "payload", "parseType": "auto", "flatten": true, "header": 0 }
+    { "source": "payload", "parseType": "auto", "flatten": true },   // header=1（默认）：source 用首行表头标题
+    { "source": "备注", "parseType": "json", "header": 3 },          // 第 3 行是表头：source 用该行的标题文本，数据从第 4 行开始
+    { "source": "B", "parseType": "none", "header": 0 }              // 无表头：首行即数据，source 用列字母
   ],
   */
 
