@@ -7,7 +7,7 @@ public class FileParsersTests
     [Fact]
     public void ParseCsv_HeaderModes_RespectConfig()
     {
-        // 首行为表头；header=1 用表头文字，header=0 用列字母并跳过首行
+        // header=1（默认）首行为表头；header=0 无表头——首行即数据、列键用字母
         string tempFile = Path.ChangeExtension(Path.GetTempFileName(), ".csv");
         File.WriteAllText(tempFile, "Name,Age,City\r\nAlice,30,Beijing\r\nBob,25,Shanghai\r\n");
         try
@@ -19,14 +19,16 @@ public class FileParsersTests
             Assert.Equal(2, byName.Count);
             Assert.Equal("Alice", byName[0]["Name"]);
 
+            // header=0：无表头语义——首行即数据，列键用列字母（原表头行本身成为一条数据）
             var byLetter = FileParsers.ParseByFormat(tempFile, "csv", new ParseOptions
             {
                 ValueParsers = new[] { new ObjectAnalyzer.Analysis.ValueParserConfig { Source = "B", ParseType = "auto", Header = 0 } }
             }).ToList();
-            Assert.Equal(2, byLetter.Count);
+            Assert.Equal(3, byLetter.Count);
+            Assert.Equal("Age", byLetter[0].GetValueOrDefault("B"));
             // CSV 会推断数值类型："30" → 30L（CSV 无类型信息，不推断则数值列
             // 的均值/分位数/相关性全部失效）。保留字符串需传 CsvInferNumbers = false
-            Assert.Equal(30L, byLetter[0].GetValueOrDefault("B"));
+            Assert.Equal(30L, byLetter[1].GetValueOrDefault("B"));
         }
         finally
         {
@@ -218,7 +220,8 @@ public class FileParsersTests
            }
        };
 
-       MiniExcel.SaveAs(tempFile, payload);
+       // printHeader:false：无表头表——首行即数据，配合 header=0（列键为字母）锁定新语义
+       MiniExcel.SaveAs(tempFile, payload, printHeader: false);
 
        try
        {
@@ -262,7 +265,7 @@ public class FileParsersTests
            }
        };
 
-       MiniExcel.SaveAs(tempFile, payload);
+       MiniExcel.SaveAs(tempFile, payload, printHeader: false);
 
        try
        {

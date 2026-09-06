@@ -19,7 +19,14 @@ public class ValueParserConfig
     [JsonPropertyName("flatten")]
     public bool? Flatten { get; set; }
 
-    /// <summary>表头模式：1（默认）首行值为列名，source/字段前缀用表头文字；0 无表头，列以字母 A/B/C 命名，source/字段前缀用列字母。</summary>
+    /// <summary>
+    /// 表头所在行号，决定 source 的含义与数据起始行：
+    /// 1（默认）首行是表头，source 用首行标题文本，数据从第 2 行开始；
+    /// N（≥2）第 N 行是表头，跳过之前的行，数据从第 N+1 行开始，source 用第 N 行的标题文本；
+    /// 0 无表头，首行即数据，source 用列字母（A/B/C）。
+    /// excel-json 场景每个 valueParser 独立声明自己的表头行（同一张表的不同列可以有不同的表头行）；
+    /// 通用 excel/csv 解析是整表概念，多个 source 声明不一致时取第一个声明的值。
+    /// </summary>
     [JsonPropertyName("header")]
     public int? Header { get; set; }
 }
