@@ -71,7 +71,7 @@ public static class AnalyzeEndpoints
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat,
                     fileName: file.FileName, rulesSource: rulesSource,
-                    piiRedacted: outcome.PiiRedacted));
+                    piiRedacted: outcome.PiiRedacted, pii: outcome.Pii));
             }
             catch (Exception ex)
             {
@@ -94,16 +94,21 @@ public static class AnalyzeEndpoints
         .DisableAntiforgery();
 
         // ── 分析：强类型 JSON body（数据文本内嵌 + 全强类型配置）──
-        // 请求体为纯 JSON，直接反序列化为强类型 AnalyzeConfigRequest：
+        // 请求体为纯 JSON，读取原始体后先对内联 rules 子树做未知键检查（与 multipart/raw 同源，
+        // 强类型绑定会静默丢弃不认识的键），再反序列化为强类型 AnalyzeConfigRequest：
         // 数据文本走 dataText（JSON/JSONL/CSV/XML/YAML），其余全部是强类型字段——
         // 分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + 深度分析开关）+ 内联 rules 规则对象。
         // OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。
         routes.MapPost("/analyze/config",
             async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
-            [FromBody] AnalyzeConfigRequest config,
+            HttpRequest request,
             CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(config.DataText))
+            var (config, configError) = await AnalysisCore.ReadConfigRequestAsync(request, cancellationToken);
+            if (configError is not null)
+                return TypedResults.BadRequest(configError);
+
+            if (string.IsNullOrWhiteSpace(config!.DataText))
                 return TypedResults.BadRequest(new ErrorResponse("缺少数据文本：请提供 dataText（数据内容，JSON / JSONL / CSV / XML / YAML）。"));
 
             var tempData = Path.Combine(Path.GetTempPath(), $"oa-api-{Guid.NewGuid():N}.txt");
@@ -121,7 +126,7 @@ public static class AnalyzeEndpoints
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat,
                     fileName: "(inline)", rulesSource: config.Rules is not null ? "inline" : null,
-                    piiRedacted: outcome.PiiRedacted));
+                    piiRedacted: outcome.PiiRedacted, pii: outcome.Pii));
             }
             catch (Exception ex)
             {
@@ -132,6 +137,7 @@ public static class AnalyzeEndpoints
                 try { if (File.Exists(tempData)) File.Delete(tempData); } catch { }
             }
         })
+        .Accepts<AnalyzeConfigRequest>("application/json")
         .WithTags("分析")
         .WithSummary("分析强类型 JSON 请求体")
         .WithDescription("请求体为纯 JSON，直接绑定为强类型 AnalyzeConfigRequest：dataText 内嵌数据文本（JSON/JSONL/CSV/XML/YAML），" +
@@ -189,7 +195,7 @@ public static class AnalyzeEndpoints
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat,
                     fileName: "(inline)", rulesSource: rulesObj is null ? null : "inline",
-                    piiRedacted: outcome.PiiRedacted));
+                    piiRedacted: outcome.PiiRedacted, pii: outcome.Pii));
             }
             catch (Exception ex)
             {

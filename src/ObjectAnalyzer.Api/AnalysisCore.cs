@@ -52,11 +52,12 @@ internal static class AnalysisCore
         // ── 出站打码关卡（delivery boundary）──
         // 分析内核始终处理原始值；任何结果离开服务前在这里统一按策略打码，
         // 覆盖全部同步 / 异步端点（新增端点天然继承，无需各自记得调用）。
-        // piiOff=true 是显式退出：原始敏感值出站，PiiRedacted=false 留痕并写服务器日志。
+        // piiOff=true 是显式退出：原始敏感值出站，PiiRedacted=false 留痕并写审计 / 服务器日志。
         var policy = PiiPolicy.Resolve(pipelineResult.Result);
         if (options.Pii.PiiOff)
         {
             Console.Error.WriteLine($"[pii] 出站打码已关闭（piiOff=true），原始敏感值随响应出站：{dataPath}");
+            WritePiiOffAudit(options, dataPath);
             return new AnalyzeOutcome(pipelineResult.Result, preview, runContext.EffectiveFormat,
                 policy, PiiRedacted: false);
         }
@@ -67,6 +68,97 @@ internal static class AnalysisCore
             runContext.EffectiveFormat,
             policy,
             PiiRedacted: true);
+    }
+
+    /// <summary>
+    /// piiOff=true 的结构化审计留痕：仅当请求方配置了审计日志路径
+    /// （CLI --audit-log / 规则 runtime.audit.log，经 RulesToOptionsConverter 合并进 options）时落盘，
+    /// 事件类型 pii_off，只记输入哈希 / 字节数与说明，绝不记字段值（与审计 schema 同口径）。
+    /// 审计写入失败不阻断分析主流程。
+    /// </summary>
+    private static void WritePiiOffAudit(AnalysisOptions options, string dataPath)
+    {
+        string? auditPath = options.Audit.AuditLogPath;
+        if (string.IsNullOrWhiteSpace(auditPath))
+            return;
+
+        try
+        {
+            using var audit = new AuditLogger(auditPath);
+            audit.Write(new AuditLogEntry
+            {
+                Timestamp = AuditLogger.FormatTimestamp(DateTime.UtcNow),
+                Event = "pii_off",
+                RunId = AuditLogger.NewRunId(),
+                InputSource = dataPath,
+                InputHash = AuditLogger.ComputeFileHash(dataPath),
+                InputBytes = AuditLogger.GetFileSize(dataPath),
+                Message = "出站打码已关闭（piiOff=true）：原始敏感值随响应出站，请确认分发渠道可信。"
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[pii] piiOff 审计写入失败（不阻断分析）：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 读取 /analyze/config 与 /analyze/async/config 的纯 JSON 请求体。
+    /// 与 multipart / raw 端点同源的未知键防护：强类型绑定会静默忽略不认识的键
+    /// （错层级的 pii.maskChar、拼错的规则名「看似生效实则无效」），
+    /// 因此先取原始体里的 rules 子树跑 RulesLint（默认 400 + unknowns），再反序列化为强类型请求。
+    /// </summary>
+    public static async Task<(AnalyzeConfigRequest? config, ErrorResponse? error)> ReadConfigRequestAsync(
+        HttpRequest request, CancellationToken cancellationToken)
+    {
+        string body;
+        using (var reader = new StreamReader(request.Body, System.Text.Encoding.UTF8))
+            body = await reader.ReadToEndAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(body))
+            return (null, new ErrorResponse("请求体为空：请提供 JSON 对象（dataText 必填）。"));
+
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(body, new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            });
+        }
+        catch (JsonException ex)
+        {
+            return (null, new ErrorResponse($"请求体不是有效 JSON：{ex.Message}"));
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                return (null, new ErrorResponse("请求体必须是一个 JSON 对象。"));
+
+            if (doc.RootElement.TryGetProperty("rules", out var rulesEl) && rulesEl.ValueKind == JsonValueKind.Object)
+            {
+                // GetRawText 保留未知键原文，lint 才能发现强类型绑定已丢失的键
+                var unknownRaw = RulesLint.Scan(rulesEl.GetRawText());
+                if (unknownRaw.Count > 0)
+                    return (null, ApiErrors.UnknownRules(unknownRaw));
+            }
+
+            try
+            {
+                // 与 [FromBody] 完全同源的序列化选项（宿主 JsonOptions）
+                var serializerOptions = request.HttpContext.RequestServices
+                    .GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()
+                    .Value.SerializerOptions;
+                var config = JsonSerializer.Deserialize<AnalyzeConfigRequest>(body, serializerOptions);
+                return (config, null);
+            }
+            catch (JsonException ex)
+            {
+                return (null, new ErrorResponse($"请求体反序列化失败：{ex.Message}"));
+            }
+        }
     }
 
     /// <summary>

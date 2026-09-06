@@ -80,12 +80,13 @@ public sealed class AnalysisJobRegistry
     /// <summary>把分析结果与数据预览样本一并写回作业快照（W8：数据预览页）。</summary>
     /// <param name="piiRedacted">出站打码是否生效（结果离开服务前已按策略打码）。
     /// 调用方在出站边界关闭打码（piiOff）时必须传 false，供状态查询端点回显留痕。</param>
+    /// <param name="pii">出站打码策略（可选）：携带解析后的敏感字段元数据，供状态查询端点回显。</param>
     public void Complete(string jobId, AnalysisResult result, IReadOnlyList<Dictionary<string, object?>>? preview,
-        bool piiRedacted = true)
+        bool piiRedacted = true, PiiPolicy? pii = null)
     {
         if (string.IsNullOrEmpty(jobId)) return;
         if (!_jobs.TryGetValue(jobId, out var job)) return;
-        job.MarkCompleted(result, preview, piiRedacted);
+        job.MarkCompleted(result, preview, piiRedacted, pii);
     }
 
     /// <summary>把异常写回作业快照（供异步端点返回 500）。</summary>
@@ -131,6 +132,7 @@ public sealed class AnalysisJobRegistry
         public AnalysisResult? Result { get; private set; }
         public IReadOnlyList<Dictionary<string, object?>>? Preview { get; private set; }
         public bool PiiRedacted { get; private set; } = true;
+        public PiiPolicy? Pii { get; private set; }
         public Exception? Error { get; private set; }
         public string? ProgressText { get; set; }
 
@@ -158,12 +160,13 @@ public sealed class AnalysisJobRegistry
             Status is AnalysisStatus.Completed or AnalysisStatus.Failed or AnalysisStatus.Cancelled;
 
         public void MarkCompleted(AnalysisResult result, IReadOnlyList<Dictionary<string, object?>>? preview,
-            bool piiRedacted = true)
+            bool piiRedacted = true, PiiPolicy? pii = null)
         {
             if (IsTerminal) return;
             Result = result;
             Preview = preview;
             PiiRedacted = piiRedacted;
+            Pii = pii;
             Status = AnalysisStatus.Completed;
             TerminalAt = DateTimeOffset.UtcNow;
         }
@@ -192,7 +195,8 @@ public sealed class AnalysisJobRegistry
             Result: Result,
             Preview: Preview,
             Error: Error,
-            PiiRedacted: PiiRedacted);
+            PiiRedacted: PiiRedacted,
+            Pii: Pii);
     }
 }
 
@@ -214,6 +218,7 @@ public sealed record AnalysisJobMeta(
 
 /// <summary>作业快照：状态查询 / 拉取结果时使用，Result / Preview 终态前为 null。</summary>
 /// <param name="PiiRedacted">出站打码是否生效；false 表示作业提交时显式关闭了打码（piiOff），响应含原始值。</param>
+/// <param name="Pii">出站打码策略（未提供时为 null）：携带解析后的敏感字段元数据供端点回显。</param>
 public sealed record AnalysisJobSnapshot(
     string Id,
     AnalysisStatus Status,
@@ -225,4 +230,5 @@ public sealed record AnalysisJobSnapshot(
     AnalysisResult? Result,
     IReadOnlyList<Dictionary<string, object?>>? Preview,
     Exception? Error,
-    bool PiiRedacted = true);
+    bool PiiRedacted = true,
+    PiiPolicy? Pii = null);

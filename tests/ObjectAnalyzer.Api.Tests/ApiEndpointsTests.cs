@@ -88,6 +88,48 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task AnalyzeConfig_UnknownRuleKey_Returns400WithUnknowns()
+    {
+        // config 端点必须与 multipart / raw 同源防护：强类型绑定会静默丢弃不认识的键
+        // （错层级 / 拼错的规则键「看似生效实则无效」），因此读原始体先跑 RulesLint
+        var client = CreateClient();
+        var body = """{"dataText":"[{\"a\":1}]","format":"json","rules":{"fields":{"a":{"bogusKey":1}}}}""";
+
+        var response = await client.PostAsync("/api/analyze/config",
+            new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.Contains("bogusKey", text);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsyncConfig_UnknownRuleKey_Returns400WithUnknowns()
+    {
+        var client = CreateClient();
+        var body = """{"dataText":"[{\"a\":1}]","format":"json","rules":{"fields":{"a":{"bogusKey":1}}}}""";
+
+        var response = await client.PostAsync("/api/analyze/async/config",
+            new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.Contains("bogusKey", text);
+    }
+
+    [Fact]
+    public async Task AnalyzeConfig_InvalidJsonBody_Returns400()
+    {
+        var client = CreateClient();
+        var response = await client.PostAsync("/api/analyze/config",
+            new StringContent("{ not valid", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains("JSON", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public async Task RulesValidate_ValidJson_ReturnsValid()
     {
         var client = CreateClient();

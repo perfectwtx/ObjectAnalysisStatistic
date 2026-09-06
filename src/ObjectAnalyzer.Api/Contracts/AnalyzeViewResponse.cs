@@ -43,6 +43,10 @@ public sealed record AnalyzeViewResponse
     /// <summary>出站打码状态：true = 敏感值已按策略打码（默认）；false = 请求显式关闭了打码（piiOff=true），响应含原始值。</summary>
     public bool PiiRedacted { get; init; } = true;
 
+    /// <summary>PII 打码视图：本次结果中被识别为敏感的字段及其解析后的打码元数据
+    /// （label / 分类 / maskChar 等，与 CLI --pii-report 同源口径）；未发现敏感字段时 Fields 为空列表。</summary>
+    public required AnalyzePiiView Pii { get; init; }
+
     /// <summary>从分析结果 + 预览样本组装五页面视图。</summary>
     public static AnalyzeViewResponse From(
         AnalysisResult result,
@@ -50,7 +54,8 @@ public sealed record AnalyzeViewResponse
         string format,
         string? fileName = null,
         string? rulesSource = null,
-        bool piiRedacted = true)
+        bool piiRedacted = true,
+        PiiPolicy? pii = null)
     {
         return new AnalyzeViewResponse
         {
@@ -63,7 +68,8 @@ public sealed record AnalyzeViewResponse
             DeepAnalysis = AnalyzeDeepAnalysisView.From(result),
             Quality = AnalyzeQualityView.From(result),
             Result = result,
-            PiiRedacted = piiRedacted
+            PiiRedacted = piiRedacted,
+            Pii = AnalyzePiiView.From(pii)
         };
     }
 }
@@ -216,4 +222,22 @@ public sealed record AnalyzeQualityView
             HasViolations = result.QualityViolations.Count > 0
         };
     }
+}
+
+/// <summary>
+/// PII 打码视图：出站打码策略解析出的敏感字段元数据（与 CLI --pii-report 同源口径，
+/// 来自 <see cref="PiiPolicy"/>）。label / 打码格式纯展示用途，不参与打码计算。
+/// </summary>
+public sealed record AnalyzePiiView
+{
+    /// <summary>识别出的敏感字段列表（按字段名排序）；未发现敏感字段时为空列表。</summary>
+    public required IReadOnlyList<PiiFieldSummary> Fields { get; init; }
+
+    /// <summary>敏感字段数量。</summary>
+    public int FieldCount => Fields.Count;
+
+    public static AnalyzePiiView From(PiiPolicy? policy) => new()
+    {
+        Fields = policy?.Summaries() ?? Array.Empty<PiiFieldSummary>()
+    };
 }

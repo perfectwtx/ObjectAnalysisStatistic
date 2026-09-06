@@ -52,6 +52,17 @@ public class PiiRedactionEndpointTests : IClassFixture<WebApplicationFactory<Pro
         // 数据预览同样打码（这是此前 API 路径完全缺失的覆盖）
         var previewPhone = body.GetProperty("preview").GetProperty("rows")[0].GetProperty("Phone").GetString();
         Assert.Equal("138****1234", previewPhone);
+
+        // PII 打码视图：识别出的敏感字段及其解析后的打码元数据（label 与 CLI --pii-report 同源）
+        var pii = body.GetProperty("pii");
+        Assert.Equal(1, pii.GetProperty("fieldCount").GetInt32());
+        var piiPhone = pii.GetProperty("fields").EnumerateArray()
+            .First(f => f.GetProperty("field").GetString() == "Phone");
+        Assert.Equal("Phone", piiPhone.GetProperty("category").GetString());
+        Assert.Equal("手机号", piiPhone.GetProperty("label").GetString());
+        Assert.Equal("*", piiPhone.GetProperty("maskChar").GetString());
+        Assert.False(piiPhone.GetProperty("isCustom").GetBoolean());
+        Assert.True(piiPhone.GetProperty("highSeverity").GetBoolean());
     }
 
     [Fact]
@@ -73,6 +84,23 @@ public class PiiRedactionEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
         var previewPhone = body.GetProperty("preview").GetProperty("rows")[0].GetProperty("Phone").GetString();
         Assert.Equal("13812341234", previewPhone);
+
+        // 元数据照常可见：piiOff 只关打码，不影响敏感字段识别结果
+        Assert.Equal(1, body.GetProperty("pii").GetProperty("fieldCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task AnalyzeRaw_NoPii_PiiViewEmpty()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.PostAsync("/api/analyze/raw?format=json",
+            new StringContent("""[{"id":1,"active":true}]""", Encoding.UTF8, "application/json"));
+
+        Assert.True(response.IsSuccessStatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(0, body.GetProperty("pii").GetProperty("fieldCount").GetInt32());
+        Assert.Empty(body.GetProperty("pii").GetProperty("fields").EnumerateArray());
     }
 
     [Fact]
@@ -100,6 +128,41 @@ public class PiiRedactionEndpointTests : IClassFixture<WebApplicationFactory<Pro
         var internalId = FieldStat(body, "internalId");
         Assert.Contains("ID***01", internalId.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
         Assert.DoesNotContain("ID-1001", internalId.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+
+        // 规则声明的自定义敏感字段：label / isCustom / keep 前后缀来自规则解析
+        var piiInternalId = body.GetProperty("pii").GetProperty("fields").EnumerateArray()
+            .First(f => f.GetProperty("field").GetString() == "internalId");
+        Assert.Equal("内部标识", piiInternalId.GetProperty("label").GetString());
+        Assert.Equal("Custom", piiInternalId.GetProperty("category").GetString());
+        Assert.True(piiInternalId.GetProperty("isCustom").GetBoolean());
+        Assert.Equal(2, piiInternalId.GetProperty("keepPrefix").GetInt32());
+        Assert.Equal(2, piiInternalId.GetProperty("keepSuffix").GetInt32());
+    }
+
+    [Fact]
+    public async Task AnalyzeRaw_PiiOff_WritesAuditEntryWhenConfigured()
+    {
+        var client = _factory.CreateClient();
+        string auditPath = Path.ChangeExtension(Path.GetTempFileName(), ".ndjson");
+        var rules = new { runtime = new { audit = new { log = auditPath } } };
+        var url = "/api/analyze/raw?format=json&piiOff=true&rulesJson=" + Uri.EscapeDataString(JsonSerializer.Serialize(rules));
+        try
+        {
+            var response = await client.PostAsync(url,
+                new StringContent(PiiPayload, Encoding.UTF8, "application/json"));
+            Assert.True(response.IsSuccessStatusCode);
+            Assert.False((await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("piiRedacted").GetBoolean());
+
+            // piiOff 请求在配置了审计路径时落结构化审计（事件 pii_off，不含字段值）
+            Assert.True(File.Exists(auditPath), "piiOff 审计文件未生成");
+            string audit = File.ReadAllText(auditPath);
+            Assert.Contains("\"event\":\"pii_off\"", audit);
+            Assert.DoesNotContain("13812341234", audit);
+        }
+        finally
+        {
+            File.Delete(auditPath);
+        }
     }
 
     [Fact]
@@ -128,6 +191,7 @@ public class PiiRedactionEndpointTests : IClassFixture<WebApplicationFactory<Pro
 
         Assert.NotEqual(JsonValueKind.Null, body.GetProperty("result").ValueKind);
         Assert.True(body.GetProperty("piiRedacted").GetBoolean());
+        Assert.Equal(1, body.GetProperty("pii").GetProperty("fieldCount").GetInt32());
 
         var phone = FieldStat(body, "Phone");
         Assert.Contains("138****1234", phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));

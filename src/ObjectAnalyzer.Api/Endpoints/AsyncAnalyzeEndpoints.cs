@@ -29,8 +29,16 @@ public static class AsyncAnalyzeEndpoints
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
+    // CA1848：后台作业失败日志走 LoggerMessage 源生成委托（热路径零分配）
+    private static readonly Action<ILogger, string, Exception?> s_jobFailed = LoggerMessage.Define<string>(
+        LogLevel.Error, new EventId(1, "JobFailed"), "异步分析作业 {JobId} 失败");
+
     public static IEndpointRouteBuilder MapAsyncAnalyzeApi(this IEndpointRouteBuilder routes)
     {
+        // 异步作业错误走结构化日志（正式环境 stdout/stderr 可能被关闭，Console 写入会沉默）
+        var jobLogger = routes.ServiceProvider.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("ObjectAnalyzer.AsyncAnalyze");
+
         // ── 异步分析：multipart 上传 ──
         routes.MapPost("/analyze/async",
             async Task<Results<Ok<AnalyzeAsyncResponse>, BadRequest<ErrorResponse>>> (
@@ -90,7 +98,7 @@ public static class AsyncAnalyzeEndpoints
                 var jobIdForTask = jobId;
                 var dataPathForTask = tempData;
                 var rulesPathForTask = tempRules;
-                _ = Task.Run(() => RunJob(jobIdForTask, dataPathForTask, rulesPathForTask, rulesObj, options, cts.Token),
+                _ = Task.Run(() => RunJob(jobLogger, jobIdForTask, dataPathForTask, rulesPathForTask, rulesObj, options, cts.Token),
                     CancellationToken.None);
                 // 任务已接手这两个路径，避免下面 catch/finally 再去删。
                 tempData = null!;
@@ -126,12 +134,17 @@ public static class AsyncAnalyzeEndpoints
         .DisableAntiforgery();
 
         // ── 异步分析：强类型 JSON body ──
+        // 与同步 /analyze/config 同源：读原始体 → rules 子树未知键检查 → 强类型反序列化
         routes.MapPost("/analyze/async/config",
             async Task<Results<Ok<AnalyzeAsyncResponse>, BadRequest<ErrorResponse>>> (
-            [FromBody] AnalyzeConfigRequest config,
+            HttpRequest request,
             CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(config.DataText))
+            var (config, configError) = await AnalysisCore.ReadConfigRequestAsync(request, cancellationToken);
+            if (configError is not null)
+                return TypedResults.BadRequest(configError);
+
+            if (string.IsNullOrWhiteSpace(config!.DataText))
                 return TypedResults.BadRequest(new ErrorResponse("缺少数据文本：请提供 dataText。"));
 
             var tempData = Path.Combine(Path.GetTempPath(), $"oa-async-{Guid.NewGuid():N}.txt");
@@ -157,7 +170,7 @@ public static class AsyncAnalyzeEndpoints
                 // 同 multipart 端点：路径必须先复制到 lambda 局部变量，否则闭包按引用捕获
                 // 的外层 tempData 在主线程置 null 后会让后台任务拿到空字符串 → NRE。
                 var dataPathForTask = tempData;
-                _ = Task.Run(() => RunJob(jobIdForTask, dataPathForTask, null, config.Rules, options, cts.Token),
+                _ = Task.Run(() => RunJob(jobLogger, jobIdForTask, dataPathForTask, null, config.Rules, options, cts.Token),
                     CancellationToken.None);
                 tempData = null!;
 
@@ -180,6 +193,7 @@ public static class AsyncAnalyzeEndpoints
         })
         .WithTags("异步分析")
         .WithSummary("异步分析（强类型 JSON 请求体）")
+        .Accepts<AnalyzeConfigRequest>("application/json")
         .DisableAntiforgery();
 
         // ── 查询作业状态 / 拉取结果 ──
@@ -207,7 +221,8 @@ public static class AsyncAnalyzeEndpoints
                 Result: snap.Result,
                 Preview: snap.Preview,
                 Error: errorMessage,
-                PiiRedacted: snap.PiiRedacted));
+                PiiRedacted: snap.PiiRedacted,
+                Pii: AnalyzePiiView.From(snap.Pii)));
         })
         .WithTags("异步分析")
         .WithSummary("查询异步作业状态")
@@ -295,6 +310,7 @@ public static class AsyncAnalyzeEndpoints
     // ── 后台执行入口：把异常 / OperationCanceledException 写回 AnalysisJobRegistry ──
     // 临时文件由本方法独占：执行结束（任何原因）后自行清理，避免 finally 在任务读取前把文件删掉。
     private static void RunJob(
+        ILogger jobLogger,
         string jobId,
         string dataPath,
         string? rulesPath,
@@ -310,8 +326,10 @@ public static class AsyncAnalyzeEndpoints
                 count => AnalysisJobRegistry.Instance.ReportProgress(jobId, count));
 
             var outcome = AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge);
-            // 结果 / 预览已在 AnalyzeFile 的出站打码关卡处理过；piiRedacted 一并写回供 GET 回显留痕
-            AnalysisJobRegistry.Instance.Complete(jobId, outcome.Result, outcome.Preview, outcome.PiiRedacted);
+            // 结果 / 预览已在 AnalyzeFile 的出站打码关卡处理过；piiRedacted 与解析出的
+            // 打码策略（敏感字段元数据）一并写回供 GET 回显留痕
+            AnalysisJobRegistry.Instance.Complete(jobId, outcome.Result, outcome.Preview,
+                outcome.PiiRedacted, outcome.Pii);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -326,8 +344,7 @@ public static class AsyncAnalyzeEndpoints
         }
         catch (Exception ex)
         {
-            // 调试期输出完整堆栈到服务器控制台；正式环境会因 stdout 关闭而沉默
-            Console.Error.WriteLine($"[async] job={jobId} failed: {ex}");
+            s_jobFailed(jobLogger, jobId, ex);
             AnalysisJobRegistry.Instance.Fail(jobId, ex);
         }
         finally
