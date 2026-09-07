@@ -1,0 +1,74 @@
+@page "/quality"
+@using ObjectAnalyzer.Platform
+@inject IHostEnvironment HostEnvironment
+
+<PageTitle>Quality Dashboard</PageTitle>
+
+<div class="container py-4">
+    <div class="mb-4">
+        <h1>Quality Dashboard</h1>
+        <p class="text-muted">基于历史分析作业查看数据质量趋势</p>
+    </div>
+
+    @if (_loading)
+    {
+        <p>加载中...</p>
+    }
+    else if (_jobs.Count == 0)
+    {
+        <div class="alert alert-info">暂无历史分析数据。</div>
+    }
+    else
+    {
+        var latest = _jobs[0];
+        <div class="row g-3 mb-4">
+            <div class="col-md-3"><div class="card p-3"><small>Latest Score</small><strong class="fs-2">@(latest.QualityScore?.ToString("F2") ?? "-")</strong></div></div>
+            <div class="col-md-3"><div class="card p-3"><small>Objects</small><strong class="fs-2">@latest.TotalObjects.ToString("N0")</strong></div></div>
+            <div class="col-md-3"><div class="card p-3"><small>Issues</small><strong class="fs-2">@latest.IssueCount</strong></div></div>
+            <div class="col-md-3"><div class="card p-3"><small>Jobs</small><strong class="fs-2">@_jobs.Count</strong></div></div>
+        </div>
+
+        <div class="card p-3">
+            <h3>Quality Score Trend</h3>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Time</th><th>Source</th><th>Score</th><th>Issues</th></tr></thead>
+                    <tbody>
+                    @foreach (var job in _jobs.Take(30).Reverse())
+                    {
+                        <tr>
+                            <td>@job.StartedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td>
+                            <td>@job.SourceName</td>
+                            <td>@(job.QualityScore?.ToString("F2") ?? "-")</td>
+                            <td>@job.IssueCount</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<AnalysisJob> _jobs = new();
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var store = new SqliteAnalysisHistoryStore(
+                Path.Combine(HostEnvironment.ContentRootPath, "data", "objectanalyzer.db"));
+            await store.InitializeAsync();
+            _jobs = (await store.GetRecentAsync(100)).ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
