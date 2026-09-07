@@ -1,4 +1,5 @@
 @page "/quality/fields"
+@using System.Text.Json
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
@@ -28,7 +29,7 @@ else
             </select>
         </div>
         <div class="col-md-8 d-flex align-items-end">
-            <div class="text-muted">共 @_fields.Count 个字段，点击字段可查看完整画像。</div>
+            <div class="text-muted">共 @_fields.Count 个字段，点击字段名查看完整画像。</div>
         </div>
     </div>
 
@@ -36,69 +37,46 @@ else
         <div class="card-header">字段画像</div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr><th>字段</th><th>主类型</th><th>语义类型</th><th>覆盖率</th><th>Null率</th><th>唯一值</th><th>问题</th></tr>
-                </thead>
+                <thead><tr><th>字段</th><th>主类型</th><th>语义类型</th><th>覆盖率</th><th>Null率</th><th>唯一值</th><th>问题</th></tr></thead>
                 <tbody>
                 @foreach (var field in _fields)
                 {
                     var nullRate = field.Count == 0 ? 0 : (double)field.NullCount / field.Count;
+                    var violationCount = GetViolationCount(field.FieldName);
                     <tr>
-                        <td><strong>@field.FieldName</strong></td>
+                        <td><button class="btn btn-link p-0 text-start" @onclick="() => ToggleField(field.FieldName)"><strong>@field.FieldName</strong></button></td>
                         <td>@field.PrimaryType</td>
                         <td>@(field.SemanticType ?? "-")</td>
                         <td>@field.Coverage.ToString("P1")</td>
                         <td>@nullRate.ToString("P1")</td>
                         <td>@(field.DistinctCount?.ToString() ?? "-")@(field.DistinctApproximate ? " ≈" : "")</td>
                         <td>
-                            @if (GetViolationCount(field.FieldName) > 0)
-                            {
-                                <span class="badge bg-danger">@GetViolationCount(field.FieldName)</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success">正常</span>
-                            }
+                            @if (violationCount > 0) { <span class="badge bg-danger">@violationCount</span> }
+                            else { <span class="badge bg-success">正常</span> }
                         </td>
                     </tr>
                     @if (_selectedField == field.FieldName)
                     {
-                        <tr>
-                            <td colspan="7">
-                                <div class="p-3 bg-light">
-                                    <div class="row g-3">
-                                        <div class="col-md-3"><strong>出现次数</strong><br />@field.Count</div>
-                                        <div class="col-md-3"><strong>Null次数</strong><br />@field.NullCount</div>
-                                        <div class="col-md-3"><strong>默认值</strong><br />@(field.DefaultValueRepresentation ?? "-")</div>
-                                        <div class="col-md-3"><strong>数值范围</strong><br />@FormatRange(field)</div>
-                                    </div>
-                                    <hr />
-                                    <div><strong>类型分布</strong></div>
-                                    @foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value))
-                                    {
-                                        <span class="badge text-bg-secondary me-1">@type.Key: @type.Value</span>
-                                    }
-                                    @if (field.ValueCounts.Count > 0)
-                                    {
-                                        <div class="mt-3"><strong>高频值</strong></div>
-                                        @foreach (var value in field.ValueCounts.OrderByDescending(x => x.Value).Take(10))
-                                        {
-                                            <div class="small">@value.Key：@value.Value</div>
-                                        }
-                                    }
-                                    @if (GetViolations(field.FieldName).Count > 0)
-                                    {
-                                        <div class="mt-3"><strong>质量问题</strong></div>
-                                        @foreach (var violation in GetViolations(field.FieldName))
-                                        {
-                                            <div class="alert alert-warning py-2 mt-2 mb-0">
-                                                <strong>@violation.Check</strong>：@violation.Message
-                                            </div>
-                                        }
-                                    }
-                                </div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="7"><div class="p-3 bg-light">
+                            <div class="row g-3">
+                                <div class="col-md-3"><strong>出现次数</strong><br />@field.Count</div>
+                                <div class="col-md-3"><strong>Null次数</strong><br />@field.NullCount</div>
+                                <div class="col-md-3"><strong>默认值</strong><br />@(field.DefaultValueRepresentation ?? "-")</div>
+                                <div class="col-md-3"><strong>数值范围</strong><br />@FormatRange(field)</div>
+                            </div>
+                            <hr />
+                            <div><strong>类型分布</strong></div>
+                            @foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value)) { <span class="badge text-bg-secondary me-1">@type.Key: @type.Value</span> }
+                            @if (field.ValueCounts.Count > 0)
+                            {
+                                <div class="mt-3"><strong>高频值</strong></div>
+                                @foreach (var value in field.ValueCounts.OrderByDescending(x => x.Value).Take(10)) { <div class="small">@value.Key：@value.Value</div> }
+                            }
+                            @foreach (var violation in GetViolations(field.FieldName))
+                            {
+                                <div class="alert alert-warning py-2 mt-3 mb-0"><strong>@QualityCheckTypes.Label(violation.Check)</strong>：@violation.Message</div>
+                            }
+                        </div></td></tr>
                     }
                 }
                 </tbody>
@@ -119,54 +97,35 @@ else
 
     private async Task LoadAsync()
     {
+        _loading = true;
         await HistoryStore.InitializeAsync();
-        _jobs = (await HistoryStore.GetRecentAsync(100))
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
-            .OrderByDescending(x => x.StartedAtUtc)
-            .ToList();
-
-        if (_jobs.Count > 0)
-        {
-            _selectedJobId = _jobs[0].Id;
-            LoadSelectedJob();
-        }
+        _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).ToList();
+        if (_jobs.Count > 0) { _selectedJobId = _jobs[0].Id; LoadSelectedJob(); }
         _loading = false;
     }
 
     private Task OnJobChanged(ChangeEventArgs args)
     {
-        if (Guid.TryParse(args.Value?.ToString(), out var id))
-        {
-            _selectedJobId = id;
-            _selectedField = null;
-            LoadSelectedJob();
-        }
+        if (Guid.TryParse(args.Value?.ToString(), out var id)) { _selectedJobId = id; _selectedField = null; LoadSelectedJob(); }
         return Task.CompletedTask;
     }
+
+    private void ToggleField(string field) => _selectedField = _selectedField == field ? null : field;
 
     private void LoadSelectedJob()
     {
         var job = _jobs.FirstOrDefault(x => x.Id == _selectedJobId);
         if (job is null || string.IsNullOrWhiteSpace(job.ResultJson)) return;
-
         try
         {
             var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
             _fields = result?.FieldStatistics ?? new List<FieldStatistic>();
             _violations = result?.QualityViolations ?? new List<FieldViolation>();
         }
-        catch (JsonException)
-        {
-            _fields = new();
-            _violations = new();
-        }
+        catch (JsonException) { _fields = new(); _violations = new(); }
     }
 
     private int GetViolationCount(string field) => _violations.Count(x => string.Equals(x.Field, field, StringComparison.Ordinal));
     private List<FieldViolation> GetViolations(string field) => _violations.Where(x => string.Equals(x.Field, field, StringComparison.Ordinal)).ToList();
-
-    private static string FormatRange(FieldStatistic field)
-        => field.MinNumber.HasValue && field.MaxNumber.HasValue
-            ? $"{field.MinNumber:G6} ~ {field.MaxNumber:G6}"
-            : "-";
+    private static string FormatRange(FieldStatistic field) => field.MinNumber.HasValue && field.MaxNumber.HasValue ? $"{field.MinNumber:G6} ~ {field.MaxNumber:G6}" : "-";
 }
