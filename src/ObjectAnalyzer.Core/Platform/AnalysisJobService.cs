@@ -20,10 +20,7 @@ public sealed class AnalysisJobService
         _webhookDeliveryStore = webhookDeliveryStore;
     }
 
-    public async Task<AnalysisJob> StartAsync(
-        string sourceName,
-        string sourceType,
-        CancellationToken cancellationToken = default)
+    public async Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
     {
         var job = new AnalysisJob
         {
@@ -32,15 +29,11 @@ public sealed class AnalysisJobService
             Status = AnalysisJobStatus.Running,
             StartedAtUtc = DateTime.UtcNow
         };
-
         await _historyStore.SaveAsync(job, cancellationToken);
         return job;
     }
 
-    public async Task CompleteAsync(
-        AnalysisJob job,
-        AnalysisResult result,
-        CancellationToken cancellationToken = default)
+    public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, CancellationToken cancellationToken = default)
     {
         var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded
@@ -59,59 +52,63 @@ public sealed class AnalysisJobService
         job.ResultJson = JsonSerializer.Serialize(result);
 
         await _historyStore.SaveAsync(job, cancellationToken);
-        await EnqueueAlertsAsync(job, result, previousJob?.QualityScore, cancellationToken);
+        await EnqueueAlertsAsync(job, result, previousJob, cancellationToken);
     }
 
-    public async Task FailAsync(
-        AnalysisJob job,
-        Exception exception,
-        CancellationToken cancellationToken = default)
+    public async Task FailAsync(AnalysisJob job, Exception exception, CancellationToken cancellationToken = default)
     {
         job.Status = AnalysisJobStatus.Failed;
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.ErrorMessage = exception.Message;
-
         await _historyStore.SaveAsync(job, cancellationToken);
     }
 
-    public async Task CancelAsync(
-        AnalysisJob job,
-        CancellationToken cancellationToken = default)
+    public async Task CancelAsync(AnalysisJob job, CancellationToken cancellationToken = default)
     {
         job.Status = AnalysisJobStatus.Cancelled;
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.ErrorMessage = "分析已取消。";
-
         await _historyStore.SaveAsync(job, cancellationToken);
     }
 
     private async Task EnqueueAlertsAsync(
         AnalysisJob job,
         AnalysisResult result,
-        double? previousScore,
+        AnalysisJob? previousJob,
         CancellationToken cancellationToken)
     {
         if (!job.QualityScore.HasValue) return;
 
+        double? previousScore = previousJob?.QualityScore;
+        var scoreDelta = previousScore.HasValue
+            ? job.QualityScore.Value - previousScore.Value
+            : (double?)null;
+
         var rules = await _alertRuleStore.GetAllAsync(cancellationToken);
         foreach (var rule in rules)
         {
-            if (!AlertEvaluator.ShouldNotify(rule, result, job.QualityScore.Value))
+            if (!AlertEvaluator.ShouldNotify(rule, result, job.QualityScore.Value, scoreDelta))
                 continue;
             if (string.IsNullOrWhiteSpace(rule.WebhookUrl))
                 continue;
 
+            var regression = scoreDelta.HasValue && scoreDelta.Value < 0
+                ? QualityRegressionAnalyzer.Analyze(
+                    DeserializeResult(previousJob?.ResultJson), result)
+                : null;
+
             var webhookEvent = new WebhookEvent
             {
-                EventType = "quality.alert",
+                EventType = scoreDelta is <= -0.01 ? "quality.alert.regression" : "quality.alert",
                 OccurredAtUtc = DateTime.UtcNow,
                 JobId = job.Id,
                 Source = job.SourceName,
                 PreviousScore = previousScore,
                 CurrentScore = job.QualityScore,
-                IssueCount = job.IssueCount
+                IssueCount = job.IssueCount,
+                Message = BuildAlertMessage(scoreDelta, regression)
             };
 
             await _webhookDeliveryStore.EnqueueAsync(new WebhookDelivery
@@ -125,5 +122,19 @@ public sealed class AnalysisJobService
                 NextAttemptAtUtc = DateTime.UtcNow
             }, cancellationToken);
         }
+    }
+
+    private static AnalysisResult DeserializeResult(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new AnalysisResult();
+        try { return JsonSerializer.Deserialize<AnalysisResult>(json) ?? new AnalysisResult(); }
+        catch (JsonException) { return new AnalysisResult(); }
+    }
+
+    private static string BuildAlertMessage(double? scoreDelta, QualityRegressionReport? regression)
+    {
+        if (!scoreDelta.HasValue) return "数据质量告警。";
+        if (regression is null) return $"质量分较上一次变化 {scoreDelta.Value:+0.00;-0.00;0.00}。";
+        return $"质量分较上一次变化 {scoreDelta.Value:+0.00;-0.00;0.00}，发现 {regression.FieldRegressions.Count} 个回归字段和 {regression.ViolationRegressions.Count} 类增加的质量违规。";
     }
 }
