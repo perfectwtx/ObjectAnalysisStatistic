@@ -13,7 +13,7 @@ namespace ObjectAnalyzer.Analysis.Pipeline;
 public static class AnalysisPipeline
 {
     /// <summary>
-    /// 执行分析管线。已解析记录流全程惰性传递；仅模糊去重 / 分布草图场景物化一次。
+    /// 执行分析管线，并向宿主暴露统一的生命周期事件。
     /// </summary>
     public static PipelineResult Execute(
         AnalysisOptions options,
@@ -22,7 +22,35 @@ public static class AnalysisPipeline
         CancellationToken cancellationToken = default)
     {
         var ctx = runContext ?? new AnalysisRunContext();
+        ctx.ExecutionObserver?.OnStarted();
 
+        try
+        {
+            var result = ExecuteCore(options, rules, ctx, cancellationToken);
+            ctx.ExecutionObserver?.OnCompleted(result);
+            return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            ctx.ExecutionObserver?.OnCancelled();
+            throw;
+        }
+        catch (Exception ex)
+        {
+            ctx.ExecutionObserver?.OnFailed(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 原始分析实现。生命周期管理由 Execute 统一负责，避免污染具体分析步骤。
+    /// </summary>
+    private static PipelineResult ExecuteCore(
+        AnalysisOptions options,
+        AnalysisRules? rules,
+        AnalysisRunContext ctx,
+        CancellationToken cancellationToken)
+    {
         // 1. 解析分发：数据库直连 / root-path 整体投影 / 常规文件
         IEnumerable<Dictionary<string, object?>> objects = ParseDispatch(options, rules, ctx);
 
