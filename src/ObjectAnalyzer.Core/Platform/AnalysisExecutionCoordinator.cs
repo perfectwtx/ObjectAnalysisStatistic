@@ -24,12 +24,12 @@ public sealed class AnalysisExecutionCoordinator
         try
         {
             var result = await execute(cancellationToken);
-            await _jobService.CompleteAsync(job, result, cancellationToken);
+            await _jobService.CompleteAsync(job, result, CancellationToken.None);
             return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await _jobService.FailAsync(job, new OperationCanceledException("分析已取消。"), CancellationToken.None);
+            await _jobService.CancelAsync(job, CancellationToken.None);
             throw;
         }
         catch (Exception ex)
