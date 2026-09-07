@@ -27,6 +27,10 @@ public static class AlertEvaluator
         if (rule.BreakingSchemaChange && result.SchemaDiff?.HasBreakingChanges == true)
             return true;
 
+        if (rule.DistributionDriftAbove.HasValue
+            && result.DistributionDiff?.SignificantDriftCount >= rule.DistributionDriftAbove.Value)
+            return true;
+
         return false;
     }
 }
