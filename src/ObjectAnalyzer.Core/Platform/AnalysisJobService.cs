@@ -75,6 +75,18 @@ public sealed class AnalysisJobService
         await _historyStore.SaveAsync(job, cancellationToken);
     }
 
+    public async Task CancelAsync(
+        AnalysisJob job,
+        CancellationToken cancellationToken = default)
+    {
+        job.Status = AnalysisJobStatus.Cancelled;
+        job.CompletedAtUtc = DateTime.UtcNow;
+        job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
+        job.ErrorMessage = "分析已取消。";
+
+        await _historyStore.SaveAsync(job, cancellationToken);
+    }
+
     private async Task EnqueueAlertsAsync(
         AnalysisJob job,
         AnalysisResult result,
