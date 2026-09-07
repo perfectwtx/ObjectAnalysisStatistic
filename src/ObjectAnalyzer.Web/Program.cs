@@ -29,12 +29,18 @@ builder.Services.AddScoped<LocalizationService>();
 
 var historyDbPath = Path.Combine(appBaseDir, "data", "objectanalyzer.db");
 builder.Services.AddAnalysisPlatform(historyDbPath);
+builder.Services.AddHttpClient("WebhookDelivery", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddHostedService<WebhookDeliveryWorker>();
 
 var app = builder.Build();
 
 // 平台历史数据库初始化
 await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IAnalysisHistoryStore>().InitializeAsync();
 await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IAlertRuleStore>().InitializeAsync();
+await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IWebhookDeliveryStore>().InitializeAsync();
 
 // ── 静态资产启用 ──
 if (!builder.Environment.IsDevelopment())
@@ -83,7 +89,7 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseStatusCodePagesWithReExecute("/not-found", createScopeForErrors: true);
 app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
