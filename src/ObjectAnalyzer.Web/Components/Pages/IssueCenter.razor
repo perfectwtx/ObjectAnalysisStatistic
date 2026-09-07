@@ -1,0 +1,167 @@
+@page "/issues"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>Issue Center</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>质量问题中心</h1>
+            <p class="text-muted mb-0">按分析任务查看字段级质量违规，定位影响质量分的问题来源。</p>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+    </div>
+
+    @if (_loading)
+    {
+        <p>加载中...</p>
+    }
+    else if (_jobs.Count == 0)
+    {
+        <div class="alert alert-info">暂无分析任务。</div>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3"><strong>@_selectedIssues.Count</strong><div class="text-muted small">当前问题数</div></div>
+                    <div class="col-md-3"><strong>@_selectedIssues.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><div class="text-muted small">问题字段数</div></div>
+                    <div class="col-md-3"><strong>@_selectedIssues.Sum(x => x.Count)</strong><div class="text-muted small">违规发生次数</div></div>
+                    <div class="col-md-3"><strong>@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</strong><div class="text-muted small">质量分</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>问题明细</span>
+                <select class="form-select form-select-sm" style="max-width: 360px" @onchange="OnJobChanged">
+                    @foreach (var job in _jobs)
+                    {
+                        <option value="@job.Id" selected="@(job.Id == _selectedJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                    }
+                </select>
+            </div>
+            @if (_selectedIssues.Count == 0)
+            {
+                <div class="card-body"><div class="alert alert-success mb-0">本次分析没有质量违规。数据质量检查通过。</div></div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>字段</th>
+                                <th>检查类型</th>
+                                <th>次数</th>
+                                <th>问题说明</th>
+                                <th>样本</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var issue in _selectedIssues.OrderByDescending(x => x.Count).ThenBy(x => x.Field))
+                            {
+                                <tr>
+                                    <td><strong>@issue.Field</strong></td>
+                                    <td><span class="badge text-bg-warning">@issue.Check</span></td>
+                                    <td>@issue.Count</td>
+                                    <td>@issue.Message</td>
+                                    <td class="small text-muted">@issue.Samples</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<AnalysisJob> _jobs = new();
+    private readonly List<IssueRow> _selectedIssues = new();
+    private AnalysisJob? _selectedJob;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _jobs.Clear();
+            _jobs.AddRange((await HistoryStore.GetRecentAsync(100))
+                .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+                .OrderByDescending(x => x.StartedAtUtc));
+
+            _selectedJob = _jobs.FirstOrDefault();
+            LoadIssues(_selectedJob);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id))
+        {
+            _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
+            LoadIssues(_selectedJob);
+        }
+        return Task.CompletedTask;
+    }
+
+    private void LoadIssues(AnalysisJob? job)
+    {
+        _selectedIssues.Clear();
+        if (job is null || string.IsNullOrWhiteSpace(job.ResultJson))
+            return;
+
+        try
+        {
+            using var document = JsonDocument.Parse(job.ResultJson);
+            if (!document.RootElement.TryGetProperty("qualityViolations", out var violations) || violations.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var item in violations.EnumerateArray())
+            {
+                _selectedIssues.Add(new IssueRow(
+                    GetString(item, "field"),
+                    GetString(item, "check"),
+                    GetLong(item, "count"),
+                    GetString(item, "message"),
+                    GetSamples(item)));
+            }
+        }
+        catch (JsonException)
+        {
+            // 历史结果损坏时不影响问题中心其它任务展示。
+        }
+    }
+
+    private static string GetString(JsonElement item, string name) =>
+        item.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null
+            ? value.ToString()
+            : "-";
+
+    private static long GetLong(JsonElement item, string name) =>
+        item.TryGetProperty(name, out var value) && value.TryGetInt64(out var number) ? number : 0;
+
+    private static string GetSamples(JsonElement item)
+    {
+        if (!item.TryGetProperty("samples", out var samples) || samples.ValueKind != JsonValueKind.Array)
+            return "-";
+
+        return string.Join(" | ", samples.EnumerateArray().Take(5).Select(x => x.ToString()));
+    }
+
+    private sealed record IssueRow(string Field, string Check, long Count, string Message, string Samples);
+}
