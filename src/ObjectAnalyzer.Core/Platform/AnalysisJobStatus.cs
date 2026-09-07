@@ -5,5 +5,6 @@ public enum AnalysisJobStatus
     Pending,
     Running,
     Succeeded,
-    Failed
+    Failed,
+    Cancelled
 }
