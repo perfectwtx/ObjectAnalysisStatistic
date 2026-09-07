@@ -1,0 +1,128 @@
+@page "/quality/regression"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>质量回归</PageTitle>
+
+<h1 class="mb-4">质量回归</h1>
+<p class="text-muted">自动比较最近两次成功分析，定位质量下降的字段和新增违规。</p>
+
+@if (_loading)
+{
+    <div class="alert alert-info">正在加载历史分析数据...</div>
+}
+else if (_jobs.Count < 2)
+{
+    <div class="alert alert-secondary">至少需要两次成功分析，才能进行质量回归检测。</div>
+}
+else if (_report is null)
+{
+    <div class="alert alert-warning">最近两次分析没有可比较的结果快照。</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">质量分变化</div><div class="display-6 @ScoreClass(_report.ScoreDelta)">@FormatDelta(_report.ScoreDelta)</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">问题数变化</div><div class="display-6 @DeltaClass(-_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">回归字段</div><div class="display-6">@_report.FieldRegressions.Count(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">新增/增加违规</div><div class="display-6">@_report.ViolationRegressions.Count</div></div></div></div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center"><span>回归结论</span><span class="badge @StatusClass(_report.Status)">@StatusText(_report.Status)</span></div>
+        <div class="card-body">
+            <div class="row g-3 small">
+                <div class="col-md-6"><strong>基线：</strong>@_jobs[1].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")，@_jobs[1].SourceName，质量分 @FormatScore(_jobs[1].QualityScore)</div>
+                <div class="col-md-6"><strong>当前：</strong>@_jobs[0].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")，@_jobs[0].SourceName，质量分 @FormatScore(_jobs[0].QualityScore)</div>
+            </div>
+            <hr />
+            <div>对象数：@_report.PreviousObjectCount.ToString("N0") → @_report.CurrentObjectCount.ToString("N0")</div>
+            <div>问题数：@_jobs[1].IssueCount.ToString("N0") → @_jobs[0].IssueCount.ToString("N0")</div>
+        </div>
+    </div>
+
+    @if (_report.FieldRegressions.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">字段质量变化</div>
+            <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead><tr><th>字段</th><th>状态</th><th>覆盖率变化</th><th>空值率变化</th><th>唯一率变化</th><th>原因</th></tr></thead>
+                <tbody>@foreach (var item in _report.FieldRegressions)
+                {
+                    <tr><td><code>@item.FieldName</code></td><td><span class="badge @StatusClass(item.Status)">@StatusText(item.Status)</span></td><td>@FormatDelta(item.CoverageDelta * 100)</td><td>@FormatDelta(item.NullRateDelta * 100)</td><td>@(item.UniquenessDelta.HasValue ? FormatDelta(item.UniquenessDelta.Value * 100) : "-")</td><td>@string.Join("；", item.Reasons)</td></tr>
+                }</tbody>
+            </table></div></div>
+        </div>
+    }
+
+    @if (_report.ViolationRegressions.Count > 0)
+    {
+        <div class="card">
+            <div class="card-header">质量违规回归</div>
+            <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead><tr><th>字段</th><th>检查类型</th><th>基线</th><th>当前</th><th>增加</th><th>说明</th></tr></thead>
+                <tbody>@foreach (var item in _report.ViolationRegressions)
+                {
+                    <tr><td><code>@(string.IsNullOrWhiteSpace(item.FieldName) ? "数据集" : item.FieldName)</code></td><td>@item.Check</td><td>@item.PreviousCount</td><td>@item.CurrentCount</td><td><span class="text-danger">+@item.Delta</span></td><td>@(item.IsNew ? "新出现" : "违规增加")</td></tr>
+                }</tbody>
+            </table></div></div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success">未发现质量违规增加。</div>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private List<AnalysisJob> _jobs = new();
+    private QualityRegressionReport? _report;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        await HistoryStore.InitializeAsync();
+        _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded).OrderByDescending(x => x.StartedAtUtc).ToList();
+        if (_jobs.Count >= 2 && !string.IsNullOrWhiteSpace(_jobs[0].ResultJson) && !string.IsNullOrWhiteSpace(_jobs[1].ResultJson))
+        {
+            try
+            {
+                var current = JsonSerializer.Deserialize<AnalysisResult>(_jobs[0].ResultJson!);
+                var previous = JsonSerializer.Deserialize<AnalysisResult>(_jobs[1].ResultJson!);
+                if (current is not null && previous is not null)
+                    _report = QualityRegressionAnalyzer.Analyze(previous, current, _jobs[1].QualityScore, _jobs[0].QualityScore);
+            }
+            catch (JsonException) { _report = null; }
+        }
+        _loading = false;
+    }
+
+    private static string FormatScore(double? value) => value.HasValue ? value.Value.ToString("F1") : "-";
+    private static string FormatDelta(double value) => $"{(value >= 0 ? "+" : "")}{value:F1}";
+    private static string FormatIntDelta(int value) => $"{(value >= 0 ? "+" : "")}{value:N0}";
+    private static string ScoreClass(double value) => value > 0 ? "text-success" : value < 0 ? "text-danger" : "";
+    private static string DeltaClass(int value) => value > 0 ? "text-danger" : value < 0 ? "text-success" : "";
+    private static string StatusClass(QualityRegressionStatus status) => status switch
+    {
+        QualityRegressionStatus.Severe => "bg-danger",
+        QualityRegressionStatus.Regressed => "bg-warning text-dark",
+        QualityRegressionStatus.Improved => "bg-success",
+        QualityRegressionStatus.Added => "bg-info text-dark",
+        QualityRegressionStatus.Removed => "bg-secondary",
+        _ => "bg-secondary"
+    };
+    private static string StatusText(QualityRegressionStatus status) => status switch
+    {
+        QualityRegressionStatus.Severe => "严重回归",
+        QualityRegressionStatus.Regressed => "发生回归",
+        QualityRegressionStatus.Improved => "质量改善",
+        QualityRegressionStatus.Added => "新增字段",
+        QualityRegressionStatus.Removed => "字段消失",
+        _ => "稳定"
+    };
+}
