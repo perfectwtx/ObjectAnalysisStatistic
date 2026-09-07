@@ -8,6 +8,7 @@ public static class PlatformServiceCollectionExtensions
     {
         services.AddSingleton<IAnalysisHistoryStore>(_ => new SqliteAnalysisHistoryStore(databasePath));
         services.AddSingleton<IAlertRuleStore>(_ => new SqliteAlertRuleStore(databasePath));
+        services.AddSingleton<IWebhookDeliveryStore>(_ => new SqliteWebhookDeliveryStore(databasePath));
         services.AddScoped<AnalysisJobService>();
         services.AddHttpClient<WebhookNotifier>(client =>
         {
