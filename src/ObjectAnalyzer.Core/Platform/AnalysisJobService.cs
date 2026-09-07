@@ -10,10 +10,7 @@ public sealed class AnalysisJobService
     private readonly IAlertRuleStore _alertRuleStore;
     private readonly IWebhookDeliveryStore _webhookDeliveryStore;
 
-    public AnalysisJobService(
-        IAnalysisHistoryStore historyStore,
-        IAlertRuleStore alertRuleStore,
-        IWebhookDeliveryStore webhookDeliveryStore)
+    public AnalysisJobService(IAnalysisHistoryStore historyStore, IAlertRuleStore alertRuleStore, IWebhookDeliveryStore webhookDeliveryStore)
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
@@ -22,13 +19,7 @@ public sealed class AnalysisJobService
 
     public async Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
     {
-        var job = new AnalysisJob
-        {
-            SourceName = sourceName,
-            SourceType = sourceType,
-            Status = AnalysisJobStatus.Running,
-            StartedAtUtc = DateTime.UtcNow
-        };
+        var job = new AnalysisJob { SourceName = sourceName, SourceType = sourceType, Status = AnalysisJobStatus.Running, StartedAtUtc = DateTime.UtcNow };
         await _historyStore.SaveAsync(job, cancellationToken);
         return job;
     }
@@ -73,31 +64,18 @@ public sealed class AnalysisJobService
         await _historyStore.SaveAsync(job, cancellationToken);
     }
 
-    private async Task EnqueueAlertsAsync(
-        AnalysisJob job,
-        AnalysisResult result,
-        AnalysisJob? previousJob,
-        CancellationToken cancellationToken)
+    private async Task EnqueueAlertsAsync(AnalysisJob job, AnalysisResult result, AnalysisJob? previousJob, CancellationToken cancellationToken)
     {
         if (!job.QualityScore.HasValue) return;
 
-        double? previousScore = previousJob?.QualityScore;
-        var scoreDelta = previousScore.HasValue
-            ? job.QualityScore.Value - previousScore.Value
-            : (double?)null;
-
+        var previousScore = previousJob?.QualityScore;
+        var scoreDelta = previousScore.HasValue ? job.QualityScore.Value - previousScore.Value : (double?)null;
         var rules = await _alertRuleStore.GetAllAsync(cancellationToken);
+
         foreach (var rule in rules)
         {
-            if (!AlertEvaluator.ShouldNotify(rule, result, job.QualityScore.Value, scoreDelta))
-                continue;
-            if (string.IsNullOrWhiteSpace(rule.WebhookUrl))
-                continue;
-
-            var regression = scoreDelta.HasValue && scoreDelta.Value < 0
-                ? QualityRegressionAnalyzer.Analyze(
-                    DeserializeResult(previousJob?.ResultJson), result)
-                : null;
+            if (!AlertEvaluator.ShouldNotify(rule, result, job.QualityScore.Value, scoreDelta)) continue;
+            if (string.IsNullOrWhiteSpace(rule.WebhookUrl)) continue;
 
             var webhookEvent = new WebhookEvent
             {
@@ -107,8 +85,7 @@ public sealed class AnalysisJobService
                 Source = job.SourceName,
                 PreviousScore = previousScore,
                 CurrentScore = job.QualityScore,
-                IssueCount = job.IssueCount,
-                Message = BuildAlertMessage(scoreDelta, regression)
+                IssueCount = job.IssueCount
             };
 
             await _webhookDeliveryStore.EnqueueAsync(new WebhookDelivery
@@ -122,19 +99,5 @@ public sealed class AnalysisJobService
                 NextAttemptAtUtc = DateTime.UtcNow
             }, cancellationToken);
         }
-    }
-
-    private static AnalysisResult DeserializeResult(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return new AnalysisResult();
-        try { return JsonSerializer.Deserialize<AnalysisResult>(json) ?? new AnalysisResult(); }
-        catch (JsonException) { return new AnalysisResult(); }
-    }
-
-    private static string BuildAlertMessage(double? scoreDelta, QualityRegressionReport? regression)
-    {
-        if (!scoreDelta.HasValue) return "数据质量告警。";
-        if (regression is null) return $"质量分较上一次变化 {scoreDelta.Value:+0.00;-0.00;0.00}。";
-        return $"质量分较上一次变化 {scoreDelta.Value:+0.00;-0.00;0.00}，发现 {regression.FieldRegressions.Count} 个回归字段和 {regression.ViolationRegressions.Count} 类增加的质量违规。";
     }
 }
