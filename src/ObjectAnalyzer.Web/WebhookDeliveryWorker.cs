@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+using System.Text;
 using Microsoft.Extensions.Hosting;
 using ObjectAnalyzer.Platform;
 
@@ -58,7 +58,7 @@ public sealed class WebhookDeliveryWorker : BackgroundService
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, delivery.WebhookUrl)
             {
-                Content = JsonContent.Create(new PayloadEnvelope(delivery.EventType, delivery.PayloadJson))
+                Content = new StringContent(delivery.PayloadJson, Encoding.UTF8, "application/json")
             };
             request.Headers.TryAddWithoutValidation("X-ObjectAnalyzer-Event", delivery.EventType);
             request.Headers.TryAddWithoutValidation("X-ObjectAnalyzer-Delivery", delivery.Id.ToString());
@@ -117,6 +117,4 @@ public sealed class WebhookDeliveryWorker : BackgroundService
                 error);
         }
     }
-
-    private sealed record PayloadEnvelope(string EventType, string PayloadJson);
 }
