@@ -23,23 +23,36 @@ public sealed class SqliteAlertRuleStore : IAlertRuleStore
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE IF NOT EXISTS alert_rules (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                enabled INTEGER NOT NULL,
-                quality_score_below REAL NULL,
-                completeness_below REAL NULL,
-                critical_issue INTEGER NOT NULL,
-                breaking_schema_change INTEGER NOT NULL,
-                distribution_drift_above REAL NULL,
-                webhook_url TEXT NULL
-            );
-            CREATE INDEX IF NOT EXISTS ix_alert_rules_enabled
-                ON alert_rules(enabled);
-            """;
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE IF NOT EXISTS alert_rules (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    enabled INTEGER NOT NULL,
+                    quality_score_below REAL NULL,
+                    completeness_below REAL NULL,
+                    critical_issue INTEGER NOT NULL,
+                    breaking_schema_change INTEGER NOT NULL,
+                    distribution_drift_above REAL NULL,
+                    quality_regression_below REAL NULL,
+                    webhook_url TEXT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_alert_rules_enabled ON alert_rules(enabled);
+                """;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        try
+        {
+            await using var migration = connection.CreateCommand();
+            migration.CommandText = "ALTER TABLE alert_rules ADD COLUMN quality_regression_below REAL NULL";
+            await migration.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase))
+        {
+            // 已有数据库完成过该轻量迁移。
+        }
     }
 
     public async Task<IReadOnlyList<AlertRule>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -50,8 +63,7 @@ public sealed class SqliteAlertRuleStore : IAlertRuleStore
         command.CommandText = "SELECT * FROM alert_rules ORDER BY name";
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var result = new List<AlertRule>();
-        while (await reader.ReadAsync(cancellationToken))
-            result.Add(ReadRule(reader));
+        while (await reader.ReadAsync(cancellationToken)) result.Add(ReadRule(reader));
         return result;
     }
 
@@ -74,10 +86,12 @@ public sealed class SqliteAlertRuleStore : IAlertRuleStore
         command.CommandText = """
             INSERT INTO alert_rules
             (id, name, enabled, quality_score_below, completeness_below,
-             critical_issue, breaking_schema_change, distribution_drift_above, webhook_url)
+             critical_issue, breaking_schema_change, distribution_drift_above,
+             quality_regression_below, webhook_url)
             VALUES
             ($id, $name, $enabled, $qualityScoreBelow, $completenessBelow,
-             $criticalIssue, $breakingSchemaChange, $distributionDriftAbove, $webhookUrl)
+             $criticalIssue, $breakingSchemaChange, $distributionDriftAbove,
+             $qualityRegressionBelow, $webhookUrl)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 enabled = excluded.enabled,
@@ -86,6 +100,7 @@ public sealed class SqliteAlertRuleStore : IAlertRuleStore
                 critical_issue = excluded.critical_issue,
                 breaking_schema_change = excluded.breaking_schema_change,
                 distribution_drift_above = excluded.distribution_drift_above,
+                quality_regression_below = excluded.quality_regression_below,
                 webhook_url = excluded.webhook_url;
             """;
         command.Parameters.AddWithValue("$id", rule.Id.ToString("D"));
@@ -96,6 +111,7 @@ public sealed class SqliteAlertRuleStore : IAlertRuleStore
         command.Parameters.AddWithValue("$criticalIssue", rule.CriticalIssue ? 1 : 0);
         command.Parameters.AddWithValue("$breakingSchemaChange", rule.BreakingSchemaChange ? 1 : 0);
         command.Parameters.AddWithValue("$distributionDriftAbove", (object?)rule.DistributionDriftAbove ?? DBNull.Value);
+        command.Parameters.AddWithValue("$qualityRegressionBelow", (object?)rule.QualityRegressionBelow ?? DBNull.Value);
         command.Parameters.AddWithValue("$webhookUrl", (object?)rule.WebhookUrl ?? DBNull.Value);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -120,6 +136,7 @@ public sealed class SqliteAlertRuleStore : IAlertRuleStore
         CriticalIssue = reader.GetInt32(5) != 0,
         BreakingSchemaChange = reader.GetInt32(6) != 0,
         DistributionDriftAbove = reader.IsDBNull(7) ? null : reader.GetDouble(7),
-        WebhookUrl = reader.IsDBNull(8) ? null : reader.GetString(8)
+        QualityRegressionBelow = reader.IsDBNull(8) ? null : reader.GetDouble(8),
+        WebhookUrl = reader.IsDBNull(9) ? null : reader.GetString(9)
     };
 }
