@@ -10,6 +10,7 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton<IAlertRuleStore>(_ => new SqliteAlertRuleStore(databasePath));
         services.AddSingleton<IWebhookDeliveryStore>(_ => new SqliteWebhookDeliveryStore(databasePath));
         services.AddScoped<AnalysisJobService>();
+        services.AddScoped<AnalysisExecutionCoordinator>();
         services.AddHttpClient<WebhookNotifier>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(10);
