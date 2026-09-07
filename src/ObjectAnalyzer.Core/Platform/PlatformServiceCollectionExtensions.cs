@@ -4,8 +4,9 @@ namespace ObjectAnalyzer.Platform;
 
 public static class PlatformServiceCollectionExtensions
 {
-    public static IServiceCollection AddAnalysisPlatform(this IServiceCollection services)
+    public static IServiceCollection AddAnalysisPlatform(this IServiceCollection services, string databasePath)
     {
+        services.AddSingleton<IAnalysisHistoryStore>(_ => new SqliteAnalysisHistoryStore(databasePath));
         services.AddScoped<AnalysisJobService>();
         services.AddHttpClient<WebhookNotifier>(client =>
         {
