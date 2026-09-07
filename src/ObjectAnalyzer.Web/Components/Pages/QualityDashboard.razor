@@ -1,6 +1,6 @@
 @page "/quality"
 @using ObjectAnalyzer.Platform
-@inject IHostEnvironment HostEnvironment
+@inject IAnalysisHistoryStore HistoryStore
 
 <PageTitle>Quality Dashboard</PageTitle>
 
@@ -54,17 +54,18 @@
     private List<AnalysisJob> _jobs = new();
     private bool _loading;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await HistoryStore.InitializeAsync();
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
         _loading = true;
         try
         {
-            var store = new SqliteAnalysisHistoryStore(
-                Path.Combine(HostEnvironment.ContentRootPath, "data", "objectanalyzer.db"));
-            await store.InitializeAsync();
-            _jobs = (await store.GetRecentAsync(100)).ToList();
+            _jobs = (await HistoryStore.GetRecentAsync(100)).ToList();
         }
         finally
         {
