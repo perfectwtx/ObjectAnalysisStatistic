@@ -34,6 +34,7 @@ var app = builder.Build();
 
 // 平台历史数据库初始化
 await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IAnalysisHistoryStore>().InitializeAsync();
+await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IAlertRuleStore>().InitializeAsync();
 
 // ── 静态资产启用 ──
 if (!builder.Environment.IsDevelopment())
