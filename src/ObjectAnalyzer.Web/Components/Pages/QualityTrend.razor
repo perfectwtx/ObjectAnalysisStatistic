@@ -1,0 +1,117 @@
+@page "/quality/trend"
+@using System.Text.Json
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>质量趋势</PageTitle>
+
+<h1 class="mb-4">质量趋势</h1>
+
+@if (_loading)
+{
+    <div class="alert alert-info">正在加载历史分析数据...</div>
+}
+else if (_jobs.Count == 0)
+{
+    <div class="alert alert-secondary">暂无历史分析数据。</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">分析次数</div><div class="display-6">@_jobs.Count</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">最新质量分</div><div class="display-6">@FormatScore(_jobs[0].QualityScore)</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">平均质量分</div><div class="display-6">@FormatScore(_jobs.Where(x => x.QualityScore.HasValue).Select(x => x.QualityScore).Average())</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">累计问题</div><div class="display-6">@_jobs.Sum(x => x.IssueCount)</div></div></div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">质量分趋势</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题数</th><th>对象数</th><th>状态</th></tr></thead>
+                    <tbody>
+                    @foreach (var job in _jobs)
+                    {
+                        <tr>
+                            <td>@job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@job.SourceName</td>
+                            <td>
+                                @if (job.QualityScore is double score)
+                                {
+                                    <span class="badge @(score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger")">@score.ToString("F1")</span>
+                                }
+                                else { <span class="text-muted">-</span> }
+                            </td>
+                            <td>@job.IssueCount</td>
+                            <td>@job.TotalObjects</td>
+                            <td>@GetStatusText(job.Status)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">趋势解读</div>
+        <div class="card-body">
+            @if (_scores.Count >= 2)
+            {
+                var latest = _scores[0];
+                var previous = _scores[1];
+                var delta = latest - previous;
+                <p class="mb-1">最近一次质量分较上一次 <strong>@(delta >= 0 ? "+" : "")@delta.ToString("F1")</strong>。</p>
+                <p class="text-muted mb-0">平台后续可以基于该历史序列增加趋势图、环比变化和质量回归告警。</p>
+            }
+            else
+            {
+                <p class="text-muted mb-0">至少需要两次有效质量评分后才能判断质量变化趋势。</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<AnalysisJob> _jobs = new();
+    private List<double> _scores = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        await HistoryStore.InitializeAsync();
+        var jobs = await HistoryStore.GetRecentAsync(100);
+        _jobs = jobs
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+            .OrderByDescending(x => x.StartedAtUtc)
+            .ToList();
+        _scores = _jobs.Where(x => x.QualityScore.HasValue).Select(x => x.QualityScore!.Value).ToList();
+        _loading = false;
+    }
+
+    private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
+
+    private static string GetStatusText(AnalysisJobStatus status) => status switch
+    {
+        AnalysisJobStatus.Succeeded => "成功",
+        AnalysisJobStatus.Failed => "失败",
+        AnalysisJobStatus.Cancelled => "已取消",
+        AnalysisJobStatus.Running => "运行中",
+        _ => "等待中"
+    };
+}
