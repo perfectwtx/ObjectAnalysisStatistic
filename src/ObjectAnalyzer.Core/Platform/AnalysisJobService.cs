@@ -3,14 +3,21 @@ using ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Platform;
 
-/// <summary>负责分析作业生命周期、质量评分与历史归档。</summary>
+/// <summary>负责分析作业生命周期、质量评分、历史归档与质量告警入队。</summary>
 public sealed class AnalysisJobService
 {
     private readonly IAnalysisHistoryStore _historyStore;
+    private readonly IAlertRuleStore _alertRuleStore;
+    private readonly IWebhookDeliveryStore _webhookDeliveryStore;
 
-    public AnalysisJobService(IAnalysisHistoryStore historyStore)
+    public AnalysisJobService(
+        IAnalysisHistoryStore historyStore,
+        IAlertRuleStore alertRuleStore,
+        IWebhookDeliveryStore webhookDeliveryStore)
     {
         _historyStore = historyStore;
+        _alertRuleStore = alertRuleStore;
+        _webhookDeliveryStore = webhookDeliveryStore;
     }
 
     public async Task<AnalysisJob> StartAsync(
@@ -35,17 +42,24 @@ public sealed class AnalysisJobService
         AnalysisResult result,
         CancellationToken cancellationToken = default)
     {
+        var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded
+                     && string.Equals(x.SourceName, job.SourceName, StringComparison.OrdinalIgnoreCase)
+                     && x.Id != job.Id)
+            .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc)
+            .FirstOrDefault();
+
         job.Status = AnalysisJobStatus.Succeeded;
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.TotalObjects = result.TotalObjects;
         job.FieldCount = result.FieldStatistics.Count;
         job.QualityScore = QualityScoreCalculator.Calculate(result);
-        job.IssueCount = result.QualityViolations.Count
-                         + result.TotalDuplicateGroups;
+        job.IssueCount = result.QualityViolations.Count + result.TotalDuplicateGroups;
         job.ResultJson = JsonSerializer.Serialize(result);
 
         await _historyStore.SaveAsync(job, cancellationToken);
+        await EnqueueAlertsAsync(job, result, previousJob?.QualityScore, cancellationToken);
     }
 
     public async Task FailAsync(
@@ -59,5 +73,45 @@ public sealed class AnalysisJobService
         job.ErrorMessage = exception.Message;
 
         await _historyStore.SaveAsync(job, cancellationToken);
+    }
+
+    private async Task EnqueueAlertsAsync(
+        AnalysisJob job,
+        AnalysisResult result,
+        double? previousScore,
+        CancellationToken cancellationToken)
+    {
+        if (!job.QualityScore.HasValue) return;
+
+        var rules = await _alertRuleStore.GetAllAsync(cancellationToken);
+        foreach (var rule in rules)
+        {
+            if (!AlertEvaluator.ShouldNotify(rule, result, job.QualityScore.Value))
+                continue;
+            if (string.IsNullOrWhiteSpace(rule.WebhookUrl))
+                continue;
+
+            var webhookEvent = new WebhookEvent
+            {
+                EventType = "quality.alert",
+                OccurredAtUtc = DateTime.UtcNow,
+                JobId = job.Id,
+                Source = job.SourceName,
+                PreviousScore = previousScore,
+                CurrentScore = job.QualityScore,
+                IssueCount = job.IssueCount
+            };
+
+            await _webhookDeliveryStore.EnqueueAsync(new WebhookDelivery
+            {
+                RuleId = rule.Id,
+                JobId = job.Id,
+                EventType = webhookEvent.EventType,
+                WebhookUrl = rule.WebhookUrl,
+                PayloadJson = JsonSerializer.Serialize(webhookEvent),
+                Status = WebhookDeliveryStatus.Pending,
+                NextAttemptAtUtc = DateTime.UtcNow
+            }, cancellationToken);
+        }
     }
 }
