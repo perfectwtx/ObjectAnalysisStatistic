@@ -1,0 +1,82 @@
+@page "/jobs"
+@using ObjectAnalyzer.Platform
+@inject IHostEnvironment HostEnvironment
+
+<PageTitle>Analysis Jobs</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Analysis Jobs</h1>
+            <p class="text-muted mb-0">历史分析作业</p>
+        </div>
+        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
+    </div>
+
+    @if (_loading)
+    {
+        <p>加载中...</p>
+    }
+    else if (_jobs.Count == 0)
+    {
+        <div class="alert alert-info">暂无历史作业。完成一次分析后，作业将显示在这里。</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>数据源</th>
+                        <th>状态</th>
+                        <th>对象数</th>
+                        <th>字段数</th>
+                        <th>质量分</th>
+                        <th>问题数</th>
+                        <th>耗时</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var job in _jobs)
+                {
+                    <tr>
+                        <td>@job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@job.SourceName</td>
+                        <td>@job.Status</td>
+                        <td>@job.TotalObjects.ToString("N0")</td>
+                        <td>@job.FieldCount</td>
+                        <td>@(job.QualityScore?.ToString("F2") ?? "-")</td>
+                        <td>@job.IssueCount</td>
+                        <td>@(job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<AnalysisJob> _jobs = new();
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var store = new SqliteAnalysisHistoryStore(
+                Path.Combine(HostEnvironment.ContentRootPath, "data", "objectanalyzer.db"));
+            await store.InitializeAsync();
+            _jobs.Clear();
+            _jobs.AddRange(await store.GetRecentAsync(100));
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
