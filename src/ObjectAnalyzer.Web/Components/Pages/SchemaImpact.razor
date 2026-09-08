@@ -18,25 +18,15 @@ else if (_job is null)
 }
 else if (_diff is null)
 {
-    <div class="alert alert-secondary">
-        最近一次分析没有 Schema Diff。请先配置基线 Schema 并执行一次分析。
-    </div>
+    <div class="alert alert-secondary">最近一次分析没有 Schema Diff。请先配置基线 Schema 并执行一次分析。</div>
 }
 else
 {
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">破坏性变更</div><div class="display-6">@(_diff.HasBreakingChanges ? "是" : "否")</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">新增字段</div><div class="display-6">@_diff.AddedFields.Count</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">删除字段</div><div class="display-6">@_diff.RemovedFields.Count</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">变更字段</div><div class="display-6">@_diff.ChangedFields.Count</div></div></div>
-        </div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">破坏性变更</div><div class="display-6">@(_diff.HasBreakingChanges ? "是" : "否")</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">新增字段</div><div class="display-6">@_diff.AddedFields.Count</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">删除字段</div><div class="display-6">@_diff.RemovedFields.Count</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">变更字段</div><div class="display-6">@_diff.ChangedFields.Count</div></div></div></div>
     </div>
 
     <div class="card mb-4">
@@ -59,74 +49,22 @@ else
 
     @if (_diff.RemovedFields.Count > 0)
     {
-        <div class="card mb-4">
-            <div class="card-header">删除字段 <span class="badge bg-danger">@_diff.RemovedFields.Count</span></div>
-            <div class="card-body p-0">
-                <div class="table-responsive"><table class="table table-sm mb-0">
-                    <thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead>
-                    <tbody>
-                    @foreach (var field in _diff.RemovedFields)
-                    {
-                        <tr><td>@GetPath(field)</td><td>@GetTypeName(field)</td><td><span class="badge bg-danger">破坏性</span></td></tr>
-                    }
-                    </tbody>
-                </table></div>
-            </div>
-        </div>
+        <div class="card mb-4"><div class="card-header">删除字段 <span class="badge bg-danger">@_diff.RemovedFields.Count</span></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>@foreach (var field in _diff.RemovedFields){<tr><td>@field.Path</td><td>@GetTypeName(field)</td><td><span class="badge bg-danger">破坏性</span></td></tr>}</tbody></table></div></div></div>
     }
 
     @if (_diff.AddedFields.Count > 0)
     {
-        <div class="card mb-4">
-            <div class="card-header">新增字段 <span class="badge bg-success">@_diff.AddedFields.Count</span></div>
-            <div class="card-body p-0">
-                <div class="table-responsive"><table class="table table-sm mb-0">
-                    <thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead>
-                    <tbody>
-                    @foreach (var field in _diff.AddedFields)
-                    {
-                        <tr><td>@GetPath(field)</td><td>@GetTypeName(field)</td><td><span class="badge bg-success">非破坏性</span></td></tr>
-                    }
-                    </tbody>
-                </table></div>
-            </div>
-        </div>
+        <div class="card mb-4"><div class="card-header">新增字段 <span class="badge bg-success">@_diff.AddedFields.Count</span></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>@foreach (var field in _diff.AddedFields){<tr><td>@field.Path</td><td>@GetTypeName(field)</td><td><span class="badge bg-success">非破坏性</span></td></tr>}</tbody></table></div></div></div>
     }
 
     @if (_diff.ChangedFields.Count > 0)
     {
-        <div class="card mb-4">
-            <div class="card-header">字段变更 <span class="badge bg-warning text-dark">@_diff.ChangedFields.Count</span></div>
-            <div class="card-body p-0">
-                <div class="table-responsive"><table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead>
-                    <tbody>
-                    @foreach (var change in _diff.ChangedFields)
-                    {
-                        <tr>
-                            <td>@change.Path</td>
-                            <td><span class="badge @(change.Breaking ? "bg-danger" : "bg-secondary")">@(change.Breaking ? "破坏性" : "普通")</span></td>
-                            <td>
-                                @if (change.Changes.Count == 0)
-                                {
-                                    <span class="text-muted">无详细变更</span>
-                                }
-                                else
-                                {
-                                    <ul class="mb-0 ps-3">
-                                    @foreach (var item in change.Changes)
-                                    {
-                                        <li>@item.Property: @item.PreviousValue → @item.CurrentValue</li>
-                                    }
-                                    </ul>
-                                }
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table></div>
-            </div>
-        </div>
+        <div class="card mb-4"><div class="card-header">字段变更 <span class="badge bg-warning text-dark">@_diff.ChangedFields.Count</span></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
+        @foreach (var change in _diff.ChangedFields)
+        {
+            <tr><td>@change.Path</td><td><span class="badge @(change.Breaking ? "bg-danger" : "bg-secondary")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="text-muted">无详细变更</span>}else{<ul class="mb-0 ps-3">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
+        }
+        </tbody></table></div></div></div>
     }
 
     @if (_diff.AddedFields.Count == 0 && _diff.RemovedFields.Count == 0 && _diff.ChangedFields.Count == 0)
@@ -144,10 +82,7 @@ else
     {
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
-        _job = jobs
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
-            .OrderByDescending(x => x.StartedAtUtc)
-            .FirstOrDefault();
+        _job = jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
 
         if (_job is not null)
         {
@@ -164,9 +99,6 @@ else
 
         _loading = false;
     }
-
-    private static string GetPath(SchemaSnapshotField field)
-        => field.Path;
 
     private static string GetTypeName(SchemaSnapshotField field)
         => string.IsNullOrWhiteSpace(field.PrimaryType) ? "-" : field.PrimaryType;
