@@ -1,4 +1,4 @@
-namespace ObjectAnalyzer.Analysis;
+﻿namespace ObjectAnalyzer.Analysis;
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -35,9 +35,9 @@ public class AnalysisResult
     /// - <see cref="DuplicateObjects"/>：追加（去重 key 集合按对象哈希）
     /// - <see cref="QualityViolations"/>：追加
     /// - <see cref="FieldStatistics"/>：按 FieldName 查找已有条目并 <see cref="FieldStatistic.MergeFrom"/>
-    /// - P4 维度（CorrelationMatrix / StringPatterns / UnicodeHygiene / FuzzyDuplicates /
+    /// - 深度分析 维度（CorrelationMatrix / StringPatterns / UnicodeHygiene / FuzzyDuplicates /
     ///   TimeSeriesAnalyses / DistributionDiff / SamplingConfidence / SchemaDiff）：
-    ///   仅在 <c>this</c> 为空时采用 <c>other</c>，避免覆盖当前 run 的结果（P4 不可增量合并）
+    ///   仅在 <c>this</c> 为空时采用 <c>other</c>，避免覆盖当前 run 的结果（深度分析 不可增量合并）
     /// - <see cref="FilterExpression"/>：取 this（确定性优先）
     ///
     /// 不会抛异常——空对象合并保持幂等；用于跨多次增量 run 累积。
@@ -80,7 +80,7 @@ public class AnalysisResult
             QualityViolations.AddRange(other.QualityViolations);
         }
 
-        // P4 维度：this 为空时采用 other（避免覆盖当前 run）
+        // 深度分析 维度：this 为空时采用 other（避免覆盖当前 run）
         CorrelationMatrix ??= other.CorrelationMatrix;
         FuzzyDuplicates ??= other.FuzzyDuplicates;
         StringPatterns ??= other.StringPatterns is not null
@@ -107,7 +107,7 @@ public class AnalysisResult
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SchemaDiff? SchemaDiff { get; set; }
 
-    // ── P4 分析深度增强 ──
+    // ── 深度分析 分析深度增强 ──
 
     /// <summary>
     /// 字段间相关性矩阵（Pearson / Spearman），基于流式 Reservoir 采样。

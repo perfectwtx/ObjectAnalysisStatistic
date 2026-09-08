@@ -103,7 +103,7 @@
 - ✅ **模糊去重（相似重复识别）**
   - `FuzzyDuplicateDetector` 对指定字段（如 `name` / `title` / `address`）做归一化（去空白/标点、全半角统一、大小写折叠）+ 词袋 Jaccard 相似度
   - 将"几乎一致"的对象分组为 `FuzzyDuplicateGroup`，输出组数、相似重复对、规范化键
-  - 通过 `AnalysisOptions.FuzzyDedupField` 指定目标字段；未指定时关闭，零开销
+  - 通过 `AnalysisOptions.Advanced.FuzzyDedupField` 指定目标字段；未指定时关闭，零开销
   - 实现见 [FuzzyDuplicateDetector.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Analysis/Insights/FuzzyDuplicateDetector.cs)
 
 - ✅ **时间序列深度分析**
@@ -114,7 +114,7 @@
 - ✅ **采样置信区间**
   - 启用 `--sample-reservoir` / `--sample-step` 时自动启用（`EnableSamplingConfidence` 默认 true）
   - 对覆盖率与数值均值给出 95% 置信区间，输出"有效样本量"与各字段可信度评估
-  - `AnalysisOptions.LowConfidenceWidth` 控制"低可信"判定阈值（覆盖区间宽度 ≥ 此值视为低可信，默认 0.2）
+  - `AnalysisOptions.Sampling.LowConfidenceWidth` 控制"低可信"判定阈值（覆盖区间宽度 ≥ 此值视为低可信，默认 0.2）
   - 实现见 [Sampling.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Analysis/Sampling.cs) `ConfidenceInterval`
 
 - ✅ **分布漂移对比（草图 vs 草图）**
@@ -155,7 +155,7 @@
 - `ObjectAnalyzer.Analyze` / `AnalyzeDetailed` 新增 `IProgress<long>?` 回调参数（位于 CancellationToken 之前，遵循 CA1068）
 - `AnalyzeCore` 在分块（10K 对象）完成后通过 `progress?.Report(globalTotalObjects)` 上报累计对象数
 - `AnalysisRunner.ProcessAndReport` 用 `AnsiConsole.Progress()` 替代 `AnsiConsole.Status()`，含 5 列：任务描述 / 进度条 / 百分比 / 剩余时间 (ETA) / spinner
-- `AnalysisOptions.ShowProgress`（默认 true）+ CLI `--no-progress` 开关
+- `AnalysisOptions.Progress.ShowProgress`（默认 true）+ CLI `--no-progress` 开关
 - `EstimateTotalObjects` 辅助方法：仅在已物化列表返回 Count；不对 50GB JSONL 二次扫描数行
 - 实现见 [ObjectAnalyzer.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Analysis/ObjectAnalyzer.cs) / [AnalysisRunner.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Analysis/AnalysisRunner.cs) / [AnalysisOptions.cs](file:///e:/Code/MyCode/Items/ObjectAnalysisStatistic/src/ObjectAnalyzer.Core/Analysis/AnalysisOptions.cs)；测试 4 个用例（`ProgressReportingTests`）——回调触发次数 / 单调性 / AnalyzeDetailed 兼容性 / 开关标志
 
@@ -190,10 +190,13 @@
 
 - **.NET 8 LTS / 双目标评估**：按项目决策不做，保持 `net10.0` 单目标。
 
+## P8 — Web 规则编辑体验（已完成 ✅）
+
+- ✅ **规则文件可视化编辑与实时校验**：表单化编辑 fields / valueParsers / expectations，实时生成并校验规则 JSON，表单产出自动同步进粘贴框并复用同一应用路径；粘贴规则输入框输入即校验（未知键 / 语法 / 往返反序列化）。
+
 ## 后续候选（Backlog，未排期）
 
 - 大数据量分页/流式 Web 渲染深度优化（虚拟化表格）。
 - 报告导出格式扩展（Parquet / JSONL 明细）。
-- Web 端的规则文件可视化编辑与实时校验。
 - 多语言覆盖 CLI 输出（当前 CLI 为中文文案）。
 - 版本化发布与语义化版本自动递增（`dotnet pack` + CI 发布）。

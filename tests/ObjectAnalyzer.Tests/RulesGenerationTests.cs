@@ -148,6 +148,27 @@ public class RulesGenerationTests
     }
 
     [Fact]
+    public void Rules_WithComments_LoadsViaSharedOptions()
+    {
+        var json = """
+        {
+          // 注释：字段规则（行尾注释同样支持）
+          "fields": {
+            "age": { "primaryType": "Number", "minValue": 0 } // 行尾注释
+          },
+          /* 块注释也可以 */
+          "expectations": { "minRowCount": 10 }
+        }
+        """;
+        var loaded = JsonSerializer.Deserialize<AnalysisRules>(json, AnalysisRules.RulesJsonOptions);
+
+        Assert.NotNull(loaded);
+        Assert.Equal("Number", loaded!.Fields["age"].PrimaryType);
+        Assert.Equal(0, loaded.Fields["age"].MinValue);
+        Assert.Equal(10, loaded.Expectations!.MinRowCount);
+    }
+
+    [Fact]
     public void Schema_UnknownType_IsSkipped()
     {
         var skipped = new List<string>();

@@ -7,7 +7,7 @@ using ObjectAnalyzer.Analysis;
 /// 质量检查 v2 测试：minValue/maxValue、required、pattern、unique、nullRateMax
 /// 与数据集期望（minRowCount / maxDuplicateRate），以及 --violations 导出与 --fail-on-violations 门禁集成。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class QualityChecksTests
 {
     // ──────────────────────────────────────────────
@@ -286,7 +286,9 @@ public class QualityChecksTests
             var fields = root.GetProperty("fieldViolations");
             Assert.Equal(2, fields.GetArrayLength());
             Assert.Contains(fields.EnumerateArray(),
-                e => e.GetProperty("check").GetString() == "enum" && e.TryGetProperty("values", out _));
+                e => e.GetProperty("check").GetString() == "enum"
+                    && e.TryGetProperty("samples", out var s)
+                    && s.GetArrayLength() > 0);
             Assert.Contains(fields.EnumerateArray(),
                 e => e.GetProperty("check").GetString() == "pattern");
 
@@ -345,9 +347,9 @@ public class QualityChecksTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rulesPath,
-                FailOnViolations = true
+                Input = { InputPath = input },
+                Rules = { RulesFile = rulesPath },
+                Gates = { FailOnViolations = true }
             };
             Assert.Equal(3, AnalysisRunner.Run(options));
         }
@@ -377,9 +379,9 @@ public class QualityChecksTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rulesPath,
-                FailOnViolations = true
+                Input = { InputPath = input },
+                Rules = { RulesFile = rulesPath },
+                Gates = { FailOnViolations = true }
             };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
@@ -401,7 +403,7 @@ public class QualityChecksTests
             File.WriteAllText(rulesPath,
                 """{"fields": { "v": { "pattern": "[unclosed" } }}""");
 
-            var options = new AnalysisOptions { InputPath = input, RulesFile = rulesPath };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Rules = { RulesFile = rulesPath } };
             Assert.Equal(1, AnalysisRunner.Run(options));
         }
         finally
@@ -412,7 +414,7 @@ public class QualityChecksTests
     }
 
     // ──────────────────────────────────────────────
-    // PII 打码传播 & 向后兼容
+    // PII 打码传播
     // ──────────────────────────────────────────────
 
     [Fact]

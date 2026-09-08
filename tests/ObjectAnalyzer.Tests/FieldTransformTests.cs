@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ObjectAnalyzer.Tests;
 
@@ -38,7 +39,10 @@ public class FieldTransformTests
     [Fact]
     public void Rules_SelectedFields_UsedWhenNoCliFields()
     {
-        var rules = new AnalysisRules { SelectedFields = new List<string> { "Name" } };
+        var rules = new AnalysisRules
+        {
+            Runtime = JsonNode.Parse("""{"selectedFields":["Name"]}""") as JsonObject
+        };
         var processor = new FieldTransformProcessor(rules);
 
         var wrapped = processor.Wrap(new List<Dictionary<string, object?>>
@@ -511,7 +515,7 @@ public class FieldTransformTests
         {
             Transform = new FieldTransform { Parse = "json" }
         };
-        rules.SelectedFields = new List<string> { "A.body.mountain" };
+        rules.Runtime = JsonNode.Parse("""{"selectedFields":["A.body.mountain"]}""") as JsonObject;
 
         var processor = new FieldTransformProcessor(rules);
         var result = Analyze(processor.Wrap(objects), rules);

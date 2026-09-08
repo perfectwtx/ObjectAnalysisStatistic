@@ -4,7 +4,7 @@ namespace ObjectAnalyzer.Tests;
 /// P6.1：进度条 / ETA 集成测试。
 /// 验证 <see cref="ObjectAnalyzer.Analyze"/> 在分块处理时通过 <see cref="IProgress{T}"/> 上报对象计数。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class ProgressReportingTests
 {
     private static List<Dictionary<string, object?>> MakeData(int count)
@@ -50,7 +50,7 @@ public class ProgressReportingTests
     [Fact]
     public void Analyze_WithoutProgressCallback_StillWorks()
     {
-        // 不传 progress 回调时应正常完成（兼容旧调用方）
+        // 不传 progress 回调时应正常完成
         var data = MakeData(5_000);
         var result = global::ObjectAnalyzer.Analysis.ObjectAnalyzer.Analyze(data);
         Assert.Equal(5_000, result.TotalObjects);
@@ -77,13 +77,13 @@ public class ProgressReportingTests
     [Fact]
     public void AnalysisRunner_RespectsShowProgressFlag()
     {
-        // 验证 AnalysisOptions.ShowProgress 默认 true，且可被外部关闭
+        // 验证 AnalysisOptions.Progress.ShowProgress 默认 true，且可被外部关闭
         var opts = new AnalysisOptions
         {
-            InputPath = Path.Combine(Path.GetTempPath(), "nonexistent.jsonl"),
+            Input = { InputPath = Path.Combine(Path.GetTempPath(), "nonexistent.jsonl") },
         };
-        Assert.True(opts.ShowProgress, "ShowProgress 默认应为 true（开启进度条）");
-        opts.ShowProgress = false;
-        Assert.False(opts.ShowProgress);
+        Assert.True(opts.Progress.ShowProgress, "ShowProgress 默认应为 true（开启进度条）");
+        opts.Progress.ShowProgress = false;
+        Assert.False(opts.Progress.ShowProgress);
     }
 }

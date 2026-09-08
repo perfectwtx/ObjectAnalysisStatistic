@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -9,7 +9,7 @@ internal sealed class AnalyzerThreadState
     public long TotalObjects { get; set; }
     public ArrayBufferWriter<byte> CanonicalWriter { get; } = new();
 
-    // ── P4 分析深度增强（懒创建：仅 features 启用且确有相关数据时分配）──
+    // ── 深度分析 分析深度增强（懒创建：仅 features 启用且确有相关数据时分配）──
     /// <summary>字段相关性收集器：每行 (field → double?) 样本，超容量时 Reservoir Sampling。</summary>
     public FieldCorrelationCollector? CorrelationCollector { get; set; }
     /// <summary>字符串模式归纳器：按字段索引。</summary>

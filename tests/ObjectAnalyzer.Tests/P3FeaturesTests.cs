@@ -9,7 +9,7 @@ using ObjectAnalyzer.Analysis;
 /// <summary>
 /// P3 高级分析能力测试：日期/时间深度剖析、异常值检测（IQR）、Schema 快照 + Diff 集成。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class P3FeaturesTests
 {
     // ──────────────────────────────────────────────
@@ -186,9 +186,9 @@ public class P3FeaturesTests
         {
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                SchemaSnapshotPath = snapshotPath,
-                AllowBreakingSchemaChanges = true
+                Input = { InputPath = inputPath },
+                Schema = { SchemaSnapshotPath = snapshotPath },
+                Gates = { AllowBreakingSchemaChanges = true }
             };
 
             int code = AnalysisRunner.Run(options);
@@ -199,9 +199,9 @@ public class P3FeaturesTests
             // 第二次跑：拿第一次的快照当 baseline
             var options2 = new AnalysisOptions
             {
-                InputPath = inputPath,
-                DiffSchemaBaseline = snapshotPath,
-                AllowBreakingSchemaChanges = false  // 严格模式：含破坏性变更则退出码 6
+                Input = { InputPath = inputPath },
+                Schema = { DiffSchemaBaseline = snapshotPath },
+                Gates = { AllowBreakingSchemaChanges = false }  // 严格模式：含破坏性变更则退出码 6
             };
 
             int code2 = AnalysisRunner.Run(options2);
@@ -237,8 +237,8 @@ public class P3FeaturesTests
         {
             var baselineOptions = new AnalysisOptions
             {
-                InputPath = baselineInputPath,
-                SchemaSnapshotPath = baselineSnapshotPath
+                Input = { InputPath = baselineInputPath },
+                Schema = { SchemaSnapshotPath = baselineSnapshotPath }
             };
             Assert.Equal(0, AnalysisRunner.Run(baselineOptions));
             Assert.True(File.Exists(baselineSnapshotPath));
@@ -246,9 +246,9 @@ public class P3FeaturesTests
             // 第二次跑：拿 baseline 快照做 diff
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                DiffSchemaBaseline = baselineSnapshotPath,
-                AllowBreakingSchemaChanges = false  // 严格模式
+                Input = { InputPath = inputPath },
+                Schema = { DiffSchemaBaseline = baselineSnapshotPath },
+                Gates = { AllowBreakingSchemaChanges = false }  // 严格模式
             };
 
             int code = AnalysisRunner.Run(options);
@@ -272,9 +272,9 @@ public class P3FeaturesTests
         {
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                DiffSchemaBaseline = Path.Combine(Path.GetTempPath(),
-                    $"non-existent-{Guid.NewGuid():N}.json")
+                Input = { InputPath = inputPath },
+                Schema = { DiffSchemaBaseline = Path.Combine(Path.GetTempPath(),
+                    $"non-existent-{Guid.NewGuid():N}.json") }
             };
 
             int code = AnalysisRunner.Run(options);
@@ -297,8 +297,8 @@ public class P3FeaturesTests
         {
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                SchemaSnapshotPath = snapshotPath
+                Input = { InputPath = inputPath },
+                Schema = { SchemaSnapshotPath = snapshotPath }
             };
 
             int code = AnalysisRunner.Run(options);

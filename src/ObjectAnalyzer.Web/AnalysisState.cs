@@ -1,4 +1,4 @@
-using AnalysisResult = global::ObjectAnalyzer.Analysis.AnalysisResult;
+﻿using AnalysisResult = global::ObjectAnalyzer.Analysis.AnalysisResult;
 using FieldStatistic = global::ObjectAnalyzer.Analysis.FieldStatistic;
 
 namespace ObjectAnalyzer.Web;
@@ -41,6 +41,45 @@ public sealed class AnalysisState : IDisposable
     public int SampleReservoir { get; set; }                     // --sample-reservoir (>0 启用)
     public int SampleStep { get; set; }                          // --sample-step (>1 启用)
 
+    /// <summary>采样置信区间宽度阈值（覆盖区间宽度 ≥ 此值视为"低可信"，默认 0.2）。
+    /// 影响"采样置信度"卡片的"低可信"字段数；越小越严格（更多字段会被标红）。</summary>
+    public double LowConfidenceWidth { get; set; } = 0.2;
+
+    /// <summary>soft 内存模式下被自动触发的采样容量（仅当用户未指定 SampleReservoir/Step 时生效，默认 50000）。
+    /// Web 用户通常不需要调整；分析超大文件触达内存预算时可适度调小让回退更激进。</summary>
+    public int MemoryFallbackSampleSize { get; set; } = 50_000;
+
+    /// <summary>CSV 数字列推断为数值类型（--csv-infer-numbers / --no-csv-number-inference）。
+    /// 默认 true：30 → 30、3.14 → 3.14；前导零 / 长数字 / 科学计数法 / 带单位保持字符串避免误转。
+    /// 关掉后整列按字符串统计，失去数值剖析（均值/分位数/相关性等）。</summary>
+    public bool CsvInferNumbers { get; set; } = true;
+
+    /// <summary>规则文件里出现不认识的键时是否放行（--allow-unknown-rules）。
+    /// 默认 false：拼错/已废弃的键会被 RulesLint 拦下并返回 400，避免规则看似生效实则被静默忽略；
+    /// 确认可忽略时勾选此项放行。</summary>
+    public bool AllowUnknownRules { get; set; }
+
+    // ── 深度分析开关（默认全关，与 v1.x 行为一致；开启后填充"深度分析"选项卡）──
+    public bool EnableCorrelation { get; set; }                  // --correlation
+    public bool EnableStringPatterns { get; set; }               // --string-patterns
+    public bool EnableUnicodeHygiene { get; set; }               // --unicode-hygiene
+    public bool EnableTimeSeries { get; set; }                   // --time-series
+    public bool EnableDistributionSnapshot { get; set; }         // --distribution-snapshot
+
+    /// <summary>模糊去重目标字段（--fuzzy-dedup-field）。空 = 不启用；填了字段名后
+    /// 会在该字段上做形态变体聚类（去除标点/全半角/繁简后归并相似字符串），填充"模糊去重"卡。</summary>
+    public string? FuzzyDedupField { get; set; }
+
+    /// <summary>相关性蓄水池容量（每字段保留最多 N 行数值，默认 20000）。
+    /// 大数据集且内存紧张时可调小；调大能更精确但耗内存。普通用户无需调整。</summary>
+    public int CorrelationReservoir { get; set; } = 20_000;
+
+    /// <summary>任一 深度分析开关被勾选（用于在 UI 标识需要走 AdvancedAnalysisOptions 路径）。</summary>
+    public bool HasAnyDeepAnalysisSwitch =>
+        EnableCorrelation || EnableStringPatterns
+        || EnableUnicodeHygiene || EnableTimeSeries
+        || EnableDistributionSnapshot;
+
     // --type (.cs 类型定义文件)：以临时文件形式保存，避免在内存中缓存大内容
 
     // 规则文件 (--rules)：以临时文件形式保存
@@ -51,6 +90,11 @@ public sealed class AnalysisState : IDisposable
     // 用户上传的 schema snapshot JSON，作为 diff 的 baseline。基线独立于本次分析的源数据。
     public string? BaselineSnapshotPath { get; set; }
     public string? BaselineSnapshotName { get; set; }
+
+    // ── P3 分布快照基线（--diff-distribution）──
+    // 用户上传的 distribution snapshot JSON，与本次分析的分布快照做漂移对比。
+    public string? DistributionBaselinePath { get; set; }
+    public string? DistributionBaselineName { get; set; }
 
     /// <summary>用户上传基线后，本地计算（不重新跑分析）的 SchemaDiff 副本；未上传基线时为 null。</summary>
     public global::ObjectAnalyzer.Analysis.SchemaDiff? ComputedSchemaDiff { get; set; }
@@ -142,6 +186,32 @@ public sealed class AnalysisState : IDisposable
     /// </summary>
     public string? MemoryWarning { get; set; }
 
+    // ── 规则文件预检（方案 B：开始分析前的字段匹配检查）──
+    /// <summary>
+    /// 预检警告信息：点击"开始分析"时若规则文件中的字段名与样本数据字段名无任何重叠，
+    /// 在弹出模态框前先把警告文本写入此处，便于 UI 渲染。
+    /// </summary>
+    public string? PreflightWarning { get; set; }
+
+    /// <summary>规则文件中已配置的字段名（去重、保留插入顺序）。用于在预检模态框里展示。</summary>
+    public List<string> PreflightRuleFields { get; set; } = new();
+
+    /// <summary>从数据样本中观测到的字段名（去重、保留首次出现顺序，最多 20 个）。</summary>
+    public List<string> PreflightSampleFields { get; set; } = new();
+
+    /// <summary>控制预检模态框显示。true 时阻塞分析，用户选择"继续"或"取消"后由 Home.razor 重置为 false。</summary>
+    public bool ShowPreflightModal { get; set; }
+
+    /// <summary>当前触发预检的快照（待用户确认后由 RunAnalysisConfirmed 读取并继续分析）。</summary>
+    public PreflightSnapshot? PendingPreflight { get; set; }
+
+    // ── 结果页兜底警告（方案 D：分析完成后再次校验字段是否出现）──
+    /// <summary>
+    /// 分析完成后的兜底警告：若规则文件中的字段在 <see cref="Result"/> 的 <c>FieldStatistics</c> 里
+    /// 没有任何匹配项，在结果标题下方展示一条横幅提示，避免用户误以为"分析成功"实际是规则不适用。
+    /// </summary>
+    public string? ResultWarning { get; set; }
+
     public List<FieldStatistic> GetFilteredSortedFields()
     {
         if (Result == null) return new();
@@ -232,6 +302,8 @@ public sealed class AnalysisState : IDisposable
         DeleteQuietly(DataFilePath);
         DeleteQuietly(RulesFilePath);
         DeleteQuietly(BaselineSnapshotPath);
+        // P3 分布漂移基线：用户上传的临时文件
+        DeleteQuietly(DistributionBaselinePath);
         // P6.2 增量分析：检查点/断点/基线均为用户上传的临时文件
         DeleteQuietly(CheckpointPath);
         DeleteQuietly(ResumeFrom);
@@ -244,3 +316,38 @@ public sealed class AnalysisState : IDisposable
         try { File.Delete(path); } catch { }
     }
 }
+
+/// <summary>
+/// 预检触发后挂起的快照：把"用户在点击开始分析那一刻"已经填好的所有可调参数固化下来，
+/// 避免模态框交互期间用户继续修改 State 字段导致确认后跑的是另一份配置。
+/// </summary>
+public sealed record PreflightSnapshot(
+    string DataFilePath,
+    string Format,
+    global::ObjectAnalyzer.Parsing.ParseOptions ParseOptions,
+    global::ObjectAnalyzer.Analysis.AnalysisRules? Rules,
+    bool AllowUnknownRules,
+    string FieldsText,
+    string FilterText,
+    int MaxDegreeOfParallelism,
+    int SampleReservoir,
+    int SampleStep,
+    double LowConfidenceWidth,
+    int MemoryFallbackSampleSize,
+    bool EnableCorrelation,
+    bool EnableStringPatterns,
+    bool EnableUnicodeHygiene,
+    bool EnableTimeSeries,
+    bool EnableDistributionSnapshot,
+    string? FuzzyDedupField,
+    int CorrelationReservoir,
+    string? DistributionBaselinePath,
+    bool ShowProgress,
+    string? ResumeFromPath,
+    string? BaselinePath,
+    string? CheckpointFileName,
+    long MaxMemoryMB,
+    global::ObjectAnalyzer.Analysis.MaxMemoryMode MaxMemoryMode,
+    string RootPathText,
+    string RecordPathText,
+    IReadOnlyList<global::ObjectAnalyzer.Analysis.ValueParserConfig> EffectiveValueParsers);

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -31,6 +31,26 @@
   <data name="OptSampleStep" xml:space="preserve"><value>Step sample size</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>Sampling for huge files: reservoir keeps up to N random objects / step keeps 1 per N rows for fast schema overview (mutually exclusive, 0 = off)</value></data>
   <data name="OptRulesFile" xml:space="preserve"><value>Rules file (.json)</value></data>
+  <data name="SideSourceTitle" xml:space="preserve"><value>Data Source</value></data>
+  <data name="SideOptionsTitle" xml:space="preserve"><value>Analysis Options</value></data>
+  <data name="TabFields" xml:space="preserve"><value>Fields</value></data>
+  <data name="TabDeep" xml:space="preserve"><value>Deep Analysis</value></data>
+  <data name="TabDuplicates" xml:space="preserve"><value>Duplicates</value></data>
+  <data name="TabPreview" xml:space="preserve"><value>Data Preview</value></data>
+  <data name="GroupParsing" xml:space="preserve"><value>Parsing &amp; Output</value></data>
+  <data name="GroupFieldsFilter" xml:space="preserve"><value>Fields &amp; Filter</value></data>
+  <data name="GroupSampling" xml:space="preserve"><value>Sampling</value></data>
+  <data name="GroupAudit" xml:space="preserve"><value>Audit</value></data>
+  <data name="SideRulesTitle" xml:space="preserve"><value>Rules</value></data>
+  <data name="RulesPasteTitle" xml:space="preserve"><value>Paste rules JSON (manual input)</value></data>
+  <data name="RulesApply" xml:space="preserve"><value>Apply rules</value></data>
+  <data name="RulesApplied" xml:space="preserve"><value>Rules ready</value></data>
+  <data name="RulesDocTitle" xml:space="preserve"><value>Supported rule fields</value></data>
+  <data name="ErrRulesEmpty" xml:space="preserve"><value>Paste rules JSON content before applying.</value></data>
+  <data name="ErrUnknownRules" xml:space="preserve"><value>Rule file contains unknown keys: {0}. Check spelling/version; if intentional, enable "Tolerate unknown rule keys" in the sidebar.</value></data>
+  <data name="RulesPastedName" xml:space="preserve"><value>Pasted rules</value></data>
+  <data name="EmptyStateTitle" xml:space="preserve"><value>Start your first analysis</value></data>
+  <data name="EmptyStateHint" xml:space="preserve"><value>Upload a JSON / JSONL / CSV / Excel / XML / YAML file from the sidebar (or connect a database), configure options, then press Start Analysis — overview stats, charts and details will appear here.</value></data>
   <data name="OptFields" xml:space="preserve"><value>Fields</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>comma-separated, e.g. name,age</value></data>
   <data name="OptWhere" xml:space="preserve"><value>Filter</value></data>
@@ -46,6 +66,32 @@
   <data name="P6GroupTitle" xml:space="preserve"><value>P6 — Incremental / Memory / Progress</value></data>
   <data name="P6GroupHint" xml:space="preserve"><value>Resilience and recovery for large files</value></data>
   <data name="OptShowProgress" xml:space="preserve"><value>Show progress bar / ETA</value></data>
+  <data name="OptCsvInferNumbers" xml:space="preserve"><value>CSV numeric inference</value></data>
+  <data name="OptCsvInferNumbersTitle" xml:space="preserve"><value>Auto-infer numeric CSV columns (30→30, 3.14→3.14). Off keeps everything as string.</value></data>
+  <data name="OptAllowUnknownRules" xml:space="preserve"><value>Tolerate unknown rule keys</value></data>
+  <data name="OptAllowUnknownRulesTitle" xml:space="preserve"><value>Continue when rules contain unknown keys (default: rejected, to avoid silently dropped rules)</value></data>
+  <data name="GroupDeepAnalysis" xml:space="preserve"><value>Deep Analysis</value></data>
+  <data name="OptEnableCorrelation" xml:space="preserve"><value>Field correlation matrix</value></data>
+  <data name="OptEnableCorrelationTitle" xml:space="preserve"><value>Compute Pearson / Spearman correlations between numeric fields, find strongly related pairs</value></data>
+  <data name="OptEnableStringPatterns" xml:space="preserve"><value>String pattern inference</value></data>
+  <data name="OptEnableStringPatternsTitle" xml:space="preserve"><value>Infer string templates (phone ###-####, zip #####, IPv4 ##.##.##.##, etc.)</value></data>
+  <data name="OptEnableUnicodeHygiene" xml:space="preserve"><value>Unicode hygiene check</value></data>
+  <data name="OptEnableUnicodeHygieneTitle" xml:space="preserve"><value>Detect full/half-width, invisible characters, control characters</value></data>
+  <data name="OptEnableTimeSeries" xml:space="preserve"><value>Time series analysis</value></data>
+  <data name="OptEnableTimeSeriesTitle" xml:space="preserve"><value>Trend / seasonality / gap analysis for DateTime fields</value></data>
+  <data name="OptEnableDistributionSnapshot" xml:space="preserve"><value>Distribution snapshot export</value></data>
+  <data name="OptEnableDistributionSnapshotTitle" xml:space="preserve"><value>Export per-field distribution snapshot JSON for cross-dataset drift detection</value></data>
+  <data name="OptFuzzyDedupField" xml:space="preserve"><value>Fuzzy dedup target field</value></data>
+  <data name="OptFuzzyDedupFieldTitle" xml:space="preserve"><value>Cluster form variants on this field (strip punctuation/fullwidth/trad-simp) — e.g. name</value></data>
+  <data name="OptCorrelationReservoir" xml:space="preserve"><value>Correlation reservoir size</value></data>
+  <data name="OptCorrelationReservoirTitle" xml:space="preserve"><value>Max numeric samples kept per field (default 20000); lower for memory, higher for precision</value></data>
+  <data name="GroupSamplingAdvanced" xml:space="preserve"><value>Sampling (advanced)</value></data>
+  <data name="OptLowConfidenceWidth" xml:space="preserve"><value>Low-confidence threshold</value></data>
+  <data name="OptLowConfidenceWidthTitle" xml:space="preserve"><value>Sampling coverage interval width ≥ this is "low confidence" (default 0.2; lower = stricter)</value></data>
+  <data name="OptMemoryFallbackSampleSize" xml:space="preserve"><value>Soft-mode auto sample size</value></data>
+  <data name="OptMemoryFallbackSampleSizeTitle" xml:space="preserve"><value>Auto-sampling size triggered under soft memory mode (only when SampleReservoir/Step unset; default 50000)</value></data>
+  <data name="LblDistributionBaseline" xml:space="preserve"><value>Distribution baseline (drift compare)</value></data>
+  <data name="LblDistributionBaselineTitle" xml:space="preserve"><value>Upload a historical distribution-snapshot JSON to compare with this run's snapshot</value></data>
   <data name="OptMaxMemory" xml:space="preserve"><value>Memory limit (MB)</value></data>
   <data name="OptMaxMemoryTitle" xml:space="preserve"><value>Managed heap ceiling, 0 = no monitoring</value></data>
   <data name="OptMaxMemoryMode" xml:space="preserve"><value>On exceed</value></data>
@@ -100,6 +146,9 @@
   <data name="FieldName" xml:space="preserve"><value>Field</value></data>
   <data name="SemanticType" xml:space="preserve"><value>Semantic type</value></data>
   <data name="Coverage" xml:space="preserve"><value>Coverage</value></data>
+  <data name="ActualCoverage" xml:space="preserve"><value>Actual coverage</value></data>
+  <data name="CoverageNullRate" xml:space="preserve"><value>null coverage {0:F1}% ({1} rows)</value></data>
+  <data name="CoverageMissingRate" xml:space="preserve"><value>missing {0:F1}% ({1} rows)</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>Dominant type</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>Default value</value></data>
   <data name="UniqueValues" xml:space="preserve"><value>Unique count</value></data>
@@ -141,4 +190,68 @@
   <data name="HistogramBars" xml:space="preserve"><value>{0} buckets</value></data>
   <data name="DatetimeSpan" xml:space="preserve"><value>span {0}</value></data>
   <data name="OutlierZero" xml:space="preserve"><value>No outliers</value></data>
+  <data name="PreflightTitle" xml:space="preserve"><value>Rule file does not match the data</value></data>
+  <data name="PreflightContinue" xml:space="preserve"><value>Continue anyway</value></data>
+  <data name="PreflightCancel" xml:space="preserve"><value>Cancel and edit rule</value></data>
+  <data name="PreflightRuleFields" xml:space="preserve"><value>Fields in rule file:</value></data>
+  <data name="PreflightSampleFields" xml:space="preserve"><value>Fields observed in the data:</value></data>
+  <data name="PreflightSampleFieldsTruncated" xml:space="preserve"><value>… {0} more fields not shown</value></data>
+  <data name="PreflightExplain" xml:space="preserve"><value>None of the field names in the rule file overlap with fields observed in the data sample (case-insensitive). This usually means the rule was written for a different dataset, so the analysis may not behave as intended.</value></data>
+  <data name="ResultWarningTitle" xml:space="preserve"><value>Rule did not take effect</value></data>
+  <data name="ResultWarningExplain" xml:space="preserve"><value>Analysis finished, but none of the rule-file fields appeared in the result. The rule file may not match this dataset — please check field-name spelling or pick the matching rule file.</value></data>
+  <data name="EdTitle" xml:space="preserve"><value>Rule editor (visual)</value></data>
+  <data name="EdHint" xml:space="preserve"><value>Fill in item by item — the rules JSON is generated and validated live. Use the paste box below for hand-written rules.</value></data>
+  <data name="EdFieldsSection" xml:space="preserve"><value>Field rules (fields)</value></data>
+  <data name="EdAddField" xml:space="preserve"><value>Add field rule</value></data>
+  <data name="EdFieldName" xml:space="preserve"><value>Field name</value></data>
+  <data name="EdFieldNamePlaceholder" xml:space="preserve"><value>e.g. age / user.phone</value></data>
+  <data name="EdFieldNameNew" xml:space="preserve"><value>New field rule</value></data>
+  <data name="EdRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="EdPrimaryType" xml:space="preserve"><value>Primary type</value></data>
+  <data name="EdPrimaryTypeAny" xml:space="preserve"><value>Any</value></data>
+  <data name="EdMinValue" xml:space="preserve"><value>Min value</value></data>
+  <data name="EdMaxValue" xml:space="preserve"><value>Max value</value></data>
+  <data name="EdDefaultValue" xml:space="preserve"><value>Default value</value></data>
+  <data name="EdEnumValues" xml:space="preserve"><value>Enum values (comma-separated)</value></data>
+  <data name="EdPattern" xml:space="preserve"><value>Regex pattern</value></data>
+  <data name="EdNullRateMax" xml:space="preserve"><value>Null rate max (0–1)</value></data>
+  <data name="EdMaxOutlierRatio" xml:space="preserve"><value>Outlier ratio max (0–1)</value></data>
+  <data name="EdRequired" xml:space="preserve"><value>Required</value></data>
+  <data name="EdUnique" xml:space="preserve"><value>Unique</value></data>
+  <data name="EdRedactWhitelist" xml:space="preserve"><value>Skip auto masking (redact:false)</value></data>
+  <data name="EdPiiEnable" xml:space="preserve"><value>Mark as PII</value></data>
+  <data name="EdPiiLabel" xml:space="preserve"><value>Label</value></data>
+  <data name="EdPiiLabelPlaceholder" xml:space="preserve"><value>Internal ID</value></data>
+  <data name="EdPiiMaskChar" xml:space="preserve"><value>Mask char</value></data>
+  <data name="EdPiiMaskAll" xml:space="preserve"><value>Mask all</value></data>
+  <data name="EdKeepPrefix" xml:space="preserve"><value>Keep prefix chars</value></data>
+  <data name="EdKeepSuffix" xml:space="preserve"><value>Keep suffix chars</value></data>
+  <data name="EdTransform" xml:space="preserve"><value>Transform</value></data>
+  <data name="EdTransformNone" xml:space="preserve"><value>None</value></data>
+  <data name="EdTransformClaim" xml:space="preserve"><value>JWT claim</value></data>
+  <data name="EdTransformParseJson" xml:space="preserve"><value>Parse result as JSON</value></data>
+  <data name="EdTransformKey" xml:space="preserve"><value>Key</value></data>
+  <data name="EdTransformIv" xml:space="preserve"><value>IV</value></data>
+  <data name="EdTransformMode" xml:space="preserve"><value>Mode (cbc/ecb)</value></data>
+  <data name="EdTransformPadding" xml:space="preserve"><value>Padding (pkcs7/none)</value></data>
+  <data name="EdTransformFormat" xml:space="preserve"><value>Format (base64/hex)</value></data>
+  <data name="EdTransformPrivKey" xml:space="preserve"><value>Private key</value></data>
+  <data name="EdTransformPubKey" xml:space="preserve"><value>Public key</value></data>
+  <data name="EdKmsHint" xml:space="preserve"><value>Keys should use kms: references (generated via kms-secret); requires the OA_KMS_PASSPHRASE env var.</value></data>
+  <data name="EdParsersSection" xml:space="preserve"><value>Value parsers (JSON in Excel/CSV cells)</value></data>
+  <data name="EdAddParser" xml:space="preserve"><value>Add parser</value></data>
+  <data name="EdVpSource" xml:space="preserve"><value>source (column)</value></data>
+  <data name="EdVpParseType" xml:space="preserve"><value>parseType</value></data>
+  <data name="EdVpHeader" xml:space="preserve"><value>header (header row)</value></data>
+  <data name="EdVpFlatten" xml:space="preserve"><value>Force flatten</value></data>
+  <data name="EdExpectations" xml:space="preserve"><value>Expectations</value></data>
+  <data name="EdMinRowCount" xml:space="preserve"><value>Min row count</value></data>
+  <data name="EdMaxDuplicateRate" xml:space="preserve"><value>Max duplicate rate (0–1)</value></data>
+  <data name="EdGeneratedOk" xml:space="preserve"><value>Rules valid ({0} field rules)</value></data>
+  <data name="EdMoreErrors" xml:space="preserve"><value>… {0} more issues</value></data>
+  <data name="EdJsonPreview" xml:space="preserve"><value>Generated JSON</value></data>
+  <data name="EdApply" xml:space="preserve"><value>Apply to analysis</value></data>
+  <data name="EdPasteOk" xml:space="preserve"><value>✓ Rules JSON valid ({0} field rules)</value></data>
+  <data name="EdErrFieldNoName" xml:space="preserve"><value>There is a field rule without a name</value></data>
+  <data name="EdErrFieldDup" xml:space="preserve"><value>Duplicate field name: {0}</value></data>
 </root>

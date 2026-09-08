@@ -1,4 +1,3 @@
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Security;
 
@@ -43,7 +42,7 @@ public static class KmsRuleResolver
 
         if (anyResolved)
         {
-            AnsiConsole.MarkupLine("[grey][[KMS]][/] 已从 KMS 密文引用解密敏感密钥（明文未写入规则文件）。");
+            AnalysisServices.Current.Console.MarkupLine("[grey][[KMS]][/] 已从 KMS 密文引用解密敏感密钥（明文未写入规则文件）。");
         }
     }
 

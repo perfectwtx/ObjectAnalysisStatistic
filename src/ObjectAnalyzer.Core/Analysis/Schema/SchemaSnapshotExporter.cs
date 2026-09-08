@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -25,8 +24,8 @@ public static class SchemaSnapshotExporter
     {
         var snapshot = Build(result, source);
         File.WriteAllText(outputPath, JsonSerializer.Serialize(snapshot, s_writeOptions), new UTF8Encoding(false));
-        AnsiConsole.MarkupLine(
-            $"[green]Schema 快照已导出至[/] [blue]{Markup.Escape(outputPath)}[/] [grey]({snapshot.Fields.Count} 个字段，{snapshot.TotalObjects} 个对象)[/]");
+        AnalysisServices.Current.Console.MarkupLine(
+            $"[green]Schema 快照已导出至[/] [blue]{MarkupText.Escape(outputPath)}[/] [grey]({snapshot.Fields.Count} 个字段，{snapshot.TotalObjects} 个对象)[/]");
     }
 
     /// <summary>

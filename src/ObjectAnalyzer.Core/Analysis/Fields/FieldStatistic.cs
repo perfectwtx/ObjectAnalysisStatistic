@@ -10,6 +10,12 @@ public class FieldStatistic
     public long Count { get; set; }
     public double Coverage { get; set; } // 字段在所有对象中的覆盖率 (0.0 - 1.0)
 
+    /// <summary>
+    /// 字段值为显式 null 的记录数（Count 的子集）。与"字段不存在"（键缺失，
+    /// 即 TotalObjects - Count）相对——两者是未有效覆盖的两种不同原因。
+    /// </summary>
+    public long NullCount { get; set; }
+
     /// <remarks>
     /// 由分析器在内部填充，外部调用者应视为只读。
     /// </remarks>
@@ -149,6 +155,27 @@ public class FieldStatistic
     /// </summary>
     internal void AddEnumViolation(string value) => _enumViolations.Add(value);
 
+    /// <summary>
+    /// 出站打码用的副本底版：<see cref="object.MemberwiseClone"/> 浅拷贝全部标量统计
+    /// （<see cref="PrimaryType"/>、日期剖析、异常值、RangeViolationCount 等未来新增属性自动携带），
+    /// 可变集合（TypeCounts / ValueCounts / 两个直方图 / 枚举违规列表）一律换成新实例并断开与原对象的共享——
+    /// 打码副本必须是"可安全分发的独立副本"，调用方随后只需重填打码后的 ValueCounts 键与枚举违规值。
+    /// </summary>
+    internal FieldStatistic CloneForRedaction()
+    {
+        var clone = (FieldStatistic)MemberwiseClone();
+        clone.TypeCounts = new Dictionary<string, long>(TypeCounts);
+        clone.ValueCounts = new Dictionary<string, long>();
+        clone.Histogram = Histogram is null
+            ? null
+            : Histogram.Select(b => new NumericHistogramBucket { From = b.From, To = b.To, Count = b.Count }).ToList();
+        clone.DateHistogram = DateHistogram is null
+            ? null
+            : DateHistogram.Select(b => new DateHistogramBucket { From = b.From, To = b.To, Count = b.Count }).ToList();
+        clone._enumViolations = new List<string>();
+        return clone;
+    }
+
     /// <summary>格式化分位数摘要（"P50 x · P90 y · P95 z · P99 w"）；无分位数数据时返回 null。</summary>
     public string? FormatQuantiles()
     {
@@ -186,6 +213,7 @@ public class FieldStatistic
         RangeViolationCount += other.RangeViolationCount;
         TransformFailureCount += other.TransformFailureCount;
         NullAppeared = NullAppeared || other.NullAppeared;
+        NullCount += other.NullCount;
 
         // Min / Max
         if (other.MinNumber is not null)

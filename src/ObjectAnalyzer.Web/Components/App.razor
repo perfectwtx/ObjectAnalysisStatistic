@@ -6,16 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <ResourcePreloader />
-    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
-    <link rel="stylesheet" href="@Assets["app.css"]" />
-    <link rel="stylesheet" href="@Assets["ObjectAnalyzer.Web.styles.css"]" />
+    <link rel="stylesheet" href="app.css" />
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
     <script>
-        // 在首次绘制前套用已保存的主题，避免闪烁（与 interop.js setTheme 保持一致）
+        // 在首次绘制前套用已保存的主题，避免闪烁（与 interop.js setTheme 保持一致）。默认深色仪表盘风格。
         (function () {
             try {
-                var theme = localStorage.getItem('oa-theme') || 'light';
+                var theme = localStorage.getItem('oa-theme') || 'dark';
                 document.documentElement.setAttribute('data-bs-theme', theme);
             } catch (e) { /* 隐私模式/禁用存储时忽略 */ }
         })();

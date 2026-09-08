@@ -5,7 +5,7 @@ namespace ObjectAnalyzer.Tests;
 /// <summary>
 /// PII 识别 / 打码遮蔽 / 报告脱敏 / 数据安全合规等级报告测试。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class PiiTests
 {
     private static readonly List<Dictionary<string, object?>> PiiSample = new()
@@ -297,6 +297,76 @@ public class PiiTests
         {
             if (File.Exists(output)) File.Delete(output);
         }
+    }
+
+    // ──────────────────────────────────────────────
+    // 打码副本完整性（CloneForRedaction 回归）
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public void PiiRedactor_MaskedClone_PreservesPrimaryType()
+    {
+        // 回归：CloneWithMask 曾手工罗列属性，漏抄 PrimaryType → 打码副本回落默认值 "Unknown"
+        var result = Analyze(PiiSample);
+        var redacted = PiiRedactor.Redact(result);
+
+        var original = Stat(result, "Phone");
+        var masked = Stat(redacted, "Phone");
+        Assert.NotEqual("Unknown", masked.PrimaryType);
+        Assert.Equal(original.PrimaryType, masked.PrimaryType);
+        Assert.Equal(original.TypeCounts, masked.TypeCounts);
+    }
+
+    [Fact]
+    public void PiiRedactor_MaskedClone_PreservesDateTimeAndRangeStats()
+    {
+        var rules = new AnalysisRules();
+        rules.Fields["loginAt"] = new FieldRule
+        {
+            Pii = new PiiRule { Mask = new PiiMaskConfig { MaskAll = true } }
+        };
+        rules.Fields["internalId"] = new FieldRule
+        {
+            Pii = new PiiRule { Mask = new PiiMaskConfig { MaskAll = true } },
+            MinValue = 1500
+        };
+        var objects = new List<Dictionary<string, object?>>
+        {
+            new() { { "loginAt", "2026-01-01T10:00:00Z" }, { "internalId", 1001L } },
+            new() { { "loginAt", "2026-06-15T12:30:00Z" }, { "internalId", 2002L } }
+        };
+        var result = Analyze(objects, rules);
+
+        // 前置：待保留的统计在打码前确实存在
+        Assert.True((Stat(result, "loginAt").DateTimeCount ?? 0) > 0);
+        Assert.True(Stat(result, "internalId").RangeViolationCount > 0);
+
+        var redacted = PiiRedactor.Redact(result);
+
+        var login = Stat(redacted, "loginAt");
+        var loginOrig = Stat(result, "loginAt");
+        Assert.Equal(loginOrig.DateTimeCount, login.DateTimeCount);
+        Assert.Equal(loginOrig.MinDateTime, login.MinDateTime);
+        Assert.Equal(loginOrig.MaxDateTime, login.MaxDateTime);
+        Assert.Equal(loginOrig.PrimaryType, login.PrimaryType);
+
+        var idOrig = Stat(result, "internalId");
+        var idMasked = Stat(redacted, "internalId");
+        Assert.Equal(idOrig.RangeViolationCount, idMasked.RangeViolationCount);
+        Assert.Equal(idOrig.MinNumber, idMasked.MinNumber);
+        Assert.Equal(idOrig.MaxNumber, idMasked.MaxNumber);
+    }
+
+    [Fact]
+    public void PiiRedactor_MaskedClone_DetachesMutableCollections()
+    {
+        // 打码副本不得与原始结果共享可变状态：改副本的 TypeCounts 不应影响原始结果
+        var result = Analyze(PiiSample);
+        var redacted = PiiRedactor.Redact(result);
+
+        Stat(redacted, "Phone").TypeCounts["probe"] = 42;
+
+        Assert.False(Stat(result, "Phone").TypeCounts.ContainsKey("probe"));
     }
 
     // ──────────────────────────────────────────────
@@ -595,7 +665,7 @@ public class PiiTests
         string input = WriteTempJsonInput(PiiSample); // 全部样本可打码 → B 级
         try
         {
-            var options = new AnalysisOptions { InputPath = input, FailOnPiiLevel = "C" };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Gates = { FailOnPiiLevel = "C" } };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
         finally
@@ -610,7 +680,7 @@ public class PiiTests
         string input = WriteTempJsonInput(PiiSample);
         try
         {
-            var options = new AnalysisOptions { InputPath = input, FailOnPiiLevel = "B" };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Gates = { FailOnPiiLevel = "B" } };
             Assert.Equal(4, AnalysisRunner.Run(options));
         }
         finally
@@ -630,7 +700,7 @@ public class PiiTests
         string input = WriteTempJsonInput(clean);
         try
         {
-            var options = new AnalysisOptions { InputPath = input, FailOnPiiLevel = "B" };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Gates = { FailOnPiiLevel = "B" } };
             Assert.Equal(0, AnalysisRunner.Run(options));
         }
         finally
@@ -646,7 +716,7 @@ public class PiiTests
         string output = Path.ChangeExtension(Path.GetTempFileName(), ".json");
         try
         {
-            var options = new AnalysisOptions { InputPath = input, OutputPath = output, PiiOff = true };
+            var options = new AnalysisOptions { Input = { InputPath = input }, Report = { OutputPath = output }, Pii = { PiiOff = true } };
             Assert.Equal(0, AnalysisRunner.Run(options));
 
             string json = File.ReadAllText(output);

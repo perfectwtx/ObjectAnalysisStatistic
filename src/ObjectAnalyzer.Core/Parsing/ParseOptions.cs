@@ -27,4 +27,13 @@ public sealed class ParseOptions
     /// P6.2：JSONPath 投影（在每条记录上应用，从原对象提取子节点）。由 FileParsers 在分发到具体 parser 之前应用。
     /// </summary>
     public string? RecordPath { get; init; }
+
+    /// <summary>
+    /// CSV 是否为「看起来是数字」的字符串推断数值类型（默认 true）。
+    /// CSV 无类型信息，不推断的话数值列的 primaryType 永远是 String，
+    /// 均值/标准差/分位数/相关性等一整套数值剖析会失效。
+    /// 关掉可保留纯字符串行为（例如某列的确需要把 "007" 当文本统计）。
+    /// 仅作用于 CSV —— xlsx 单元格本身带类型，不做推断。
+    /// </summary>
+    public bool CsvInferNumbers { get; init; } = true;
 }

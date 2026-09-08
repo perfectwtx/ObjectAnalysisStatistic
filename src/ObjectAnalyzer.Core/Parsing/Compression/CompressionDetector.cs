@@ -33,6 +33,13 @@ public static class CompressionDetector
     /// <summary>按最后一个扩展名判定最外层压缩类型。</summary>
     public static CompressionType Detect(string path)
     {
+        if (string.IsNullOrEmpty(path))
+        {
+            // 防御性兜底：上游（异步任务、反射、第三方代码）可能把 null/空串塞进来，
+            // 静默回退到 None 比抛 NRE 更便于定位问题（外层会有明确报错信息而不是裸堆栈）。
+            return CompressionType.None;
+        }
+
         switch (Path.GetExtension(path).ToLowerInvariant())
         {
             case ".gz": return CompressionType.GZip;

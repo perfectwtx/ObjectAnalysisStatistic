@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -31,6 +31,26 @@
   <data name="OptSampleStep" xml:space="preserve"><value>等距采样步长</value></data>
   <data name="OptSampleTitle" xml:space="preserve"><value>超大文件采样：蓄水池随机取 N 条 / 等距每 N 条取 1 条，快速预估 Schema（两者互斥，0 = 关闭）</value></data>
   <data name="OptRulesFile" xml:space="preserve"><value>规则文件 (.json)</value></data>
+  <data name="SideSourceTitle" xml:space="preserve"><value>数据源</value></data>
+  <data name="SideOptionsTitle" xml:space="preserve"><value>分析选项</value></data>
+  <data name="TabFields" xml:space="preserve"><value>字段明细</value></data>
+  <data name="TabDeep" xml:space="preserve"><value>深度分析</value></data>
+  <data name="TabDuplicates" xml:space="preserve"><value>重复对象</value></data>
+  <data name="TabPreview" xml:space="preserve"><value>数据预览</value></data>
+  <data name="GroupParsing" xml:space="preserve"><value>解析与输出</value></data>
+  <data name="GroupFieldsFilter" xml:space="preserve"><value>字段与过滤</value></data>
+  <data name="GroupSampling" xml:space="preserve"><value>采样</value></data>
+  <data name="GroupAudit" xml:space="preserve"><value>审计</value></data>
+  <data name="SideRulesTitle" xml:space="preserve"><value>规则配置</value></data>
+  <data name="RulesPasteTitle" xml:space="preserve"><value>粘贴规则 JSON（手动输入）</value></data>
+  <data name="RulesApply" xml:space="preserve"><value>应用规则</value></data>
+  <data name="RulesApplied" xml:space="preserve"><value>规则已就绪</value></data>
+  <data name="RulesDocTitle" xml:space="preserve"><value>支持的规则字段</value></data>
+  <data name="ErrRulesEmpty" xml:space="preserve"><value>请先粘贴规则 JSON 内容再应用。</value></data>
+  <data name="ErrUnknownRules" xml:space="preserve"><value>规则文件包含未识别的键：{0}。请检查拼写/版本；如确认可忽略请勾选侧边栏的"容忍规则里不认识的键"。</value></data>
+  <data name="RulesPastedName" xml:space="preserve"><value>手动输入的规则</value></data>
+  <data name="EmptyStateTitle" xml:space="preserve"><value>开始你的第一次分析</value></data>
+  <data name="EmptyStateHint" xml:space="preserve"><value>从左侧上传 JSON / JSONL / CSV / Excel / XML / YAML 文件（或连接数据库），配置选项后点击「开始分析」——概览统计、图表与明细将在这里展示。</value></data>
   <data name="OptFields" xml:space="preserve"><value>统计字段</value></data>
   <data name="OptFieldsPlaceholder" xml:space="preserve"><value>逗号分隔，如 name,age</value></data>
   <data name="OptWhere" xml:space="preserve"><value>过滤条件</value></data>
@@ -46,6 +66,32 @@
   <data name="P6GroupTitle" xml:space="preserve"><value>P6 — 增量 / 内存 / 进度</value></data>
   <data name="P6GroupHint" xml:space="preserve"><value>大文件场景的容错与可恢复性</value></data>
   <data name="OptShowProgress" xml:space="preserve"><value>显示进度条 / ETA</value></data>
+  <data name="OptCsvInferNumbers" xml:space="preserve"><value>CSV 数字列推断为数值</value></data>
+  <data name="OptCsvInferNumbersTitle" xml:space="preserve"><value>CSV 数字列自动推断为数值类型（30→30，3.14→3.14），关掉则按字符串统计</value></data>
+  <data name="OptAllowUnknownRules" xml:space="preserve"><value>容忍规则里不认识的键</value></data>
+  <data name="OptAllowUnknownRulesTitle" xml:space="preserve"><value>规则拼错/已废弃时仍然继续分析（默认会拦截，避免规则看似生效实则被静默忽略）</value></data>
+  <data name="GroupDeepAnalysis" xml:space="preserve"><value>深度分析</value></data>
+  <data name="OptEnableCorrelation" xml:space="preserve"><value>字段相关性矩阵</value></data>
+  <data name="OptEnableCorrelationTitle" xml:space="preserve"><value>计算数值字段 Pearson / Spearman 相关性，找出强相关对</value></data>
+  <data name="OptEnableStringPatterns" xml:space="preserve"><value>字符串模式归纳</value></data>
+  <data name="OptEnableStringPatternsTitle" xml:space="preserve"><value>把字段值归纳为模板（手机号 ###-####、邮编 #####、IPv4 ##.##.##.## 等）</value></data>
+  <data name="OptEnableUnicodeHygiene" xml:space="preserve"><value>Unicode 卫生检查</value></data>
+  <data name="OptEnableUnicodeHygieneTitle" xml:space="preserve"><value>检测全/半角、不可见字符、控制字符等异常</value></data>
+  <data name="OptEnableTimeSeries" xml:space="preserve"><value>时间序列分析</value></data>
+  <data name="OptEnableTimeSeriesTitle" xml:space="preserve"><value>对 DateTime 字段做趋势 / 周期 / 间隙分析</value></data>
+  <data name="OptEnableDistributionSnapshot" xml:space="preserve"><value>分布快照导出</value></data>
+  <data name="OptEnableDistributionSnapshotTitle" xml:space="preserve"><value>导出每个字段的分布快照 JSON（用于跨数据集漂移检测）</value></data>
+  <data name="OptFuzzyDedupField" xml:space="preserve"><value>模糊去重目标字段</value></data>
+  <data name="OptFuzzyDedupFieldTitle" xml:space="preserve"><value>对指定字段做形态变体聚类（去除标点/全半角/繁简后归并相似字符串），如 name</value></data>
+  <data name="OptCorrelationReservoir" xml:space="preserve"><value>相关性蓄水池容量</value></data>
+  <data name="OptCorrelationReservoirTitle" xml:space="preserve"><value>每字段保留最多 N 行数值（默认 20000）；大数据集且内存紧张时可调小</value></data>
+  <data name="GroupSamplingAdvanced" xml:space="preserve"><value>采样高级</value></data>
+  <data name="OptLowConfidenceWidth" xml:space="preserve"><value>低可信阈值</value></data>
+  <data name="OptLowConfidenceWidthTitle" xml:space="preserve"><value>采样置信区间宽度 ≥ 此值视为"低可信"（默认 0.2；越小越严格）</value></data>
+  <data name="OptMemoryFallbackSampleSize" xml:space="preserve"><value>软模式自动采样容量</value></data>
+  <data name="OptMemoryFallbackSampleSizeTitle" xml:space="preserve"><value>soft 内存模式下被自动触发的采样容量（仅当未指定 SampleReservoir/Step 时生效，默认 50000）</value></data>
+  <data name="LblDistributionBaseline" xml:space="preserve"><value>分布基线（分布漂移对比）</value></data>
+  <data name="LblDistributionBaselineTitle" xml:space="preserve"><value>上传历史 distribution-snapshot JSON，与本次分析的分布快照做漂移对比</value></data>
   <data name="OptMaxMemory" xml:space="preserve"><value>内存上限 (MB)</value></data>
   <data name="OptMaxMemoryTitle" xml:space="preserve"><value>进程托管堆上限，0 = 不监控</value></data>
   <data name="OptMaxMemoryMode" xml:space="preserve"><value>超限行为</value></data>
@@ -100,6 +146,9 @@
   <data name="FieldName" xml:space="preserve"><value>字段名</value></data>
   <data name="SemanticType" xml:space="preserve"><value>语义推断</value></data>
   <data name="Coverage" xml:space="preserve"><value>覆盖率</value></data>
+  <data name="ActualCoverage" xml:space="preserve"><value>实际覆盖率</value></data>
+  <data name="CoverageNullRate" xml:space="preserve"><value>null 覆盖率 {0:F1}%（{1} 条）</value></data>
+  <data name="CoverageMissingRate" xml:space="preserve"><value>字段缺失 {0:F1}%（{1} 条）</value></data>
   <data name="PrimaryType" xml:space="preserve"><value>主导类型</value></data>
   <data name="DefaultValue" xml:space="preserve"><value>默认值</value></data>
   <data name="UniqueValues" xml:space="preserve"><value>唯一值数量</value></data>
@@ -141,8 +190,8 @@
   <data name="HistogramBars" xml:space="preserve"><value>{0} 个时间桶</value></data>
   <data name="DatetimeSpan" xml:space="preserve"><value>跨度 {0}</value></data>
   <data name="OutlierZero" xml:space="preserve"><value>无离群点</value></data>
-  <data name="P4InsightsTitle" xml:space="preserve"><value>P4 深度分析</value></data>
-  <data name="P4InsightsHint" xml:space="preserve"><value>字段相关性、字符串模式、Unicode 卫生、模糊去重、采样置信、分布漂移</value></data>
+  <data name="DeepAnalysisInsightsTitle" xml:space="preserve"><value>深度分析</value></data>
+  <data name="DeepAnalysisInsightsHint" xml:space="preserve"><value>字段相关性、字符串模式、Unicode 卫生、模糊去重、采样置信、分布漂移</value></data>
   <data name="CorrelationCard" xml:space="preserve"><value>字段相关性矩阵</value></data>
   <data name="StringPatternsCard" xml:space="preserve"><value>字符串模式归纳</value></data>
   <data name="UnicodeHygieneCard" xml:space="preserve"><value>Unicode 卫生检查</value></data>
@@ -185,4 +234,68 @@
   <data name="DriftMeanFmt" xml:space="preserve"><value>μ: {0:F2} → {1:F2}</value></data>
   <data name="DriftSigmaFmt" xml:space="preserve"><value>{0:F2}σ</value></data>
   <data name="DriftJaccardFmt" xml:space="preserve"><value>Jaccard = {0:F2}</value></data>
+  <data name="PreflightTitle" xml:space="preserve"><value>规则文件与数据不匹配</value></data>
+  <data name="PreflightContinue" xml:space="preserve"><value>仍然继续分析</value></data>
+  <data name="PreflightCancel" xml:space="preserve"><value>取消并修改规则</value></data>
+  <data name="PreflightRuleFields" xml:space="preserve"><value>规则文件里的字段：</value></data>
+  <data name="PreflightSampleFields" xml:space="preserve"><value>数据中观测到的字段：</value></data>
+  <data name="PreflightSampleFieldsTruncated" xml:space="preserve"><value>… 还有 {0} 个字段未列出</value></data>
+  <data name="PreflightExplain" xml:space="preserve"><value>规则文件里的所有字段名与数据样本里实际出现的字段名都没有匹配（大小写不敏感）。这通常意味着规则文件写的是另一份数据的形状，分析可能不会按预期生效。</value></data>
+  <data name="ResultWarningTitle" xml:space="preserve"><value>规则未生效</value></data>
+  <data name="ResultWarningExplain" xml:space="preserve"><value>分析已完成，但本次结果中没有出现规则文件里任何字段。规则文件可能与这份数据不匹配，请检查字段名拼写或换用对应的规则文件。</value></data>
+  <data name="EdTitle" xml:space="preserve"><value>表单编辑器（可视化）</value></data>
+  <data name="EdHint" xml:space="preserve"><value>逐项填写，实时生成并校验规则 JSON；手写规则用下方粘贴框。</value></data>
+  <data name="EdFieldsSection" xml:space="preserve"><value>字段规则（fields）</value></data>
+  <data name="EdAddField" xml:space="preserve"><value>添加字段规则</value></data>
+  <data name="EdFieldName" xml:space="preserve"><value>字段名</value></data>
+  <data name="EdFieldNamePlaceholder" xml:space="preserve"><value>如 age / user.phone</value></data>
+  <data name="EdFieldNameNew" xml:space="preserve"><value>新字段规则</value></data>
+  <data name="EdRemove" xml:space="preserve"><value>移除</value></data>
+  <data name="EdPrimaryType" xml:space="preserve"><value>主导类型</value></data>
+  <data name="EdPrimaryTypeAny" xml:space="preserve"><value>不限</value></data>
+  <data name="EdMinValue" xml:space="preserve"><value>数值下限</value></data>
+  <data name="EdMaxValue" xml:space="preserve"><value>数值上限</value></data>
+  <data name="EdDefaultValue" xml:space="preserve"><value>缺省补齐值</value></data>
+  <data name="EdEnumValues" xml:space="preserve"><value>枚举白名单（逗号分隔）</value></data>
+  <data name="EdPattern" xml:space="preserve"><value>正则 pattern</value></data>
+  <data name="EdNullRateMax" xml:space="preserve"><value>空值率上限（0~1）</value></data>
+  <data name="EdMaxOutlierRatio" xml:space="preserve"><value>离群占比上限（0~1）</value></data>
+  <data name="EdRequired" xml:space="preserve"><value>必填</value></data>
+  <data name="EdUnique" xml:space="preserve"><value>唯一</value></data>
+  <data name="EdRedactWhitelist" xml:space="preserve"><value>豁免自动打码（redact:false）</value></data>
+  <data name="EdPiiEnable" xml:space="preserve"><value>标记为敏感字段（pii）</value></data>
+  <data name="EdPiiLabel" xml:space="preserve"><value>敏感标签</value></data>
+  <data name="EdPiiLabelPlaceholder" xml:space="preserve"><value>内部编号</value></data>
+  <data name="EdPiiMaskChar" xml:space="preserve"><value>打码字符</value></data>
+  <data name="EdPiiMaskAll" xml:space="preserve"><value>整体打码</value></data>
+  <data name="EdKeepPrefix" xml:space="preserve"><value>保留前缀位数</value></data>
+  <data name="EdKeepSuffix" xml:space="preserve"><value>保留后缀位数</value></data>
+  <data name="EdTransform" xml:space="preserve"><value>值转换</value></data>
+  <data name="EdTransformNone" xml:space="preserve"><value>无</value></data>
+  <data name="EdTransformClaim" xml:space="preserve"><value>JWT claim</value></data>
+  <data name="EdTransformParseJson" xml:space="preserve"><value>结果按 JSON 展开</value></data>
+  <data name="EdTransformKey" xml:space="preserve"><value>密钥</value></data>
+  <data name="EdTransformIv" xml:space="preserve"><value>IV</value></data>
+  <data name="EdTransformMode" xml:space="preserve"><value>模式（cbc/ecb）</value></data>
+  <data name="EdTransformPadding" xml:space="preserve"><value>填充（pkcs7/none）</value></data>
+  <data name="EdTransformFormat" xml:space="preserve"><value>编码（base64/hex）</value></data>
+  <data name="EdTransformPrivKey" xml:space="preserve"><value>私钥</value></data>
+  <data name="EdTransformPubKey" xml:space="preserve"><value>公钥</value></data>
+  <data name="EdKmsHint" xml:space="preserve"><value>密钥推荐用 kms: 引用（kms-secret 子命令生成），需设置环境变量 OA_KMS_PASSPHRASE。</value></data>
+  <data name="EdParsersSection" xml:space="preserve"><value>值解析器（Excel/CSV 内嵌 JSON）</value></data>
+  <data name="EdAddParser" xml:space="preserve"><value>添加解析器</value></data>
+  <data name="EdVpSource" xml:space="preserve"><value>source（列）</value></data>
+  <data name="EdVpParseType" xml:space="preserve"><value>parseType</value></data>
+  <data name="EdVpHeader" xml:space="preserve"><value>header（表头行号）</value></data>
+  <data name="EdVpFlatten" xml:space="preserve"><value>强制展平</value></data>
+  <data name="EdExpectations" xml:space="preserve"><value>数据集期望（expectations）</value></data>
+  <data name="EdMinRowCount" xml:space="preserve"><value>最少行数</value></data>
+  <data name="EdMaxDuplicateRate" xml:space="preserve"><value>重复率上限（0~1）</value></data>
+  <data name="EdGeneratedOk" xml:space="preserve"><value>规则有效（{0} 个字段规则）</value></data>
+  <data name="EdMoreErrors" xml:space="preserve"><value>… 另有 {0} 项问题</value></data>
+  <data name="EdJsonPreview" xml:space="preserve"><value>生成的 JSON</value></data>
+  <data name="EdApply" xml:space="preserve"><value>应用到分析</value></data>
+  <data name="EdPasteOk" xml:space="preserve"><value>✓ 规则 JSON 有效（{0} 个字段规则）</value></data>
+  <data name="EdErrFieldNoName" xml:space="preserve"><value>存在未命名的字段规则</value></data>
+  <data name="EdErrFieldDup" xml:space="preserve"><value>字段名重复：{0}</value></data>
 </root>

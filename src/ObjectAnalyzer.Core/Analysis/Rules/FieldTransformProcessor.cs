@@ -29,8 +29,8 @@ public sealed class FieldTransformProcessor
     private readonly FieldFilter? _filter;
 
     /// <summary>
-    /// 基于规则文件构建处理器。selectedFields 优先级高于 rules.SelectedFields；
-    /// filterExpression 优先级高于 rules.Filter（为空字符串时回退到 rules.Filter）。
+    /// 基于规则文件构建处理器。selectedFields 优先级高于 <c>runtime.selectedFields</c>；
+    /// filterExpression 优先级高于 <c>runtime.filter</c>（为空字符串时回退到 runtime.filter）。
     /// </summary>
     public FieldTransformProcessor(AnalysisRules? rules, IEnumerable<string>? selectedFields = null, string? filterExpression = null)
     {
@@ -39,12 +39,13 @@ public sealed class FieldTransformProcessor
         {
             _selectedFields = new HashSet<string>(explicitSelection, StringComparer.OrdinalIgnoreCase);
         }
-        else if (rules?.SelectedFields is { Count: > 0 } ruleFields)
+        else if (TryGetSelectedFields(rules?.Runtime) is { Count: > 0 } ruleFields)
         {
             _selectedFields = new HashSet<string>(ruleFields, StringComparer.OrdinalIgnoreCase);
         }
 
-        string? filter = string.IsNullOrWhiteSpace(filterExpression) ? rules?.Filter : filterExpression;
+        string? ruleFilter = TryGetString(rules?.Runtime, "filter");
+        string? filter = string.IsNullOrWhiteSpace(filterExpression) ? ruleFilter : filterExpression;
         if (!string.IsNullOrWhiteSpace(filter))
         {
             _filter = new FieldFilter(filter);
@@ -59,6 +60,24 @@ public sealed class FieldTransformProcessor
                 _transforms[field] = rule.Transform;
             }
         }
+    }
+
+    private static List<string>? TryGetSelectedFields(System.Text.Json.Nodes.JsonObject? runtime)
+    {
+        if (runtime?["selectedFields"] is System.Text.Json.Nodes.JsonArray arr)
+        {
+            return arr.Select(n => n?.GetValue<string>() ?? "").Where(s => !string.IsNullOrEmpty(s)).ToList();
+        }
+        return null;
+    }
+
+    private static string? TryGetString(System.Text.Json.Nodes.JsonObject? runtime, string key)
+    {
+        if (runtime?[key] is System.Text.Json.Nodes.JsonValue v && v.TryGetValue<string>(out var s))
+        {
+            return s;
+        }
+        return null;
     }
 
     public bool HasSelectionOrTransforms => _selectedFields != null || _transforms.Count > 0 || _filter != null;
@@ -506,7 +525,7 @@ public sealed class FieldTransformProcessor
         }
         catch (FormatException)
         {
-            // 兼容：密文本身就视为 base64 字符串（无论 format）
+            // format 指定的解码方式失败时按 base64 重试（密文本身就是 base64 字符串）
             cipher = Convert.FromBase64String(cipherText);
         }
 

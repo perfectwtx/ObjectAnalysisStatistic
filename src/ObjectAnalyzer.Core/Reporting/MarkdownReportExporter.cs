@@ -1,6 +1,5 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -11,13 +10,13 @@ public static class MarkdownReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.MarkupLine($"正在将 Markdown 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在将 Markdown 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
         // 逐段写入，避免大报告整体常驻内存
         using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
         {
             WriteMarkdown(writer, result);
         }
-        AnsiConsole.MarkupLine($"[green]Markdown 报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]Markdown 报告成功保存！[/]");
     }
 
     private static void WriteMarkdown(TextWriter writer, AnalysisResult result)
@@ -189,7 +188,7 @@ public static class MarkdownReportExporter
         // Schema 演进小节
         WriteSchemaDiffSection(writer, result);
 
-        // P4 增强小节
+        // 深度分析增强小节
         WriteSamplingConfidenceSection(writer, result);
         WriteCorrelationSection(writer, result);
         WriteFuzzyDedupSection(writer, result);
@@ -286,7 +285,7 @@ public static class MarkdownReportExporter
     }
 
     // ─────────────────────────────────────────────────────
-    // P4 增强小节
+    // 深度分析增强小节
     // ─────────────────────────────────────────────────────
 
     private static void WriteSamplingConfidenceSection(TextWriter writer, AnalysisResult result)

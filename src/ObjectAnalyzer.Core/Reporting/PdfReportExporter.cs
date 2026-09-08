@@ -1,14 +1,13 @@
-using System.Globalization;
+﻿using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
 /// <summary>
 /// 将分析结果导出为 PDF 报告（QuestPDF 结构化排版）。覆盖字段统计、重复对象、
-/// 违规清单及 P4 七项分析。适合交付给非技术受众（管理层 / 合规审计 / 业务方）。
+/// 违规清单及 深度分析七项。适合交付给非技术受众（管理层 / 合规审计 / 业务方）。
 /// </summary>
 public static class PdfReportExporter
 {
@@ -20,11 +19,11 @@ public static class PdfReportExporter
 
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.MarkupLine($"正在将 PDF 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在将 PDF 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
 
         var doc = Document.Create(c => Compose(c, result));
         doc.GeneratePdf(outputPath);
-        AnsiConsole.MarkupLine($"[green]PDF 报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]PDF 报告成功保存！[/]");
     }
 
     // ────── 整体文档结构 ──────
@@ -80,7 +79,7 @@ public static class PdfReportExporter
             col.Item().Element(c => ViolationsSection(c, r));
             col.Item().Element(c => DuplicatesSection(c, r));
 
-            // P4 sections (conditional)
+            // Deep analysis sections (conditional)
             if (r.StringPatterns is { Count: > 0 })
                 col.Item().Element(c => StringPatternsSection(c, r));
             if (r.UnicodeHygiene is { Count: > 0 })
@@ -244,9 +243,9 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4 通用 ──────
+    // ────── 深度分析通用 ──────
 
-    private static void P4Header(IContainer container, string title, string subtitle)
+    private static void DeepAnalysisHeader(IContainer container, string title, string subtitle)
     {
         container.Column(col =>
         {
@@ -256,13 +255,13 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：字符串模式 ──────
+    // ────── 深度分析：字符串模式 ──────
 
     private static void StringPatternsSection(IContainer container, AnalysisResult r)
     {
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "5. 字符串模式归纳", "自动发现形态模板（###-####、身份证号、订单号等）"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "5. 字符串模式归纳", "自动发现形态模板（###-####、身份证号、订单号等）"));
             col.Item().Table(t =>
             {
                 t.ColumnsDefinition(cd => { cd.RelativeColumn(3); cd.RelativeColumn(1); cd.RelativeColumn(2); cd.RelativeColumn(4); });
@@ -286,14 +285,14 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：Unicode 卫生 ──────
+    // ────── 深度分析：Unicode 卫生 ──────
 
     private static void UnicodeHygieneSection(IContainer container, AnalysisResult r)
     {
         var dirty = r.UnicodeHygiene!.Where(p => p.Value.HygieneScore is < 90.0).OrderBy(p => p.Value.HygieneScore).Take(20).ToList();
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "6. Unicode 卫生检查", $"评分 < 90 的字段共 {dirty.Count} 个（展示前 20）"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "6. Unicode 卫生检查", $"评分 < 90 的字段共 {dirty.Count} 个（展示前 20）"));
             col.Item().Table(t =>
             {
                 t.ColumnsDefinition(cd => { cd.RelativeColumn(3); cd.RelativeColumn(1); cd.RelativeColumn(2); cd.RelativeColumn(4); });
@@ -324,13 +323,13 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：模糊去重 ──────
+    // ────── 深度分析：模糊去重 ──────
 
     private static void FuzzyDedupSection(IContainer container, AnalysisResult r)
     {
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "7. 模糊去重", $"共 {r.FuzzyDuplicates!.Groups.Count} 组相似重复"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "7. 模糊去重", $"共 {r.FuzzyDuplicates!.Groups.Count} 组相似重复"));
             col.Item().Table(t =>
             {
                 t.ColumnsDefinition(cd => { cd.RelativeColumn(4); cd.RelativeColumn(1); cd.RelativeColumn(2); cd.RelativeColumn(3); });
@@ -352,14 +351,14 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：字段相关性 ──────
+    // ────── 深度分析：字段相关性 ──────
 
     private static void CorrelationSection(IContainer container, AnalysisResult r)
     {
         var cm = r.CorrelationMatrix!;
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "8. 字段相关性矩阵", $"样本 {N(cm.Samples)}，字段 {cm.Fields.Count}，强相关对 {cm.StrongPairs.Count}"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "8. 字段相关性矩阵", $"样本 {N(cm.Samples)}，字段 {cm.Fields.Count}，强相关对 {cm.StrongPairs.Count}"));
             if (cm.StrongPairs.Count > 0)
             {
                 col.Item().Text("强相关对（|Pearson| ≥ 0.7 且样本 ≥ 30）").Italic();
@@ -391,13 +390,13 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：时间序列 ──────
+    // ────── 深度分析：时间序列 ──────
 
     private static void TimeSeriesSection(IContainer container, AnalysisResult r)
     {
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "9. 时间序列深度分析", $"覆盖 {r.TimeSeriesAnalyses!.Count} 个 DateTime 字段"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "9. 时间序列深度分析", $"覆盖 {r.TimeSeriesAnalyses!.Count} 个 DateTime 字段"));
             col.Item().Table(t =>
             {
                 t.ColumnsDefinition(cd => { cd.RelativeColumn(3); cd.RelativeColumn(1); cd.RelativeColumn(1); cd.RelativeColumn(1); cd.RelativeColumn(1); cd.RelativeColumn(1); });
@@ -429,14 +428,14 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：分布漂移 ──────
+    // ────── 深度分析：分布漂移 ──────
 
     private static void DistributionDiffSection(IContainer container, AnalysisResult r)
     {
         var d = r.DistributionDiff!;
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "10. 值分布漂移", $"显著漂移字段 {d.SignificantDriftCount} 个"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "10. 值分布漂移", $"显著漂移字段 {d.SignificantDriftCount} 个"));
             if (d.NumericDrifts.Count > 0)
             {
                 col.Item().Text("数值字段漂移").Italic();
@@ -488,14 +487,14 @@ public static class PdfReportExporter
         });
     }
 
-    // ────── P4：采样置信 ──────
+    // ────── 深度分析：采样置信 ──────
 
     private static void SamplingConfidenceSection(IContainer container, AnalysisResult r)
     {
         var sc = r.SamplingConfidence!;
         container.Column(col =>
         {
-            col.Item().Element(c => P4Header(c, "11. 采样置信区间", $"{sc.SamplingMethod} · 有效样本 {N(sc.EffectiveSampleSize)}"));
+            col.Item().Element(c => DeepAnalysisHeader(c, "11. 采样置信区间", $"{sc.SamplingMethod} · 有效样本 {N(sc.EffectiveSampleSize)}"));
             col.Item().Table(t =>
             {
                 t.ColumnsDefinition(cd => { cd.RelativeColumn(3); cd.RelativeColumn(2); cd.RelativeColumn(2); cd.RelativeColumn(2); cd.RelativeColumn(1); });

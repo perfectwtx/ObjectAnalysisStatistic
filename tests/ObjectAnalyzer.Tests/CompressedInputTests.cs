@@ -7,7 +7,7 @@ namespace ObjectAnalyzer.Tests;
 /// 验证压缩文件直读：gzip / bzip2 / zip 包裹的 json / jsonl / csv 能被透明解压并正确解析。
 /// 每个用例在临时目录生成压缩包，再用 FileParsers 入口解析，断言行数/字段正确。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
+
 public class CompressedInputTests
 {
     // ── 压缩包构造辅助 ──
@@ -153,7 +153,8 @@ public class CompressedInputTests
             var rows = FileParsers.ParseByFormat(path, "csv", new() { Flatten = true }).ToList();
             Assert.Equal(2, rows.Count);
             Assert.Equal("Bob", rows[1]["Name"]);
-            Assert.Equal("25", rows[1]["Age"]);
+            // CSV 数值列默认开启推断，"25" → 25L；保留字符串请传 CsvInferNumbers = false
+            Assert.Equal(25L, rows[1]["Age"]);
         }
         finally
         {
@@ -400,7 +401,7 @@ public class CompressedInputTests
         try
         {
             int exit = ObjectAnalyzer.Analysis.AnalysisRunner.Run(
-                new ObjectAnalyzer.Analysis.AnalysisOptions { InputPath = path });
+                new ObjectAnalyzer.Analysis.AnalysisOptions { Input = { InputPath = path } });
             Assert.Equal(0, exit);
 
             // 管线结束后文件句柄应全部释放，可立即删除

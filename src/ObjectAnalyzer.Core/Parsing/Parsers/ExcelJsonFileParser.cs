@@ -14,102 +14,162 @@ internal sealed class ExcelJsonFileParser : IFileParser
         var sources = options.ValueParsers;
 
         if (options.SampleReservoir > 0)
-            return ParseReservoir(stream, sources, options);
+            return SampleRecords(stream, sources, options);
         if (options.SampleStep > 0)
-            return ParseStep(stream, sources, options);
-        return ParseAll(stream, sources, options);
+            return StepRecords(stream, sources, options);
+        return EnumerateRecords(stream, sources, options, admitRow: null);
     }
 
-    private static IEnumerable<Dictionary<string, object?>> ParseAll(Stream stream, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
+    // ── 表头行语义（每个 source 独立声明，见 ValueParserConfig.Header）──
+    // header: 0 → 无表头：source 为列字母（A/B/C），首行即数据；
+    // header: N（>=1）→ 第 N 行是该列的表头行：source 为表头标题文本，数据从第 N+1 行开始。
+    // 列字母在流式读取到表头行时按标题文本绑定（Trim + 忽略大小写，取最左匹配列）；
+    // 找不到标题 / 表头行不存在时显式报错——绝不静默跳过，避免「配置了却不生效」。
+
+    private sealed class SourceState
     {
-        long rowIndex = 0;
-        bool useHeaderRow = UseHeaderRow(sources);
-        foreach (var row in MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ParserHelpers.ResolveExcelType(stream)))
+        public int Index { get; }
+        public ValueParserConfig Config { get; }
+        public int HeaderRow { get; }
+        public bool Bound { get; private set; }
+        public string ColumnLetter { get; private set; } = "";
+
+        private SourceState(int index, ValueParserConfig config, int headerRow)
         {
-            rowIndex++;
-            var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
-            if (dict != null)
-                yield return dict;
+            Index = index;
+            Config = config;
+            HeaderRow = headerRow;
+        }
+
+        public static SourceState Create(int index, ValueParserConfig config)
+        {
+            int headerRow = config.Header ?? 1;
+            if (headerRow < 0)
+                throw new InvalidDataException($"valueParsers[{index}] 的 header 必须 >= 0（0=无表头，N=第 N 行是表头）。");
+            if (string.IsNullOrWhiteSpace(config.Source))
+                throw new InvalidDataException($"valueParsers[{index}] 的 source 不能为空（无表头时为列字母，有表头时为表头标题文本）。");
+
+            var state = new SourceState(index, config, headerRow);
+            if (headerRow == 0)
+            {
+                string letter = config.Source.Trim();
+                if (!IsValidColumnLetter(letter))
+                    throw new InvalidDataException(
+                        $"valueParsers[{index}]: header=0 时 source 必须是列字母（A/B/C…），收到 '{config.Source}'。" +
+                        "若要按表头标题定位列，请把 header 设为表头所在行号。");
+                state.Bind(letter); // 无表头：source 即列字母
+            }
+            return state;
+        }
+
+        private void Bind(string columnLetter)
+        {
+            ColumnLetter = columnLetter;
+            Bound = true;
+        }
+
+        public void BindFromHeaderRow(IDictionary<string, object?> headerRowDict)
+        {
+            string title = Config.Source.Trim();
+            foreach (var kvp in headerRowDict)
+            {
+                if (kvp.Value is null)
+                    continue;
+                if (string.Equals(kvp.Value.ToString()?.Trim(), title, StringComparison.OrdinalIgnoreCase))
+                {
+                    Bind(kvp.Key);
+                    return;
+                }
+            }
+
+            throw new InvalidDataException($"valueParsers[{Index}]: 第 {HeaderRow} 行找不到标题为 '{title}' 的列。");
         }
     }
 
-    // 采样：先按记录序做准入/步长判定，未选中行连 JSON 单元格都不解析
-    private static IEnumerable<Dictionary<string, object?>> ParseReservoir(Stream stream, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
+    // 列字母校验：单字母任意大小写（A/a）；多字母须全大写（AB/XFD）——
+    // 混合大小写（如 "Age"）几乎肯定是把表头标题写进了 header=0 的 source，报错并给出提示
+    private static bool IsValidColumnLetter(string value) =>
+        value.Length switch
+        {
+            1 => char.IsAsciiLetter(value[0]),
+            >= 2 and <= 3 => value.All(c => c is >= 'A' and <= 'Z'),
+            _ => false
+        };
+
+    private static IEnumerable<Dictionary<string, object?>> EnumerateRecords(
+        Stream stream,
+        IReadOnlyList<ValueParserConfig> sources,
+        ParseOptions options,
+        Func<long, bool>? admitRow)
+    {
+        var states = sources.Select((config, index) => SourceState.Create(index, config)).ToList();
+
+        long rowIndex = 0;
+        foreach (var row in MiniExcel.Query(stream, useHeaderRow: false, excelType: ParserHelpers.ResolveExcelType(stream)))
+        {
+            rowIndex++;
+            if (row is not IDictionary<string, object?> rowDict)
+                continue;
+
+            // 表头行恰好到达：先绑定（在采样准入之前——表头行被采样跳过也必须完成绑定）
+            foreach (var state in states)
+            {
+                if (!state.Bound && state.HeaderRow == rowIndex)
+                    state.BindFromHeaderRow(rowDict);
+            }
+
+            if (admitRow is not null && !admitRow(rowIndex))
+                continue; // 未选中行：连 JSON 单元格都不解析
+
+            var record = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var state in states)
+            {
+                if (!state.Bound || rowIndex <= state.HeaderRow)
+                    continue; // 表头行之前：该列尚未开始出数
+
+                string sourceKey = state.Config.Source.Trim();
+                object? cellValue = LookupCellValue(rowDict, state.ColumnLetter);
+                if (cellValue == null)
+                    continue;
+
+                var parsedValue = ParseValueByType(cellValue, state.Config.ParseType, sourceKey, rowIndex, options);
+                if (parsedValue == null)
+                    continue;
+
+                if (state.Config.Flatten ?? options.Flatten)
+                    AddFlattenedParsedValue(record, sourceKey, parsedValue);
+                else
+                    record[sourceKey] = parsedValue;
+            }
+
+            if (record.Count > 0)
+                yield return record;
+        }
+
+        var unbound = states.FirstOrDefault(s => !s.Bound);
+        if (unbound is not null)
+            throw new InvalidDataException(
+                $"valueParsers[{unbound.Index}]: 工作表中不存在第 {unbound.HeaderRow} 行，找不到标题为 '{unbound.Config.Source.Trim()}' 的列。");
+    }
+
+    // 采样：准入判定在记录构建之前，未选中行不解析 JSON 单元格
+    private static IEnumerable<Dictionary<string, object?>> SampleRecords(
+        Stream stream, IReadOnlyList<ValueParserConfig> sources, ParseOptions options)
     {
         var sampler = new ReservoirSampler<Dictionary<string, object?>>(options.SampleReservoir);
-        bool useHeaderRow = UseHeaderRow(sources);
-        foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ParserHelpers.ResolveExcelType(stream))))
+        int slot = -1;
+        foreach (var record in EnumerateRecords(stream, sources, options,
+                     admitRow: _ => { slot = sampler.NextSlot(); return slot >= 0; }))
         {
-            int slot = sampler.NextSlot();
-            if (slot < 0)
-                continue;
-            var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
-            if (dict != null)
-                sampler.SetSlot(slot, dict);
+            sampler.SetSlot(slot, record);
         }
         return sampler.Items;
     }
 
-    private static IEnumerable<Dictionary<string, object?>> ParseStep(Stream stream, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, ParseOptions options)
+    private static IEnumerable<Dictionary<string, object?>> StepRecords(
+        Stream stream, IReadOnlyList<ValueParserConfig> sources, ParseOptions options)
     {
-        long recordIndex = 0;
-        bool useHeaderRow = UseHeaderRow(sources);
-        foreach (var (rowIndex, row) in Indexed(MiniExcel.Query(stream, useHeaderRow: useHeaderRow, excelType: ParserHelpers.ResolveExcelType(stream))))
-        {
-            if (recordIndex++ % options.SampleStep != 0)
-                continue;
-            var dict = TryParseValueSources(row, sources, rowIndex, options, useHeaderRow);
-            if (dict != null)
-                yield return dict;
-        }
-    }
-
-    // 表头模式：header=0 无表头（列以字母 A/B/C 命名，首行为数据）；header=1（默认）首行值为列名。
-    private static bool UseHeaderRow(IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources)
-    {
-        foreach (var source in sources)
-        {
-            if (source.Header is int header)
-                return header == 1;
-        }
-        return true;
-    }
-
-    private static Dictionary<string, object?>? TryParseValueSources(object? row, IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> sources, long rowIndex, ParseOptions options, bool useHeaderRow)
-    {
-        if (row is not IDictionary<string, object?> rowDict)
-            return null;
-
-        // 表头模式 0：MiniExcel 无表头读取（列键为 A/B/C），首行是表头，手动跳过
-        if (!useHeaderRow && rowIndex == 1)
-            return null;
-
-        var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var source in sources)
-        {
-            string sourceKey = source.Source.Trim();
-            if (string.IsNullOrWhiteSpace(sourceKey))
-                continue;
-
-            object? cellValue = LookupCellValue(rowDict, sourceKey);
-            if (cellValue == null)
-                continue;
-
-            var parsedValue = ParseValueByType(cellValue, source.ParseType, sourceKey, rowIndex, options);
-            if (parsedValue == null)
-                continue;
-
-            bool shouldFlatten = source.Flatten ?? options.Flatten;
-            if (shouldFlatten)
-            {
-                AddFlattenedParsedValue(result, sourceKey, parsedValue);
-                continue;
-            }
-
-            result[sourceKey] = parsedValue;
-        }
-
-        return result.Count > 0 ? result : null;
+        return EnumerateRecords(stream, sources, options, admitRow: rowIndex => (rowIndex - 1) % options.SampleStep == 0);
     }
 
     private static void AddFlattenedParsedValue(Dictionary<string, object?> result, string sourceKey, object? parsedValue)
@@ -235,21 +295,6 @@ internal sealed class ExcelJsonFileParser : IFileParser
         };
     }
 
-    private static bool TryFindKey(IDictionary<string, object?> rowDict, string sourceKey, out object? value)
-    {
-        foreach (var kvp in rowDict)
-        {
-            if (string.Equals(kvp.Key, sourceKey, StringComparison.OrdinalIgnoreCase))
-            {
-                value = kvp.Value;
-                return true;
-            }
-        }
-
-        value = null;
-        return false;
-    }
-
     private static object? LookupCellValue(IDictionary<string, object?> rowDict, string sourceKey)
     {
         if (rowDict.TryGetValue(sourceKey, out var exact))
@@ -262,14 +307,5 @@ internal sealed class ExcelJsonFileParser : IFileParser
         }
 
         return null;
-    }
-
-    private static IEnumerable<(long Index, object? Row)> Indexed(IEnumerable<object?> rows)
-    {
-        long index = 0;
-        foreach (var row in rows)
-        {
-            yield return (index++, row);
-        }
     }
 }

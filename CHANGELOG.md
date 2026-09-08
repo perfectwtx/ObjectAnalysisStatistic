@@ -2,7 +2,56 @@
 
 本项目使用 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 规范。
 
+## [2.0.0] — 架构重构（破坏性）
+
+### Added
+- **API v2 契约：五页面视图响应 + SSE 进度推送（W8）**：同步分析端点（`/api/analyze`、`/api/analyze/raw`、`/api/analyze/config`）统一返回 `AnalyzeViewResponse`——按 React 前端五块页面组织（`overview` 概览统计 / `preview` 数据预览 / `fields` 字段明细 / `deepAnalysis` 深度分析（未启用时省略）/ `quality` 质量报告），并保留 `result`（完整 AnalysisResult）兼容字段；数据预览经管线 `PreviewSink` 捕获转换/过滤后的前 20 条记录。异步作业：`AnalysisJobRegistry` 新增 `ReportProgress` 进度计数与预览承载，快照回显 `processedObjects` 与 `preview`（原始行数组）；新增 `GET /api/analyze/async/{jobId}/events` SSE 事件流（`progress` 500ms 周期 → 终态 `complete` → 关闭；未知作业 `gone`），前端据此后端轮询可逐步迁移到推送。
+- **覆盖率拆分显示：值为 null vs 字段不存在**：`FieldStatistic` 新增 `NullCount`（值为显式 null 的记录数，是 `Count` 的子集）——"未覆盖"从此可区分两种原因：值为 null（`nullCount`）与键缺失（`totalObjects - count`）。引擎并行合并 / 增量合并（`MergeFrom`）/ PII 克隆全链路同步该指标；CLI 字段详情显示为 `覆盖率: 2/3 (66.7%)（null 1 · 字段缺失 1）`，Web 字段表格在覆盖率条下方追加 `null N`（琥珀色）与 `字段缺失 N`（红色）标注（中英双语），API 响应的 `fieldStatistics` 自动携带 `nullCount`。质量检查的 required / nullRate 口径不变（null 与缺失均计为坏行）。
+- **统一分析管线 `AnalysisPipeline`（W1）**：解析分发（数据库直连 / root-path 整体投影 / 常规文件）→ JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计收敛为一条计算路径，CLI / API / Web 三宿主共用；运行期状态（内存预算 / 续跑位置 / 进度桥接 / 预览捕获）经 `AnalysisRunContext` 显式传递。新增"三宿主行为一致性"测试（同输入下管线直调与 CLI 宿主产出逐字节一致的结果 JSON）。
+- **宿主端口抽象 `ObjectAnalyzer.Abstractions`**：`IAnalysisConsole` / `IProgressReporter` / `IResultPresenter` + 组合根 `AnalysisServices`——控制台渲染、进度 UI、结果呈现由宿主注入（CLI：Spectre 富渲染；API/Web/测试：静默或桥接），Core 不再耦合任何渲染库。
+- **导出注册表（W4）**：`IResultExporter`（`Format` / `CanHandle` / `Save`）+ `ReportExporter` 路由器（html / markdown / csv / excel / pdf 内置 + JSON 兜底）；新增报告格式 = `ReportExporter.Register` 一个实现。
+- **门禁注册表（W4）**：`IQualityGate` + `QualityGateRegistry`——数据质量(3) / 数据安全合规(4) / 异常值(5) / Schema 演进(6) 四门禁数据化（退出码与审计摘要均为门禁属性），新增门禁 = 注册新实现。
+- **规则单轨（W6）**：`RulesToOptionsConverter.KnownRuntimeKeys` 成为 runtime 键面的单一事实来源，`RulesLint` 白名单改为自动推导；新增 runtime 键 `maxTrackedValues`（引擎唯一值跟踪上限）时白名单同步生效。
+- **CLI 新选项 `--max-tracked-values <N>`**（默认 1000）：与分析上限正交化——`--max-values` 明确为"仅控制台展示数量"，不再让人误以为它截断导出结果；规则文件 runtime 节点同步支持 `maxTrackedValues`。
+- **API 显式格式覆盖**：`AnalysisOptions.Input.Format`（raw 文本端点场景）；管线解析格式 = 显式覆盖 > 扩展名探测。
+
+### Changed（破坏性）
+- **采样顺序统一**：JSON/XML/YAML 等整体物化格式的采样统一移到「字段过滤之后」（样本取自过滤后总体）；JSONL/CSV/Excel 保持解析器内行级采样的流式优化。与 v1.x 相比，"采样 + filter"组合的样本量语义更正确，但结果数值可能与 v1.x 不同。
+- **`ObjectAnalyzer.Analyze / AnalyzeDetailed` 新增可选参数 `maxTrackedValues`**（默认 1000，置于 `CancellationToken` 前）；引擎每字段唯一值跟踪上限由编译期常量改为可配置。
+- **Core 静态可变状态清零**：删除 `AnalysisRunner` 的 `[ThreadStatic]` 草图缓存与 `s_activeMemoryBudget`（草图经 `PipelineResult` 显式传递）；`AnalysisRunner.RunCore`（440 行）拆为 `Preflight` / `Resume` / `ReportAndGates` 三个 partial 阶段。直接引用这些私有实现的下游代码（不存在于本仓库）需改为公开接口。
+- **测试全量并行**：删除 `AnalysisRunnerSequentialGroup` 串行集合（其 AnsiConsole 争用理由随端口化失效），600+ 测试可并行执行。
+
+### Fixed
+- **缺陷 2（valueParsers 强制改写格式）**：普通 JSON/JSONL/XML/YAML 配置 `valueParsers` 曾被强制按 excel-json 解析（报"字典键 '1' 缺失"），且 API 侧行为与 CLI 不一致。现仅在电子表格类格式（excel / csv）时切换 excel-json，普通格式按原格式解析；CLI / API / Web 三宿主同源。
+- **缺陷 1（filter + flatten 跳过字段级质量检查）**：验证已在管道中修复（范围/枚举/模式检查在过滤+展平后的对象流上正常执行），并以回归测试锁定。
+
+### Removed
+- **`ObjectAnalyzer.Core` 移除 Spectre.Console 包依赖**（约 230KB）：145+ 处 `AnsiConsole.*` 调用点全部迁移至宿主端口；Core 现为纯计算库。
+
 ## [Unreleased]
+
+### Added
+- **Web 可视化规则编辑器 + 规则实时校验**：规则配置区新增表单编辑器（`RuleEditor`）——fields 字段规则（主导类型 / 必填 / 唯一 / 数值范围 / 缺省值 / 枚举白名单 / pattern / nullRateMax / maxOutlierRatio / pii 打码格式（label / maskChar / maskAll / keepPrefix/keepSuffix）/ redact 白名单 / 六种值转换及对应参数）、valueParsers（source / parseType / header 表头行号 / 强制展平）与数据集期望逐项表单化；实时生成规则 JSON（实时校验状态 + JSON 预览），「应用到分析」复用与粘贴规则完全相同的校验与落盘路径（表单产出的 JSON 自动同步进粘贴框便于微调）。粘贴规则输入框同步获得「输入即校验」：未知键（RulesLint 同源文案）/ 语法错误 / 往返反序列化即时显示 ✓ 与 ✗，不必点「应用规则」才发现配置错误。i18n 中英双语（55 个新资源键）；新增编辑器样式（复用 --oa-success / --oa-danger 状态色）。验证：三套件 550/46/59 全过；浏览器端到端（添加字段 → 配置 → 生成 JSON → 应用 → 粘贴框实时报错/通过）。
+- **API 响应回显 PII 打码视图（`pii.fields` 元数据）**：出站打码策略（`PiiPolicy`）解析出的敏感字段元数据随响应回显——每字段输出 `field` / `category`（Phone/IdCard/…/Custom）/ `label`（与 CLI `--pii-report` 同源口径：内置分类中文名或规则 label）/ `highSeverity` / `isCustom` / `maskChar` / `maskAll` / `keepPrefix` / `keepSuffix`。同步端点（`AnalyzeViewResponse.pii`）与异步作业（快照经 `AnalysisJobRegistry` 携带策略，`AnalyzeJobSnapshotResponse.pii`）同源；`piiOff=true` 时元数据照常回显（关打码不影响敏感字段识别结果），未发现敏感字段时 `fieldCount=0`。配置是否生效从此一眼可见，不再需要「猜 + 试」。测试：`PiiRedactionEndpointTests` 元数据断言（内置语义 / 自定义规则 / piiOff / 空 PII / 异步）。
+- **`piiOff=true` 落结构化审计**：API 请求显式关闭出站打码时，若配置了审计日志路径（规则 `runtime.audit.log`，经规则合并进 `options.Audit`），以 NDJSON 事件 `pii_off` 落一条审计（记录输入 SHA-256 / 字节数与说明，**绝不记字段值**，与审计 schema 同口径）；审计写入失败不阻断分析。测试：`AnalyzeRaw_PiiOff_WritesAuditEntryWhenConfigured`。
+- **API 出站打码关卡（delivery boundary）**：确立「分析内核永远处理原始值，打码是出站边界的职责」——所有结果离开服务前在 `AnalysisCore.AnalyzeFile` 构造 `AnalyzeOutcome` 处统一打码（同步三端点与异步作业同源，新增端点天然继承，结构上不可能再「忘记调用」），结果与数据预览双覆盖。新增 `PiiPolicy`（打码策略一次解析：字段级 `redact:false` 白名单 → 规则 `pii` 声明 → 内置语义类型，作为所有出站形态的唯一判定来源）与 `PreviewRedactor`（预览行按策略打码；数值标量先转不变文化字符串再打码，杜绝数值形态原文出站）；`PiiRedactor` 改为消费策略（`Redact(result, bool)` 重载保留，CLI 四个报告出口零改动）。`AnalysisJobRegistry` 快照与异步 GET 响应同步携带 `piiRedacted` 标记。测试：`PiiPolicyTests`（策略解析优先级 / 空策略直通 / 预览打码）与 `PiiRedactionEndpointTests` 4 个端点契约用例。
+- **API 请求级 `piiOff` 开关 + 响应回显 `piiRedacted`**：三个同步端点（multipart 表单 / JSON body / 查询参数）与异步作业统一支持显式关闭出站打码（与 CLI `--pii-off` 对称）；关闭时响应标记 `piiRedacted=false` 并写服务器日志留痕（CLI 侧审计快照本就记录 `piiOff`）。`/api/analyze` 端点文档补充打码行为说明。
+- **Mini API 项目 `src/ObjectAnalyzer.Api`（对接 React 前端）**：独立于 Blazor 界面的 HTTP 分析接口，默认监听 `http://localhost:5200`，CORS 已放行 Vite 开发服务器（localhost:5173）：
+  - `POST /api/analyze`：multipart 上传数据文件（+ 可选规则文件/内联 rulesJson），支持 flatten / maxValues / fields / filter / 两级 JSONPath / 采样 / 并行度等全部分析参数 → camelCase 完整分析结果；
+  - `POST /api/analyze/raw?format=`：请求体即数据文本（JSON/JSONL/CSV…）；
+  - `POST /api/rules/validate`：规则 JSON 校验（走 RulesJsonOptions，支持注释）；`GET /api/rules/reference`：返回全量规则参考模板；`GET /api/health`：健康检查。
+  - 分析执行复用 Core 管线（FileParsers.ParseByFormat + FieldTransformProcessor 字段选择/转换/过滤 + Sampling + ObjectAnalyzer.Analyze）；新增集成测试项目 `tests/ObjectAnalyzer.Api.Tests`（WebApplicationFactory，8 个用例：健康/原始分析/multipart 上传/缺文件 400/规则校验合法与含注释/参考模板）。
+  - 集成 **Scalar 交互式文档**：`GET /scalar`（Scalar 界面，可直接调试）+ `GET /openapi/v1.json`（OpenAPI 3.1），端点已标注摘要与描述；`Microsoft.OpenApi` 显式固定 2.x 规避传递引用的 2.0.0 高危漏洞（NU1903）。
+- **全量规则参考模板 `samples/rules_full_reference.jsonc` + 规则加载支持注释**：模板覆盖全部规则配置（flatten / fields 全部 13 项字段规则 / selectedFields / filter / valueParsers / expectations），每一项配置都带中文注释说明用途与取值；AES/国密等需要 KMS 口令的示例默认以块注释给出（取消注释并设置 `OA_KMS_PASSPHRASE` 后启用）。规则加载（CLI LoadRules / Web 粘贴与上传路径 / 审计摘要）统一改用 `AnalysisRules.RulesJsonOptions`（`ReadCommentHandling = Skip` + 大小写不敏感），**带注释的规则文件可直接使用**。测试：`Rules_WithComments_LoadsViaSharedOptions`。
+- **配套演示数据 `samples/rules_full_reference_data.json`**（102 行，由 PowerShell 脚本确定性生成）：字段与模板规则一一对应，内置全部违规触发场景——age 必填缺失×2 / 范围越界（200、-3）/ 离群点×6（999）/ 空值×2、gender 非法枚举×3（Robot）、email 正则不匹配×2 与重复值×2、整行重复×2、含可展开的 JWT token（transform: jwt + parse:"json" 演示）与 inactive 行（filter 演示）。端到端验证：模板规则 + 演示数据产出 5 条字段违规（age 3 + email 2），`--fail-on-violations` 退出码 3。⚠ 冒烟中发现已知缺陷：**规则文件同时配置 `filter` 与 `flatten: true` 时字段级质量检查被跳过**（模板中 filter 已注释并标注；Backlog 待修）。
+- **Mini API：`POST /api/analyze/raw` 支持规则**：原先该端点硬编码传 `rules: null`，粘贴/直连场景用不了 `fields` 的 transform、枚举、范围校验，更用不了 `valueParsers`。请求体已被数据文本占用，故规则走查询参数 `rulesJson=`（**受请求行长度限制，Kestrel 默认约 8KB；规则较长请改用 multipart 的 `/api/analyze`**），并配套 `allowUnknownRules`；未知键检查与 multipart 版本同源（默认 400 + unknowns）。响应 `AnalyzeRawResponse` 新增可选 `rulesSource`（未传规则时省略，避免前端把「没规则」误判成「规则没生效」）。测试：`AnalyzeRaw_WithRulesJson_AppliesValueParsers` / `AnalyzeRaw_UnknownRuleKey_Returns400` / `AnalyzeRaw_WithoutRules_OmitsRulesSource`。
+
+### Fixed
+- **API 分析响应默认出站打码（破坏性行为变更，原为安全缺陷）**：此前 PII 打码只发生在 CLI 报告导出阶段（`PiiRedactor` 仅被 CLI 的 4 个报告出口调用），API 拿到 `AnalysisResult` 后直接序列化返回——配置 PII 规则后响应的值分布 / 重复对象 JSON / 违规样本 / 数据预览全是原始值。现在默认打码生效（含此前完全缺失的数据预览打码）；依赖原始值的消费方需显式传 `piiOff=true`，响应以 `piiRedacted=false` 留痕。
+- **打码副本漏抄统计属性（打码字段主导类型回落 "Unknown"）**：`PiiRedactor.CloneWithMask` 原以手工属性清单构造打码副本，漏抄 `PrimaryType`、日期剖析（`dateTimeCount`/`minDateTime`/`maxDateTime`/`dateHistogram`）、异常值四项与 `rangeViolationCount`，且 `histogram` 与原对象共享引用——该缺陷在 CLI 路径早已存在，API 默认打码后全面显形。`FieldStatistic` 新增 `CloneForRedaction()`（`MemberwiseClone` 浅拷贝全部标量统计、可变集合一律换新实例断开共享），`CloneWithMask` 只重填打码相关部分，未来新增属性自动携带。回归测试：`PiiRedactor_MaskedClone_PreservesPrimaryType` / `_PreservesDateTimeAndRangeStats` / `_DetachesMutableCollections`。
+- **同步 `/api/analyze/config` 漏传 `format` 给管线**（异步 config 端点有、同步端点没有）：`.txt` 临时文件按扩展名嗅探不出格式即回落 JSONL 解析器，数组型 `dataText` 误报「根节点必须是一个对象」；现与异步端点对齐显式透传 `options.Input.Format`。
+- **Mini API 修复「规则里配了 `valueParsers` 却不生效」**：CLI 的 `AnalysisRunner.ResolveEffectiveFormat` 在检测到规则含 `valueParsers` 时会强制切到 `excel-json` 解析器（把 Excel/CSV 单元格里的 JSON 文本解析成对象再展开），但 API 的 `AnalysisCore.AnalyzeFile` 一直直接用扩展名检测出的格式去解析 —— `.xlsx` → `excel`，走的是 `ExcelCsvFileParser`，而该解析器只拿 `valueParsers` 判断表头模式、压根不做 JSON 解析。结果就是整串 JSON 被当成普通文本统计，字段还叫 `A`，规则里的 `fields["A.body"].transform` 永远匹配不上（同一份文件 + 同一份规则，CLI 正常展开、API 全空）。现新增 `AnalysisCore.ResolveEffectiveFormat`（与 CLI 同一套判定），multipart / raw 两条路径统一走它；响应里的 `format` 如实回写实际使用的解析器（`excel-json`），方便前端判断规则是否真的生效。回归测试 `Analyze_ValueParsersRule_ForcesExcelJsonParsing`：CSV 单元格内嵌 JSON + `valueParsers` + `fields["A.body"].transform`，断言能展开出 `A.body.mountain` 且不再残留原始文本列 `A`。
+- **检查点文件名清洗跨平台一致化（修复 CI/Linux 失败）**：`P6PostAnalysis.SanitizeCheckpointName` 原使用 `Path.GetInvalidFileNameChars()`，该集合随运行 OS 变化——Linux 上 `<>:"|?*` 与反斜杠均合法，导致同一输入在 GitHub Actions（Linux）与本地（Windows）被清洗成不同结果，并削弱路径穿越防护的一致性。改为跨平台固定字符集（Windows 非法字符 + 正/反斜杠 + 控制字符），`P6PostAnalysisTests` 4 个按 Windows 语义编写的用例现可在任意 OS 通过，并新增 `Sanitize_CrossPlatformRejectsWindowsInvalidChars` 锁定该行为；顺带合并此前误插入的重复 `[Unreleased]` 标题。
 
 ### Added
 - **从代码 / Schema 生成规则文件（rules-from-code / rules-from-schema 子命令）**：静态解析 C# 源码或 JSON Schema（draft-07 / 2020-12 常用子集）提取类结构，生成规则文件骨架，支撑「模型优先」的数据校验工作流：
@@ -15,6 +64,16 @@
 - **移除「编译 .cs 类型定义文件后强类型反序列化分析」功能**（原 `--type "File.cs:ClassName"` / `-t`）：删除 `TypeSystem/`（`TypeLoader` Roslyn 运行时编译 + `DynamicAssemblyContext` 可卸载程序集上下文）与 `Parsing/TypedFileParser` / `TypedParseResult`，以及 CLI 选项定义、`AnalysisOptions.TypeFile/TypeName`、AnalysisRunner 的两条强类型分支（含 --resume 不兼容警告）、Web UI 的类型文件上传/目标类名输入与其 resx 键（`OptType*` / `ClearTypeFile` / `ErrTypedParse`）、`PerformanceImprovementsTests` 的沙盒卸载用例与 `TypeLoaderTests`（4 个测试）与 `samples/UserInfo.cs` 示例。Roslyn 包引用保留（`SchemaExporter.CSharp` 的 SyntaxFactory 代码生成仍在使用）。验证：Release 构建 0 警告 0 错误，458 测试全过（405 核心 + 53 Web）。
 
 ### Changed
+- **`/api/analyze/config`（与 `/analyze/async/config`）未知键检查对齐（破坏性）**：两个强类型 config 端点原先直接 `[FromBody]` 反序列化，不跑 RulesLint——规则里不认识的键（错层级的 `pii.maskChar`、拼错的规则名）会被静默丢弃，「看似生效实则无效」。现在改为读取原始请求体，先对内联 `rules` 子树做与 multipart / raw 端点同源的未知键检查（默认 400 + unknowns，错误文案与建议一致），再反序列化为强类型请求；OpenAPI schema 经 `.Accepts<AnalyzeConfigRequest>` 保留。**此前靠静默忽略才能通过的错误规则现在会报 400**（确认可忽略时在 rules 里传 `allowUnknownRules: true`）。异步作业失败日志同步接入结构化 `ILogger`（`LoggerMessage` 源生成委托），替换正式环境会沉默的 `Console.Error` 直写。测试：`AnalyzeConfig_UnknownRuleKey_Returns400WithUnknowns` / `AnalyzeAsyncConfig_UnknownRuleKey_Returns400WithUnknowns` / `AnalyzeConfig_InvalidJsonBody_Returns400`。
+- **`valueParsers.header` 升级为表头行号语义（破坏性）**：旧实现除 `1` 外任何值（含 `3`）一律按 `0` 处理且跳过首行，「header 表示表头所在行」并不成立。现在：`0` = 真正无表头（首行即数据，source 为列字母 A/B/C）；`N`（≥2）= 第 N 行是表头（跳过之前的行，数据从第 N+1 行开始，source 用该行的标题文本）。excel-json 专用解析下**每个 valueParser 独立声明自己的表头行**（同一张表的不同列可有不同表头行）；通用 excel/csv 解析为整表语义（多个 source 声明不一致时取第一个声明的值）。防呆：表头标题找不到 / 行号超出实际行数 / header=0 时 source 非列字母（混合大小写如 `Age`）一律显式报错并给出提示，不再静默跳过。实现上两个 Excel 解析器的 All/Reservoir/Step 三分支收敛为「单核枚举 + 采样准入回调」（未选中行仍不解析 JSON 单元格）。测试：新增 `ValueParserHeaderTests` 6 个用例（多行表头独立绑定 / 标题找不到报错 / 行号越界报错 / 非列字母提示 / CSV 整表重命名 / CSV 走 excel-json 链路）；真实样本（多行表头 xlsx + header 1/0/3 混用规则）端到端验证三个 valueParser 同时生效。
+- **`/api/analyze/config` 改为纯 JSON body 全强类型**：请求体直接绑定为强类型 `AnalyzeConfigRequest`——数据文本走 `dataText`（JSON/JSONL/CSV/XML/YAML）内嵌，`format` 显式指定或自动检测，其余全部分析选项（`flatten`/`csvInferNumbers`/`fields`/`filter`/`sample*`/`maxParallel` + P4 开关）与内联 `rules` 规则对象均为强类型字段。OpenAPI / Scalar 现在能看到每个配置字段及其 `rules.*` 子结构（而非一个 JSON 字符串框）。响应改用 `AnalyzeRawResponse`（无文件名）。废弃并删除不再使用的 multipart 表单类型 `AnalyzeConfigForm`。验证：OpenAPI `AnalyzeConfigRequest` schema 列出 `dataText`/`format`/`rules` + 全部分析选项；POST 内嵌 `dataText`+`rules` 返回 200（totalObjects=2）；Api.Tests 17 全绿，构建 0 警告 0 错误。
+- **Mini API 出入参 DTO 全部拆成单个文件**：`src/ObjectAnalyzer.Api` 新增 `Contracts/` 目录，把原来集中在 `ApiContracts.cs`（出参）与 `AnalysisCore.cs`（入参）里的所有请求/响应 DTO 各拆一文件——出参：`HealthResponse`、`RulesLintEntry`、`RulesValidationResponse`、`ErrorResponse`、`AnalyzeResponse`、`AnalyzeRawResponse`（+ 响应构造助手 `ApiErrors`）；入参：`AnalyzeForm`、`AnalyzeRequestOptions`、`AnalyzeConfigRequest`、`AnalyzeConfigForm`。`ApiContracts.cs` 删除，`AnalysisCore.cs` 只保留执行核心 `AnalysisCore` 静态类。命名空间 `ObjectAnalyzer.Api` 不变，引用全部跟随归属文件各自补足 `using`。零行为变化；验证：Api.Tests 17 全绿，构建 0 警告 0 错误。
+- **Mini API 端点按资源拆成多文件（Minimal API 惯例）**：`src/ObjectAnalyzer.Api/Program.cs` 从 367 行瘦身为启动 + 服务注册 + `MapGroup("/api")` 挂载（约 60 行）；端点按资源拆到 `Endpoints/` 下三个静态扩展类——`HealthEndpoints.MapHealthApi`（/api/health）、`RulesEndpoints.MapRulesApi`（/api/rules/validate + /api/rules/reference）、`AnalyzeEndpoints.MapAnalyzeApi`（/api/analyze + /api/analyze/config + /api/analyze/raw）。每个扩展类以 `IEndpointRouteBuilder` 为入口、`Program.cs` 集中 `.MapXxxApi()` 挂载，路由统一走 `/api` 前缀。`/api/rules/reference` 依赖的 ContentRoot 通过 `IWebHostEnvironment` 注入。零行为变化，路由路径不变；验证：OpenAPI 6 个 `/api/*` 路径全部就位，Api.Tests 17 个全绿，构建 0 警告 0 错误。
+- **Mini API 响应改为强类型 DTO（替代匿名对象）**：`src/ObjectAnalyzer.Api` 的 5 个端点去掉 `Results.Ok(new { 匿名 })`，改用具名响应类型（后拆至 `Contracts/`），并用 `Results<Ok<T>, BadRequest<TErr>>` 泛型结果保留状态码——OpenAPI / Scalar 现在为每个接口呈现完整、带字段注释的响应 schema（此前匿名对象在文档里是空的 `{}`）：
+  - 新 DTO：`HealthResponse`（/api/health）、`RulesValidationResponse` + `RulesLintEntry`（/api/rules/validate，200/400 同构）、`ErrorResponse`（分析类 400）、`AnalyzeResponse`（/api/analyze）、`AnalyzeRawResponse`（/api/analyze/raw）。
+  - `/api/rules/reference` 保持返回原始 `.jsonc` 文本（它会被调用方原样读回再 POST 给 /api/rules/validate 往返，不适合结构化）。
+  - 字段注释用属性级 `<summary>`（与 Core 的 `AnalysisResult` 同款，positional record 参数无 XML 注释目标）、JSON 契约 camelCase + 省略 null 不变；`ApiErrors` 助手统一构造错误响应。
+  - 验证：OpenAPI 各响应 schema 字段均带 `description`；Api.Tests 13 + 核心 444 + Web 54 全绿；Debug/Release 构建 0 警告 0 错误。**注意**：本机离线构建需 `-p:SignMode=None -p:NuGetAudit=false`（nuget.org 签名校验/漏洞审计不可达导致 NU1301/NU1900）。
 - **死代码清理**（168 文件，净删约 780 行，零行为变化）：
   - 未使用 using：临时开启 `GenerateDocumentationFile` + `EnforceCodeStyleInBuild` 后以 `dotnet format style --diagnostics IDE0005` 清除 167 个文件的多余 using（约 760 行），配置随后还原。
   - 未使用私有成员（IDE0051）：删除 `ObjectAnalyzer.MatchesFieldHint`（已被 `ContainsFieldHint` 取代的旧实现）与 `PdfReportExporter.Badge`（无调用的排版助手）。
@@ -50,10 +109,6 @@
   - 规则加载自动注入：`AnalysisRunner.LoadRules` 在 pattern 预验证后统一遍历所有 field 的 transform，对敏感字段调用 `KmsRuleResolver.Resolve`；无 `kms:` 前缀的值原样返回（向后兼容既有明文规则文件）。下游 `FieldTransformProcessor.DecodeBytes` 完全无感知。
   - 新 CLI 子命令 `kms-secret`：用 `OA_KMS_PASSPHRASE` 口令加密明文密钥，输出可直接粘贴进规则文件的 `kms:offline/1-<encoding>:<payload>` 引用；明文优先从 stdin 读取（`--value` 可选），避免明文进 shell 历史。
   - 测试：`KmsTests.cs` 10 个用例（AES-GCM 往返、base64/hex 编码还原、salting 语义安全、错误口令 / 缺失口令、前缀解析、未知提供方、规则注入、AES 端到端解密闭环）。
-
-## [Unreleased]
-
-### Added
 - **P6 Web UI 同步**：把 P6 三块能力（进度条 / 增量分析 / 内存预算）补齐到 Blazor Web 配置面板：
   - 新增 `P6` 可折叠子区段（默认展开），内含 `--no-progress` 取反 / `--max-memory`（MB）/ `--max-memory-mode`（soft|hard）三个数值/选择控件，以及 `--resume` / `--baseline` / `--checkpoint` 三个文件上传入口（与现有 `--type` / `--rules` 复用 `InputFile` + 临时文件模式）。
   - `AnalysisState` 新增 `ShowProgress` / `CheckpointPath/Name` / `ResumeFrom/Name` / `BaselinePath/Name` / `MaxMemoryMB` / `MaxMemoryMode` 六个 P6 字段；`Dispose()` 同步清理新增临时文件。

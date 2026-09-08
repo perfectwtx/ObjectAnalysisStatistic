@@ -1,4 +1,4 @@
-namespace ObjectAnalyzer.Tests;
+﻿namespace ObjectAnalyzer.Tests;
 
 using System;
 using System.Collections.Generic;
@@ -6,14 +6,15 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 using Xunit;
 
 /// <summary>
-/// P4 分析深度增强测试：字段相关性、模糊去重、字符串模式、Unicode 卫生、时间序列、
+/// 深度分析测试：字段相关性、模糊去重、字符串模式、Unicode 卫生、时间序列、
 /// 分布快照 / diff、采样置信区间、AnalysisRunner 集成（CLI 端到端）。
 /// </summary>
-[Collection(AnalysisRunnerSequentialGroup.Name)]
-public class P4AnalysisDepthTests
+
+public class DeepAnalysisTests
 {
     // ──────────────────────────────────────────────
     // 字段相关性（Pearson / Spearman）
@@ -31,7 +32,7 @@ public class P4AnalysisDepthTests
             double y = 2 * x + rng.NextDouble();
             objects.Add(new() { ["x"] = x, ["y"] = y });
         }
-        var features = new AnalysisFeatures { EnableCorrelation = true };
+        var features = new AdvancedAnalysisOptions { EnableCorrelation = true };
         var result = Analyze(objects, features: features);
 
         Assert.NotNull(result.CorrelationMatrix);
@@ -76,7 +77,7 @@ public class P4AnalysisDepthTests
             objects.Add(new() { ["contact"] = $"1380013{i:D4}" }); // 手机号
             objects.Add(new() { ["contact"] = $"10008{i}" });      // 邮编（5 位数字）
         }
-        var features = new AnalysisFeatures { EnableStringPatterns = true };
+        var features = new AdvancedAnalysisOptions { EnableStringPatterns = true };
         var result = Analyze(objects, features: features);
 
         Assert.NotNull(result.StringPatterns);
@@ -111,7 +112,7 @@ public class P4AnalysisDepthTests
             new() { ["name"] = "张三" },
             new() { ["name"] = "Carol\u200B" },  // 零宽空格
         };
-        var features = new AnalysisFeatures { EnableUnicodeHygiene = true };
+        var features = new AdvancedAnalysisOptions { EnableUnicodeHygiene = true };
         var result = Analyze(objects, features: features);
 
         Assert.NotNull(result.UnicodeHygiene);
@@ -141,7 +142,7 @@ public class P4AnalysisDepthTests
             }
         }
 
-        var features = new AnalysisFeatures { EnableTimeSeries = true };
+        var features = new AdvancedAnalysisOptions { EnableTimeSeries = true };
         var result = Analyze(expanded, features: features);
 
         Assert.NotNull(result.TimeSeriesAnalyses);
@@ -286,8 +287,8 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_CorrelationFlag_BuildsAndWritesReport()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-corr-{Guid.NewGuid():N}.json");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-corr-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-corr-{Guid.NewGuid():N}.json");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-corr-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -299,9 +300,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                EnableCorrelation = true,
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Advanced = { EnableCorrelation = true },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -328,8 +329,8 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_FuzzyDedupField_PopulatesFuzzyDuplicates()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-fuzz-{Guid.NewGuid():N}.json");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-fuzz-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-fuzz-{Guid.NewGuid():N}.json");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-fuzz-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -347,9 +348,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                FuzzyDedupField = "name",
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Advanced = { FuzzyDedupField = "name" },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -376,9 +377,9 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_DistributionSnapshot_WritesSnapshotFile()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-snap-{Guid.NewGuid():N}.json");
-        string snapPath = Path.Combine(Path.GetTempPath(), $"p4-snap-{Guid.NewGuid():N}.json");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-out-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-snap-{Guid.NewGuid():N}.json");
+        string snapPath = Path.Combine(Path.GetTempPath(), $"deep-snap-{Guid.NewGuid():N}.json");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-out-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -389,9 +390,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                DistributionSnapshotPath = snapPath,
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Distribution = { DistributionSnapshotPath = snapPath },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -412,8 +413,8 @@ public class P4AnalysisDepthTests
     [Fact]
     public void AnalysisRunner_SamplingConfidence_PopulatedWhenSamplingEnabled()
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"p4-sample-{Guid.NewGuid():N}.jsonl");
-        string outputPath = Path.Combine(Path.GetTempPath(), $"p4-sample-{Guid.NewGuid():N}.json");
+        string inputPath = Path.Combine(Path.GetTempPath(), $"deep-sample-{Guid.NewGuid():N}.jsonl");
+        string outputPath = Path.Combine(Path.GetTempPath(), $"deep-sample-{Guid.NewGuid():N}.json");
 
         try
         {
@@ -428,9 +429,9 @@ public class P4AnalysisDepthTests
 
             var options = new AnalysisOptions
             {
-                InputPath = inputPath,
-                OutputPath = outputPath,
-                SampleReservoir = 50,
+                Input = { InputPath = inputPath },
+                Report = { OutputPath = outputPath },
+                Sampling = { SampleReservoir = 50 },
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);

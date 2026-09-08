@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ObjectAnalyzer.Tests;
 
@@ -253,7 +254,10 @@ public class FieldFilterTests
     [Fact]
     public void Processor_RulesFilter_UsedWhenNoCliFilter()
     {
-        var rules = new AnalysisRules { Filter = "Age > 18" };
+        var rules = new AnalysisRules
+        {
+            Runtime = JsonNode.Parse("""{"filter":"Age > 18"}""") as JsonObject
+        };
         var processor = new FieldTransformProcessor(rules);
 
         var wrapped = processor.Wrap(new List<Dictionary<string, object?>>
@@ -269,7 +273,7 @@ public class FieldFilterTests
     [Fact]
     public void Processor_CliFilterOverridesRulesFilter()
     {
-        var rules = new AnalysisRules { Filter = "Age > 100" };
+        var rules = new AnalysisRules { Runtime = JsonNode.Parse("""{"filter":"Age > 100"}""") as JsonObject };
         var processor = new FieldTransformProcessor(rules, filterExpression: "Age > 18");
 
         var wrapped = processor.Wrap(new List<Dictionary<string, object?>>
@@ -285,7 +289,7 @@ public class FieldFilterTests
     [Fact]
     public void Processor_EmptyCliFilter_FallsBackToRulesFilter()
     {
-        var rules = new AnalysisRules { Filter = "Age > 18" };
+        var rules = new AnalysisRules { Runtime = JsonNode.Parse("""{"filter":"Age > 18"}""") as JsonObject };
         var processor = new FieldTransformProcessor(rules, filterExpression: "  ");
 
         var wrapped = processor.Wrap(new List<Dictionary<string, object?>>
@@ -301,7 +305,7 @@ public class FieldFilterTests
     [Fact]
     public void Processor_InvalidFilterExpression_Throws()
     {
-        var rules = new AnalysisRules { Filter = "Age >" };
+        var rules = new AnalysisRules { Runtime = JsonNode.Parse("""{"filter":"Age >"}""") as JsonObject };
         Assert.Throws<FormatException>(() => new FieldTransformProcessor(rules));
     }
 

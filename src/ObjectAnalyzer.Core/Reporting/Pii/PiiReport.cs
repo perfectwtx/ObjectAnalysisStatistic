@@ -1,5 +1,4 @@
 using System.Globalization;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -101,15 +100,15 @@ public sealed class PiiReport
 
         if (report.PiiFieldCount == 0)
         {
-            AnsiConsole.MarkupLine("[green]数据安全合规: 未发现敏感字段（手机号/身份证号/银行卡号/姓名/邮箱/SSN/IBAN/护照号）。[/]");
+            AnalysisServices.Current.Console.MarkupLine("[green]数据安全合规: 未发现敏感字段（手机号/身份证号/银行卡号/姓名/邮箱/SSN/IBAN/护照号）。[/]");
             return;
         }
 
         string categories = string.Join("/", report.Fields
             .Select(f => f.CategoryLabel)
             .Distinct());
-        AnsiConsole.MarkupLine(
-            $"[yellow]数据安全合规: 发现 [bold]{report.PiiFieldCount}[/] 个敏感字段（{Markup.Escape(categories)}），"
+        AnalysisServices.Current.Console.MarkupLine(
+            $"[yellow]数据安全合规: 发现 [bold]{report.PiiFieldCount}[/] 个敏感字段（{MarkupText.Escape(categories)}），"
             + $"共约 {report.PiiValueCount} 个敏感值，报告输出将自动打码。"
             + "推出合规等级报告请用 --pii-report。[/]");
     }

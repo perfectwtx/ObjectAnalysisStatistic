@@ -1,9 +1,10 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ObjectAnalyzer.Analysis.Options;
 
 namespace ObjectAnalyzer.Analysis;
 
@@ -54,21 +55,23 @@ public static partial class ObjectAnalyzer
 
 
     /// <summary>
-    /// 主流分析入口（行为与 v1.x 兼容；不暴露内部草图）。
+    /// 主流分析入口：返回 <see cref="AnalysisResult"/>，不暴露内部草图。
+    /// 需要每字段的 t-digest / HyperLogLog 草图（用于分布快照 / 漂移）时使用 <see cref="AnalyzeDetailed"/>。
     /// </summary>
     public static AnalysisResult Analyze(
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
-        AnalysisFeatures? features = null,
+        AdvancedAnalysisOptions? features = null,
         IProgress<long>? progress = null,
+        int? maxTrackedValues = null,
         CancellationToken cancellationToken = default)
     {
-        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress).Result;
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress, maxTrackedValues).Result;
     }
 
     /// <summary>
-    /// P4 增强入口：在返回 <see cref="AnalysisResult"/> 的同时，暴露每字段的 t-digest 草图与 HyperLogLog 草图，
+    /// 深度分析 增强入口：在返回 <see cref="AnalysisResult"/> 的同时，暴露每字段的 t-digest 草图与 HyperLogLog 草图，
     /// 供 <c>--export-distribution-snapshot</c> / <c>--diff-distribution</c> 做分布快照与漂移检测。
     /// 调用方无需草图时使用 <see cref="Analyze"/> 即可。
     /// </summary>
@@ -80,11 +83,12 @@ public static partial class ObjectAnalyzer
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules = null,
         ParallelOptions? parallelOptions = null,
-        AnalysisFeatures? features = null,
+        AdvancedAnalysisOptions? features = null,
         IProgress<long>? progress = null,
+        int? maxTrackedValues = null,
         CancellationToken cancellationToken = default)
     {
-        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress);
+        return AnalyzeCore(objects, rules, parallelOptions, features, cancellationToken, progress, maxTrackedValues);
     }
 
     /// <summary>
@@ -99,10 +103,13 @@ public static partial class ObjectAnalyzer
         IEnumerable<Dictionary<string, object?>> objects,
         AnalysisRules? rules,
         ParallelOptions? parallelOptions,
-        AnalysisFeatures? features,
+        AdvancedAnalysisOptions? features,
         CancellationToken cancellationToken,
-        IProgress<long>? progress = null)
+        IProgress<long>? progress = null,
+        int? maxTrackedValues = null)
     {
+        // W8：每字段唯一值跟踪上限可由宿主配置（--max-tracked-values），缺省沿用引擎常量
+        int maxTracked = maxTrackedValues ?? MaxTrackedUniqueValues;
         var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
         var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
 
@@ -112,7 +119,7 @@ public static partial class ObjectAnalyzer
         long globalTotalObjects = 0;
         var mergeLock = new object();
 
-        // P4 全局合并结果（MergeLocalState 持有；Analyze 末尾读取并清空）
+        // 深度分析 全局合并结果（MergeLocalState 持有；Analyze 末尾读取并清空）
         FieldCorrelationCollector? globalCorrelationCollector = null;
         Dictionary<string, StringPatternProfiler>? globalStringPatterns = null;
         Dictionary<string, UnicodeHygieneReport>? globalUnicodeHygiene = null;
@@ -141,10 +148,11 @@ public static partial class ObjectAnalyzer
                     {
                         globalStat.TypeCounts[tc.Key] = globalStat.TypeCounts.GetValueOrDefault(tc.Key) + tc.Value;
                     }
+                    globalStat.NullCount += localStat.NullCount;
 
                     foreach (var vc in localStat.ValueCounts)
                     {
-                        if (ShouldTruncate(globalStat, vc.Key))
+                        if (ShouldTruncate(globalStat, vc.Key, maxTracked))
                         {
                             globalStat.ValueCountsTruncated = true;
                             globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
@@ -171,7 +179,7 @@ public static partial class ObjectAnalyzer
                     globalMetrics.MergeFrom(localMetrics);
                 }
 
-                // P4 增强：合并线程局部收集器
+                // 深度分析 增强：合并线程局部收集器
                 // 相关性：每个线程的收集器持有该线程处理的对象的"行样本"切片；
                 // 把所有线程的收集器按"对象顺序"追加合并，保证 Pearson/Spearman 计算使用全量数据。
                 if (local.CorrelationCollector != null)
@@ -239,7 +247,7 @@ public static partial class ObjectAnalyzer
                     var sortedEntries = obj.ToArray();
                     Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
 
-                    // P4 相关性收集：每对象一行 (field → double?) 样本；
+                    // 深度分析 相关性收集：每对象一行 (field → double?) 样本；
                     // 仅在 features.EnableCorrelation 为 true 时分配，避免默认路径上增加 GC 压力。
                     Dictionary<string, double?>? correlationRow = features?.EnableCorrelation == true
                         ? new Dictionary<string, double?>(StringComparer.Ordinal)
@@ -278,8 +286,9 @@ public static partial class ObjectAnalyzer
 
                         string valType = GetValueType(value);
                         stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
+                        if (valType == "Null") stat.NullCount++;
 
-                        if (ShouldTruncate(stat, valStr))
+                        if (ShouldTruncate(stat, valStr, maxTracked))
                         {
                             stat.ValueCountsTruncated = true;
                             stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
@@ -292,7 +301,7 @@ public static partial class ObjectAnalyzer
                         // 收集数值与字符串度量指标
                         RecordValueMetrics(value, valStr, fieldName, metrics);
 
-                        // P4 增强：相关性 / 模式 / 卫生（仅在 features 启用时执行）
+                        // 深度分析 增强：相关性 / 模式 / 卫生（仅在 features 启用时执行）
                         RecordFeatureMetrics(localState, value, valStr, fieldName, correlationRow, features);
 
                         // 质量检查 v2：minValue/maxValue 越界精确计数（热路径，不受唯一值截断影响）
@@ -309,7 +318,7 @@ public static partial class ObjectAnalyzer
                         }
                     }
 
-                    // P4 相关性：把这一行所有字段的数值样本一次性送给收集器
+                    // 深度分析 相关性：把这一行所有字段的数值样本一次性送给收集器
                     if (correlationRow != null)
                     {
                         (localState.CorrelationCollector ??= new FieldCorrelationCollector(features!.CorrelationReservoir))
@@ -538,7 +547,7 @@ public static partial class ObjectAnalyzer
             ? new List<FieldViolation>()
             : QualityChecks.Evaluate(globalTotalObjects, totalUniqueObjects, results, rules);
 
-        // P4 后置处理：构建新报告（仅 features 启用时计算，否则全部为 null）
+        // 深度分析 后置处理：构建新报告（仅 features 启用时计算，否则全部为 null）
         FieldCorrelationMatrix? correlationMatrix = null;
         Dictionary<string, StringPatternProfile>? stringPatterns = null;
         Dictionary<string, UnicodeHygieneReport>? unicodeHygiene = null;
@@ -804,7 +813,7 @@ public static partial class ObjectAnalyzer
     }
 
     /// <summary>
-    /// P4 分析深度增强：把当前字段值登记到相应线程局部收集器中。
+    /// 深度分析 分析深度增强：把当前字段值登记到相应线程局部收集器中。
     /// 仅在 <paramref name="features"/> 启用了对应特性时执行，否则直接返回。
     /// </summary>
     private static void RecordFeatureMetrics(
@@ -813,9 +822,17 @@ public static partial class ObjectAnalyzer
         string valStr,
         string fieldName,
         Dictionary<string, double?>? correlationRow,
-        AnalysisFeatures? features)
+        AdvancedAnalysisOptions? features)
     {
-        if (features == null || features.IsEmpty) return;
+        if (features == null) return;
+        if (!features.EnableCorrelation
+            && !features.EnableStringPatterns
+            && !features.EnableUnicodeHygiene
+            && !features.EnableTimeSeries
+            && !features.EnableDistributionSnapshot)
+        {
+            return;
+        }
 
         // 1) 相关性：收集每字段的数值样本到本对象行（循环结束后再 RecordObject）
         if (correlationRow != null && value != null && TryGetDoubleValue(value, out double dVal))
@@ -1108,12 +1125,12 @@ public static partial class ObjectAnalyzer
         catch { return "[unserializable]"; }
     }
 
-    private static bool ShouldTruncate(FieldStatistic stat, string value)
+    private static bool ShouldTruncate(FieldStatistic stat, string value, int maxTracked)
     {
         if (stat.ValueCounts.ContainsKey(value)) return false;
         int tracked = stat.ValueCounts.Count -
             (stat.ValueCounts.ContainsKey("[Other values]") ? 1 : 0);
-        return tracked >= MaxTrackedUniqueValues;
+        return tracked >= maxTracked;
     }
 
     private static string InferPrimaryTypeFromEnum(List<System.Text.Json.JsonElement> enumElements)

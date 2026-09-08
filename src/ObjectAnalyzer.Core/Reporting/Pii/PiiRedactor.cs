@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -7,6 +7,10 @@ namespace ObjectAnalyzer.Reporting;
 /// 值频次键、枚举违规值与重复对象 JSON 进行确定性打码，生成一份"可安全分发的副本"。
 /// 无敏感字段时返回原实例（零成本）；重复调用幂等。
 /// </summary>
+/// <remarks>
+/// 打码格式的判定不在本类重新推导，而是消费 <see cref="PiiPolicy.Resolve"/> 一次性解析的策略——
+/// 结果报告与数据预览等出站形态共享同一判定。
+/// </remarks>
 public static class PiiRedactor
 {
     /// <summary>
@@ -18,16 +22,19 @@ public static class PiiRedactor
         if (!enabled)
             return result;
 
-        var masksByField = new Dictionary<string, PiiMaskFormat>(StringComparer.Ordinal);
-        foreach (var stat in result.FieldStatistics)
-        {
-            var mask = PiiDetector.TryGetMaskFormat(stat.SemanticType, stat.AppliedRule);
-            if (mask != null)
-                masksByField[stat.FieldName] = mask;
-        }
+        return Redact(result, PiiPolicy.Resolve(result));
+    }
 
-        if (masksByField.Count == 0)
+    /// <summary>
+    /// 按已解析的 <see cref="PiiPolicy"/> 生成打码副本。
+    /// 空策略（无敏感字段）直接返回原引用；重复调用幂等。
+    /// </summary>
+    public static AnalysisResult Redact(AnalysisResult result, PiiPolicy policy)
+    {
+        if (policy.IsEmpty)
             return result;
+
+        var masksByField = policy.MasksByField;
 
         var maskedStats = new List<FieldStatistic>(result.FieldStatistics.Count);
         foreach (var stat in result.FieldStatistics)
@@ -79,7 +86,7 @@ public static class PiiRedactor
             FieldStatistics = maskedStats,
             QualityViolations = maskedQuality,
             SchemaDiff = result.SchemaDiff,
-            // ── P4 字段透传：打码不影响 P4 报告内容（相关性矩阵、模糊去重、模式、Unicode 卫生等不含原始值）──
+            // ── 深度分析 字段透传：打码不影响 深度分析 报告内容（相关性矩阵、模糊去重、模式、Unicode 卫生等不含原始值）──
             CorrelationMatrix = result.CorrelationMatrix,
             FuzzyDuplicates = result.FuzzyDuplicates,
             StringPatterns = result.StringPatterns,
@@ -94,42 +101,13 @@ public static class PiiRedactor
     {
         string MaskKey(string key) => mask.Apply(key);
 
-        var clone = new FieldStatistic
-        {
-            FieldName = source.FieldName,
-            Count = source.Count,
-            Coverage = source.Coverage,
-            ValueCountsTruncated = source.ValueCountsTruncated,
-            MinNumber = source.MinNumber,
-            MaxNumber = source.MaxNumber,
-            AvgNumber = source.AvgNumber,
-            SumNumber = source.SumNumber,
-            StdDevNumber = source.StdDevNumber,
-            MedianNumber = source.MedianNumber,
-            P90Number = source.P90Number,
-            P95Number = source.P95Number,
-            P99Number = source.P99Number,
-            Histogram = source.Histogram,
-            MinLength = source.MinLength,
-            MaxLength = source.MaxLength,
-            AvgLength = source.AvgLength,
-            DistinctCount = source.DistinctCount,
-            DistinctApproximate = source.DistinctApproximate,
-            SemanticType = source.SemanticType,
-            NullAppeared = source.NullAppeared,
-            TransformFailureCount = source.TransformFailureCount,
-            TransformType = source.TransformType,
-            AppliedRule = source.AppliedRule
-        };
+        // 副本底版自带全部标量统计（PrimaryType / 日期剖析 / 异常值 / RangeViolationCount…）
+        // 与断开共享的可变集合；这里只重填需要打码的部分。
+        var clone = source.CloneForRedaction();
 
         if (source.DefaultValueRepresentation != null)
         {
             clone.DefaultValueRepresentation = MaskKey(source.DefaultValueRepresentation) ?? source.DefaultValueRepresentation;
-        }
-
-        foreach (var kvp in source.TypeCounts)
-        {
-            clone.TypeCounts[kvp.Key] = kvp.Value;
         }
 
         foreach (var kvp in source.ValueCounts)
@@ -146,7 +124,7 @@ public static class PiiRedactor
         return clone;
     }
 
-    private static string MaskDuplicateJson(string json, Dictionary<string, PiiMaskFormat> masksByField)
+    private static string MaskDuplicateJson(string json, IReadOnlyDictionary<string, PiiMaskFormat> masksByField)
     {
         try
         {

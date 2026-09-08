@@ -1,5 +1,7 @@
 {
-  "flatten": true,
+  "runtime": {
+    "flatten": true
+  },
   "valueParsers": [
     { "source": "A", "parseType": "json", "flatten": true, "header": 0 },
     { "source": "B", "parseType": "json", "flatten": false, "header": 0 },

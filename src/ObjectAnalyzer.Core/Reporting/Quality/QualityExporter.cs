@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -20,13 +19,13 @@ public static class QualityExporter
 
         if (report.Passed)
         {
-            AnsiConsole.MarkupLine($"[green]数据质量通过: {report.TotalFields} 个字段，无枚举违规。[/]");
+            AnalysisServices.Current.Console.MarkupLine($"[green]数据质量通过: {report.TotalFields} 个字段，无枚举违规。[/]");
         }
         else
         {
-            AnsiConsole.MarkupLine(
+            AnalysisServices.Current.Console.MarkupLine(
                 $"[yellow]数据质量未通过: {report.FieldsWithViolations}/{report.TotalFields} 个字段存在 {report.TotalViolationCount} 条枚举违规（违规率 {report.ViolationRate:P1}）。[/]");
         }
-        AnsiConsole.MarkupLine($"已导出数据质量报告至: [blue]{Markup.Escape(outputPath)}[/]");
+        AnalysisServices.Current.Console.MarkupLine($"已导出数据质量报告至: [blue]{MarkupText.Escape(outputPath)}[/]");
     }
 }

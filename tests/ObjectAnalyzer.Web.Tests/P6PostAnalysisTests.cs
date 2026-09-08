@@ -102,6 +102,16 @@ public class P6PostAnalysisTests
 
     [Fact]
     [Trait("Category", "P6.2")]
+    public void Sanitize_CrossPlatformRejectsWindowsInvalidChars()
+    {
+        // 即使在 Linux/macOS（反斜杠、<>:"|?* 均合法）也必须清洗——路径穿越防护跨平台一致
+        Assert.Equal("a_b_c_d_e_f_g_h.snapshot", P6PostAnalysis.SanitizeCheckpointName("a<b>c:d\"e|f?g*h"));
+        Assert.Equal(".._.._evil.snapshot", P6PostAnalysis.SanitizeCheckpointName("../..\\evil"));
+        Assert.Equal("______.snapshot", P6PostAnalysis.SanitizeCheckpointName("<<<>>>"));
+    }
+
+    [Fact]
+    [Trait("Category", "P6.2")]
     public void Sanitize_TrimsLeadingAndTrailingWhitespace()
     {
         Assert.Equal("name.snapshot", P6PostAnalysis.SanitizeCheckpointName("  name  "));

@@ -4,7 +4,6 @@ namespace ObjectAnalyzer.Tests;
 
 /// <summary>
 /// 数据血缘与审计日志测试：覆盖 NDJSON 写盘 / 不含 PII / 选项完整 / AnalysisRunner 集成。
-/// 所有调用 AnalysisRunner.Run 的测试加入 AnalysisRunnerSequentialGroup 集合以避免 AnsiConsole 并发问题。
 /// </summary>
 public class AuditLoggerTests
 {
@@ -153,8 +152,8 @@ public class AuditLoggerTests
 
         var options = new AnalysisOptions
         {
-            InputPath = "/tmp/data.json",
-            RulesFile = "/tmp/rules.json"
+            Input = { InputPath = "/tmp/data.json" },
+            Rules = { RulesFile = "/tmp/rules.json" }
         };
 
         var snap = AuditLogger.Snapshot(options, rules);
@@ -243,9 +242,8 @@ public class AuditLoggerTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                AuditLogPath = logPath,
-                Operator = "test-runner"
+                Input = { InputPath = input },
+                Audit = { AuditLogPath = logPath, Operator = "test-runner" }
             };
             int code = AnalysisRunner.Run(options);
 
@@ -286,8 +284,8 @@ public class AuditLoggerTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                AuditLogPath = logPath
+                Input = { InputPath = input },
+                Audit = { AuditLogPath = logPath }
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -324,8 +322,8 @@ public class AuditLoggerTests
         {
             var options = new AnalysisOptions
             {
-                InputPath = "/nonexistent/" + Guid.NewGuid().ToString("N"),
-                AuditLogPath = logPath
+                Input = { InputPath = "/nonexistent/" + Guid.NewGuid().ToString("N") },
+                Audit = { AuditLogPath = logPath }
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(1, code);
@@ -352,7 +350,7 @@ public class AuditLoggerTests
         try
         {
             File.WriteAllText(input, "[{\"a\":1}]");
-            var options = new AnalysisOptions { InputPath = input };
+            var options = new AnalysisOptions { Input = { InputPath = input } };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
         }
@@ -373,13 +371,12 @@ public class AuditLoggerTests
             File.WriteAllText(input, "[{\"a\":1,\"b\":2},{\"a\":3,\"b\":4}]");
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                AuditLogPath = logPath,
-                Fields = "a",
-                Filter = "a > 1",
-                PiiOff = true,
-                AllowBreakingSchemaChanges = false,
-                ExportSchema = "json-schema"
+                Input = { InputPath = input },
+                Audit = { AuditLogPath = logPath },
+                FieldSelection = { Fields = "a", Filter = "a > 1" },
+                Pii = { PiiOff = true },
+                Gates = { AllowBreakingSchemaChanges = false },
+                Report = { ExportSchema = "json-schema" }
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(0, code);
@@ -414,10 +411,10 @@ public class AuditLoggerTests
 
             var options = new AnalysisOptions
             {
-                InputPath = input,
-                RulesFile = rules,
-                FailOnViolations = true,
-                AuditLogPath = logPath
+                Input = { InputPath = input },
+                Rules = { RulesFile = rules },
+                Gates = { FailOnViolations = true },
+                Audit = { AuditLogPath = logPath }
             };
             int code = AnalysisRunner.Run(options);
             Assert.Equal(3, code);

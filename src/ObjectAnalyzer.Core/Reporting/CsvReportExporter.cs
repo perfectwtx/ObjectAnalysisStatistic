@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text;
-using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -11,13 +10,13 @@ public static class CsvReportExporter
 {
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnsiConsole.MarkupLine($"正在将 CSV 报告保存至: [blue]{Markup.Escape(outputPath)}[/] ...");
+        AnalysisServices.Current.Console.MarkupLine($"正在将 CSV 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
         // 带 BOM 的 UTF-8，保证 Excel 直接打开中文不乱码；逐行写入避免整份报告常驻内存
         using (var writer = new StreamWriter(outputPath, false, new UTF8Encoding(true)))
         {
             WriteCsv(writer, result);
         }
-        AnsiConsole.MarkupLine($"[green]CSV 报告成功保存！[/]");
+        AnalysisServices.Current.Console.MarkupLine($"[green]CSV 报告成功保存！[/]");
     }
 
     private static void WriteCsv(TextWriter writer, AnalysisResult result)

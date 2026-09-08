@@ -1,9 +1,17 @@
+using ObjectAnalyzer.Abstractions;
 using Spectre.Console;
 
 namespace ObjectAnalyzer.Reporting;
 
-public static class ConsoleReporter
+/// <summary>
+/// CLI 侧的分析结果呈现器：Spectre 富渲染（表格 / 面板 / 图表），实现 Core 的 IResultPresenter 端口。
+/// </summary>
+public sealed class ConsoleReporter : IResultPresenter
 {
+    /// <summary>向用户呈现分析结果（默认按 PII 策略打码）。</summary>
+    public void Present(AnalysisResult result, AnalysisOptions options) =>
+        Print(result, options.Parse.MaxValuesToShow, redactPii: !options.Pii.PiiOff);
+
     public static void Print(AnalysisResult result, int maxValuesToShow, bool redactPii = true)
     {
         result = PiiRedactor.Redact(result, redactPii);
@@ -72,7 +80,12 @@ public static class ConsoleReporter
             }
             string truncatedInfo = stat.ValueCountsTruncated ? " [orange1][[唯一值已截断]][/]" : "";
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"[blue]{t.Key}[/]({t.Value})"));
-            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){defaultInfo}{ruleInfo}{transformInfo}{truncatedInfo}");
+            // 覆盖率拆分：未覆盖的两种原因分列——值为 null（Count 的子集）与 字段不存在（键缺失 = 总数 - Count）
+            long missingCount = Math.Max(0, result.TotalObjects - stat.Count);
+            string coverageBreakdown = (stat.NullCount > 0 || missingCount > 0)
+                ? $"（null {stat.NullCount} · 字段缺失 {missingCount}）"
+                : "";
+            AnsiConsole.MarkupLine($"  覆盖率: [aqua]{stat.Count}/{result.TotalObjects}[/] ([yellow]{stat.Coverage * 100:F1}%[/]){coverageBreakdown}{defaultInfo}{ruleInfo}{transformInfo}{truncatedInfo}");
             AnsiConsole.MarkupLine($"  类型分布: {types}");
 
             // 数值极值与长度指标
