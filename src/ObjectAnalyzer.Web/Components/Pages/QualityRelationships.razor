@@ -41,15 +41,15 @@ else
                 <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
                     <thead><tr><th>字段 A</th><th>字段 B</th><th>Pearson</th><th>Spearman</th><th>样本数</th><th>关系</th></tr></thead>
                     <tbody>
-                    @foreach (var pair in _matrix.StrongPairs.OrderByDescending(x => Math.Abs(x.Pearson)))
+                    @foreach (var pair in _matrix.StrongPairs.OrderByDescending(x => Math.Abs(x.Pearson ?? 0d)))
                     {
                         <tr>
                             <td><strong>@pair.FieldA</strong></td>
                             <td><strong>@pair.FieldB</strong></td>
-                            <td>@pair.Pearson.ToString("0.000")</td>
+                            <td>@(pair.Pearson?.ToString("0.000") ?? "-")</td>
                             <td>@(pair.Spearman?.ToString("0.000") ?? "-")</td>
                             <td>@pair.Samples</td>
-                            <td><span class="badge @(pair.Pearson < 0 ? "bg-warning text-dark" : "bg-primary")">@(pair.Pearson < 0 ? "负相关" : "正相关")</span></td>
+                            <td><span class="badge @((pair.Pearson ?? 0) < 0 ? "bg-warning text-dark" : "bg-primary")">@((pair.Pearson ?? 0) < 0 ? "负相关" : "正相关")</span></td>
                         </tr>
                     }
                     </tbody>
