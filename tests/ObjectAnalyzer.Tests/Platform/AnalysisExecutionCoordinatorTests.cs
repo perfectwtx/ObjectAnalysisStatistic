@@ -36,18 +36,18 @@ public sealed class AnalysisExecutionCoordinatorTests
     private sealed class FakeHistoryStore : IAnalysisHistoryStore
     {
         public List<AnalysisJob> Jobs { get; } = [];
-
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
         {
             var existing = Jobs.FindIndex(x => x.Id == job.Id);
-            if (existing >= 0)
-                Jobs[existing] = job;
-            else
-                Jobs.Add(job);
+            if (existing >= 0) Jobs[existing] = job;
+            else Jobs.Add(job);
             return Task.CompletedTask;
         }
+
+        public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
 
         public Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(Jobs.FirstOrDefault(x => x.Id == id));
@@ -59,10 +59,8 @@ public sealed class AnalysisExecutionCoordinatorTests
     private sealed class FakeAlertRuleStore : IAlertRuleStore
     {
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<AlertRule>> GetAllAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<AlertRule>>([]);
-        public Task<AlertRule?> GetAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult<AlertRule?>(null);
+        public Task<IReadOnlyList<AlertRule>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AlertRule>>([]);
+        public Task<AlertRule?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<AlertRule?>(null);
         public Task SaveAsync(AlertRule rule, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
@@ -71,10 +69,9 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task EnqueueAsync(WebhookDelivery delivery, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default)
-            => Task.FromResult<WebhookDelivery?>(null);
+        public Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default) => Task.FromResult<WebhookDelivery?>(null);
         public Task MarkProcessingAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task MarkSucceededAsync(Guid id, DateTime sentAtUtc, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task MarkFailedAsync(Guid id, string error, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task MarkFailedAsync(Guid id, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }
