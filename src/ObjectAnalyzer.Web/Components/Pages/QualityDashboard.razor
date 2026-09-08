@@ -65,20 +65,21 @@
         _job = _recentJobs.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ResultJson));
         _result = null;
         if (_job?.ResultJson is not null) { try { _result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson); } catch (JsonException) { } }
-        if (_result is not null) { _qualityMetrics = BuildMetrics(_result); _topIssues = _result.QualityViolations.OrderByDescending(x => x.Count).Take(5).ToList(); }
+        if (_result is not null)
+        {
+            var metrics = QualityMetricsCalculator.Calculate(_result);
+            _qualityMetrics = new()
+            {
+                new("完整性", metrics.Completeness),
+                new("有效性", metrics.Validity),
+                new("唯一性", metrics.Uniqueness),
+                new("一致性", metrics.Consistency),
+                new("异常控制", metrics.AnomalyControl)
+            };
+            _topIssues = _result.QualityViolations.OrderByDescending(x => x.Count).Take(5).ToList();
+        }
         else { _qualityMetrics.Clear(); _topIssues.Clear(); }
         _loading = false;
-    }
-
-    private static List<QualityMetric> BuildMetrics(AnalysisResult result)
-    {
-        var fields = result.FieldStatistics;
-        var completeness = fields.Count == 0 ? 100 : fields.Average(x => Math.Clamp(x.Coverage * 100d, 0, 100));
-        var validity = result.TotalObjects <= 0 ? 100 : Math.Clamp(100d - result.QualityViolations.Count * 100d / result.TotalObjects, 0, 100);
-        var uniqueness = result.TotalObjects <= 0 ? 100 : Math.Clamp(result.TotalUniqueObjects * 100d / result.TotalObjects, 0, 100);
-        var consistency = result.SchemaDiff?.HasBreakingChanges == true ? 60 : 100;
-        var anomaly = fields.Count == 0 ? 100 : Math.Clamp(100d - fields.Sum(x => x.OutlierRatio ?? 0) * 100d / fields.Count, 0, 100);
-        return new() { new("完整性", completeness), new("有效性", validity), new("唯一性", uniqueness), new("一致性", consistency), new("异常控制", anomaly) };
     }
 
     private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
