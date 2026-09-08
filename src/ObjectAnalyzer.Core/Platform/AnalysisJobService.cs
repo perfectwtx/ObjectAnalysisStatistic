@@ -43,7 +43,45 @@ public sealed class AnalysisJobService
         job.ResultJson = JsonSerializer.Serialize(result);
 
         await _historyStore.SaveAsync(job, cancellationToken);
+        await _historyStore.SaveQualitySnapshotAsync(
+            CreateQualitySnapshot(job, result),
+            CreateFieldSnapshots(job.Id, result),
+            CreateQualityIssues(job.Id, result),
+            cancellationToken);
         await EnqueueAlertsAsync(job, result, previousJob, cancellationToken);
+    }
+
+    private static QualitySnapshot CreateQualitySnapshot(AnalysisJob job, AnalysisResult result)
+    {
+        var metrics = QualityMetricsCalculator.Calculate(result);
+        return new QualitySnapshot(
+            job.Id,
+            job.SourceName,
+            job.CompletedAtUtc ?? DateTime.UtcNow,
+            result.TotalObjects,
+            result.FieldStatistics.Count,
+            job.IssueCount,
+            metrics);
+    }
+
+    private static IReadOnlyList<FieldQualitySnapshot> CreateFieldSnapshots(Guid jobId, AnalysisResult result)
+    {
+        return result.FieldStatistics.Select(field => new FieldQualitySnapshot(
+            jobId,
+            field.FieldName,
+            Math.Clamp(field.Coverage, 0d, 1d),
+            result.TotalObjects <= 0 ? 0d : Math.Clamp((double)field.NullCount / result.TotalObjects, 0d, 1d),
+            field.DistinctCount.HasValue && field.Count > 0
+                ? Math.Clamp((double)field.DistinctCount.Value / field.Count, 0d, 1d)
+                : null,
+            field.OutlierRatio.HasValue ? Math.Clamp(field.OutlierRatio.Value, 0d, 1d) : null)).ToArray();
+    }
+
+    private static IReadOnlyList<QualityIssue> CreateQualityIssues(Guid jobId, AnalysisResult result)
+    {
+        return result.QualityViolations
+            .Select(issue => new QualityIssue(jobId, issue.Field, issue.Check, issue.Count, issue.Message))
+            .ToArray();
     }
 
     public async Task FailAsync(AnalysisJob job, Exception exception, CancellationToken cancellationToken = default)
