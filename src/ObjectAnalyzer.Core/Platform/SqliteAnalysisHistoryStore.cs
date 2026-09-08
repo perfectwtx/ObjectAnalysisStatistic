@@ -119,7 +119,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using var transaction = connection.BeginTransaction();
         try
         {
             await ExecuteAsync(connection, transaction, """
