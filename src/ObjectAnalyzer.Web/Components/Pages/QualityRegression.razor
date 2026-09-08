@@ -95,7 +95,7 @@ else
                 var current = JsonSerializer.Deserialize<AnalysisResult>(_jobs[0].ResultJson!);
                 var previous = JsonSerializer.Deserialize<AnalysisResult>(_jobs[1].ResultJson!);
                 if (current is not null && previous is not null)
-                    _report = QualityRegressionAnalyzer.Analyze(previous, current, _jobs[1].QualityScore, _jobs[0].QualityScore);
+                    _report = QualityRegressionAnalyzer.Analyze(previous, current);
             }
             catch (JsonException) { _report = null; }
         }
