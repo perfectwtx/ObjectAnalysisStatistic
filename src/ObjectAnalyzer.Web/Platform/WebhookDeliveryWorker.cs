@@ -1,3 +1,6 @@
+using System.Text;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Web.Platform;
@@ -10,10 +13,7 @@ public sealed class WebhookDeliveryWorker : BackgroundService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<WebhookDeliveryWorker> _logger;
 
-    public WebhookDeliveryWorker(
-        IWebhookDeliveryStore store,
-        IHttpClientFactory httpClientFactory,
-        ILogger<WebhookDeliveryWorker> logger)
+    public WebhookDeliveryWorker(IWebhookDeliveryStore store, IHttpClientFactory httpClientFactory, ILogger<WebhookDeliveryWorker> logger)
     {
         _store = store;
         _httpClientFactory = httpClientFactory;
@@ -27,7 +27,7 @@ public sealed class WebhookDeliveryWorker : BackgroundService
             try
             {
                 var delivery = await _store.GetNextPendingAsync(DateTime.UtcNow, stoppingToken);
-                if (delivery == null)
+                if (delivery is null)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
                     continue;
@@ -41,7 +41,7 @@ public sealed class WebhookDeliveryWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Webhook Outbox worker 执行异常。");
+                WebhookDeliveryWorkerLog.PollingFailed(_logger, ex);
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
@@ -54,18 +54,18 @@ public sealed class WebhookDeliveryWorker : BackgroundService
         try
         {
             var client = _httpClientFactory.CreateClient("WebhookDelivery");
-            using var content = new StringContent(delivery.PayloadJson, System.Text.Encoding.UTF8, "application/json");
+            using var content = new StringContent(delivery.PayloadJson, Encoding.UTF8, "application/json");
             using var response = await client.PostAsync(delivery.WebhookUrl, content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
                 await _store.MarkSucceededAsync(delivery.Id, DateTime.UtcNow, cancellationToken);
-                _logger.LogInformation("Webhook 投递成功: {DeliveryId}, Job={JobId}", delivery.Id, delivery.JobId);
+                WebhookDeliveryWorkerLog.Succeeded(_logger, delivery.Id, delivery.JobId);
                 return;
             }
 
-            var error = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase})";
-            await MarkFailedAsync(delivery, error, cancellationToken);
+            var errorMessage = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase})";
+            await MarkFailedAsync(delivery, errorMessage, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -77,42 +77,33 @@ public sealed class WebhookDeliveryWorker : BackgroundService
         }
     }
 
-    private async Task MarkFailedAsync(
-        WebhookDelivery delivery,
-        string error,
-        CancellationToken cancellationToken)
+    private async Task MarkFailedAsync(WebhookDelivery delivery, string errorMessage, CancellationToken cancellationToken)
     {
         var nextAttempt = delivery.AttemptCount + 1;
         var permanent = nextAttempt >= MaxAttempts;
         var delaySeconds = Math.Min(3600, 30 * Math.Pow(2, Math.Max(0, nextAttempt - 1)));
-        var nextAttemptAt = permanent
-            ? DateTime.UtcNow
-            : DateTime.UtcNow.AddSeconds(delaySeconds);
+        var nextAttemptAt = permanent ? DateTime.UtcNow : DateTime.UtcNow.AddSeconds(delaySeconds);
 
-        await _store.MarkFailedAsync(
-            delivery.Id,
-            error,
-            nextAttemptAt,
-            permanent,
-            cancellationToken);
+        await _store.MarkFailedAsync(delivery.Id, errorMessage, nextAttemptAt, permanent, cancellationToken);
 
         if (permanent)
-        {
-            _logger.LogError(
-                "Webhook 投递最终失败: {DeliveryId}, Job={JobId}, Attempts={Attempts}, Error={Error}",
-                delivery.Id,
-                delivery.JobId,
-                nextAttempt,
-                error);
-        }
+            WebhookDeliveryWorkerLog.PermanentFailure(_logger, delivery.Id, delivery.JobId, nextAttempt, errorMessage);
         else
-        {
-            _logger.LogWarning(
-                "Webhook 投递失败，将重试: {DeliveryId}, Attempt={Attempt}, NextAttempt={NextAttempt}, Error={Error}",
-                delivery.Id,
-                nextAttempt,
-                nextAttemptAt,
-                error);
-        }
+            WebhookDeliveryWorkerLog.RetryScheduled(_logger, delivery.Id, nextAttempt, nextAttemptAt, errorMessage);
     }
+}
+
+internal static partial class WebhookDeliveryWorkerLog
+{
+    [LoggerMessage(EventId = 1000, Level = LogLevel.Error, Message = "Webhook Outbox worker 执行异常。")]
+    public static partial void PollingFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "Webhook 投递成功: {DeliveryId}, Job={JobId}")]
+    public static partial void Succeeded(ILogger logger, Guid deliveryId, Guid jobId);
+
+    [LoggerMessage(EventId = 1002, Level = LogLevel.Error, Message = "Webhook 投递最终失败: {DeliveryId}, Job={JobId}, Attempts={Attempts}, Error={Error}")]
+    public static partial void PermanentFailure(ILogger logger, Guid deliveryId, Guid jobId, int attempts, string error);
+
+    [LoggerMessage(EventId = 1003, Level = LogLevel.Warning, Message = "Webhook 投递失败，将重试: {DeliveryId}, Attempt={Attempt}, NextAttempt={NextAttempt}, Error={Error}")]
+    public static partial void RetryScheduled(ILogger logger, Guid deliveryId, int attempt, DateTime nextAttempt, string error);
 }
