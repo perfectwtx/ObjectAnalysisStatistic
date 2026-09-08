@@ -1,8 +1,7 @@
 @page "/issues"
-@using System.Text.Json
-@using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
+@inject IQualityIssueQuery QualityIssueQuery
 
 <PageTitle>Issue Center</PageTitle>
 
@@ -10,7 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>质量问题中心</h1>
-            <p class="text-muted mb-0">按分析任务查看字段级质量违规，定位影响质量分的问题来源。</p>
+            <p class="text-muted mb-0">按分析任务查看标准化字段级质量问题，定位影响质量分的问题来源。</p>
         </div>
         <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
     </div>
@@ -28,8 +27,8 @@
         <div class="card mb-4">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-3"><strong>@_selectedIssues.Count</strong><div class="text-muted small">当前问题数</div></div>
-                    <div class="col-md-3"><strong>@_selectedIssues.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><div class="text-muted small">问题字段数</div></div>
+                    <div class="col-md-3"><strong>@_selectedIssues.Count</strong><div class="text-muted small">当前问题项</div></div>
+                    <div class="col-md-3"><strong>@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><div class="text-muted small">问题字段数</div></div>
                     <div class="col-md-3"><strong>@_selectedIssues.Sum(x => x.Count)</strong><div class="text-muted small">违规发生次数</div></div>
                     <div class="col-md-3"><strong>@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</strong><div class="text-muted small">质量分</div></div>
                 </div>
@@ -48,7 +47,9 @@
             </div>
             @if (_selectedIssues.Count == 0)
             {
-                <div class="card-body"><div class="alert alert-success mb-0">本次分析没有质量违规。数据质量检查通过。</div></div>
+                <div class="card-body">
+                    <div class="alert alert-success mb-0">本次分析没有标准化质量违规。数据质量检查通过。</div>
+                </div>
             }
             else
             {
@@ -60,18 +61,16 @@
                                 <th>检查类型</th>
                                 <th>次数</th>
                                 <th>问题说明</th>
-                                <th>样本</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var issue in _selectedIssues.OrderByDescending(x => x.Count).ThenBy(x => x.Field))
+                            @foreach (var issue in _selectedIssues)
                             {
                                 <tr>
-                                    <td><strong>@issue.Field</strong></td>
+                                    <td><strong>@issue.FieldName</strong></td>
                                     <td><span class="badge text-bg-warning">@issue.Check</span></td>
                                     <td>@issue.Count</td>
                                     <td>@issue.Message</td>
-                                    <td class="small text-muted">@issue.Samples</td>
                                 </tr>
                             }
                         </tbody>
@@ -79,12 +78,16 @@
                 </div>
             }
         </div>
+
+        <div class="alert alert-secondary mt-3 mb-0 small">
+            标准化问题表当前保存字段、检查类型、违规次数和问题说明；历史 JSON 中的样本值不再作为问题中心的数据源。
+        </div>
     }
 </div>
 
 @code {
     private readonly List<AnalysisJob> _jobs = new();
-    private readonly List<IssueRow> _selectedIssues = new();
+    private List<QualityIssue> _selectedIssues = new();
     private AnalysisJob? _selectedJob;
     private bool _loading;
 
@@ -101,7 +104,7 @@
                 .OrderByDescending(x => x.StartedAtUtc));
 
             _selectedJob = _jobs.FirstOrDefault();
-            LoadIssues(_selectedJob);
+            await LoadIssuesAsync(_selectedJob);
         }
         finally
         {
@@ -109,59 +112,19 @@
         }
     }
 
-    private Task OnJobChanged(ChangeEventArgs args)
+    private async Task OnJobChanged(ChangeEventArgs args)
     {
         if (Guid.TryParse(args.Value?.ToString(), out var id))
         {
             _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
-            LoadIssues(_selectedJob);
+            await LoadIssuesAsync(_selectedJob);
         }
-        return Task.CompletedTask;
     }
 
-    private void LoadIssues(AnalysisJob? job)
+    private async Task LoadIssuesAsync(AnalysisJob? job)
     {
-        _selectedIssues.Clear();
-        if (job is null || string.IsNullOrWhiteSpace(job.ResultJson))
-            return;
-
-        try
-        {
-            using var document = JsonDocument.Parse(job.ResultJson);
-            if (!document.RootElement.TryGetProperty("qualityViolations", out var violations) || violations.ValueKind != JsonValueKind.Array)
-                return;
-
-            foreach (var item in violations.EnumerateArray())
-            {
-                _selectedIssues.Add(new IssueRow(
-                    GetString(item, "field"),
-                    GetString(item, "check"),
-                    GetLong(item, "count"),
-                    GetString(item, "message"),
-                    GetSamples(item)));
-            }
-        }
-        catch (JsonException)
-        {
-            // 历史结果损坏时不影响问题中心其它任务展示。
-        }
+        _selectedIssues = job is null
+            ? new List<QualityIssue>()
+            : (await QualityIssueQuery.GetByJobAsync(job.Id)).ToList();
     }
-
-    private static string GetString(JsonElement item, string name) =>
-        item.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null
-            ? value.ToString()
-            : "-";
-
-    private static long GetLong(JsonElement item, string name) =>
-        item.TryGetProperty(name, out var value) && value.TryGetInt64(out var number) ? number : 0;
-
-    private static string GetSamples(JsonElement item)
-    {
-        if (!item.TryGetProperty("samples", out var samples) || samples.ValueKind != JsonValueKind.Array)
-            return "-";
-
-        return string.Join(" | ", samples.EnumerateArray().Take(5).Select(x => x.ToString()));
-    }
-
-    private sealed record IssueRow(string Field, string Check, long Count, string Message, string Samples);
 }
