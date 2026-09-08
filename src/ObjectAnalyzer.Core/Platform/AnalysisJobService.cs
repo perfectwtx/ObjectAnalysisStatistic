@@ -65,7 +65,7 @@ public sealed class AnalysisJobService
             metrics);
     }
 
-    private static IReadOnlyList<FieldQualitySnapshot> CreateFieldSnapshots(Guid jobId, AnalysisResult result)
+    private static FieldQualitySnapshot[] CreateFieldSnapshots(Guid jobId, AnalysisResult result)
     {
         return result.FieldStatistics.Select(field => new FieldQualitySnapshot(
             jobId,
@@ -78,7 +78,7 @@ public sealed class AnalysisJobService
             field.OutlierRatio.HasValue ? Math.Clamp(field.OutlierRatio.Value, 0d, 1d) : null)).ToArray();
     }
 
-    private static IReadOnlyList<QualityIssue> CreateQualityIssues(Guid jobId, AnalysisResult result)
+    private static List<QualityIssue> CreateQualityIssues(Guid jobId, AnalysisResult result)
     {
         var issues = result.QualityViolations
             .Select(issue => new QualityIssue(jobId, issue.Field, issue.Check, issue.Count, issue.Message))
