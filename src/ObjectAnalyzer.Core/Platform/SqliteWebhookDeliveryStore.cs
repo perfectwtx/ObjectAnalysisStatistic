@@ -105,7 +105,7 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public async Task MarkFailedAsync(Guid id, string error, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default)
+    public async Task MarkFailedAsync(Guid id, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -120,7 +120,7 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
             """;
         command.Parameters.AddWithValue("$status", (int)(permanent ? WebhookDeliveryStatus.Failed : WebhookDeliveryStatus.Pending));
         command.Parameters.AddWithValue("$next_attempt_at_utc", nextAttemptAtUtc.ToString("O"));
-        command.Parameters.AddWithValue("$last_error", error.Length > 2000 ? error[..2000] : error);
+        command.Parameters.AddWithValue("$last_error", errorMessage.Length > 2000 ? errorMessage[..2000] : errorMessage);
         command.Parameters.AddWithValue("$id", id.ToString());
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
