@@ -26,7 +26,7 @@
         </div>
         <div class="row g-3 mb-4">
             @foreach (var metric in _qualityMetrics)
-            { <div class="col-xl-2 col-md-4 col-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">@metric.Name</div><div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div><div class="progress mt-2" style="height:6px"><div class="progress-bar" role="progressbar" style="width:@metric.Value.ToString("F0")%"></div></div></div></div></div> }
+            { <div class="col-xl-2 col-md-4 col-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">@metric.Name</div><div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div><div class="progress mt-2" style="height:6px"><div class="progress-bar" role="progressbar" style="width:@GetProgressWidth(metric.Value)"></div></div></div></div></div> }
         </div>
         <div class="row g-3 mb-4">
             <div class="col-lg-8"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>最近质量趋势</span><a class="btn btn-sm btn-link" href="/quality/trend">查看全部</a></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead><tbody>
@@ -82,6 +82,7 @@
         _loading = false;
     }
 
+    private static string GetProgressWidth(double value) => $"{Math.Clamp(value, 0d, 100d):F0}%";
     private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
     private static string GetScoreText(double? score) => !score.HasValue ? "未计算" : score >= 90 ? "优秀" : score >= 70 ? "需要关注" : "质量风险";
     private static string ScoreBadge(double? score) => !score.HasValue ? "bg-secondary" : score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
