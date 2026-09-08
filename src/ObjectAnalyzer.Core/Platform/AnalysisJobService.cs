@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
 
@@ -39,7 +40,7 @@ public sealed class AnalysisJobService
         job.TotalObjects = result.TotalObjects;
         job.FieldCount = result.FieldStatistics.Count;
         job.QualityScore = QualityScoreCalculator.Calculate(result);
-        job.IssueCount = result.QualityViolations.Count + result.TotalDuplicateGroups;
+        job.IssueCount = result.QualityViolations.Count + checked((int)Math.Min(result.TotalDuplicateGroups, int.MaxValue));
         job.ResultJson = JsonSerializer.Serialize(result);
 
         await _historyStore.SaveAsync(job, cancellationToken);
@@ -79,9 +80,21 @@ public sealed class AnalysisJobService
 
     private static IReadOnlyList<QualityIssue> CreateQualityIssues(Guid jobId, AnalysisResult result)
     {
-        return result.QualityViolations
+        var issues = result.QualityViolations
             .Select(issue => new QualityIssue(jobId, issue.Field, issue.Check, issue.Count, issue.Message))
-            .ToArray();
+            .ToList();
+
+        if (result.TotalDuplicateGroups > 0)
+        {
+            issues.Add(new QualityIssue(
+                jobId,
+                string.Empty,
+                QualityCheckTypes.DuplicateGroups,
+                result.TotalDuplicateGroups,
+                string.Create(CultureInfo.InvariantCulture, $"发现 {result.TotalDuplicateGroups:N0} 个重复对象组。")));
+        }
+
+        return issues;
     }
 
     public async Task FailAsync(AnalysisJob job, Exception exception, CancellationToken cancellationToken = default)
