@@ -7,10 +7,7 @@
 
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2>Issue Center</h2>
-            <p class="text-muted mb-0">集中查看最近分析任务中的数据质量问题。</p>
-        </div>
+        <div><h2>Issue Center</h2><p class="text-muted mb-0">集中查看最近分析任务中的数据质量问题。</p></div>
         <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
@@ -31,51 +28,20 @@
             <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">涉及任务</div><div class="fs-3">@FilteredIssues.Select(x => x.JobId).Distinct().Count()</div></div></div></div>
         </div>
 
-        <div class="card mb-3">
-            <div class="card-body d-flex gap-2 flex-wrap">
-                <input class="form-control" style="max-width:320px" placeholder="搜索字段、来源或问题" @bind="_search" @bind:event="oninput" />
-                <select class="form-select" style="max-width:180px" @bind="_severity">
-                    <option value="">全部级别</option>
-                    <option value="Critical">Critical</option>
-                    <option value="Warning">Warning</option>
-                    <option value="Info">Info</option>
-                </select>
-            </div>
-        </div>
+        <div class="card mb-3"><div class="card-body d-flex gap-2 flex-wrap">
+            <input class="form-control" style="max-width:320px" placeholder="搜索字段、来源或问题" @bind="_search" @bind:event="oninput" />
+            <select class="form-select" style="max-width:180px" @bind="_severity">
+                <option value="">全部级别</option><option value="Critical">Critical</option><option value="Warning">Warning</option><option value="Info">Info</option>
+            </select>
+        </div></div>
 
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th>级别</th>
-                            <th>问题</th>
-                            <th>字段</th>
-                            <th>来源</th>
-                            <th>发生时间</th>
-                            <th>Job</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var issue in FilteredIssues.Take(200))
-                        {
-                            <tr>
-                                <td><span class="badge @SeverityClass(issue.Severity)">@issue.Severity</span></td>
-                                <td>@issue.Message</td>
-                                <td><code>@(issue.FieldName ?? "-")</code></td>
-                                <td>@issue.Source</td>
-                                <td>@issue.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                                <td><code>@issue.JobId.ToString("N")[..8]</code></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            @if (FilteredIssues.Count == 0)
+        <div class="card"><div class="table-responsive"><table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>级别</th><th>问题</th><th>字段</th><th>来源</th><th>发生时间</th><th>Job</th></tr></thead>
+            <tbody>@foreach (var issue in FilteredIssues.Take(200))
             {
-                <div class="p-4 text-center text-muted">没有匹配的问题。</div>
-            }
-        </div>
+                <tr><td><span class="badge @SeverityClass(issue.Severity)">@issue.Severity</span></td><td>@issue.Message</td><td><code>@(issue.FieldName ?? "-")</code></td><td>@issue.Source</td><td>@issue.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td><td><code>@issue.JobId.ToString("N")[..8]</code></td></tr>
+            }</tbody>
+        </table></div>@if (FilteredIssues.Count == 0){<div class="p-4 text-center text-muted">没有匹配的问题。</div>}</div>
     }
 </div>
 
@@ -88,12 +54,8 @@
 
     private List<IssueItem> FilteredIssues => _issues
         .Where(x => string.IsNullOrWhiteSpace(_severity) || x.Severity == _severity)
-        .Where(x => string.IsNullOrWhiteSpace(_search)
-            || x.Message.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || x.Source.Contains(_search, StringComparison.OrdinalIgnoreCase)
-            || (x.FieldName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
-        .OrderByDescending(x => x.OccurredAtUtc)
-        .ToList();
+        .Where(x => string.IsNullOrWhiteSpace(_search) || x.Message.Contains(_search, StringComparison.OrdinalIgnoreCase) || x.Source.Contains(_search, StringComparison.OrdinalIgnoreCase) || (x.FieldName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
+        .OrderByDescending(x => x.OccurredAtUtc).ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -105,40 +67,19 @@
         {
             _issues.Clear();
             var jobs = await HistoryStore.GetRecentAsync(50);
-            foreach (var job in jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)))
-            {
-                ParseJob(job);
-            }
+            foreach (var job in jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))) ParseJob(job);
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        finally
-        {
-            _loading = false;
-        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
     }
 
     private void ParseJob(AnalysisJob job)
     {
         using var document = JsonDocument.Parse(job.ResultJson!);
         var root = document.RootElement;
-
         if (TryGet(root, "QualityViolations", out var violations) && violations.ValueKind == JsonValueKind.Array)
-        {
             foreach (var item in violations.EnumerateArray())
-            {
-                _issues.Add(new IssueItem(
-                    job.Id,
-                    job.SourceName,
-                    job.CompletedAtUtc ?? job.StartedAtUtc,
-                    "Critical",
-                    "质量规则违规",
-                    null,
-                    item.ValueKind == JsonValueKind.String ? item.GetString() ?? "规则违规" : item.ToString()));
-            }
-        }
+                _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc, "Critical", "质量规则违规", null, item.ValueKind == JsonValueKind.String ? item.GetString() ?? "规则违规" : item.ToString()));
 
         if (TryGet(root, "FieldStatistics", out var fields) && fields.ValueKind == JsonValueKind.Array)
         {
@@ -146,61 +87,43 @@
             {
                 var name = GetString(field, "FieldName") ?? "";
                 if (TryGet(field, "EnumViolations", out var enumViolations) && enumViolations.ValueKind == JsonValueKind.Array)
-                {
                     foreach (var violation in enumViolations.EnumerateArray())
-                    {
-                        _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc,
-                            "Critical", "枚举值违规", name, violation.ToString()));
-                    }
-                }
+                        _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc, "Critical", "枚举值违规", name, violation.ToString()));
 
                 var outlierCount = GetLong(field, "OutlierCount");
                 if (outlierCount is > 0)
-                {
-                    _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc,
-                        "Warning", $"检测到 {outlierCount} 个异常值", name, "数值异常"));
-                }
+                    _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc, "Warning", $"检测到 {outlierCount} 个异常值", name, "数值异常"));
             }
         }
 
-        if (TryGet(root, "SchemaDiff", out var schemaDiff)
-            && TryGet(schemaDiff, "HasBreakingChanges", out var breaking)
-            && breaking.ValueKind == JsonValueKind.True)
-        {
-            _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc,
-                "Critical", "检测到 Breaking Schema Change", null, "Schema"));
-        }
+        if (TryGet(root, "SchemaDiff", out var schemaDiff) && TryGet(schemaDiff, "HasBreakingChanges", out var breaking) && breaking.ValueKind == JsonValueKind.True)
+            _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc, "Critical", "检测到 Breaking Schema Change", null, "Schema"));
 
         var duplicateGroups = GetLong(root, "TotalDuplicateGroups");
         if (duplicateGroups is > 0)
-        {
-            _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc,
-                "Warning", $"检测到 {duplicateGroups} 个重复对象组", null, "Duplicates"));
-        }
+            _issues.Add(new IssueItem(job.Id, job.SourceName, job.CompletedAtUtc ?? job.StartedAtUtc, "Warning", $"检测到 {duplicateGroups} 个重复对象组", null, "Duplicates"));
     }
 
     private static bool TryGet(JsonElement element, string name, out JsonElement value)
-        => element.TryGetProperty(name, out value) || element.TryGetProperty(name, String.ToLowerInvariant(), out value);
-
-    private static string? GetString(JsonElement element, string name)
-        => TryGet(element, name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
-
-    private static long? GetLong(JsonElement element, string name)
-        => TryGet(element, name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var n) ? n : null;
-
-    private static string SeverityClass(string severity) => severity switch
     {
-        "Critical" => "bg-danger",
-        "Warning" => "bg-warning text-dark",
-        _ => "bg-secondary"
-    };
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+        value = default;
+        return false;
+    }
 
-    private sealed record IssueItem(
-        Guid JobId,
-        string Source,
-        DateTime OccurredAtUtc,
-        string Severity,
-        string Message,
-        string? FieldName,
-        string Detail);
+    private static string? GetString(JsonElement element, string name) => TryGet(element, name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    private static long? GetLong(JsonElement element, string name) => TryGet(element, name, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var n) ? n : null;
+    private static string SeverityClass(string severity) => severity switch { "Critical" => "bg-danger", "Warning" => "bg-warning text-dark", _ => "bg-secondary" };
+
+    private sealed record IssueItem(Guid JobId, string Source, DateTime OccurredAtUtc, string Severity, string Message, string? FieldName, string Detail);
 }
