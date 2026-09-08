@@ -8,5 +8,5 @@ public interface IWebhookDeliveryStore
     Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default);
     Task MarkProcessingAsync(Guid id, CancellationToken cancellationToken = default);
     Task MarkSucceededAsync(Guid id, DateTime sentAtUtc, CancellationToken cancellationToken = default);
-    Task MarkFailedAsync(Guid id, string error, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default);
+    Task MarkFailedAsync(Guid id, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default);
 }
