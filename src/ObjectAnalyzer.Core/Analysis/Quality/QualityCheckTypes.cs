@@ -11,6 +11,7 @@ public static class QualityCheckTypes
     public const string NullRate = "nullRate";
     public const string RowCount = "rowCount";
     public const string DuplicateRate = "duplicateRate";
+    public const string DuplicateGroups = "duplicateGroups";
     public const string OutlierRatio = "outlierRatio";
 
     /// <summary>检查类型的中文标签（控制台/报告展示用）。</summary>
@@ -24,6 +25,7 @@ public static class QualityCheckTypes
         NullRate => "null 率超限",
         RowCount => "行数不足",
         DuplicateRate => "重复率超限",
+        DuplicateGroups => "重复对象组",
         OutlierRatio => "异常值超限",
         _ => check
     };
