@@ -33,7 +33,7 @@ builder.Services.AddHttpClient("WebhookDelivery", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
 });
-builder.Services.AddHostedService<WebhookDeliveryWorker>();
+builder.Services.AddHostedService<ObjectAnalyzer.Web.Platform.WebhookDeliveryWorker>();
 
 var app = builder.Build();
 
