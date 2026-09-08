@@ -1,0 +1,119 @@
+@page "/quality/relationships"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>字段关系分析</PageTitle>
+
+<h1 class="mb-4">字段关系分析</h1>
+
+@if (_loading)
+{
+    <div class="alert alert-info">正在加载最近一次分析结果...</div>
+}
+else if (_job is null)
+{
+    <div class="alert alert-secondary">暂无成功的分析记录。</div>
+}
+else if (_matrix is null)
+{
+    <div class="alert alert-secondary">最近一次分析没有字段相关性结果。请在分析配置中启用字段关系分析后重新执行。</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">参与字段</div><div class="display-6">@_matrix.Fields.Count</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">样本数</div><div class="display-6">@_matrix.Samples</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">强相关关系</div><div class="display-6">@_matrix.StrongPairs.Count</div></div></div></div>
+        <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">数据源</div><div class="fs-5 mt-2 text-truncate">@_job.SourceName</div></div></div></div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">强相关字段对</div>
+        <div class="card-body p-0">
+            @if (_matrix.StrongPairs.Count == 0)
+            {
+                <div class="p-3 text-muted">当前没有达到强相关阈值的字段对。</div>
+            }
+            else
+            {
+                <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+                    <thead><tr><th>字段 A</th><th>字段 B</th><th>Pearson</th><th>Spearman</th><th>样本数</th><th>关系</th></tr></thead>
+                    <tbody>
+                    @foreach (var pair in _matrix.StrongPairs.OrderByDescending(x => Math.Abs(x.Pearson)))
+                    {
+                        <tr>
+                            <td><strong>@pair.FieldA</strong></td>
+                            <td><strong>@pair.FieldB</strong></td>
+                            <td>@pair.Pearson.ToString("0.000")</td>
+                            <td>@(pair.Spearman?.ToString("0.000") ?? "-")</td>
+                            <td>@pair.Samples</td>
+                            <td><span class="badge @(pair.Pearson < 0 ? "bg-warning text-dark" : "bg-primary")">@(pair.Pearson < 0 ? "负相关" : "正相关")</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table></div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">相关性矩阵</div>
+        <div class="card-body p-0">
+            @if (_matrix.Fields.Count == 0)
+            {
+                <div class="p-3 text-muted">没有可展示的字段。</div>
+            }
+            else
+            {
+                <div class="table-responsive"><table class="table table-sm table-bordered mb-0 align-middle text-center">
+                    <thead><tr><th>字段</th>@foreach (var field in _matrix.Fields){<th class="text-nowrap">@field</th>}</tr></thead>
+                    <tbody>
+                    @for (var i = 0; i < _matrix.Fields.Count; i++)
+                    {
+                        var row = i;
+                        <tr><th class="text-nowrap">@_matrix.Fields[row]</th>@for (var j = 0; j < _matrix.Fields.Count; j++){<td>@FormatCoefficient(_matrix.Pearson, row, j)</td>}</tr>
+                    }
+                    </tbody>
+                </table></div>
+                <div class="p-3 text-muted small">Pearson 越接近 1 表示强正相关，越接近 -1 表示强负相关，接近 0 表示线性相关性较弱。强相关字段对默认要求绝对相关系数至少 0.7 且样本数至少 30。</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private AnalysisJob? _job;
+    private FieldCorrelationMatrix? _matrix;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HistoryStore.InitializeAsync();
+        var jobs = await HistoryStore.GetRecentAsync(100);
+        _job = jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
+
+        if (_job is not null)
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+                _matrix = result?.CorrelationMatrix;
+            }
+            catch (JsonException)
+            {
+                _matrix = null;
+            }
+        }
+
+        _loading = false;
+    }
+
+    private static string FormatCoefficient(IReadOnlyList<List<double?>> matrix, int row, int column)
+    {
+        if (row < 0 || row >= matrix.Count || column < 0 || column >= matrix[row].Count || matrix[row][column] is null)
+            return "-";
+        return matrix[row][column]!.Value.ToString("0.00");
+    }
+}
