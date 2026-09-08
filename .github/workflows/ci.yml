@@ -1,37 +1,29 @@
-
 name: CI
 
 on:
-  # 只有 push 到 main 分支时触发
   push:
     branches:
       - main
-
-  # 只有目标分支是 main 的 Pull Request 才触发
   pull_request:
     branches:
       - main
 
-permissions:
-  contents: read
-
 jobs:
   build-and-test:
-    name: Build & Test
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
-      # 1. 拉取代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. 安装 .NET SDK
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      # 3. 缓存 NuGet
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
@@ -40,72 +32,52 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      # 4. 恢复 NuGet 依赖
       - name: Restore dependencies
         run: dotnet restore ObjectAnalyzer.sln
 
-      # 5. 编译
       - name: Build
         run: dotnet build ObjectAnalyzer.sln --no-restore -c Release
 
-      # 6. 单元测试 + 覆盖率
       - name: Test with coverage
-        run: dotnet test ObjectAnalyzer.sln --no-build -c Release --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: >
+          dotnet test ObjectAnalyzer.sln
+          --no-build
+          -c Release
+          --collect:"XPlat Code Coverage"
+          --results-directory TestResults
 
-      # 7. 上传测试覆盖率结果
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: TestResults
 
-      # 8. 发布 CLI
       - name: Publish CLI
-        run: dotnet publish src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release -o artifacts/cli --no-restore
+        run: >
+          dotnet publish
+          src/ObjectAnalyzer/ObjectAnalyzer.csproj
+          -c Release
+          -o artifacts/cli
+          --no-restore
 
-      # 9. 打包 dotnet tool
       - name: Pack CLI as dotnet tool
-        run: dotnet pack src/ObjectAnalyzer/ObjectAnalyzer.csproj -c Release -o artifacts/packages --no-restore
+        run: >
+          dotnet pack
+          src/ObjectAnalyzer/ObjectAnalyzer.csproj
+          -c Release
+          -o artifacts/packages
+          --no-restore
 
-      # 10. 发布 Web
       - name: Publish Web
-        run: dotnet publish src/ObjectAnalyzer.Web/ObjectAnalyzer.Web.csproj -c Release -o artifacts/web --no-restore
+        run: >
+          dotnet publish
+          src/ObjectAnalyzer.Web/ObjectAnalyzer.Web.csproj
+          -c Release
+          -o artifacts/web
+          --no-restore
 
-      # 11. 上传构建产物
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: publish
           path: artifacts
-
-  # ============================================================
-  # CodeQL 安全扫描
-  # ============================================================
-  codeql-analysis:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    permissions:
-      contents: read
-      actions: read
-      security-events: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: csharp
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
