@@ -1,3 +1,4 @@
+using ObjectAnalyzer.Platform;
 using ObjectAnalyzer.Web;
 using ObjectAnalyzer.Web.Components;
 using ObjectAnalyzer.Web.Platform;
@@ -43,9 +44,9 @@ if (!builder.Environment.IsEnvironment("Testing"))
 var app = builder.Build();
 
 // 平台历史数据库初始化
-await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IAnalysisHistoryStore>().InitializeAsync();
-await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IAlertRuleStore>().InitializeAsync();
-await app.Services.GetRequiredService<ObjectAnalyzer.Platform.IWebhookDeliveryStore>().InitializeAsync();
+await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
+await app.Services.GetRequiredService<IAlertRuleStore>().InitializeAsync();
+await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync();
 
 // ── 静态资产启用 ──
 if (!builder.Environment.IsDevelopment())
