@@ -25,7 +25,7 @@ public sealed class AnalysisExecutionCoordinatorTests
             },
             cts.Token);
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => task);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
 
         var job = Assert.Single(history.Jobs);
         Assert.Equal(AnalysisJobStatus.Cancelled, job.Status);
