@@ -1,75 +1,88 @@
 @page "/quality"
+@page "/quality/dashboard"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 
-<PageTitle>Quality Dashboard</PageTitle>
+<PageTitle>数据质量总览</PageTitle>
 
-<div class="container py-4">
-    <div class="mb-4">
-        <h1>Quality Dashboard</h1>
-        <p class="text-muted">基于历史分析作业查看数据质量趋势</p>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div><h1>数据质量总览</h1><p class="text-muted mb-0">从质量分、问题、Schema 与字段关系统一查看最近一次分析结果。</p></div>
+        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
     </div>
-
     @if (_loading)
-    {
-        <p>加载中...</p>
-    }
-    else if (_jobs.Count == 0)
-    {
-        <div class="alert alert-info">暂无历史分析数据。</div>
-    }
+    { <div class="alert alert-info">正在加载质量数据...</div> }
+    else if (_job is null || _result is null)
+    { <div class="alert alert-secondary">暂无可用的成功分析记录。请先执行一次数据分析。</div> }
     else
     {
-        var latest = _jobs[0];
         <div class="row g-3 mb-4">
-            <div class="col-md-3"><div class="card p-3"><small>Latest Score</small><strong class="fs-2">@(latest.QualityScore?.ToString("F2") ?? "-")</strong></div></div>
-            <div class="col-md-3"><div class="card p-3"><small>Objects</small><strong class="fs-2">@latest.TotalObjects.ToString("N0")</strong></div></div>
-            <div class="col-md-3"><div class="card p-3"><small>Issues</small><strong class="fs-2">@latest.IssueCount</strong></div></div>
-            <div class="col-md-3"><div class="card p-3"><small>Jobs</small><strong class="fs-2">@_jobs.Count</strong></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量总分</div><div class="display-5 fw-semibold">@FormatScore(_job.QualityScore)</div><div class="small text-muted">@GetScoreText(_job.QualityScore)</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量问题</div><div class="display-5 fw-semibold">@_job.IssueCount</div><div class="small text-muted">字段违规 + 重复组</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">分析对象</div><div class="display-5 fw-semibold">@_job.TotalObjects.ToString("N0")</div><div class="small text-muted">字段 @_job.FieldCount 个</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">Schema 状态</div><div class="display-5 fw-semibold">@(_result.SchemaDiff?.HasBreakingChanges == true ? "⚠" : "✓")</div><div class="small text-muted">@(_result.SchemaDiff?.HasBreakingChanges == true ? "存在破坏性变更" : "无破坏性变更")</div></div></div></div>
         </div>
-
-        <div class="card p-3">
-            <h3>Quality Score Trend</h3>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0">
-                    <thead><tr><th>Time</th><th>Source</th><th>Score</th><th>Issues</th></tr></thead>
-                    <tbody>
-                    @foreach (var job in _jobs.Take(30).Reverse())
-                    {
-                        <tr>
-                            <td>@job.StartedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td>
-                            <td>@job.SourceName</td>
-                            <td>@(job.QualityScore?.ToString("F2") ?? "-")</td>
-                            <td>@job.IssueCount</td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
+        <div class="row g-3 mb-4">
+            @foreach (var metric in _qualityMetrics)
+            { <div class="col-xl-2 col-md-4 col-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">@metric.Name</div><div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div><div class="progress mt-2" style="height:6px"><div class="progress-bar" role="progressbar" style="width:@metric.Value.ToString("F0")%"></div></div></div></div></div> }
+        </div>
+        <div class="row g-3 mb-4">
+            <div class="col-lg-8"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>最近质量趋势</span><a class="btn btn-sm btn-link" href="/quality/trend">查看全部</a></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead><tbody>
+                @foreach (var job in _recentJobs.Take(8)) { <tr><td>@job.StartedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td><td>@job.SourceName</td><td><span class="badge @ScoreBadge(job.QualityScore)">@FormatScore(job.QualityScore)</span></td><td>@job.IssueCount</td><td>@job.TotalObjects.ToString("N0")</td></tr> }
+            </tbody></table></div></div></div></div>
+            <div class="col-lg-4"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>Top Issues</span><a class="btn btn-sm btn-link" href="/issues">问题中心</a></div><div class="card-body">
+                @if (_topIssues.Count == 0) { <div class="text-success">✓ 当前没有质量违规。</div> } else { @foreach (var issue in _topIssues) { <div class="d-flex justify-content-between border-bottom py-2"><div><strong>@(string.IsNullOrWhiteSpace(issue.Field) ? "数据集" : issue.Field)</strong><div class="small text-muted">@QualityCheckTypes.Label(issue.Check)</div></div><span class="badge bg-danger">@issue.Count</span></div> } }
+            </div></div></div>
+        </div>
+        <div class="row g-3">
+            <div class="col-lg-6"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>Schema 影响</span><a class="btn btn-sm btn-link" href="/quality/schema-impact">查看详情</a></div><div class="card-body">
+                @if (_result.SchemaDiff is null) { <span class="text-muted">未产生 Schema Diff。</span> } else { <div class="row text-center"><div class="col-4"><div class="fs-3">@_result.SchemaDiff.AddedFields.Count</div><div class="text-muted">新增</div></div><div class="col-4"><div class="fs-3">@_result.SchemaDiff.ChangedFields.Count</div><div class="text-muted">变更</div></div><div class="col-4"><div class="fs-3">@_result.SchemaDiff.RemovedFields.Count</div><div class="text-muted">删除</div></div></div> }
+            </div></div></div>
+            <div class="col-lg-6"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>字段关系</span><a class="btn btn-sm btn-link" href="/quality/relationships">查看详情</a></div><div class="card-body">
+                @if (_result.CorrelationMatrix is null) { <span class="text-muted">未产生字段相关性结果。</span> } else { <div class="row text-center"><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Fields.Count</div><div class="text-muted">字段</div></div><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Samples</div><div class="text-muted">样本</div></div><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.StrongPairs.Count</div><div class="text-muted">强相关</div></div></div> }
+            </div></div></div>
         </div>
     }
 </div>
 
 @code {
-    private List<AnalysisJob> _jobs = new();
-    private bool _loading;
+    private bool _loading = true;
+    private AnalysisJob? _job;
+    private AnalysisResult? _result;
+    private List<AnalysisJob> _recentJobs = new();
+    private List<QualityMetric> _qualityMetrics = new();
+    private List<FieldViolation> _topIssues = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await HistoryStore.InitializeAsync();
-        await LoadAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
         _loading = true;
-        try
-        {
-            _jobs = (await HistoryStore.GetRecentAsync(100)).ToList();
-        }
-        finally
-        {
-            _loading = false;
-        }
+        await HistoryStore.InitializeAsync();
+        _recentJobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded).OrderByDescending(x => x.StartedAtUtc).ToList();
+        _job = _recentJobs.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ResultJson));
+        _result = null;
+        if (_job?.ResultJson is not null) { try { _result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson); } catch (JsonException) { } }
+        if (_result is not null) { _qualityMetrics = BuildMetrics(_result); _topIssues = _result.QualityViolations.OrderByDescending(x => x.Count).Take(5).ToList(); }
+        else { _qualityMetrics.Clear(); _topIssues.Clear(); }
+        _loading = false;
     }
+
+    private static List<QualityMetric> BuildMetrics(AnalysisResult result)
+    {
+        var fields = result.FieldStatistics;
+        var completeness = fields.Count == 0 ? 100 : fields.Average(x => Math.Clamp(x.Coverage * 100d, 0, 100));
+        var validity = result.TotalObjects <= 0 ? 100 : Math.Clamp(100d - result.QualityViolations.Count * 100d / result.TotalObjects, 0, 100);
+        var uniqueness = result.TotalObjects <= 0 ? 100 : Math.Clamp(result.TotalUniqueObjects * 100d / result.TotalObjects, 0, 100);
+        var consistency = result.SchemaDiff?.HasBreakingChanges == true ? 60 : 100;
+        var anomaly = fields.Count == 0 ? 100 : Math.Clamp(100d - fields.Sum(x => x.OutlierRatio ?? 0) * 100d / fields.Count, 0, 100);
+        return new() { new("完整性", completeness), new("有效性", validity), new("唯一性", uniqueness), new("一致性", consistency), new("异常控制", anomaly) };
+    }
+
+    private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
+    private static string GetScoreText(double? score) => !score.HasValue ? "未计算" : score >= 90 ? "优秀" : score >= 70 ? "需要关注" : "质量风险";
+    private static string ScoreBadge(double? score) => !score.HasValue ? "bg-secondary" : score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
+    private sealed record QualityMetric(string Name, double Value);
 }
