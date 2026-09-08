@@ -4,6 +4,8 @@
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
+@inject IQualityHistoryQuery QualityHistory
+@inject IQualityIssueQuery QualityIssueQuery
 
 <PageTitle>数据质量总览</PageTitle>
 
@@ -20,7 +22,7 @@
     {
         <div class="row g-3 mb-4">
             <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量总分</div><div class="display-5 fw-semibold">@FormatScore(_job.QualityScore)</div><div class="small text-muted">@GetScoreText(_job.QualityScore)</div></div></div></div>
-            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量问题</div><div class="display-5 fw-semibold">@_job.IssueCount</div><div class="small text-muted">字段违规 + 重复组</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量问题</div><div class="display-5 fw-semibold">@_job.IssueCount</div><div class="small text-muted">标准化问题记录 @_topIssues.Count 条（Top 5）</div></div></div></div>
             <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">分析对象</div><div class="display-5 fw-semibold">@_job.TotalObjects.ToString("N0")</div><div class="small text-muted">字段 @_job.FieldCount 个</div></div></div></div>
             <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">Schema 状态</div><div class="display-5 fw-semibold">@(_result.SchemaDiff?.HasBreakingChanges == true ? "⚠" : "✓")</div><div class="small text-muted">@(_result.SchemaDiff?.HasBreakingChanges == true ? "存在破坏性变更" : "无破坏性变更")</div></div></div></div>
         </div>
@@ -30,10 +32,10 @@
         </div>
         <div class="row g-3 mb-4">
             <div class="col-lg-8"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>最近质量趋势</span><a class="btn btn-sm btn-link" href="/quality/trend">查看全部</a></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead><tbody>
-                @foreach (var job in _recentJobs.Take(8)) { <tr><td>@job.StartedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td><td>@job.SourceName</td><td><span class="badge @ScoreBadge(job.QualityScore)">@FormatScore(job.QualityScore)</span></td><td>@job.IssueCount</td><td>@job.TotalObjects.ToString("N0")</td></tr> }
+                @foreach (var snapshot in _recentSnapshots.Take(8)) { <tr><td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td><td>@snapshot.SourceName</td><td><span class="badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td><td>@snapshot.IssueCount</td><td>@snapshot.TotalObjects.ToString("N0")</td></tr> }
             </tbody></table></div></div></div></div>
             <div class="col-lg-4"><div class="card h-100"><div class="card-header d-flex justify-content-between"><span>Top Issues</span><a class="btn btn-sm btn-link" href="/issues">问题中心</a></div><div class="card-body">
-                @if (_topIssues.Count == 0) { <div class="text-success">✓ 当前没有质量违规。</div> } else { @foreach (var issue in _topIssues) { <div class="d-flex justify-content-between border-bottom py-2"><div><strong>@(string.IsNullOrWhiteSpace(issue.Field) ? "数据集" : issue.Field)</strong><div class="small text-muted">@QualityCheckTypes.Label(issue.Check)</div></div><span class="badge bg-danger">@issue.Count</span></div> } }
+                @if (_topIssues.Count == 0) { <div class="text-success">✓ 当前没有质量违规。</div> } else { @foreach (var issue in _topIssues) { <div class="d-flex justify-content-between border-bottom py-2"><div><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><div class="small text-muted">@QualityCheckTypes.Label(issue.Check)</div></div><span class="badge bg-danger">@issue.Count</span></div> } }
             </div></div></div>
         </div>
         <div class="row g-3">
@@ -51,9 +53,9 @@
     private bool _loading = true;
     private AnalysisJob? _job;
     private AnalysisResult? _result;
-    private List<AnalysisJob> _recentJobs = new();
+    private List<QualitySnapshot> _recentSnapshots = new();
     private List<QualityMetric> _qualityMetrics = new();
-    private List<FieldViolation> _topIssues = new();
+    private List<QualityIssue> _topIssues = new();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -61,10 +63,22 @@
     {
         _loading = true;
         await HistoryStore.InitializeAsync();
-        _recentJobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded).OrderByDescending(x => x.StartedAtUtc).ToList();
-        _job = _recentJobs.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ResultJson));
+        var recentJobs = (await HistoryStore.GetRecentAsync(100))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+            .OrderByDescending(x => x.StartedAtUtc)
+            .ToList();
+        _job = recentJobs.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ResultJson));
+        _recentSnapshots = (await QualityHistory.GetSnapshotsAsync(limit: 8)).ToList();
+        _topIssues = _job is null
+            ? new List<QualityIssue>()
+            : (await QualityIssueQuery.GetByJobAsync(_job.Id)).OrderByDescending(x => x.Count).Take(5).ToList();
+
         _result = null;
-        if (_job?.ResultJson is not null) { try { _result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson); } catch (JsonException) { } }
+        if (_job?.ResultJson is not null)
+        {
+            try { _result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson); }
+            catch (JsonException) { }
+        }
         if (_result is not null)
         {
             var metrics = QualityMetricsCalculator.Calculate(_result);
@@ -76,7 +90,6 @@
                 new("一致性", metrics.Consistency),
                 new("异常控制", metrics.AnomalyControl)
             };
-            _topIssues = _result.QualityViolations.OrderByDescending(x => x.Count).Take(5).ToList();
         }
         else { _qualityMetrics.Clear(); _topIssues.Clear(); }
         _loading = false;
@@ -85,6 +98,6 @@
     private static string GetProgressWidth(double value) => $"{Math.Clamp(value, 0d, 100d):F0}%";
     private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
     private static string GetScoreText(double? score) => !score.HasValue ? "未计算" : score >= 90 ? "优秀" : score >= 70 ? "需要关注" : "质量风险";
-    private static string ScoreBadge(double? score) => !score.HasValue ? "bg-secondary" : score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
+    private static string ScoreBadge(double score) => score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
     private sealed record QualityMetric(string Name, double Value);
 }
