@@ -33,7 +33,12 @@ builder.Services.AddHttpClient("WebhookDelivery", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
 });
-builder.Services.AddHostedService<ObjectAnalyzer.Web.Platform.WebhookDeliveryWorker>();
+
+// 集成测试不启动后台投递线程，避免测试宿主与真实 Webhook Outbox worker 相互干扰。
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<ObjectAnalyzer.Web.Platform.WebhookDeliveryWorker>();
+}
 
 var app = builder.Build();
 
