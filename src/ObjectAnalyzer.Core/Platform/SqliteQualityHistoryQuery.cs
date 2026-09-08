@@ -61,4 +61,35 @@ public sealed class SqliteQualityHistoryQuery : IQualityHistoryQuery
 
         return snapshots;
     }
+
+    public async Task<IReadOnlyList<FieldQualitySnapshot>> GetFieldsByJobAsync(
+        Guid jobId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT job_id, field_name, coverage, null_rate, uniqueness, outlier_ratio
+            FROM field_quality_snapshots
+            WHERE job_id = $jobId
+            ORDER BY field_name;
+            """;
+        command.Parameters.AddWithValue("$jobId", jobId.ToString("D"));
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var fields = new List<FieldQualitySnapshot>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            fields.Add(new FieldQualitySnapshot(
+                Guid.Parse(reader.GetString(0)),
+                reader.GetString(1),
+                reader.GetDouble(2),
+                reader.GetDouble(3),
+                reader.IsDBNull(4) ? null : reader.GetDouble(4),
+                reader.IsDBNull(5) ? null : reader.GetDouble(5)));
+        }
+
+        return fields;
+    }
 }
