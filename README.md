@@ -2,24 +2,23 @@
 
 ObjectAnalyzer 是一个面向结构化与半结构化数据的**对象分析与数据质量平台**。
 
-它可以从文件或数据库读取数据，分析字段结构、数据类型、值分布、重复数据、异常与 Schema，并进一步形成数据质量评分、质量问题、历史趋势和告警。
+它从文件或数据库读取数据，经过统一分析管线生成字段统计、Schema、质量指标和质量问题，并支持历史趋势、回归分析、告警与 Webhook。
 
 ## 核心能力
 
-- **对象分析**：字段数量、覆盖率、类型、唯一值、长度、数值和时间分布。
-- **数据质量**：Completeness、Validity、Uniqueness、Consistency、Anomaly Control 五个维度。
-- **问题中心**：统一管理必填、类型、枚举、范围、Pattern、唯一性等质量问题。
-- **Schema**：Schema 快照与演进对比。
+- **对象分析**：字段覆盖率、类型、唯一值、值分布、数值与时间统计、重复对象分析。
+- **数据质量**：Completeness、Validity、Uniqueness、Consistency、Anomaly Control 五维质量评分。
+- **质量问题**：统一记录必填、类型、枚举、范围、Pattern、唯一性、异常等问题。
+- **Schema 分析**：Schema 快照、差异与破坏性变化识别。
 - **深度分析**：异常值、分布漂移、相关性、时间序列、字符串模式等。
-- **PII 安全**：PII 识别与统一出站脱敏。
-- **历史分析**：保存质量快照，支持趋势和回归分析。
-- **告警**：质量阈值、质量回归、关键问题、Schema 变化和分布漂移告警。
-- **Webhook**：基于 Outbox 的可靠异步投递。
-- **多种入口**：CLI、HTTP API、Blazor Web。
+- **历史与回归**：保存质量快照，支持质量趋势和前后回归分析。
+- **告警与 Webhook**：质量阈值、质量回退、关键问题、Schema 变化、分布漂移，以及 Outbox 可靠投递。
+- **安全**：PII 识别、出站脱敏、审计日志。
+- **多入口**：CLI、HTTP API、Blazor Web。
 
-## 数据源
+## 支持的数据源
 
-支持常见 JSON、JSONL、CSV、Excel、XML、YAML 输入，并支持压缩输入以及 PostgreSQL、MySQL、SQLite、SQL Server 数据库直读。
+JSON、JSONL、CSV、Excel、Excel-JSON、XML、YAML，以及 gzip、bzip2、zip 压缩输入；支持 PostgreSQL、MySQL、SQLite、SQL Server 数据库直读。
 
 ## 快速开始
 
@@ -42,11 +41,13 @@ dotnet run --project src/ObjectAnalyzer -- -i samples/test_data.json -o report.h
 dotnet run --project src/ObjectAnalyzer.Web
 ```
 
-### API
+### HTTP API
 
 ```bash
 dotnet run --project src/ObjectAnalyzer.Api
 ```
+
+启动后可通过 `/scalar` 使用交互式 API 文档。
 
 ### 测试
 
@@ -54,21 +55,7 @@ dotnet run --project src/ObjectAnalyzer.Api
 dotnet test ObjectAnalyzer.sln -c Release
 ```
 
-## 数据质量模型
-
-质量评分由五个维度组成：
-
-| 维度 | 权重 |
-|---|---:|
-| Completeness | 30% |
-| Validity | 30% |
-| Uniqueness | 15% |
-| Consistency | 15% |
-| Anomaly Control | 10% |
-
-综合分范围为 0～100。质量分用于衡量整体健康程度，具体诊断通过字段和 Issue 完成。
-
-## 平台架构
+## 平台工作流
 
 ```text
 数据源
@@ -84,16 +71,44 @@ AnalysisJob
   ├── FieldQualitySnapshot
   └── QualityIssue
         ↓
-历史 / Dashboard / Alert / Webhook
+History / Dashboard / Alert
+        ↓
+Webhook Outbox
+        ↓
+Webhook Delivery Worker
 ```
 
-CLI、API 和 Web 共用 Core 分析能力。平台层负责任务生命周期、质量历史、问题和外部通知。
+CLI、API 和 Web 共用 Core 分析能力。Platform 层负责任务生命周期、质量历史、问题管理和外部通知。
+
+## 数据质量模型
+
+| 维度 | 权重 |
+|---|---:|
+| Completeness | 30% |
+| Validity | 30% |
+| Uniqueness | 15% |
+| Consistency | 15% |
+| Anomaly Control | 10% |
+
+综合分范围为 0～100。质量分用于衡量整体健康程度，具体诊断通过字段指标和 Quality Issue 完成。
+
+## Web 页面
+
+- `/quality`：质量总览
+- `/quality/trend`：质量趋势
+- `/quality/fields`：字段质量明细
+- `/quality/regression`：质量回归
+- `/quality/schema-impact`：Schema 影响分析
+- `/quality/relationships`：字段关系分析
+- `/quality/recommendations`：治理建议
+- `/issues`：问题中心
+- `/alert-rules`：告警规则
 
 ## 项目结构
 
 ```text
 src/
-├── ObjectAnalyzer.Core/   # 核心分析引擎
+├── ObjectAnalyzer.Core/   # 核心分析能力
 ├── ObjectAnalyzer/        # CLI
 ├── ObjectAnalyzer.Api/    # HTTP API
 └── ObjectAnalyzer.Web/    # Blazor Web
@@ -103,27 +118,28 @@ tests/
 ├── ObjectAnalyzer.Api.Tests/
 └── ObjectAnalyzer.Web.Tests/
 
-docs/                      # 使用、架构与开发文档
-samples/                   # 示例数据和规则
+docs/                      # 产品、架构、使用与开发文档
+samples/                   # 示例数据与规则
 ```
 
 ## 文档
 
-- [快速开始](docs/getting-started.md)
-- [总体架构](docs/architecture.md)
-- [分析引擎](docs/analysis.md)
-- [数据质量](docs/data-quality.md)
-- [问题中心](docs/issues.md)
-- [历史与趋势](docs/history.md)
-- [告警与 Webhook](docs/alerts.md)
-- [配置与参数](docs/configuration.md)
-- [CLI](docs/cli.md)
-- [API](docs/api.md)
-- [安全](docs/security.md)
-- [开发指南](docs/development.md)
-- [路线图](docs/roadmap.md)
-- [安全政策](SECURITY.md)
-- [变更记录](CHANGELOG.md)
+| 文档 | 内容 |
+|---|---|
+| [快速开始](docs/getting-started.md) | 环境、启动、第一次分析 |
+| [总体架构](docs/architecture.md) | Core、Platform、宿主与任务生命周期 |
+| [数据质量](docs/data-quality.md) | 五维质量模型与质量指标 |
+| [问题中心](docs/issues.md) | Issue 模型、来源与处理路径 |
+| [历史与趋势](docs/history.md) | 快照、趋势与历史存储 |
+| [告警与 Webhook](docs/alerts.md) | 告警规则、Outbox 与可靠投递 |
+| [配置](docs/configuration.md) | 数据源、分析参数与规则 |
+| [CLI](docs/cli.md) | 命令行使用与自动化 |
+| [API](docs/api.md) | HTTP API 与 OpenAPI |
+| [安全](docs/security.md) | 数据、PII、日志与 Webhook 安全 |
+| [开发指南](docs/development.md) | 项目结构、开发与验证 |
+| [路线图](docs/roadmap.md) | 当前阶段与后续方向 |
+| [安全政策](SECURITY.md) | 仓库安全问题报告 |
+| [变更记录](CHANGELOG.md) | 版本与历史变更 |
 
 ## 技术栈
 
@@ -132,7 +148,15 @@ samples/                   # 示例数据和规则
 - ASP.NET Core
 - Blazor
 - SQLite
-- React 前端集成
+
+## 设计原则
+
+1. **单一分析事实来源**：CLI、API、Web 共用 `AnalysisPipeline`。
+2. **业务与 UI 解耦**：Core 不依赖具体宿主和展示层。
+3. **标准指标结构化存储**：趋势、回归和告警优先使用标准化快照。
+4. **复杂结果按需持久化**：SchemaDiff、CorrelationMatrix 等复杂结果无需强行拆表。
+5. **任务可追踪**：分析任务必须能够追踪成功、失败和取消状态。
+6. **可靠通知**：Webhook 使用 Outbox + Worker，避免分析完成后直接同步调用外部系统。
 
 ## 开源协议
 
