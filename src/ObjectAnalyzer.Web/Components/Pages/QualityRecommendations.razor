@@ -1,0 +1,125 @@
+@page "/quality/recommendations"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>质量修复建议</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>质量修复建议</h1>
+            <p class="text-muted mb-0">把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="alert alert-info">正在加载质量问题...</div>
+    }
+    else if (_recommendations.Count == 0)
+    {
+        <div class="alert alert-success">当前没有可生成建议的质量问题。数据质量状态良好。</div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">待治理问题</div><div class="display-6">@_recommendations.Count</div></div></div></div>
+            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">涉及字段</div><div class="display-6">@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div></div></div></div>
+            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">违规次数</div><div class="display-6">@_recommendations.Sum(x => x.Count)</div></div></div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>治理建议</span>
+                <span class="text-muted small">@_sourceName · @_jobTime</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>优先级</th><th>字段</th><th>问题</th><th>影响</th><th>建议动作</th><th>建议规则</th></tr></thead>
+                    <tbody>
+                    @foreach (var item in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count))
+                    {
+                        <tr>
+                            <td><span class="badge @(item.Priority >= 3 ? "bg-danger" : item.Priority == 2 ? "bg-warning text-dark" : "bg-secondary")">@item.PriorityText</span></td>
+                            <td><strong>@item.Field</strong></td>
+                            <td><span class="badge text-bg-warning">@QualityCheckTypes.Label(item.Check)</span><div class="small text-muted mt-1">@item.Message</div></td>
+                            <td>@item.Count 次</td>
+                            <td>@item.Action</td>
+                            <td><code>@item.Rule</code></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private readonly List<Recommendation> _recommendations = new();
+    private string _sourceName = "";
+    private string _jobTime = "";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _recommendations.Clear();
+        await HistoryStore.InitializeAsync();
+        var job = (await HistoryStore.GetRecentAsync(100))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .FirstOrDefault();
+
+        if (job is not null)
+        {
+            _sourceName = job.SourceName;
+            _jobTime = job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+            try
+            {
+                using var document = JsonDocument.Parse(job.ResultJson!);
+                if (document.RootElement.TryGetProperty("qualityViolations", out var violations) && violations.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in violations.EnumerateArray())
+                    {
+                        var check = GetString(item, "check");
+                        var field = GetString(item, "field");
+                        if (string.IsNullOrWhiteSpace(field) || field == "-") continue;
+                        _recommendations.Add(BuildRecommendation(field, check, GetLong(item, "count"), GetString(item, "message")));
+                    }
+                }
+            }
+            catch (JsonException) { }
+        }
+        _loading = false;
+    }
+
+    private static Recommendation BuildRecommendation(string field, string check, long count, string message)
+    {
+        var (action, rule, priority) = check switch
+        {
+            QualityCheckTypes.Required => ("补齐缺失值，或明确允许为空", "required: true", 3),
+            QualityCheckTypes.NullRate => ("排查空值来源并降低字段空值率", "nullRate: < 当前阈值", 3),
+            QualityCheckTypes.Range => ("检查异常数值来源，并设置合理上下界", "minValue / maxValue", 3),
+            QualityCheckTypes.Pattern => ("统一格式并增加模式校验", "pattern: <正则表达式>", 2),
+            QualityCheckTypes.EnumValues => ("统一枚举编码，清理非法枚举值", "enumValues: [允许值]", 2),
+            QualityCheckTypes.Unique => ("去除重复数据并确认唯一键设计", "unique: true", 3),
+            QualityCheckTypes.OutlierRatio => ("检查异常值来源，必要时增加异常值处理策略", "outlierRatio: < 当前阈值", 2),
+            _ => ("根据问题说明检查数据来源并增加针对性质量规则", "配置对应质量规则", 1)
+        };
+        return new Recommendation(field, check, count, message, action, rule, priority);
+    }
+
+    private static string GetString(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : "-";
+    private static long GetLong(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.TryGetInt64(out var number) ? number : 0;
+
+    private sealed record Recommendation(string Field, string Check, long Count, string Message, string Action, string Rule, int Priority)
+    {
+        public string PriorityText => Priority >= 3 ? "高" : Priority == 2 ? "中" : "低";
+    }
+}

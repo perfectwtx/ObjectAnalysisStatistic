@@ -1,0 +1,98 @@
+@page "/quality/trend"
+@using ObjectAnalyzer.Platform
+@inject IQualityHistoryQuery QualityHistory
+
+<PageTitle>质量趋势</PageTitle>
+
+<h1 class="mb-4">质量趋势</h1>
+
+@if (_loading)
+{
+    <div class="alert alert-info">正在加载质量历史数据...</div>
+}
+else if (_snapshots.Count == 0)
+{
+    <div class="alert alert-secondary">暂无标准化质量历史数据。</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">分析次数</div><div class="display-6">@_snapshots.Count</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">最新质量分</div><div class="display-6">@FormatScore(_snapshots[0].Metrics.OverallScore)</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">平均质量分</div><div class="display-6">@FormatScore(_snapshots.Average(x => x.Metrics.OverallScore))</div></div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100"><div class="card-body"><div class="text-muted">累计问题</div><div class="display-6">@_snapshots.Sum(x => x.IssueCount)</div></div></div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">质量分趋势</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题数</th><th>对象数</th><th>完整性</th><th>有效性</th><th>唯一性</th></tr></thead>
+                    <tbody>
+                    @foreach (var snapshot in _snapshots)
+                    {
+                        <tr>
+                            <td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@snapshot.SourceName</td>
+                            <td>
+                                <span class="badge @(snapshot.Metrics.OverallScore >= 90 ? "bg-success" : snapshot.Metrics.OverallScore >= 70 ? "bg-warning text-dark" : "bg-danger")">@snapshot.Metrics.OverallScore.ToString("F1")</span>
+                            </td>
+                            <td>@snapshot.IssueCount</td>
+                            <td>@snapshot.TotalObjects</td>
+                            <td>@snapshot.Metrics.Completeness.ToString("F1")</td>
+                            <td>@snapshot.Metrics.Validity.ToString("F1")</td>
+                            <td>@snapshot.Metrics.Uniqueness.ToString("F1")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">趋势解读</div>
+        <div class="card-body">
+            @if (_snapshots.Count >= 2)
+            {
+                var latest = _snapshots[0].Metrics.OverallScore;
+                var previous = _snapshots[1].Metrics.OverallScore;
+                var delta = latest - previous;
+                <p class="mb-1">最近一次质量分较上一次 <strong>@(delta >= 0 ? "+" : "")@delta.ToString("F1")</strong>。</p>
+                <p class="text-muted mb-0">质量趋势现在直接来自标准化质量快照，可继续扩展时间范围、数据源筛选和维度趋势分析。</p>
+            }
+            else
+            {
+                <p class="text-muted mb-0">至少需要两次质量快照后才能判断质量变化趋势。</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<QualitySnapshot> _snapshots = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _snapshots = (await QualityHistory.GetSnapshotsAsync(limit: 100)).ToList();
+        _loading = false;
+    }
+
+    private static string FormatScore(double score) => score.ToString("F1");
+}

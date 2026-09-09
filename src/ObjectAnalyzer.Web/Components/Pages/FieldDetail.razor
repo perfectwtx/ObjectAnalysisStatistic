@@ -1,0 +1,157 @@
+@page "/quality/fields"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+@inject IQualityHistoryQuery QualityHistory
+@inject IQualityIssueQuery QualityIssues
+
+<PageTitle>字段质量详情</PageTitle>
+
+<h1 class="mb-4">字段质量详情</h1>
+
+@if (_loading)
+{
+    <div class="alert alert-info">正在加载字段质量数据...</div>
+}
+else if (_jobs.Count == 0)
+{
+    <div class="alert alert-secondary">暂无成功的分析结果。</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">分析任务</label>
+            <select class="form-select" value="@_selectedJobId" @onchange="OnJobChanged">
+                @foreach (var job in _jobs)
+                {
+                    <option value="@job.Id">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-8 d-flex align-items-end">
+            <div class="text-muted">共 @_fields.Count 个字段，质量指标来自标准化字段快照，点击字段名查看完整画像。</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">字段画像</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr><th>字段</th><th>主类型</th><th>语义类型</th><th>覆盖率</th><th>Null率</th><th>唯一值</th><th>问题</th></tr></thead>
+                <tbody>
+                @foreach (var field in _fields)
+                {
+                    var normalized = _normalizedFields.FirstOrDefault(x => string.Equals(x.FieldName, field.FieldName, StringComparison.Ordinal));
+                    var violationCount = GetViolationCount(field.FieldName);
+                    <tr>
+                        <td><button class="btn btn-link p-0 text-start" @onclick="() => ToggleField(field.FieldName)"><strong>@field.FieldName</strong></button></td>
+                        <td>@field.PrimaryType</td>
+                        <td>@(field.SemanticType ?? "-")</td>
+                        <td>@(normalized is null ? field.Coverage.ToString("P1") : normalized.Coverage.ToString("P1"))</td>
+                        <td>@(normalized is null ? "-" : normalized.NullRate.ToString("P1"))</td>
+                        <td>@(normalized?.Uniqueness is double uniqueness ? uniqueness.ToString("P1") : field.DistinctCount?.ToString() ?? "-")</td>
+                        <td>
+                            @if (violationCount > 0) { <span class="badge bg-danger">@violationCount</span> }
+                            else { <span class="badge bg-success">正常</span> }
+                        </td>
+                    </tr>
+                    @if (_selectedField == field.FieldName)
+                    {
+                        <tr><td colspan="7"><div class="p-3 bg-light">
+                            <div class="row g-3">
+                                <div class="col-md-3"><strong>出现次数</strong><br />@field.Count</div>
+                                <div class="col-md-3"><strong>Null次数</strong><br />@field.NullCount</div>
+                                <div class="col-md-3"><strong>默认值</strong><br />@(field.DefaultValueRepresentation ?? "-")</div>
+                                <div class="col-md-3"><strong>数值范围</strong><br />@FormatRange(field)</div>
+                            </div>
+                            <hr />
+                            <div><strong>标准化质量指标</strong></div>
+                            @if (normalized is not null)
+                            {
+                                <div class="small text-muted mt-2">覆盖率 @normalized.Coverage.ToString("P1") · Null率 @normalized.NullRate.ToString("P1") · 唯一性 @(normalized.Uniqueness?.ToString("P1") ?? "-") · 异常率 @(normalized.OutlierRatio?.ToString("P1") ?? "-")</div>
+                            }
+                            <div class="mt-3"><strong>类型分布</strong></div>
+                            @foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value)) { <span class="badge text-bg-secondary me-1">@type.Key: @type.Value</span> }
+                            @if (field.ValueCounts.Count > 0)
+                            {
+                                <div class="mt-3"><strong>高频值</strong></div>
+                                @foreach (var value in field.ValueCounts.OrderByDescending(x => x.Value).Take(10)) { <div class="small">@value.Key：@value.Value</div> }
+                            }
+                            @foreach (var violation in GetViolations(field.FieldName))
+                            {
+                                <div class="alert alert-warning py-2 mt-3 mb-0"><strong>@QualityCheckTypes.Label(violation.Check)</strong>：@violation.Message</div>
+                            }
+                        </div></td></tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<AnalysisJob> _jobs = new();
+    private List<FieldStatistic> _fields = new();
+    private List<FieldViolation> _violations = new();
+    private List<FieldQualitySnapshot> _normalizedFields = new();
+    private Guid _selectedJobId;
+    private string? _selectedField;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        await HistoryStore.InitializeAsync();
+        _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).ToList();
+        if (_jobs.Count > 0) await LoadSelectedJobAsync();
+        _loading = false;
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id))
+        {
+            _selectedJobId = id;
+            _selectedField = null;
+            await LoadSelectedJobAsync();
+        }
+    }
+
+    private async Task LoadSelectedJobAsync()
+    {
+        var job = _jobs.FirstOrDefault(x => x.Id == (_selectedJobId == Guid.Empty ? _jobs.FirstOrDefault()?.Id : _selectedJobId));
+        if (job is null || string.IsNullOrWhiteSpace(job.ResultJson)) return;
+        _selectedJobId = job.Id;
+        try
+        {
+            var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            _fields = result?.FieldStatistics ?? new List<FieldStatistic>();
+            _violations = result?.QualityViolations ?? new List<FieldViolation>();
+        }
+        catch (JsonException)
+        {
+            _fields = new();
+            _violations = new();
+        }
+
+        _normalizedFields = (await QualityHistory.GetFieldsByJobAsync(job.Id)).ToList();
+        var normalizedIssues = await QualityIssues.GetByJobAsync(job.Id);
+        _violations = normalizedIssues.Select(x => new FieldViolation
+        {
+            Field = x.FieldName,
+            Check = x.Check,
+            Count = x.Count,
+            Message = x.Message
+        }).ToList();
+    }
+
+    private void ToggleField(string field) => _selectedField = _selectedField == field ? null : field;
+    private int GetViolationCount(string field) => (int)_violations.Where(x => string.Equals(x.Field, field, StringComparison.Ordinal)).Sum(x => x.Count);
+    private List<FieldViolation> GetViolations(string field) => _violations.Where(x => string.Equals(x.Field, field, StringComparison.Ordinal)).ToList();
+    private static string FormatRange(FieldStatistic field) => field.MinNumber.HasValue && field.MaxNumber.HasValue ? $"{field.MinNumber:G6} ~ {field.MaxNumber:G6}" : "-";
+}

@@ -1,0 +1,130 @@
+@page "/issues"
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+@inject IQualityIssueQuery QualityIssueQuery
+
+<PageTitle>Issue Center</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>质量问题中心</h1>
+            <p class="text-muted mb-0">按分析任务查看标准化字段级质量问题，定位影响质量分的问题来源。</p>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+    </div>
+
+    @if (_loading)
+    {
+        <p>加载中...</p>
+    }
+    else if (_jobs.Count == 0)
+    {
+        <div class="alert alert-info">暂无分析任务。</div>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3"><strong>@_selectedIssues.Count</strong><div class="text-muted small">当前问题项</div></div>
+                    <div class="col-md-3"><strong>@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><div class="text-muted small">问题字段数</div></div>
+                    <div class="col-md-3"><strong>@_selectedIssues.Sum(x => x.Count)</strong><div class="text-muted small">违规发生次数</div></div>
+                    <div class="col-md-3"><strong>@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</strong><div class="text-muted small">质量分</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>问题明细</span>
+                <select class="form-select form-select-sm" style="max-width: 360px" @onchange="OnJobChanged">
+                    @foreach (var job in _jobs)
+                    {
+                        <option value="@job.Id" selected="@(job.Id == _selectedJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                    }
+                </select>
+            </div>
+            @if (_selectedIssues.Count == 0)
+            {
+                <div class="card-body">
+                    <div class="alert alert-success mb-0">本次分析没有标准化质量违规。数据质量检查通过。</div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>字段</th>
+                                <th>检查类型</th>
+                                <th>次数</th>
+                                <th>问题说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var issue in _selectedIssues)
+                            {
+                                <tr>
+                                    <td><strong>@issue.FieldName</strong></td>
+                                    <td><span class="badge text-bg-warning">@issue.Check</span></td>
+                                    <td>@issue.Count</td>
+                                    <td>@issue.Message</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="alert alert-secondary mt-3 mb-0 small">
+            标准化问题表当前保存字段、检查类型、违规次数和问题说明；历史 JSON 中的样本值不再作为问题中心的数据源。
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<AnalysisJob> _jobs = new();
+    private List<QualityIssue> _selectedIssues = new();
+    private AnalysisJob? _selectedJob;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _jobs.Clear();
+            _jobs.AddRange((await HistoryStore.GetRecentAsync(100))
+                .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+                .OrderByDescending(x => x.StartedAtUtc));
+
+            _selectedJob = _jobs.FirstOrDefault();
+            await LoadIssuesAsync(_selectedJob);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id))
+        {
+            _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
+            await LoadIssuesAsync(_selectedJob);
+        }
+    }
+
+    private async Task LoadIssuesAsync(AnalysisJob? job)
+    {
+        _selectedIssues = job is null
+            ? new List<QualityIssue>()
+            : (await QualityIssueQuery.GetByJobAsync(job.Id)).ToList();
+    }
+}

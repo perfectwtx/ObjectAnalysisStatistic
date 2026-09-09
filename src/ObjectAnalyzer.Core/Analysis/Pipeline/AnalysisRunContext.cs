@@ -29,6 +29,9 @@ public sealed class AnalysisRunContext
     /// <summary>预览捕获条数上限（默认 20，与 Web 现行为一致）。</summary>
     public int PreviewLimit { get; init; } = 20;
 
+    /// <summary>分析管线生命周期观察器。用于宿主接入 Job 状态、历史记录等平台能力，Core 不依赖具体存储实现。</summary>
+    public IAnalysisExecutionObserver? ExecutionObserver { get; init; }
+
     /// <summary>输出：本 run 实际使用的解析格式（含 valueParsers 驱动的 excel-json 切换）。</summary>
     public string? EffectiveFormat { get; internal set; }
 
