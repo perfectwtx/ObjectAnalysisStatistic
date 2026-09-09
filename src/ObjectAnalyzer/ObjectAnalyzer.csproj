@@ -9,7 +9,7 @@
     <RootNamespace>ObjectAnalyzer</RootNamespace>
     <Version>1.0.0</Version>
     <Authors>ObjectAnalyzer Contributors</Authors>
-    <Description>对象字段分析统计工具 — 支持 JSON / JSONL / CSV / Excel 输入，自动统计字段频次、数据类型、值分布及重复对象。</Description>
+    <Description>ObjectAnalyzer CLI for object analysis and data quality assessment across structured and semi-structured data.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <PackAsTool>true</PackAsTool>
@@ -17,7 +17,7 @@
     <PackageId>ObjectAnalyzer.Tool</PackageId>
     <PackageOutputPath>../../artifacts/packages</PackageOutputPath>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>analysis;json;csv;excel;statistics;data</PackageTags>
+    <PackageTags>object-analysis;data-quality;json;jsonl;csv;excel;xml;yaml;statistics;schema</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
