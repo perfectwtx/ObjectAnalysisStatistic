@@ -1,3 +1,5 @@
+using ObjectAnalyzer.Platform;
+
 namespace ObjectAnalyzer.Analysis.Gates;
 
 /// <summary>
