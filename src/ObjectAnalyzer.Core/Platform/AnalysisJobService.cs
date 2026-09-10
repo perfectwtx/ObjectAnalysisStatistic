@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Gates;
 
 namespace ObjectAnalyzer.Platform;
 
@@ -25,7 +26,7 @@ public sealed class AnalysisJobService
         return job;
     }
 
-    public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, CancellationToken cancellationToken = default)
+    public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
     {
         var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded
@@ -42,6 +43,12 @@ public sealed class AnalysisJobService
         job.QualityScore = QualityScoreCalculator.Calculate(result);
         job.IssueCount = result.QualityViolations.Count + checked((int)Math.Min(result.TotalDuplicateGroups, int.MaxValue));
         job.ResultJson = JsonSerializer.Serialize(result);
+
+        if (options is not null)
+        {
+            job.GateResultsJson = JsonSerializer.Serialize(
+                QualityGateEvaluation.EvaluateAll(result, options));
+        }
 
         await _historyStore.SaveAsync(job, cancellationToken);
         await _historyStore.SaveQualitySnapshotAsync(
