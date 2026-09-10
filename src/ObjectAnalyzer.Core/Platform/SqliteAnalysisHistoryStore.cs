@@ -38,7 +38,8 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                 quality_score REAL NULL,
                 issue_count INTEGER NOT NULL,
                 error_message TEXT NULL,
-                result_json TEXT NULL
+                result_json TEXT NULL,
+                gate_results_json TEXT NULL
             );
             CREATE INDEX IF NOT EXISTS ix_analysis_jobs_started_at
                 ON analysis_jobs(started_at_utc DESC);
@@ -81,6 +82,18 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                 ON quality_issues(job_id);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+
+        // 兼容已经存在的旧数据库：CREATE TABLE IF NOT EXISTS 不会给旧表补列。
+        await using var migration = connection.CreateCommand();
+        migration.CommandText = "ALTER TABLE analysis_jobs ADD COLUMN gate_results_json TEXT NULL";
+        try
+        {
+            await migration.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase))
+        {
+            // 已升级，忽略。
+        }
     }
 
     public async Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
@@ -92,11 +105,11 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
             INSERT INTO analysis_jobs
             (id, source_name, source_type, status, started_at_utc, completed_at_utc,
              duration_ms, total_objects, field_count, quality_score, issue_count,
-             error_message, result_json)
+             error_message, result_json, gate_results_json)
             VALUES
             ($id, $sourceName, $sourceType, $status, $startedAt, $completedAt,
              $duration, $totalObjects, $fieldCount, $qualityScore, $issueCount,
-             $errorMessage, $resultJson)
+             $errorMessage, $resultJson, $gateResultsJson)
             ON CONFLICT(id) DO UPDATE SET
                 source_name = excluded.source_name,
                 source_type = excluded.source_type,
@@ -109,7 +122,8 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                 quality_score = excluded.quality_score,
                 issue_count = excluded.issue_count,
                 error_message = excluded.error_message,
-                result_json = excluded.result_json;
+                result_json = excluded.result_json,
+                gate_results_json = excluded.gate_results_json;
             """;
         AddParameters(command, job);
         await command.ExecuteNonQueryAsync(cancellationToken);
@@ -211,7 +225,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM analysis_jobs WHERE id = $id";
+        command.CommandText = "SELECT id, source_name, source_type, status, started_at_utc, completed_at_utc, duration_ms, total_objects, field_count, quality_score, issue_count, error_message, result_json, gate_results_json FROM analysis_jobs WHERE id = $id";
         command.Parameters.AddWithValue("$id", id.ToString("D"));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         return await reader.ReadAsync(cancellationToken) ? ReadJob(reader) : null;
@@ -223,7 +237,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT * FROM analysis_jobs ORDER BY started_at_utc DESC LIMIT $limit";
+        command.CommandText = "SELECT id, source_name, source_type, status, started_at_utc, completed_at_utc, duration_ms, total_objects, field_count, quality_score, issue_count, error_message, result_json, gate_results_json FROM analysis_jobs ORDER BY started_at_utc DESC LIMIT $limit";
         command.Parameters.AddWithValue("$limit", limit);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var result = new List<AnalysisJob>();
@@ -246,6 +260,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         command.Parameters.AddWithValue("$issueCount", job.IssueCount);
         command.Parameters.AddWithValue("$errorMessage", (object?)job.ErrorMessage ?? DBNull.Value);
         command.Parameters.AddWithValue("$resultJson", (object?)job.ResultJson ?? DBNull.Value);
+        command.Parameters.AddWithValue("$gateResultsJson", (object?)job.GateResultsJson ?? DBNull.Value);
     }
 
     private static AnalysisJob ReadJob(SqliteDataReader reader) => new()
@@ -256,6 +271,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         CompletedAtUtc = reader.IsDBNull(5) ? null : DateTime.Parse(reader.GetString(5), null, System.Globalization.DateTimeStyles.RoundtripKind),
         DurationMs = reader.GetInt64(6), TotalObjects = reader.GetInt64(7), FieldCount = reader.GetInt32(8),
         QualityScore = reader.IsDBNull(9) ? null : reader.GetDouble(9), IssueCount = reader.GetInt32(10),
-        ErrorMessage = reader.IsDBNull(11) ? null : reader.GetString(11), ResultJson = reader.IsDBNull(12) ? null : reader.GetString(12)
+        ErrorMessage = reader.IsDBNull(11) ? null : reader.GetString(11), ResultJson = reader.IsDBNull(12) ? null : reader.GetString(12),
+        GateResultsJson = reader.IsDBNull(13) ? null : reader.GetString(13)
     };
 }
