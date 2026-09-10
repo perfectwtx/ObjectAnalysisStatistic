@@ -10,7 +10,7 @@ namespace ObjectAnalyzer.Tests;
 /// </summary>
 public class RegistryTests : IDisposable
 {
-    private static readonly int[] s_expectedGateOrder = [3, 4, 5, 6];
+    private static readonly int[] s_expectedGateOrder = [3, 4, 5, 6, 7];
 
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "oa-registry-tests", Guid.NewGuid().ToString("N"));
 
