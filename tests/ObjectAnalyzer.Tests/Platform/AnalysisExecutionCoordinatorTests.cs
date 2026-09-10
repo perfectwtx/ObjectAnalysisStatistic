@@ -23,6 +23,7 @@ public sealed class AnalysisExecutionCoordinatorTests
                 await Task.Delay(Timeout.InfiniteTimeSpan, token);
                 throw new InvalidOperationException("unreachable");
             },
+            null,
             cts.Token);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
