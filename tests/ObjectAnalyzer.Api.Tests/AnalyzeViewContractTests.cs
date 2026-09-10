@@ -103,7 +103,7 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         using var content = new MultipartFormDataContent();
         var bytes = System.Text.Encoding.UTF8.GetBytes(DataJson);
         content.Add(new ByteArrayContent(bytes), "file", "people.json");
-        content.Add(RulesJson, "rulesJson");
+        content.Add(new StringContent(RulesJson, System.Text.Encoding.UTF8, "application/json"), "rulesJson");
 
         var response = await client.PostAsync("/api/analyze", content);
         Assert.True(response.IsSuccessStatusCode);
