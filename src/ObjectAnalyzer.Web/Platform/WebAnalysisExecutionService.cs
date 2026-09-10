@@ -18,7 +18,7 @@ public sealed class WebAnalysisExecutionService
     }
 
     /// <summary>
-    /// 执行一次分析，并由平台 Coordinator 统一记录 Job、质量分数、Issue 与告警。
+    /// 执行一次分析，并由平台 Coordinator 统一记录 Job、质量分数、Issue、告警以及实际门禁结果。
     /// </summary>
     public async Task<PipelineResult> ExecuteAsync(
         string sourceName,
@@ -44,6 +44,7 @@ public sealed class WebAnalysisExecutionService
 
                 return pipelineResult.Result;
             },
+            options,
             cancellationToken);
 
         return pipelineResult
