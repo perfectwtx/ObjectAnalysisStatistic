@@ -41,8 +41,7 @@ public static class QualityGateEvaluation
         AnalysisResult result,
         AnalysisOptions options)
     {
-        return EvaluateAll(result, options).FirstOrDefault(static x => x.Triggered) is { } failure
-            ? failure
-            : null;
+        var failure = EvaluateAll(result, options).FirstOrDefault(static x => x.Triggered);
+        return failure.Triggered ? failure : null;
     }
 }
