@@ -1,4 +1,5 @@
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Gates;
 
 namespace ObjectAnalyzer.Platform;
 
@@ -16,6 +17,7 @@ public sealed class AnalysisExecutionCoordinator
         string sourceName,
         string sourceType,
         Func<CancellationToken, Task<AnalysisResult>> execute,
+        AnalysisOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(execute);
@@ -24,7 +26,7 @@ public sealed class AnalysisExecutionCoordinator
         try
         {
             var result = await execute(cancellationToken);
-            await _jobService.CompleteAsync(job, result, CancellationToken.None);
+            await _jobService.CompleteAsync(job, result, options, CancellationToken.None);
             return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
