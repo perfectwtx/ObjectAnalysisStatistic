@@ -20,7 +20,7 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
     private static readonly string[] s_expectedPreviewColumns = ["name", "age"];
 
     private const string DataJson = """[{"name":"alice","age":30},{"name":"bob","age":25},{"name":"carol","age":41}]""";
-    private const string RulesJson = """{"fields":{"age":{"primaryType":"Number","minValue":26}}}""";
+    private const string RulesJson = """{"fields":{"age":{"primaryType":"Number","minValue":26}},"runtime":{"gates":{"failOnViolations":true}}}""";
 
     [Fact]
     public async Task AnalyzeRaw_ViewResponse_HasFivePageSections()
@@ -57,6 +57,13 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         Assert.True(quality.GetProperty("hasViolations").GetBoolean());
         Assert.Equal(1, quality.GetProperty("countsByCheck").GetProperty("range").GetInt32());
         Assert.Equal(1, quality.GetProperty("violations").GetArrayLength());
+
+        // 质量门禁页：必须使用本次请求 rules.runtime.gates 的实际配置，不能回退到默认 AnalysisOptions
+        var gates = quality.GetProperty("gates");
+        Assert.NotEmpty(gates.EnumerateArray());
+        var qualityGate = gates.EnumerateArray().First(g => g.GetProperty("exitCode").GetInt32() == 3);
+        Assert.True(qualityGate.GetProperty("triggered").GetBoolean());
+        Assert.True(quality.GetProperty("hasGateFailures").GetBoolean());
     }
 
     [Fact]
@@ -86,6 +93,68 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal("a***e", rows[0].GetProperty("name").GetString());
         Assert.Equal(30, rows[0].GetProperty("age").GetInt32());
         Assert.False(preview.GetProperty("truncated").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AnalyzeMultipart_ViewResponse_UsesRuntimeGateOptions()
+    {
+        var client = CreateClient();
+
+        using var content = new MultipartFormDataContent();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(DataJson);
+        content.Add(new ByteArrayContent(bytes), "file", "people.json");
+        content.Add(RulesJson, "rulesJson");
+
+        var response = await client.PostAsync("/api/analyze", content);
+        Assert.True(response.IsSuccessStatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var quality = body.GetProperty("quality");
+        var gates = quality.GetProperty("gates");
+        var qualityGate = gates.EnumerateArray().First(g => g.GetProperty("exitCode").GetInt32() == 3);
+
+        Assert.True(qualityGate.GetProperty("triggered").GetBoolean());
+        Assert.True(quality.GetProperty("hasGateFailures").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AnalyzeConfig_ViewResponse_UsesRuntimeGateOptions()
+    {
+        var client = CreateClient();
+        var request = new
+        {
+            dataText = DataJson,
+            format = "json",
+            rules = new
+            {
+                fields = new
+                {
+                    age = new
+                    {
+                        primaryType = "Number",
+                        minValue = 26
+                    }
+                },
+                runtime = new
+                {
+                    gates = new
+                    {
+                        failOnViolations = true
+                    }
+                }
+            }
+        };
+
+        var response = await client.PostAsJsonAsync("/api/analyze/config", request);
+        Assert.True(response.IsSuccessStatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var quality = body.GetProperty("quality");
+        var gates = quality.GetProperty("gates");
+        var qualityGate = gates.EnumerateArray().First(g => g.GetProperty("exitCode").GetInt32() == 3);
+
+        Assert.True(qualityGate.GetProperty("triggered").GetBoolean());
+        Assert.True(quality.GetProperty("hasGateFailures").GetBoolean());
     }
 
     [Fact]
