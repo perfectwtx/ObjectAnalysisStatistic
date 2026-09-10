@@ -2,6 +2,7 @@
 @page "/quality/dashboard"
 @using System.Text.Json
 @using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Analysis.Gates
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityHistoryQuery QualityHistory
@@ -13,7 +14,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>数据质量总览</h1>
-            <p class="text-muted mb-0">从质量分、问题、Schema 与字段关系统一查看最近一次成功分析结果。</p>
+            <p class="text-muted mb-0">从质量分、问题、Schema、字段关系与质量门禁统一查看最近一次成功分析结果。</p>
         </div>
         <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
     </div>
@@ -84,6 +85,58 @@
             }
         </div>
 
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>质量门禁</span>
+                @if (_gateResults.Count == 0)
+                {
+                    <span class="badge bg-secondary">历史记录未保存门禁结果</span>
+                }
+                else if (_gateResults.Any(x => x.Triggered))
+                {
+                    <span class="badge bg-danger">未通过</span>
+                }
+                else
+                {
+                    <span class="badge bg-success">全部通过</span>
+                }
+            </div>
+            <div class="card-body">
+                @if (_gateResults.Count == 0)
+                {
+                    <div class="text-muted small">该作业是在质量门禁历史持久化之前产生的，因此无法还原当时的实际门禁配置。重新执行分析后会记录准确结果。</div>
+                }
+                else
+                {
+                    <div class="row g-2">
+                        @foreach (var gate in _gateResults)
+                        {
+                            <div class="col-xl-3 col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>@gate.Name</strong>
+                                        @if (gate.Triggered)
+                                        {
+                                            <span class="badge bg-danger">❌ 未通过</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">✓ 通过</span>
+                                        }
+                                    </div>
+                                    <div class="small text-muted mt-2">ExitCode: @gate.ExitCode</div>
+                                    @if (gate.Triggered)
+                                    {
+                                        <div class="small text-danger mt-1">@gate.FailureMessage</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
         <div class="row g-3 mb-4">
             <div class="col-lg-8">
                 <div class="card h-100">
@@ -94,9 +147,7 @@
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
-                                <thead>
-                                    <tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr>
-                                </thead>
+                                <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead>
                                 <tbody>
                                     @foreach (var snapshot in _recentSnapshots.Take(8))
                                     {
@@ -130,10 +181,7 @@
                             @foreach (var issue in _topIssues)
                             {
                                 <div class="d-flex justify-content-between border-bottom py-2">
-                                    <div>
-                                        <strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong>
-                                        <div class="small text-muted">@QualityCheckTypes.Label(issue.Check)</div>
-                                    </div>
+                                    <div><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><div class="small text-muted">@QualityCheckTypes.Label(issue.Check)</div></div>
                                     <span class="badge bg-danger">@issue.Count</span>
                                 </div>
                             }
@@ -147,8 +195,7 @@
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between">
-                        <span>Schema 影响</span>
-                        <a class="btn btn-sm btn-link" href="/quality/schema-impact">查看详情</a>
+                        <span>Schema 影响</span><a class="btn btn-sm btn-link" href="/quality/schema-impact">查看详情</a>
                     </div>
                     <div class="card-body">
                         @if (_result.SchemaDiff is null)
@@ -169,8 +216,7 @@
             <div class="col-lg-6">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between">
-                        <span>字段关系</span>
-                        <a class="btn btn-sm btn-link" href="/quality/relationships">查看详情</a>
+                        <span>字段关系</span><a class="btn btn-sm btn-link" href="/quality/relationships">查看详情</a>
                     </div>
                     <div class="card-body">
                         @if (_result.CorrelationMatrix is null)
@@ -199,6 +245,7 @@
     private List<QualitySnapshot> _recentSnapshots = new();
     private List<QualityMetric> _qualityMetrics = new();
     private List<QualityIssue> _topIssues = new();
+    private List<QualityGateResult> _gateResults = new();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -216,18 +263,21 @@
         _recentSnapshots = (await QualityHistory.GetSnapshotsAsync(limit: 8)).ToList();
         _topIssues = _job is null
             ? new List<QualityIssue>()
-            : (await QualityIssueQuery.GetByJobAsync(_job.Id))
-                .OrderByDescending(x => x.Count)
-                .ThenBy(x => x.FieldName)
-                .Take(5)
-                .ToList();
+            : (await QualityIssueQuery.GetByJobAsync(_job.Id)).OrderByDescending(x => x.Count).ThenBy(x => x.FieldName).Take(5).ToList();
 
         _result = null;
+        _gateResults.Clear();
         if (_job?.ResultJson is not null)
         {
             try
             {
                 _result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson);
+                if (!string.IsNullOrWhiteSpace(_job.GateResultsJson))
+                {
+                    var gates = JsonSerializer.Deserialize<List<QualityGateResult>>(_job.GateResultsJson);
+                    if (gates is not null)
+                        _gateResults = gates;
+                }
             }
             catch (JsonException)
             {
@@ -240,11 +290,8 @@
             var metrics = QualityMetricsCalculator.Calculate(_result);
             _qualityMetrics = new()
             {
-                new("完整性", metrics.Completeness),
-                new("有效性", metrics.Validity),
-                new("唯一性", metrics.Uniqueness),
-                new("一致性", metrics.Consistency),
-                new("异常控制", metrics.AnomalyControl)
+                new("完整性", metrics.Completeness), new("有效性", metrics.Validity), new("唯一性", metrics.Uniqueness),
+                new("一致性", metrics.Consistency), new("异常控制", metrics.AnomalyControl)
             };
         }
         else
