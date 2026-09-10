@@ -1,4 +1,5 @@
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Gates;
 
 namespace ObjectAnalyzer.Api;
 
@@ -34,7 +35,7 @@ public sealed record AnalyzeViewResponse
     /// <summary>深度分析页：相关性 / 字符串模式 / Unicode 卫生 / 时间序列 / 模糊重复 / 分布漂移 / 采样置信 / Schema 演进。未启用时为 null。</summary>
     public AnalyzeDeepAnalysisView? DeepAnalysis { get; init; }
 
-    /// <summary>质量报告页：字段级违规 + 按检查类型的计数汇总。</summary>
+    /// <summary>质量报告页：字段级违规 + 按检查类型的计数汇总 + CI 质量门禁状态。</summary>
     public required AnalyzeQualityView Quality { get; init; }
 
     /// <summary>完整原始分析结果（兼容保留；与上方分节视图同源）。</summary>
@@ -47,16 +48,20 @@ public sealed record AnalyzeViewResponse
     /// （label / 分类 / maskChar 等，与 CLI --pii-report 同源口径）；未发现敏感字段时 Fields 为空列表。</summary>
     public required AnalyzePiiView Pii { get; init; }
 
-    /// <summary>从分析结果 + 预览样本组装五页面视图。</summary>
+    /// <summary>从分析结果 + 预览样本 + 实际分析选项组装五页面视图。</summary>
     public static AnalyzeViewResponse From(
         AnalysisResult result,
         IReadOnlyList<Dictionary<string, object?>>? preview,
         string format,
+        AnalysisOptions options,
         string? fileName = null,
         string? rulesSource = null,
         bool piiRedacted = true,
         PiiPolicy? pii = null)
     {
+        ArgumentNullException.ThrowIfNull(result);
+        ArgumentNullException.ThrowIfNull(options);
+
         return new AnalyzeViewResponse
         {
             FileName = fileName,
@@ -66,7 +71,7 @@ public sealed record AnalyzeViewResponse
             Preview = AnalyzePreviewView.From(preview),
             Fields = result.FieldStatistics,
             DeepAnalysis = AnalyzeDeepAnalysisView.From(result),
-            Quality = AnalyzeQualityView.From(result),
+            Quality = AnalyzeQualityView.From(result, options),
             Result = result,
             PiiRedacted = piiRedacted,
             Pii = AnalyzePiiView.From(pii)
@@ -197,7 +202,7 @@ public sealed record AnalyzeDeepAnalysisView
     }
 }
 
-/// <summary>质量报告页：字段级违规 + 按检查类型计数。</summary>
+/// <summary>质量报告页：字段级违规 + 按检查类型计数 + 质量门禁结果。</summary>
 public sealed record AnalyzeQualityView
 {
     /// <summary>全部质量违规（字段级 + 数据集期望）。</summary>
@@ -209,7 +214,13 @@ public sealed record AnalyzeQualityView
     /// <summary>是否存在任何违规。</summary>
     public bool HasViolations { get; init; }
 
-    public static AnalyzeQualityView From(AnalysisResult result)
+    /// <summary>本次请求实际分析选项下的全部质量门禁结果。</summary>
+    public IReadOnlyList<QualityGateResult> Gates { get; init; } = Array.Empty<QualityGateResult>();
+
+    /// <summary>是否有任一质量门禁触发。</summary>
+    public bool HasGateFailures => Gates.Any(g => g.Triggered);
+
+    public static AnalyzeQualityView From(AnalysisResult result, AnalysisOptions options)
     {
         var counts = result.QualityViolations
             .GroupBy(v => v.Check, StringComparer.Ordinal)
@@ -219,7 +230,8 @@ public sealed record AnalyzeQualityView
         {
             Violations = result.QualityViolations,
             CountsByCheck = counts,
-            HasViolations = result.QualityViolations.Count > 0
+            HasViolations = result.QualityViolations.Count > 0,
+            Gates = QualityGateEvaluation.EvaluateAll(result, options)
         };
     }
 }
