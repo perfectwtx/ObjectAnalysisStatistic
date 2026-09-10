@@ -35,7 +35,7 @@ public sealed class QualityGateEvaluationTests
         };
 
         var results = QualityGateEvaluation.EvaluateAll(analysisResult, options);
-        var quality = Assert.Single(results.Where(result => result.ExitCode == 3));
+        var quality = Assert.Single(results, result => result.ExitCode == 3);
 
         Assert.True(quality.Triggered);
         Assert.Equal("数据质量", quality.Name);
