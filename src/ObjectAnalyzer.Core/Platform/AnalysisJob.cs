@@ -16,4 +16,7 @@ public sealed class AnalysisJob
     public int IssueCount { get; set; }
     public string? ErrorMessage { get; set; }
     public string? ResultJson { get; set; }
+
+    /// <summary>本次作业实际使用的质量门禁结果 JSON。用于历史 Dashboard 保持与执行时一致。</summary>
+    public string? GateResultsJson { get; set; }
 }
