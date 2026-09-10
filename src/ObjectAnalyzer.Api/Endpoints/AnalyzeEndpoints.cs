@@ -69,7 +69,7 @@ public static class AnalyzeEndpoints
 
                 // W8 五页面视图：概览 / 预览 / 字段 / 深度分析 / 质量 + 完整 result 兼容保留
                 return TypedResults.Ok(AnalyzeViewResponse.From(
-                    outcome.Result, outcome.Preview, effectiveFormat,
+                    outcome.Result, outcome.Preview, effectiveFormat, options,
                     fileName: file.FileName, rulesSource: rulesSource,
                     piiRedacted: outcome.PiiRedacted, pii: outcome.Pii));
             }
@@ -124,7 +124,7 @@ public static class AnalyzeEndpoints
                 var outcome = AnalysisCore.AnalyzeFile(tempData, config.Rules, options, cancellationToken);
 
                 return TypedResults.Ok(AnalyzeViewResponse.From(
-                    outcome.Result, outcome.Preview, effectiveFormat,
+                    outcome.Result, outcome.Preview, effectiveFormat, options,
                     fileName: "(inline)", rulesSource: config.Rules is not null ? "inline" : null,
                     piiRedacted: outcome.PiiRedacted, pii: outcome.Pii));
             }
@@ -193,7 +193,7 @@ public static class AnalyzeEndpoints
                 var outcome = AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, cancellationToken);
 
                 return TypedResults.Ok(AnalyzeViewResponse.From(
-                    outcome.Result, outcome.Preview, effectiveFormat,
+                    outcome.Result, outcome.Preview, effectiveFormat, analysisOptions,
                     fileName: "(inline)", rulesSource: rulesObj is null ? null : "inline",
                     piiRedacted: outcome.PiiRedacted, pii: outcome.Pii));
             }
