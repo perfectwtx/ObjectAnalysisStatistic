@@ -2,40 +2,28 @@ using ObjectAnalyzer.Analysis.Gates;
 
 namespace ObjectAnalyzer.Tests;
 
-/// <summary>
-/// 结构化质量门禁结果测试：确认新 API 层不会改变既有门禁判断语义。
-/// </summary>
 public sealed class QualityGateEvaluationTests
 {
     [Fact]
     public void EvaluateAll_AllPass_ReturnsEveryRegisteredGateAsPassed()
     {
-        var results = QualityGateEvaluation.EvaluateAll(
-            new AnalysisResult(),
-            new AnalysisOptions());
+        var results = QualityGateEvaluation.EvaluateAll(new AnalysisResult(), new AnalysisOptions());
 
         Assert.Equal(QualityGateRegistry.Gates.Count, results.Count);
         Assert.All(results, result => Assert.False(result.Triggered));
-        Assert.Equal([3, 4, 5, 6], results.Select(result => result.ExitCode).ToArray());
+        Assert.Equal([3, 4, 5, 6, 7], results.Select(result => result.ExitCode).ToArray());
     }
 
     [Fact]
     public void EvaluateAll_QualityViolation_ReportsStructuredFailure()
     {
-        var analysisResult = new AnalysisResult
+        var result = new AnalysisResult
         {
-            QualityViolations = new List<FieldViolation>
-            {
-                new() { Field = "age", Check = "enum", Count = 1, Message = "存在非法值" }
-            }
+            QualityViolations = [new() { Field = "age", Check = "enum", Count = 1, Message = "存在非法值" }]
         };
-        var options = new AnalysisOptions
-        {
-            Gates = { FailOnViolations = true }
-        };
+        var options = new AnalysisOptions { Gates = { FailOnViolations = true } };
 
-        var results = QualityGateEvaluation.EvaluateAll(analysisResult, options);
-        var quality = Assert.Single(results, result => result.ExitCode == 3);
+        var quality = Assert.Single(QualityGateEvaluation.EvaluateAll(result, options), x => x.ExitCode == 3);
 
         Assert.True(quality.Triggered);
         Assert.Equal("数据质量", quality.Name);
@@ -43,21 +31,59 @@ public sealed class QualityGateEvaluationTests
     }
 
     [Fact]
-    public void GetFirstFailure_UsesExistingRegistryOrder()
+    public void EvaluateAll_OverallScoreBelow_TriggersScoreGate()
     {
-        var analysisResult = new AnalysisResult
+        var result = new AnalysisResult
         {
-            QualityViolations = new List<FieldViolation>
-            {
-                new() { Check = "enum", Count = 1 }
-            }
+            TotalObjects = 100,
+            TotalUniqueObjects = 50,
+            FieldStatistics = [new() { FieldName = "name", Coverage = 0.5 }]
+        };
+        var options = new AnalysisOptions { Gates = { FailOnOverallScoreBelow = 90 } };
+
+        var scoreGate = Assert.Single(QualityGateEvaluation.EvaluateAll(result, options), x => x.ExitCode == 7);
+
+        Assert.True(scoreGate.Triggered);
+        Assert.Equal("质量评分", scoreGate.Name);
+        Assert.Equal("质量评分门禁未通过", scoreGate.FailureMessage);
+    }
+
+    [Fact]
+    public void EvaluateAll_ScoreThresholds_AllPass_DoesNotTriggerScoreGate()
+    {
+        var result = new AnalysisResult
+        {
+            TotalObjects = 100,
+            TotalUniqueObjects = 100,
+            FieldStatistics = [new() { FieldName = "name", Coverage = 1.0 }]
         };
         var options = new AnalysisOptions
         {
-            Gates = { FailOnViolations = true }
+            Gates =
+            {
+                FailOnOverallScoreBelow = 90,
+                FailOnCompletenessBelow = 95,
+                FailOnValidityBelow = 95,
+                FailOnUniquenessBelow = 95,
+                FailOnConsistencyBelow = 95,
+                FailOnAnomalyControlBelow = 95
+            }
         };
 
-        var failure = QualityGateEvaluation.GetFirstFailure(analysisResult, options);
+        var scoreGate = Assert.Single(QualityGateEvaluation.EvaluateAll(result, options), x => x.ExitCode == 7);
+        Assert.False(scoreGate.Triggered);
+    }
+
+    [Fact]
+    public void GetFirstFailure_UsesExistingRegistryOrder()
+    {
+        var result = new AnalysisResult
+        {
+            QualityViolations = [new() { Check = "enum", Count = 1 }]
+        };
+        var options = new AnalysisOptions { Gates = { FailOnViolations = true } };
+
+        var failure = QualityGateEvaluation.GetFirstFailure(result, options);
 
         Assert.True(failure.HasValue);
         Assert.Equal(3, failure.Value.ExitCode);
@@ -67,10 +93,6 @@ public sealed class QualityGateEvaluationTests
     [Fact]
     public void GetFirstFailure_AllPass_ReturnsNull()
     {
-        var failure = QualityGateEvaluation.GetFirstFailure(
-            new AnalysisResult(),
-            new AnalysisOptions());
-
-        Assert.Null(failure);
+        Assert.Null(QualityGateEvaluation.GetFirstFailure(new AnalysisResult(), new AnalysisOptions()));
     }
 }
