@@ -1,0 +1,199 @@
+@page "/jobs/{JobId:guid}"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Analysis.Gates
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+@inject IQualityIssueQuery QualityIssueQuery
+
+<PageTitle>分析作业详情</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>分析作业详情</h1>
+            <p class="text-muted mb-0">查看一次分析执行的完整结果、质量门禁与问题。</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="/jobs">返回作业中心</a>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="alert alert-info">正在加载作业...</div>
+    }
+    else if (_job is null)
+    {
+        <div class="alert alert-warning">未找到指定的分析作业。</div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100"><div class="card-body"><div class="text-muted">状态</div><div class="fs-3 fw-semibold">@_job.Status</div></div></div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100"><div class="card-body"><div class="text-muted">质量总分</div><div class="display-6 fw-semibold">@FormatScore(_job.QualityScore)</div></div></div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100"><div class="card-body"><div class="text-muted">质量问题</div><div class="display-6 fw-semibold">@_job.IssueCount</div></div></div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="card h-100"><div class="card-body"><div class="text-muted">耗时</div><div class="display-6 fw-semibold">@FormatDuration(_job.DurationMs)</div></div></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">作业信息</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Job ID</strong><div class="text-muted small">@_job.Id</div></div>
+                    <div class="col-md-3"><strong>数据源</strong><div class="text-muted">@_job.SourceName</div></div>
+                    <div class="col-md-3"><strong>类型</strong><div class="text-muted">@_job.SourceType</div></div>
+                    <div class="col-md-3"><strong>开始时间</strong><div class="text-muted">@_job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</div></div>
+                    <div class="col-md-3"><strong>完成时间</strong><div class="text-muted">@(_job.CompletedAtUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</div></div>
+                    <div class="col-md-3"><strong>对象数</strong><div class="text-muted">@_job.TotalObjects.ToString("N0")</div></div>
+                    <div class="col-md-3"><strong>字段数</strong><div class="text-muted">@_job.FieldCount</div></div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(_job.ErrorMessage))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">@_job.ErrorMessage</div>
+                }
+            </div>
+        </div>
+
+        @if (_result is not null)
+        {
+            <div class="card mb-4">
+                <div class="card-header">质量维度</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach (var metric in _metrics)
+                        {
+                            <div class="col-xl-2 col-md-4 col-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small">@metric.Name</div>
+                                    <div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>质量门禁</span>
+                    @if (_gates.Any(x => x.Triggered)) { <span class="badge bg-danger">未通过</span> } else if (_gates.Count > 0) { <span class="badge bg-success">全部通过</span> } else { <span class="badge bg-secondary">无历史门禁结果</span> }
+                </div>
+                <div class="card-body">
+                    @if (_gates.Count == 0)
+                    {
+                        <span class="text-muted">该作业没有保存门禁执行结果。</span>
+                    }
+                    else
+                    {
+                        <div class="row g-2">
+                            @foreach (var gate in _gates)
+                            {
+                                <div class="col-xl-3 col-md-6"><div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between"><strong>@gate.Name</strong><span class="badge @(gate.Triggered ? "bg-danger" : "bg-success")">@(gate.Triggered ? "未通过" : "通过")</span></div>
+                                    <div class="small text-muted mt-2">ExitCode: @gate.ExitCode</div>
+                                    @if (gate.Triggered) { <div class="small text-danger mt-1">@gate.FailureMessage</div> }
+                                </div></div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">质量问题</div>
+                <div class="card-body p-0">
+                    @if (_issues.Count == 0)
+                    {
+                        <div class="p-3 text-success">✓ 当前作业没有标准化质量问题。</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>字段</th><th>检查项</th><th>数量</th><th>消息</th></tr></thead><tbody>
+                            @foreach (var issue in _issues)
+                            {
+                                <tr><td>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</td><td>@QualityCheckTypes.Label(issue.Check)</td><td>@issue.Count</td><td>@issue.Message</td></tr>
+                            }
+                        </tbody></table></div>
+                    }
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-lg-6"><div class="card h-100"><div class="card-header">Schema 影响</div><div class="card-body">
+                    @if (_result.SchemaDiff is null) { <span class="text-muted">未产生 Schema Diff。</span> }
+                    else { <div class="row text-center"><div class="col-4"><div class="fs-3">@_result.SchemaDiff.AddedFields.Count</div><div class="text-muted">新增</div></div><div class="col-4"><div class="fs-3">@_result.SchemaDiff.ChangedFields.Count</div><div class="text-muted">变更</div></div><div class="col-4"><div class="fs-3">@_result.SchemaDiff.RemovedFields.Count</div><div class="text-muted">删除</div></div></div> }
+                </div></div></div>
+                <div class="col-lg-6"><div class="card h-100"><div class="card-header">字段关系</div><div class="card-body">
+                    @if (_result.CorrelationMatrix is null) { <span class="text-muted">未产生字段相关性结果。</span> }
+                    else { <div class="row text-center"><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Fields.Count</div><div class="text-muted">字段</div></div><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Samples</div><div class="text-muted">样本</div></div><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.StrongPairs.Count</div><div class="text-muted">强相关</div></div></div> }
+                </div></div></div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid JobId { get; set; }
+
+    private bool _loading = true;
+    private AnalysisJob? _job;
+    private AnalysisResult? _result;
+    private List<QualityIssue> _issues = new();
+    private List<QualityGateResult> _gates = new();
+    private List<QualityMetric> _metrics = new();
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        await HistoryStore.InitializeAsync();
+        _job = await HistoryStore.GetAsync(JobId);
+        _result = null;
+        _issues.Clear();
+        _gates.Clear();
+        _metrics.Clear();
+
+        if (_job is not null)
+        {
+            _issues = (await QualityIssueQuery.GetByJobAsync(_job.Id)).OrderByDescending(x => x.Count).ThenBy(x => x.FieldName).ToList();
+            if (!string.IsNullOrWhiteSpace(_job.ResultJson))
+            {
+                try
+                {
+                    _result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson);
+                    if (!string.IsNullOrWhiteSpace(_job.GateResultsJson))
+                    {
+                        var gates = JsonSerializer.Deserialize<List<QualityGateResult>>(_job.GateResultsJson);
+                        if (gates is not null) _gates = gates;
+                    }
+                }
+                catch (JsonException)
+                {
+                    _result = null;
+                }
+            }
+            if (_result is not null)
+            {
+                var metrics = QualityMetricsCalculator.Calculate(_result);
+                _metrics = new()
+                {
+                    new("完整性", metrics.Completeness), new("有效性", metrics.Validity), new("唯一性", metrics.Uniqueness),
+                    new("一致性", metrics.Consistency), new("异常控制", metrics.AnomalyControl)
+                };
+            }
+        }
+        _loading = false;
+    }
+
+    private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
+    private static string FormatDuration(long milliseconds) => milliseconds <= 0 ? "-" : milliseconds < 1000 ? $"{milliseconds:N0} ms" : $"{TimeSpan.FromMilliseconds(milliseconds):hh\\:mm\\:ss}";
+    private sealed record QualityMetric(string Name, double Value);
+}
