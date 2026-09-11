@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Api.Tests;
 
@@ -32,33 +33,27 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         Assert.True(response.IsSuccessStatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        // 顶层：格式 / 规则来源 / 完整结果 兼容保留
         Assert.Equal("json", body.GetProperty("format").GetString());
         Assert.Equal("inline", body.GetProperty("rulesSource").GetString());
         Assert.True(body.TryGetProperty("result", out var result));
         Assert.Equal(3, result.GetProperty("totalObjects").GetInt32());
 
-        // 概览统计页
         var overview = body.GetProperty("overview");
         Assert.Equal(3, overview.GetProperty("totalObjects").GetInt32());
         Assert.Equal(2, overview.GetProperty("fieldCount").GetInt32());
         Assert.Equal(1, overview.GetProperty("violationCount").GetInt32());
 
-        // 字段明细页
         var fields = body.GetProperty("fields");
         Assert.Equal(2, fields.GetArrayLength());
         Assert.Contains(fields.EnumerateArray(), f => f.GetProperty("fieldName").GetString() == "age");
 
-        // 深度分析页：未启用深度分析时键整体省略（API 契约为省略 null，前端以 TryGetProperty 判断）
         Assert.False(body.TryGetProperty("deepAnalysis", out _));
 
-        // 质量报告页：1 条范围违规 + 按类型计数
         var quality = body.GetProperty("quality");
         Assert.True(quality.GetProperty("hasViolations").GetBoolean());
         Assert.Equal(1, quality.GetProperty("countsByCheck").GetProperty("range").GetInt32());
         Assert.Equal(1, quality.GetProperty("violations").GetArrayLength());
 
-        // 质量门禁页：必须使用本次请求 rules.runtime.gates 的实际配置，不能回退到默认 AnalysisOptions
         var gates = quality.GetProperty("gates");
         Assert.NotEmpty(gates.EnumerateArray());
         var qualityGate = gates.EnumerateArray().First(g => g.GetProperty("exitCode").GetInt32() == 3);
@@ -83,8 +78,6 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("people.json", body.GetProperty("fileName").GetString());
 
-        // 数据预览页：列按首次出现顺序；PII 字段（name 命中姓名语义）已按出站策略打码，
-        // 非 PII 字段保持原始类型
         var preview = body.GetProperty("preview");
         var columns = preview.GetProperty("columns").EnumerateArray().Select(c => c.GetString()).ToList();
         Assert.Equal(s_expectedPreviewColumns, columns);
@@ -176,7 +169,6 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
     {
         var client = CreateClient();
 
-        // 提交异步作业（inline config 端点）
         var submitBody = new Dictionary<string, object?>
         {
             ["dataText"] = DataJson,
@@ -187,7 +179,6 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         var submit = await submitResponse.Content.ReadFromJsonAsync<JsonElement>();
         var jobId = submit.GetProperty("jobId").GetString()!;
 
-        // 轮询状态端点直到终态（同时验证 processedObjects 字段在契约中）
         JsonElement snapshot = default;
         for (int i = 0; i < 100; i++)
         {
@@ -201,11 +192,9 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
 
         Assert.Equal("Completed", snapshot.GetProperty("status").GetString());
         Assert.True(snapshot.TryGetProperty("processedObjects", out _));
-        // W8：终态快照带预览样本（快照上的 preview 为原始行数组；列可由行键推导）
         Assert.True(snapshot.TryGetProperty("preview", out var preview));
         Assert.Equal(3, preview.GetArrayLength());
 
-        // SSE：对已终态的作业订阅事件流 → 服务端发完 complete 事件即关闭流
         var sseResponse = await client.GetAsync($"/api/analyze/async/{jobId}/events");
         Assert.True(sseResponse.IsSuccessStatusCode);
         Assert.Equal("text/event-stream", sseResponse.Content.Headers.ContentType!.MediaType);
@@ -214,11 +203,51 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Contains("event: complete", stream);
         Assert.Contains("\"status\":\"Completed\"", stream);
 
-        // complete 事件的 data 行是合法 JSON，processedObjects 字段在
         var dataLine = stream.Split('\n').First(l => l.StartsWith("data: ", StringComparison.Ordinal));
         var payload = JsonSerializer.Deserialize<JsonElement>(dataLine["data: ".Length..]);
         Assert.Equal("Completed", payload.GetProperty("status").GetString());
         Assert.Equal(3, payload.GetProperty("processedObjects").GetInt32());
+    }
+
+    [Fact]
+    public async Task AsyncJob_PersistsCompletedJobWithSameJobId()
+    {
+        var client = CreateClient();
+
+        var submitResponse = await client.PostAsJsonAsync("/api/analyze/async/config", new
+        {
+            dataText = DataJson,
+            format = "json"
+        });
+        Assert.True(submitResponse.IsSuccessStatusCode);
+
+        var submit = await submitResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var jobIdText = submit.GetProperty("jobId").GetString();
+        Assert.True(Guid.TryParse(jobIdText, out var jobId));
+
+        JsonElement snapshot = default;
+        for (int i = 0; i < 100; i++)
+        {
+            var response = await client.GetAsync($"/api/analyze/async/{jobId}");
+            Assert.True(response.IsSuccessStatusCode);
+            snapshot = await response.Content.ReadFromJsonAsync<JsonElement>();
+            if (snapshot.GetProperty("status").GetString() != "Running")
+                break;
+            await Task.Delay(100);
+        }
+
+        Assert.Equal("Completed", snapshot.GetProperty("status").GetString());
+
+        using var scope = _factory.Services.CreateScope();
+        var historyStore = scope.ServiceProvider.GetRequiredService<IAnalysisHistoryStore>();
+        var job = await historyStore.GetAsync(jobId);
+
+        Assert.NotNull(job);
+        Assert.Equal(jobId, job!.Id);
+        Assert.Equal(AnalysisJobStatus.Succeeded, job.Status);
+        Assert.Equal(3, job.TotalObjects);
+        Assert.NotNull(job.ResultJson);
+        Assert.NotEmpty(job.ResultJson!);
     }
 
     [Fact]
