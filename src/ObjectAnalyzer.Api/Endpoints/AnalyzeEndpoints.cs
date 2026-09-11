@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Analysis.Rules;
 using ObjectAnalyzer.Parsing;
+using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Api;
 
@@ -21,6 +22,7 @@ public static class AnalyzeEndpoints
             async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
             [FromForm] AnalyzeForm form,
             HttpRequest request,
+            AnalysisExecutionCoordinator coordinator,
             CancellationToken cancellationToken) =>
         {
             var file = form.File;
@@ -49,7 +51,7 @@ public static class AnalyzeEndpoints
                 if (rulesText is not null)
                 {
                     // 与 /api/rules/validate 同源的检查：拼错的规则名在这里同样被拦下，
-                    // 而不是"通过了校验却静默不生效"。确认可忽略时传 allowUnknownRules=true。
+                    // 而不是“通过了校验却静默不生效”。确认可忽略时传 allowUnknownRules=true。
                     if (form.AllowUnknownRules is not true)
                     {
                         var unknownRaw = RulesLint.Scan(rulesText);
@@ -61,11 +63,19 @@ public static class AnalyzeEndpoints
                 }
 
                 // 规则带 valueParsers 时实际走的是 excel-json 解析器，响应里如实回写，
-                // 免得 UI 显示 "excel" 而字段却已按 JSON 展开，看着像抽风
+                // 免得 UI 显示 “excel” 而字段却已按 JSON 展开，看着像抽风
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, formatOverride: null);
                 // multipart 表单字段通过继承复用，AnalysisOptions 一次性构造（含 rules.runtime 合并）
                 var options = form.ToAnalysisOptions(tempData, rulesObj);
-                var outcome = AnalysisCore.AnalyzeFile(tempData, rulesObj, options, cancellationToken);
+                var outcome = await coordinator.ExecuteAsync(
+                    file.FileName,
+                    effectiveFormat,
+                    token => Task.Run(
+                        () => AnalysisCore.AnalyzeFile(tempData, rulesObj, options, token),
+                        token),
+                    static value => value.Result,
+                    options,
+                    cancellationToken);
 
                 // W8 五页面视图：概览 / 预览 / 字段 / 深度分析 / 质量 + 完整 result 兼容保留
                 return TypedResults.Ok(AnalyzeViewResponse.From(
@@ -94,14 +104,10 @@ public static class AnalyzeEndpoints
         .DisableAntiforgery();
 
         // ── 分析：强类型 JSON body（数据文本内嵌 + 全强类型配置）──
-        // 请求体为纯 JSON，读取原始体后先对内联 rules 子树做未知键检查（与 multipart/raw 同源，
-        // 强类型绑定会静默丢弃不认识的键），再反序列化为强类型 AnalyzeConfigRequest：
-        // 数据文本走 dataText（JSON/JSONL/CSV/XML/YAML），其余全部是强类型字段——
-        // 分析选项（flatten/csvInferNumbers/fields/filter/sample*/maxParallel + 深度分析开关）+ 内联 rules 规则对象。
-        // OpenAPI / Scalar 能看到每个配置字段及其 rules.* 子结构。
         routes.MapPost("/analyze/config",
             async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
             HttpRequest request,
+            AnalysisExecutionCoordinator coordinator,
             CancellationToken cancellationToken) =>
         {
             var (config, configError) = await AnalysisCore.ReadConfigRequestAsync(request, cancellationToken);
@@ -118,10 +124,16 @@ public static class AnalyzeEndpoints
 
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, config.Rules, config.Format);
                 var options = config.ToAnalysisOptions(tempData, config.Rules);
-                // 显式格式必须透传给管线（异步 config 端点同此）：.txt 临时文件无法按扩展名探测，
-                // 漏设会回落到 JSONL 解析器，数组型 dataText 会误报"根节点必须是一个对象"
                 options.Input.Format = config.Format;
-                var outcome = AnalysisCore.AnalyzeFile(tempData, config.Rules, options, cancellationToken);
+                var outcome = await coordinator.ExecuteAsync(
+                    "(inline)",
+                    effectiveFormat,
+                    token => Task.Run(
+                        () => AnalysisCore.AnalyzeFile(tempData, config.Rules, options, token),
+                        token),
+                    static value => value.Result,
+                    options,
+                    cancellationToken);
 
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat, options,
@@ -147,9 +159,6 @@ public static class AnalyzeEndpoints
         .DisableAntiforgery();
 
         // ── 分析：请求体即数据文本 ──
-        // 分析参数统一通过 [AsParameters] AnalyzeRequestOptions 绑定（每个属性 → 独立查询参数），
-        // 规则通过查询参数 rulesJson / allowUnknownRules 传入。
-        // 这样查询参数集合与 /analyze、/analyze/config 的字段一一对应，新增选项时三个端点同步。
         routes.MapPost("/analyze/raw",
             async Task<Results<Ok<AnalyzeViewResponse>, BadRequest<ErrorResponse>>> (
             HttpRequest request,
@@ -157,6 +166,7 @@ public static class AnalyzeEndpoints
             [Description("数据格式：json / jsonl / csv / excel / xml / yaml")] string format,
             [Description("内联规则 JSON（走查询参数，受请求行长度限制；规则较长请改用 multipart 上传）")] string? rulesJson,
             [Description("容忍规则里不认识的键（默认 false，拼错会报错）")] bool? allowUnknownRules,
+            AnalysisExecutionCoordinator coordinator,
             CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(format))
@@ -168,8 +178,6 @@ public static class AnalyzeEndpoints
                 await using (var fs = File.Create(tempData))
                     await request.Body.CopyToAsync(fs, cancellationToken);
 
-                // 规则走查询参数（请求体已被数据文本占用）：与 multipart 版本同源的未知键检查，
-                // 避免"配了规则却静默不生效"。反序列化失败由外层 catch 统一转 400。
                 AnalysisRules? rulesObj = null;
                 if (!string.IsNullOrWhiteSpace(rulesJson))
                 {
@@ -184,13 +192,18 @@ public static class AnalyzeEndpoints
                 }
 
                 var requestedFormat = format.Trim().ToLowerInvariant();
-                // 规则带 valueParsers 时实际走 excel-json 解析器，响应里如实回写
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, requestedFormat);
-
-                // 查询参数 + 规则一次性构造 AnalysisOptions（含 rules.runtime 合并）
                 var analysisOptions = options.ToAnalysisOptions(tempData, rulesObj);
                 analysisOptions.Input.Format = requestedFormat;
-                var outcome = AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, cancellationToken);
+                var outcome = await coordinator.ExecuteAsync(
+                    "(inline)",
+                    effectiveFormat,
+                    token => Task.Run(
+                        () => AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, token),
+                        token),
+                    static value => value.Result,
+                    analysisOptions,
+                    cancellationToken);
 
                 return TypedResults.Ok(AnalyzeViewResponse.From(
                     outcome.Result, outcome.Preview, effectiveFormat, analysisOptions,
