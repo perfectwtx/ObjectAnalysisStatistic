@@ -1,5 +1,4 @@
 using ObjectAnalyzer.Analysis;
-using ObjectAnalyzer.Analysis.Gates;
 
 namespace ObjectAnalyzer.Platform;
 
@@ -13,21 +12,45 @@ public sealed class AnalysisExecutionCoordinator
         _jobService = jobService;
     }
 
-    public async Task<AnalysisResult> ExecuteAsync(
+    public Task<AnalysisResult> ExecuteAsync(
         string sourceName,
         string sourceType,
         Func<CancellationToken, Task<AnalysisResult>> execute,
         AnalysisOptions? options = null,
         CancellationToken cancellationToken = default)
+        => ExecuteAsync(
+            sourceName,
+            sourceType,
+            execute,
+            static result => result,
+            options,
+            cancellationToken);
+
+    /// <summary>
+    /// 执行一次分析并统一处理 Job 生命周期。
+    /// <para>
+    /// 返回值可以是宿主需要的富结果，同时通过 <paramref name="resultSelector"/>
+    /// 指定用于历史、质量评分、门禁和告警的 AnalysisResult。
+    /// </para>
+    /// </summary>
+    public async Task<T> ExecuteAsync<T>(
+        string sourceName,
+        string sourceType,
+        Func<CancellationToken, Task<T>> execute,
+        Func<T, AnalysisResult> resultSelector,
+        AnalysisOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(execute);
+        ArgumentNullException.ThrowIfNull(resultSelector);
 
         var job = await _jobService.StartAsync(sourceName, sourceType, cancellationToken);
         try
         {
-            var result = await execute(cancellationToken);
+            var value = await execute(cancellationToken);
+            var result = resultSelector(value);
             await _jobService.CompleteAsync(job, result, options, CancellationToken.None);
-            return result;
+            return value;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
