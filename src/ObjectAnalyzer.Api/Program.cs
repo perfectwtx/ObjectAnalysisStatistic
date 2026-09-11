@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ObjectAnalyzer.Api;
+using ObjectAnalyzer.Platform;
 using Scalar.AspNetCore;
 
 // ── ObjectAnalyzer Mini API ──
@@ -30,7 +31,17 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // GenerateDocumentationFile 开启后，类型/属性的 XML 注释会自动进入 OpenAPI 描述。
 builder.Services.AddOpenApi();
 
+// 分析平台：API 与 Web 共用持久化作业、质量历史与告警能力。
+var historyDbPath = Path.Combine(AppContext.BaseDirectory, "data", "objectanalyzer.db");
+builder.Services.AddAnalysisPlatform(historyDbPath);
+
 var app = builder.Build();
+
+// 平台历史数据库初始化。这样同步/异步 API 在第一个请求到达前即可安全创建所需表。
+await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
+await app.Services.GetRequiredService<IAlertRuleStore>().InitializeAsync();
+await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync();
+
 app.UseCors();
 
 app.MapOpenApi();           // GET /openapi/v1.json
