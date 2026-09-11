@@ -3,38 +3,41 @@ using System.Collections.Concurrent;
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
-/// 分析作业注册中心：把 jobId ↔ CancellationTokenSource / 结果 关联起来，
-/// 供 CLI / API / Web 三端共享"取消正在进行的分析"能力。
-///
-/// 设计约束：
-/// - 进程内单例（用静态实例，Core 不引入 DI 容器，保持纯逻辑层不依赖框架）；
-/// - 线程安全：所有访问通过 ConcurrentDictionary；
-/// - 自动清理：作业进入终态（Cancelled / Faulted / Completed）后保留 5 分钟（可配置）
-///   以便客户端轮询 / 拉取结果；超时后由下一次 Register 调用清扫。
-/// - 不持久化：进程崩溃即丢；服务重启后所有 job 视为已取消，客户端需重新发起。
+/// 分析作业运行时注册中心：把持久化 Job ID 与 CancellationTokenSource / 实时结果关联起来，
+/// 供 API 的状态查询、SSE 和取消操作使用。
 /// </summary>
 public sealed class AnalysisJobRegistry
 {
     private static readonly AnalysisJobRegistry _instance = new();
     public static AnalysisJobRegistry Instance => _instance;
 
-    /// <summary>默认清理窗口：5 分钟。</summary>
     public static readonly TimeSpan DefaultRetention = TimeSpan.FromMinutes(5);
 
     private readonly ConcurrentDictionary<string, AnalysisJob> _jobs = new(StringComparer.Ordinal);
 
-    /// <summary>注册一个分析作业并返回 jobId。</summary>
-    /// <param name="cts">与该作业绑定的取消源；AnalysisCore 内部将其 token 传入分析循环。</param>
-    /// <param name="meta">调用方写入的元数据（数据文件名 / 格式 / 操作者等），用于 cancel/status 端点回显。</param>
+    /// <summary>注册一个运行时作业并生成 Job ID。</summary>
     public string Register(CancellationTokenSource cts, AnalysisJobMeta meta)
     {
-        SweepExpired();
-        string id = Guid.NewGuid().ToString("N");
-        _jobs[id] = new AnalysisJob(id, cts, meta, DateTimeOffset.UtcNow);
+        var id = Guid.NewGuid().ToString("N");
+        Register(id, cts, meta);
         return id;
     }
 
-    /// <summary>查询作业状态；找不到（已清理 / 不存在）返回 null。</summary>
+    /// <summary>
+    /// 使用已有的持久化 Job ID 注册运行时状态。
+    /// 这样 API 的 History、SSE、Cancel 使用同一个作业身份。
+    /// </summary>
+    public void Register(string jobId, CancellationTokenSource cts, AnalysisJobMeta meta)
+    {
+        if (string.IsNullOrWhiteSpace(jobId)) throw new ArgumentException("Job ID 不能为空。", nameof(jobId));
+        ArgumentNullException.ThrowIfNull(cts);
+        ArgumentNullException.ThrowIfNull(meta);
+
+        SweepExpired();
+        if (!_jobs.TryAdd(jobId, new AnalysisJob(jobId, cts, meta, DateTimeOffset.UtcNow)))
+            throw new InvalidOperationException($"运行时作业 {jobId} 已经注册。 ");
+    }
+
     public AnalysisJobSnapshot? Get(string jobId)
     {
         if (string.IsNullOrEmpty(jobId)) return null;
@@ -42,10 +45,6 @@ public sealed class AnalysisJobRegistry
         return job.ToSnapshot();
     }
 
-    /// <summary>
-    /// 取消指定作业：触发其 CancellationTokenSource，返回是否成功。
-    /// 作业不存在或已进入终态返回 false。
-    /// </summary>
     public bool Cancel(string jobId)
     {
         if (string.IsNullOrEmpty(jobId)) return false;
@@ -62,25 +61,16 @@ public sealed class AnalysisJobRegistry
         }
     }
 
-    /// <summary>
-    /// 上报作业进度（已处理记录数）。供宿主把管线进度桥接到注册中心，
-    /// 状态查询与 SSE 事件流据此回显。作业不存在时静默忽略。
-    /// </summary>
     public void ReportProgress(string jobId, long processedObjects)
     {
         if (string.IsNullOrEmpty(jobId)) return;
         if (!_jobs.TryGetValue(jobId, out var job)) return;
-        job.ProcessedObjects = processedObjects;
+        Interlocked.Exchange(ref job.ProcessedObjects, processedObjects);
     }
 
-    /// <summary>把分析结果写回作业快照，供异步端点的 GET 拉取。</summary>
     public void Complete(string jobId, AnalysisResult result)
         => Complete(jobId, result, preview: null);
 
-    /// <summary>把分析结果与数据预览样本一并写回作业快照（W8：数据预览页）。</summary>
-    /// <param name="piiRedacted">出站打码是否生效（结果离开服务前已按策略打码）。
-    /// 调用方在出站边界关闭打码（piiOff）时必须传 false，供状态查询端点回显留痕。</param>
-    /// <param name="pii">出站打码策略（可选）：携带解析后的敏感字段元数据，供状态查询端点回显。</param>
     public void Complete(string jobId, AnalysisResult result, IReadOnlyList<Dictionary<string, object?>>? preview,
         bool piiRedacted = true, PiiPolicy? pii = null)
     {
@@ -89,7 +79,6 @@ public sealed class AnalysisJobRegistry
         job.MarkCompleted(result, preview, piiRedacted, pii);
     }
 
-    /// <summary>把异常写回作业快照（供异步端点返回 500）。</summary>
     public void Fail(string jobId, Exception error)
     {
         if (string.IsNullOrEmpty(jobId)) return;
@@ -97,7 +86,6 @@ public sealed class AnalysisJobRegistry
         job.MarkFailed(error);
     }
 
-    /// <summary>遍历并清掉已超期（> retention 且进入终态）的作业。</summary>
     public int SweepExpired(TimeSpan? retention = null)
     {
         var window = retention ?? DefaultRetention;
@@ -117,10 +105,6 @@ public sealed class AnalysisJobRegistry
         return removed;
     }
 
-    // ──────────────────────────────────────────────
-    // 内部数据结构
-    // ──────────────────────────────────────────────
-
     private sealed class AnalysisJob
     {
         public string Id { get; }
@@ -135,8 +119,6 @@ public sealed class AnalysisJobRegistry
         public PiiPolicy? Pii { get; private set; }
         public Exception? Error { get; private set; }
         public string? ProgressText { get; set; }
-
-        /// <summary>已处理记录数（管线进度桥接写入；volatile 仅供 SSE/轮询读取）。</summary>
         public long ProcessedObjects;
 
         public AnalysisJob(string id, CancellationTokenSource cts, AnalysisJobMeta meta, DateTimeOffset createdAt)
@@ -145,7 +127,6 @@ public sealed class AnalysisJobRegistry
             Cts = cts;
             Meta = meta;
             CreatedAt = createdAt;
-            // 监听取消请求：作业被 Cancel 时记录状态，便于状态查询回显
             cts.Token.Register(() =>
             {
                 if (Status == AnalysisStatus.Running)
@@ -181,7 +162,7 @@ public sealed class AnalysisJobRegistry
 
         public void DisposeCts()
         {
-            try { Cts.Dispose(); } catch { /* CTS 已释放 */ }
+            try { Cts.Dispose(); } catch { }
         }
 
         public AnalysisJobSnapshot ToSnapshot() => new(
@@ -200,7 +181,6 @@ public sealed class AnalysisJobRegistry
     }
 }
 
-/// <summary>作业状态机。</summary>
 public enum AnalysisStatus
 {
     Running = 0,
@@ -209,16 +189,12 @@ public enum AnalysisStatus
     Cancelled = 3
 }
 
-/// <summary>注册作业时附带的元数据，cancel/status 端点会回显给客户端。</summary>
 public sealed record AnalysisJobMeta(
     string DataFileName,
     string Format,
     string? OperatorId,
     DateTimeOffset SubmittedAt);
 
-/// <summary>作业快照：状态查询 / 拉取结果时使用，Result / Preview 终态前为 null。</summary>
-/// <param name="PiiRedacted">出站打码是否生效；false 表示作业提交时显式关闭了打码（piiOff），响应含原始值。</param>
-/// <param name="Pii">出站打码策略（未提供时为 null）：携带解析后的敏感字段元数据供端点回显。</param>
 public sealed record AnalysisJobSnapshot(
     string Id,
     AnalysisStatus Status,
@@ -230,5 +206,5 @@ public sealed record AnalysisJobSnapshot(
     AnalysisResult? Result,
     IReadOnlyList<Dictionary<string, object?>>? Preview,
     Exception? Error,
-    bool PiiRedacted = true,
-    PiiPolicy? Pii = null);
+    bool PiiRedacted,
+    PiiPolicy? Pii);
