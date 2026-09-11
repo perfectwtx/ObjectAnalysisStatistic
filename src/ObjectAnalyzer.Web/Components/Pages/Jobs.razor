@@ -2,20 +2,20 @@
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 
-<PageTitle>Analysis Jobs</PageTitle>
+<PageTitle>分析作业中心</PageTitle>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>Analysis Jobs</h1>
-            <p class="text-muted mb-0">历史分析作业</p>
+            <h1>分析作业中心</h1>
+            <p class="text-muted mb-0">查看历史分析作业及其质量结果。</p>
         </div>
         <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
     @if (_loading)
     {
-        <p>加载中...</p>
+        <div class="alert alert-info">加载中...</div>
     }
     else if (_jobs.Count == 0)
     {
@@ -27,14 +27,7 @@
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>时间</th>
-                        <th>数据源</th>
-                        <th>状态</th>
-                        <th>对象数</th>
-                        <th>字段数</th>
-                        <th>质量分</th>
-                        <th>问题数</th>
-                        <th>耗时</th>
+                        <th>时间</th><th>数据源</th><th>状态</th><th>对象数</th><th>字段数</th><th>质量分</th><th>问题数</th><th>耗时</th><th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -49,6 +42,7 @@
                         <td>@(job.QualityScore?.ToString("F2") ?? "-")</td>
                         <td>@job.IssueCount</td>
                         <td>@(job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-")</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="/jobs/@job.Id">详情</a></td>
                     </tr>
                 }
                 </tbody>
