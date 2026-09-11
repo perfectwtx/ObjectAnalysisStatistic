@@ -67,7 +67,7 @@ public sealed class AnalysisExecutionCoordinator
         ArgumentNullException.ThrowIfNull(resultSelector);
 
         if (job.Status != AnalysisJobStatus.Running)
-            throw new InvalidOperationException($"分析作业 {job.Id} 当前状态为 {job.Status}，不能执行。 ");
+            throw new InvalidOperationException($"分析作业 {job.Id} 当前状态为 {job.Status}，不能执行。");
 
         try
         {
