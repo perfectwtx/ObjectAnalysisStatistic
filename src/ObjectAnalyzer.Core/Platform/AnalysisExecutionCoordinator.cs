@@ -45,6 +45,30 @@ public sealed class AnalysisExecutionCoordinator
         ArgumentNullException.ThrowIfNull(resultSelector);
 
         var job = await _jobService.StartAsync(sourceName, sourceType, cancellationToken);
+        return await ExecuteAsync(job, execute, resultSelector, options, cancellationToken);
+    }
+
+    /// <summary>
+    /// 使用调用方已经创建的 Job 执行分析。
+    /// <para>
+    /// 主要用于异步提交场景：HTTP 请求先创建并返回 Job ID，后台任务随后复用同一个持久化 Job，
+    /// 避免重新创建第二个 Job。
+    /// </para>
+    /// </summary>
+    public async Task<T> ExecuteAsync<T>(
+        AnalysisJob job,
+        Func<CancellationToken, Task<T>> execute,
+        Func<T, AnalysisResult> resultSelector,
+        AnalysisOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        ArgumentNullException.ThrowIfNull(execute);
+        ArgumentNullException.ThrowIfNull(resultSelector);
+
+        if (job.Status != AnalysisJobStatus.Running)
+            throw new InvalidOperationException($"分析作业 {job.Id} 当前状态为 {job.Status}，不能执行。 ");
+
         try
         {
             var value = await execute(cancellationToken);
