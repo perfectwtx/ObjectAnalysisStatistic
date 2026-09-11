@@ -19,9 +19,15 @@ public sealed class AnalysisJobService
         _webhookDeliveryStore = webhookDeliveryStore;
     }
 
-    public async Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
+    public Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
+        => StartAsync(Guid.NewGuid(), sourceName, sourceType, cancellationToken);
+
+    /// <summary>使用调用方已分配的 Job ID 创建运行中的持久化作业。</summary>
+    public async Task<AnalysisJob> StartAsync(Guid jobId, string sourceName, string sourceType, CancellationToken cancellationToken = default)
     {
-        var job = new AnalysisJob { SourceName = sourceName, SourceType = sourceType, Status = AnalysisJobStatus.Running, StartedAtUtc = DateTime.UtcNow };
+        if (jobId == Guid.Empty) throw new ArgumentException("Job ID 不能为空。", nameof(jobId));
+
+        var job = new AnalysisJob { Id = jobId, SourceName = sourceName, SourceType = sourceType, Status = AnalysisJobStatus.Running, StartedAtUtc = DateTime.UtcNow };
         await _historyStore.SaveAsync(job, cancellationToken);
         return job;
     }
