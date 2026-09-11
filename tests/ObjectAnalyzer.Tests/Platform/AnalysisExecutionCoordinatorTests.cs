@@ -1,4 +1,5 @@
 using ObjectAnalyzer.Platform;
+using ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Tests.Platform;
 
@@ -21,7 +22,7 @@ public sealed class AnalysisExecutionCoordinatorTests
             {
                 cts.Cancel();
                 await Task.Delay(Timeout.InfiniteTimeSpan, token);
-                throw new InvalidOperationException("unreachable");
+                return CreateMinimalResult();
             },
             null,
             cts.Token);
@@ -69,14 +70,16 @@ public sealed class AnalysisExecutionCoordinatorTests
         var job = await service.StartAsync(jobId, "unit-test", "json");
         using var cts = new CancellationTokenSource();
 
+        Func<CancellationToken, Task<AnalysisResult>> execute = async token =>
+        {
+            cts.Cancel();
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            return CreateMinimalResult();
+        };
+
         var task = coordinator.ExecuteAsync(
             job,
-            async token =>
-            {
-                cts.Cancel();
-                await Task.Delay(Timeout.InfiniteTimeSpan, token);
-                throw new InvalidOperationException("unreachable");
-            },
+            execute,
             static result => result,
             cancellationToken: cts.Token);
 
@@ -87,7 +90,7 @@ public sealed class AnalysisExecutionCoordinatorTests
         Assert.Equal(AnalysisJobStatus.Cancelled, persisted.Status);
     }
 
-    private static ObjectAnalyzer.Analysis.AnalysisResult CreateMinimalResult()
+    private static AnalysisResult CreateMinimalResult()
         => new();
 
     private sealed class FakeHistoryStore : IAnalysisHistoryStore
