@@ -12,30 +12,28 @@ namespace ObjectAnalyzer.Api;
 /// 异步分析端点：
 /// - POST /api/analyze/async                   提交分析作业，返回 jobId
 /// - GET  /api/analyze/async/{jobId}           查询作业状态 / 拉取结果
+/// - GET  /api/analyze/async/{jobId}/events   订阅进度事件
 /// - POST /api/analyze/async/{jobId}/cancel    取消正在进行的分析
 ///
-/// 作业生命周期由 AnalysisJobRegistry（Core）统一管理：
-/// - 注册时拿到 CancellationTokenSource，传给 AnalysisRunner；
-/// - 完成后写回 AnalysisResult；取消时触发 CTS。
+/// 持久化 AnalysisJob 是平台作业的唯一标识；AnalysisJobRegistry 只负责进程内的
+/// CancellationToken、实时进度、SSE 和短期结果缓存。后台任务通过独立 DI Scope
+/// 复用已经创建的 AnalysisJob，避免 HTTP 请求结束后继续使用已释放的请求 Scope。
 ///
 /// 数据库 / 非文件型输入场景不支持取消；这些请求一律走同步端点 /api/analyze。
 /// </summary>
 public static class AsyncAnalyzeEndpoints
 {
-    // SSE 事件 payload 的序列化选项：camelCase + 非 null 输出（与 API 契约同风格）
     private static readonly JsonSerializerOptions s_sseJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    // CA1848：后台作业失败日志走 LoggerMessage 源生成委托（热路径零分配）
     private static readonly Action<ILogger, string, Exception?> s_jobFailed = LoggerMessage.Define<string>(
         LogLevel.Error, new EventId(1, "JobFailed"), "异步分析作业 {JobId} 失败");
 
     public static IEndpointRouteBuilder MapAsyncAnalyzeApi(this IEndpointRouteBuilder routes)
     {
-        // 异步作业错误走结构化日志（正式环境 stdout/stderr 可能被关闭，Console 写入会沉默）
         var jobLogger = routes.ServiceProvider.GetRequiredService<ILoggerFactory>()
             .CreateLogger("ObjectAnalyzer.AsyncAnalyze");
 
@@ -44,6 +42,8 @@ public static class AsyncAnalyzeEndpoints
             async Task<Results<Ok<AnalyzeAsyncResponse>, BadRequest<ErrorResponse>>> (
             [FromForm] AnalyzeForm form,
             HttpRequest request,
+            AnalysisJobService jobService,
+            IServiceScopeFactory scopeFactory,
             CancellationToken cancellationToken) =>
         {
             var file = form.File;
@@ -52,8 +52,8 @@ public static class AsyncAnalyzeEndpoints
 
             var tempData = Path.Combine(Path.GetTempPath(), $"oa-async-{Guid.NewGuid():N}{Path.GetExtension(file.FileName)}");
             var tempRules = Path.Combine(Path.GetTempPath(), $"oa-async-{Guid.NewGuid():N}.json");
-            string? jobId = null;
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            AnalysisJob? job = null;
+            var cts = new CancellationTokenSource();
             try
             {
                 await using (var fs = File.Create(tempData))
@@ -80,9 +80,14 @@ public static class AsyncAnalyzeEndpoints
                 var effectiveFormat = AnalysisCore.ResolveEffectiveFormat(tempData, rulesObj, formatOverride: null);
                 var options = form.ToAnalysisOptions(tempData, rulesObj);
 
-                // 注册异步作业；AnalysisJobRegistry 会持有 CancellationTokenSource，
-                // 客户端可随时通过 /cancel 端点触发取消。
-                jobId = AnalysisJobRegistry.Instance.Register(
+                // 持久化 Job 先创建，返回给客户端的 ID 与后台运行时 Registry ID 完全一致。
+                job = await jobService.StartAsync(
+                    sourceName: file.FileName,
+                    sourceType: effectiveFormat,
+                    cancellationToken);
+
+                AnalysisJobRegistry.Instance.Register(
+                    job.Id.ToString("N"),
                     cts,
                     new AnalysisJobMeta(
                         DataFileName: file.FileName,
@@ -90,22 +95,31 @@ public static class AsyncAnalyzeEndpoints
                         OperatorId: null,
                         SubmittedAt: DateTimeOffset.UtcNow));
 
-                // 临时文件的所有权交给后台任务：它执行结束（成功 / 失败 / 取消）后自行清理。
-                // 这样 finally 块就不会在任务读取前把文件删掉了。
-                // 关键：必须先把路径复制到 lambda 的局部变量再启动任务。
-                // 闭包按引用捕获外层变量，若直接传 tempData / tempRules，Task.Run 实际执行
-                // 时主线程可能已经把这两个变量置为 null（NRE 的根因：CompressionDetector.Detect(null)）。
-                var jobIdForTask = jobId;
+                var jobForTask = job;
+                var jobIdForTask = job.Id.ToString("N");
                 var dataPathForTask = tempData;
                 var rulesPathForTask = tempRules;
-                _ = Task.Run(() => RunJob(jobLogger, jobIdForTask, dataPathForTask, rulesPathForTask, rulesObj, options, cts.Token),
+                var rulesForTask = rulesObj;
+                var optionsForTask = options;
+
+                _ = Task.Run(
+                    () => RunJob(
+                        jobLogger,
+                        scopeFactory,
+                        jobForTask,
+                        jobIdForTask,
+                        dataPathForTask,
+                        rulesPathForTask,
+                        rulesForTask,
+                        optionsForTask,
+                        cts),
                     CancellationToken.None);
-                // 任务已接手这两个路径，避免下面 catch/finally 再去删。
+
                 tempData = null!;
                 tempRules = null!;
 
                 return TypedResults.Ok(new AnalyzeAsyncResponse(
-                    JobId: jobId,
+                    JobId: jobIdForTask,
                     Status: AnalysisStatus.Running,
                     FileName: file.FileName,
                     Format: effectiveFormat,
@@ -114,10 +128,21 @@ public static class AsyncAnalyzeEndpoints
             }
             catch (Exception ex)
             {
-                // 作业未注册成功 → 释放 CTS 并清理临时文件
                 try { cts.Cancel(); } catch { }
                 try { cts.Dispose(); } catch { }
-                if (jobId is not null) AnalysisJobRegistry.Instance.Fail(jobId, ex);
+
+                if (job is not null)
+                {
+                    // StartAsync 已成功时，必须把持久化 Job 也置为 Failed，避免留下永久 Running。
+                    try
+                    {
+                        await jobService.FailAsync(job, ex, CancellationToken.None);
+                    }
+                    catch { }
+
+                    AnalysisJobRegistry.Instance.Fail(job.Id.ToString("N"), ex);
+                }
+
                 TryDelete(tempData);
                 TryDelete(tempRules);
                 return TypedResults.BadRequest(ApiErrors.FromException(ex));
@@ -128,16 +153,18 @@ public static class AsyncAnalyzeEndpoints
         .WithDescription("""
         提交后立即返回 jobId，分析在后台运行。
         - GET  /api/analyze/async/{jobId}           轮询状态 / 拉取结果
+        - GET  /api/analyze/async/{jobId}/events   订阅进度
         - POST /api/analyze/async/{jobId}/cancel    触发取消
-        作业保留 5 分钟（AnalysisJobRegistry.DefaultRetention），期间结果可被拉取。
+        持久化 AnalysisJob 是作业的唯一 ID；运行时 Registry 只保存进程内状态。
         """)
         .DisableAntiforgery();
 
         // ── 异步分析：强类型 JSON body ──
-        // 与同步 /analyze/config 同源：读原始体 → rules 子树未知键检查 → 强类型反序列化
         routes.MapPost("/analyze/async/config",
             async Task<Results<Ok<AnalyzeAsyncResponse>, BadRequest<ErrorResponse>>> (
             HttpRequest request,
+            AnalysisJobService jobService,
+            IServiceScopeFactory scopeFactory,
             CancellationToken cancellationToken) =>
         {
             var (config, configError) = await AnalysisCore.ReadConfigRequestAsync(request, cancellationToken);
@@ -148,8 +175,8 @@ public static class AsyncAnalyzeEndpoints
                 return TypedResults.BadRequest(new ErrorResponse("缺少数据文本：请提供 dataText。"));
 
             var tempData = Path.Combine(Path.GetTempPath(), $"oa-async-{Guid.NewGuid():N}.txt");
-            string? jobId = null;
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            AnalysisJob? job = null;
+            var cts = new CancellationTokenSource();
             try
             {
                 await File.WriteAllTextAsync(tempData, config.DataText, cancellationToken);
@@ -158,7 +185,14 @@ public static class AsyncAnalyzeEndpoints
                 var options = config.ToAnalysisOptions(tempData, config.Rules);
                 options.Input.Format = config.Format;
 
-                jobId = AnalysisJobRegistry.Instance.Register(
+                job = await jobService.StartAsync(
+                    sourceName: "(inline)",
+                    sourceType: effectiveFormat,
+                    cancellationToken);
+
+                var jobId = job.Id.ToString("N");
+                AnalysisJobRegistry.Instance.Register(
+                    jobId,
                     cts,
                     new AnalysisJobMeta(
                         DataFileName: "(inline)",
@@ -166,12 +200,25 @@ public static class AsyncAnalyzeEndpoints
                         OperatorId: null,
                         SubmittedAt: DateTimeOffset.UtcNow));
 
+                var jobForTask = job;
                 var jobIdForTask = jobId;
-                // 同 multipart 端点：路径必须先复制到 lambda 局部变量，否则闭包按引用捕获
-                // 的外层 tempData 在主线程置 null 后会让后台任务拿到空字符串 → NRE。
                 var dataPathForTask = tempData;
-                _ = Task.Run(() => RunJob(jobLogger, jobIdForTask, dataPathForTask, null, config.Rules, options, cts.Token),
+                var rulesForTask = config.Rules;
+                var optionsForTask = options;
+
+                _ = Task.Run(
+                    () => RunJob(
+                        jobLogger,
+                        scopeFactory,
+                        jobForTask,
+                        jobIdForTask,
+                        dataPathForTask,
+                        null,
+                        rulesForTask,
+                        optionsForTask,
+                        cts),
                     CancellationToken.None);
+
                 tempData = null!;
 
                 return TypedResults.Ok(new AnalyzeAsyncResponse(
@@ -186,7 +233,18 @@ public static class AsyncAnalyzeEndpoints
             {
                 try { cts.Cancel(); } catch { }
                 try { cts.Dispose(); } catch { }
-                if (jobId is not null) AnalysisJobRegistry.Instance.Fail(jobId, ex);
+
+                if (job is not null)
+                {
+                    try
+                    {
+                        await jobService.FailAsync(job, ex, CancellationToken.None);
+                    }
+                    catch { }
+
+                    AnalysisJobRegistry.Instance.Fail(job.Id.ToString("N"), ex);
+                }
+
                 TryDelete(tempData);
                 return TypedResults.BadRequest(ApiErrors.FromException(ex));
             }
@@ -203,13 +261,11 @@ public static class AsyncAnalyzeEndpoints
             var snap = AnalysisJobRegistry.Instance.Get(jobId);
             if (snap is null)
                 return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
-            // 错误信息序列化为字符串：Exception 内部含 MethodBase/StackTrace 等不可 JSON 化的字段，
-            // 直接走 STJ 会触发 NotSupportedException。这里只回显 type+message 供前端展示。
+
             string? errorMessage = null;
             if (snap.Error is { } err)
-            {
                 errorMessage = $"{err.GetType().Name}: {err.Message}";
-            }
+
             return TypedResults.Ok(new AnalyzeJobSnapshotResponse(
                 Id: snap.Id,
                 Status: snap.Status,
@@ -234,7 +290,7 @@ public static class AsyncAnalyzeEndpoints
         - Cancelled 是用户主动中断的状态。
         """);
 
-        // ── SSE 事件流（W8 进度推送）──
+        // ── SSE 事件流 ──
         routes.MapGet("/analyze/async/{jobId}/events", async (string jobId, HttpContext http) =>
         {
             http.Response.Headers.ContentType = "text/event-stream";
@@ -283,11 +339,8 @@ public static class AsyncAnalyzeEndpoints
         .WithTags("异步分析")
         .WithSummary("订阅异步作业事件流（SSE）")
         .WithDescription("""
-        text/event-stream 事件流（W8 进度推送）：
-        - event: progress  — data 为 {processedObjects, status}（每 500ms 一次，值变化也照发，前端可自行节流）；
-        - event: complete  — 终态事件，data 为 {processedObjects, status, error}；收到后应关闭 EventSource 并 GET /{jobId} 拉取结果；
-        - event: gone      — 作业不存在或已被清理（超过 5 分钟保留窗口）。
-        客户端断开时服务端自动结束流。结果本体不随事件推送（可能为数 MB），统一走状态查询端点。
+        text/event-stream 事件流：progress / complete / gone。
+        结果本体不随事件推送，收到 complete 后应 GET /{jobId} 拉取结果。
         """);
 
         // ── 取消作业 ──
@@ -302,63 +355,76 @@ public static class AsyncAnalyzeEndpoints
         })
         .WithTags("异步分析")
         .WithSummary("取消异步分析作业")
-        .WithDescription("触发对应作业的 CancellationTokenSource。返回 cancelled=true 表示已成功触发；作业不存在 / 已终态时返回 cancelled=false（404 仅在不存在时返回）。");
+        .WithDescription("触发对应作业的 CancellationTokenSource。返回 cancelled=true 表示已成功触发；作业不存在 / 已终态时返回 cancelled=false。");
 
         return routes;
     }
 
-    // ── 后台执行入口：把异常 / OperationCanceledException 写回 AnalysisJobRegistry ──
-    // 临时文件由本方法独占：执行结束（任何原因）后自行清理，避免 finally 在任务读取前把文件删掉。
-    private static void RunJob(
+    private static async Task RunJob(
         ILogger jobLogger,
+        IServiceScopeFactory scopeFactory,
+        AnalysisJob job,
         string jobId,
         string dataPath,
         string? rulesPath,
         AnalysisRules? rules,
         AnalysisOptions options,
-        CancellationToken token)
+        CancellationTokenSource jobCts)
     {
         try
         {
-            // W8：管线进度经 progressBridge 桥接到注册中心（GET /{jobId} 的 ProcessedObjects
-            // 与 SSE 事件流消费）；预览样本随 Complete 一并写回。
+            // HTTP 请求已经结束，此处必须创建独立 Scope，不能捕获请求 Scope 中的 scoped 服务。
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var coordinator = scope.ServiceProvider.GetRequiredService<AnalysisExecutionCoordinator>();
+
             var progressBridge = new Progress<long>(
                 count => AnalysisJobRegistry.Instance.ReportProgress(jobId, count));
 
-            var outcome = AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge);
-            // 结果 / 预览已在 AnalyzeFile 的出站打码关卡处理过；piiRedacted 与解析出的
-            // 打码策略（敏感字段元数据）一并写回供 GET 回显留痕
-            AnalysisJobRegistry.Instance.Complete(jobId, outcome.Result, outcome.Preview,
-                outcome.PiiRedacted, outcome.Pii);
+            var outcome = await coordinator.ExecuteAsync(
+                job,
+                token => Task.Run(
+                    () => AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge),
+                    token),
+                static value => value.Result,
+                options,
+                jobCts.Token);
+
+            AnalysisJobRegistry.Instance.Complete(
+                jobId,
+                outcome.Result,
+                outcome.Preview,
+                outcome.PiiRedacted,
+                outcome.Pii);
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        catch (OperationCanceledException) when (jobCts.IsCancellationRequested)
         {
-            // AnalysisJobRegistry 已经在 Cancel() 调用时把 Status 改成 Cancelled，
-            // 这里不需要再写状态。但仍需确认终态（防止 cts.Cancel 触发回调时机晚于 AnalysisRunner 抛异常）。
+            // Coordinator 已将持久化 Job 置为 Cancelled；Registry.Cancel 已将运行时 Job 置为 Cancelled。
+            // 如果取消发生在 Registry.Cancel 之前，则补齐运行时终态。
             var snap = AnalysisJobRegistry.Instance.Get(jobId);
             if (snap is { Status: AnalysisStatus.Running })
-            {
-                // 触发顺序异常：AnalysisRunner 抛了 Cancel，但 registry 还没标终态
-                // 此时直接复用 Fail 包一层，避免状态卡在 Running
-            }
+                AnalysisJobRegistry.Instance.Cancel(jobId);
         }
         catch (Exception ex)
         {
             s_jobFailed(jobLogger, jobId, ex);
-            AnalysisJobRegistry.Instance.Fail(jobId, ex);
+
+            // Coordinator 正常路径已经负责持久化 Failed。这里仅兜底 Registry 状态，
+            // 防止在进入 Coordinator 前就发生异常导致运行时作业卡在 Running。
+            var snap = AnalysisJobRegistry.Instance.Get(jobId);
+            if (snap is { Status: AnalysisStatus.Running })
+                AnalysisJobRegistry.Instance.Fail(jobId, ex);
         }
         finally
         {
-            // 不管成功/失败/取消都把临时文件清掉
             TryDelete(dataPath);
             if (rulesPath is not null) TryDelete(rulesPath);
+            jobCts.Dispose();
         }
     }
 
-    /// <summary>静默删除一个临时文件（失败仅吞异常）。</summary>
     private static void TryDelete(string path)
     {
         if (string.IsNullOrEmpty(path)) return;
-        try { if (File.Exists(path)) File.Delete(path); } catch { /* 文件可能已被释放 */ }
+        try { if (File.Exists(path)) File.Delete(path); } catch { }
     }
 }
