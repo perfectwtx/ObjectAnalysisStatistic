@@ -34,6 +34,62 @@ public sealed class AnalysisExecutionCoordinatorTests
         Assert.Equal("分析已取消。", job.ErrorMessage);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WithExistingJob_ReusesSameJobId()
+    {
+        var history = new FakeHistoryStore();
+        var alerts = new FakeAlertRuleStore();
+        var deliveries = new FakeWebhookDeliveryStore();
+        var service = new AnalysisJobService(history, alerts, deliveries);
+        var coordinator = new AnalysisExecutionCoordinator(service);
+        var jobId = Guid.NewGuid();
+        var job = await service.StartAsync(jobId, "unit-test", "json");
+
+        var task = coordinator.ExecuteAsync(
+            job,
+            _ => Task.FromResult(CreateMinimalResult()),
+            static result => result);
+
+        await task;
+
+        var persisted = Assert.Single(history.Jobs);
+        Assert.Equal(jobId, persisted.Id);
+        Assert.Equal(AnalysisJobStatus.Succeeded, persisted.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithExistingJob_WhenCancelled_PersistsCancelledSameJob()
+    {
+        var history = new FakeHistoryStore();
+        var alerts = new FakeAlertRuleStore();
+        var deliveries = new FakeWebhookDeliveryStore();
+        var service = new AnalysisJobService(history, alerts, deliveries);
+        var coordinator = new AnalysisExecutionCoordinator(service);
+        var jobId = Guid.NewGuid();
+        var job = await service.StartAsync(jobId, "unit-test", "json");
+        using var cts = new CancellationTokenSource();
+
+        var task = coordinator.ExecuteAsync(
+            job,
+            async token =>
+            {
+                cts.Cancel();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                throw new InvalidOperationException("unreachable");
+            },
+            static result => result,
+            cancellationToken: cts.Token);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+
+        var persisted = Assert.Single(history.Jobs);
+        Assert.Equal(jobId, persisted.Id);
+        Assert.Equal(AnalysisJobStatus.Cancelled, persisted.Status);
+    }
+
+    private static ObjectAnalyzer.Analysis.AnalysisResult CreateMinimalResult()
+        => new();
+
     private sealed class FakeHistoryStore : IAnalysisHistoryStore
     {
         public List<AnalysisJob> Jobs { get; } = [];
