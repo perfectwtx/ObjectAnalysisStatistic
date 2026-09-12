@@ -46,14 +46,14 @@ public static class QualityBaselineEndpoints
                     await store.SaveAsync(baseline, cancellationToken);
                     return TypedResults.Ok(baseline);
                 }
-                catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+                catch (ArgumentException ex)
                 {
                     return TypedResults.BadRequest(new ErrorResponse(ex.Message));
                 }
             })
             .WithTags("质量基线")
             .WithSummary("创建或更新质量基线")
-            .WithDescription("数据源名称来自 URL；同一数据源重复保存会覆盖原基线。所有阈值均为 0 到 100 的百分制。 ");
+            .WithDescription("数据源名称来自 URL；同一数据源重复保存会覆盖原基线。所有阈值均为 0 到 100 的百分制。");
 
         routes.MapDelete("/quality-baselines/{sourceName}",
             async Task<NoContent> (
