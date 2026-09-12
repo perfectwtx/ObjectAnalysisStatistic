@@ -224,7 +224,8 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
 
         var submit = await submitResponse.Content.ReadFromJsonAsync<JsonElement>();
         var jobIdText = submit.GetProperty("jobId").GetString();
-        Assert.True(Guid.TryParse(jobIdText, out var jobId));
+        Assert.False(string.IsNullOrWhiteSpace(jobIdText));
+        var jobId = Guid.Parse(jobIdText!);
 
         JsonElement snapshot = default;
         for (int i = 0; i < 100; i++)
