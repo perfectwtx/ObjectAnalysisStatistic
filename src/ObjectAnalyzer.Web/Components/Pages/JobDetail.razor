@@ -12,7 +12,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>分析作业详情</h1>
-            <p class="text-muted mb-0">查看一次分析执行的完整结果、质量门禁与问题。</p>
+            <p class="text-muted mb-0">查看一次分析执行的完整结果、质量基线、质量门禁与问题。</p>
         </div>
         <a class="btn btn-outline-secondary" href="/jobs">返回作业中心</a>
     </div>
@@ -28,18 +28,10 @@
     else
     {
         <div class="row g-3 mb-4">
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100"><div class="card-body"><div class="text-muted">状态</div><div class="fs-3 fw-semibold">@_job.Status</div></div></div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100"><div class="card-body"><div class="text-muted">质量总分</div><div class="display-6 fw-semibold">@FormatScore(_job.QualityScore)</div></div></div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100"><div class="card-body"><div class="text-muted">质量问题</div><div class="display-6 fw-semibold">@_job.IssueCount</div></div></div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100"><div class="card-body"><div class="text-muted">耗时</div><div class="display-6 fw-semibold">@FormatDuration(_job.DurationMs)</div></div></div>
-            </div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">状态</div><div class="fs-3 fw-semibold">@_job.Status</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量总分</div><div class="display-6 fw-semibold">@FormatScore(_job.QualityScore)</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">质量问题</div><div class="display-6 fw-semibold">@_job.IssueCount</div></div></div></div>
+            <div class="col-xl-3 col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted">耗时</div><div class="display-6 fw-semibold">@FormatDuration(_job.DurationMs)</div></div></div></div>
         </div>
 
         <div class="card mb-4">
@@ -65,18 +57,51 @@
         {
             <div class="card mb-4">
                 <div class="card-header">质量维度</div>
+                <div class="card-body"><div class="row g-3">
+                    @foreach (var metric in _metrics)
+                    {
+                        <div class="col-xl-2 col-md-4 col-6"><div class="border rounded p-3 h-100"><div class="text-muted small">@metric.Name</div><div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div></div></div>
+                    }
+                </div></div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>质量基线</span>
+                    @if (_baselineEvaluation is null)
+                    {
+                        <span class="badge bg-secondary">未配置基线</span>
+                    }
+                    else if (_baselineEvaluation.Passed)
+                    {
+                        <span class="badge bg-success">✓ 达标</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">未达标</span>
+                    }
+                </div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        @foreach (var metric in _metrics)
-                        {
-                            <div class="col-xl-2 col-md-4 col-6">
-                                <div class="border rounded p-3 h-100">
-                                    <div class="text-muted small">@metric.Name</div>
-                                    <div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div>
-                                </div>
-                            </div>
-                        }
-                    </div>
+                    @if (_baselineEvaluation is null)
+                    {
+                        <span class="text-muted">该数据源本次分析没有保存质量基线评估结果。</span>
+                    }
+                    else if (_baselineEvaluation.Passed)
+                    {
+                        <div class="text-success">本次分析满足 <strong>@_baselineEvaluation.SourceName</strong> 的全部最低质量要求。</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>指标</th><th>实际值</th><th>最低要求</th><th>差值</th></tr></thead>
+                            <tbody>
+                            @foreach (var failure in _baselineEvaluation.Failures)
+                            {
+                                <tr><td>@MetricLabel(failure.Metric)</td><td>@failure.Actual.ToString("F1")</td><td>@failure.Minimum.ToString("F1")</td><td class="text-danger">@((failure.Actual - failure.Minimum).ToString("F1"))</td></tr>
+                            }
+                            </tbody>
+                        </table></div>
+                    }
                 </div>
             </div>
 
@@ -92,16 +117,14 @@
                     }
                     else
                     {
-                        <div class="row g-2">
-                            @foreach (var gate in _gates)
-                            {
-                                <div class="col-xl-3 col-md-6"><div class="border rounded p-3 h-100">
-                                    <div class="d-flex justify-content-between"><strong>@gate.Name</strong><span class="badge @(gate.Triggered ? "bg-danger" : "bg-success")">@(gate.Triggered ? "未通过" : "通过")</span></div>
-                                    <div class="small text-muted mt-2">ExitCode: @gate.ExitCode</div>
-                                    @if (gate.Triggered) { <div class="small text-danger mt-1">@gate.FailureMessage</div> }
-                                </div></div>
-                            }
-                        </div>
+                        <div class="row g-2">@foreach (var gate in _gates)
+                        {
+                            <div class="col-xl-3 col-md-6"><div class="border rounded p-3 h-100">
+                                <div class="d-flex justify-content-between"><strong>@gate.Name</strong><span class="badge @(gate.Triggered ? "bg-danger" : "bg-success")">@(gate.Triggered ? "未通过" : "通过")</span></div>
+                                <div class="small text-muted mt-2">ExitCode: @gate.ExitCode</div>
+                                @if (gate.Triggered) { <div class="small text-danger mt-1">@gate.FailureMessage</div> }
+                            </div></div>
+                        }</div>
                     }
                 </div>
             </div>
@@ -145,6 +168,7 @@
     private bool _loading = true;
     private AnalysisJob? _job;
     private AnalysisResult? _result;
+    private QualityBaselineEvaluation? _baselineEvaluation;
     private List<QualityIssue> _issues = new();
     private List<QualityGateResult> _gates = new();
     private List<QualityMetric> _metrics = new();
@@ -157,6 +181,7 @@
         await HistoryStore.InitializeAsync();
         _job = await HistoryStore.GetAsync(JobId);
         _result = null;
+        _baselineEvaluation = null;
         _issues.Clear();
         _gates.Clear();
         _metrics.Clear();
@@ -174,10 +199,15 @@
                         var gates = JsonSerializer.Deserialize<List<QualityGateResult>>(_job.GateResultsJson);
                         if (gates is not null) _gates = gates;
                     }
+                    if (!string.IsNullOrWhiteSpace(_job.QualityBaselineEvaluationJson))
+                    {
+                        _baselineEvaluation = JsonSerializer.Deserialize<QualityBaselineEvaluation>(_job.QualityBaselineEvaluationJson);
+                    }
                 }
                 catch (JsonException)
                 {
                     _result = null;
+                    _baselineEvaluation = null;
                 }
             }
             if (_result is not null)
@@ -192,6 +222,17 @@
         }
         _loading = false;
     }
+
+    private static string MetricLabel(string metric) => metric switch
+    {
+        "OverallScore" => "综合质量分",
+        "Completeness" => "完整性",
+        "Validity" => "有效性",
+        "Uniqueness" => "唯一性",
+        "Consistency" => "一致性",
+        "AnomalyControl" => "异常控制",
+        _ => metric
+    };
 
     private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
     private static string FormatDuration(long milliseconds) => milliseconds <= 0 ? "-" : milliseconds < 1000 ? $"{milliseconds:N0} ms" : $"{TimeSpan.FromMilliseconds(milliseconds):hh\\:mm\\:ss}";
