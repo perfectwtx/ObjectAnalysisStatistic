@@ -19,4 +19,7 @@ public sealed class AnalysisJob
 
     /// <summary>本次作业实际使用的质量门禁结果 JSON。用于历史 Dashboard 保持与执行时一致。</summary>
     public string? GateResultsJson { get; set; }
+
+    /// <summary>本次作业实际使用的数据质量基线评估结果 JSON。</summary>
+    public string? QualityBaselineEvaluationJson { get; set; }
 }
