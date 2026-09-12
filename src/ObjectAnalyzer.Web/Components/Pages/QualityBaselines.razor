@@ -1,0 +1,184 @@
+@page "/quality/baselines"
+@using ObjectAnalyzer.Platform
+@inject IQualityBaselineStore BaselineStore
+
+<PageTitle>质量基线</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>质量基线</h1>
+            <p class="text-muted mb-0">按数据源设置最低质量要求，分析完成后会自动记录本次基线评估结果。</p>
+        </div>
+        <button class="btn btn-primary" @onclick="CreateAsync">新增基线</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="alert alert-info">加载中...</div>
+    }
+    else if (_baselines.Count == 0)
+    {
+        <div class="alert alert-secondary">暂无质量基线。未配置基线的数据源不会受到额外约束。</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>数据源</th>
+                        <th>综合</th>
+                        <th>完整性</th>
+                        <th>有效性</th>
+                        <th>唯一性</th>
+                        <th>一致性</th>
+                        <th>异常控制</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var baseline in _baselines)
+                {
+                    <tr>
+                        <td><strong>@baseline.SourceName</strong></td>
+                        <td>@Format(baseline.MinimumOverallScore)</td>
+                        <td>@Format(baseline.MinimumCompleteness)</td>
+                        <td>@Format(baseline.MinimumValidity)</td>
+                        <td>@Format(baseline.MinimumUniqueness)</td>
+                        <td>@Format(baseline.MinimumConsistency)</td>
+                        <td>@Format(baseline.MinimumAnomalyControl)</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Edit(baseline)">编辑</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(baseline.SourceName)">删除</button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (_editing is not null)
+    {
+        <div class="card mt-4">
+            <div class="card-header">@(_isNew ? "新增质量基线" : "编辑质量基线")</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">数据源名称</label>
+                        <input class="form-control" @bind="_editing.SourceName" disabled="@(!_isNew)" />
+                        @if (!_isNew)
+                        {
+                            <div class="form-text">数据源名称是基线的唯一键。</div>
+                        }
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">最低综合分</label>
+                        <InputNumber class="form-control" @bind-Value="_editing.MinimumOverallScore" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">最低完整性</label>
+                        <InputNumber class="form-control" @bind-Value="_editing.MinimumCompleteness" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">最低有效性</label>
+                        <InputNumber class="form-control" @bind-Value="_editing.MinimumValidity" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">最低唯一性</label>
+                        <InputNumber class="form-control" @bind-Value="_editing.MinimumUniqueness" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">最低一致性</label>
+                        <InputNumber class="form-control" @bind-Value="_editing.MinimumConsistency" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">最低异常控制</label>
+                        <InputNumber class="form-control" @bind-Value="_editing.MinimumAnomalyControl" />
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">@_error</div>
+                }
+                <div class="mt-3 d-flex gap-2">
+                    <button class="btn btn-primary" @onclick="SaveAsync">保存</button>
+                    <button class="btn btn-outline-secondary" @onclick="Cancel">取消</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<QualityBaseline> _baselines = new();
+    private QualityBaseline? _editing;
+    private bool _isNew;
+    private bool _loading;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _baselines.Clear();
+            _baselines.AddRange(await BaselineStore.GetAllAsync());
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task CreateAsync()
+    {
+        _isNew = true;
+        _error = null;
+        _editing = new QualityBaseline("", 90, 90, 90, 90, 90, 90);
+        return Task.CompletedTask;
+    }
+
+    private void Edit(QualityBaseline baseline)
+    {
+        _isNew = false;
+        _error = null;
+        _editing = baseline with { };
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editing is null) return;
+        try
+        {
+            _editing.Validate();
+            await BaselineStore.SaveAsync(_editing);
+            _editing = null;
+            _error = null;
+            await LoadAsync();
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void Cancel()
+    {
+        _editing = null;
+        _error = null;
+    }
+
+    private async Task DeleteAsync(string sourceName)
+    {
+        await BaselineStore.DeleteAsync(sourceName);
+        if (string.Equals(_editing?.SourceName, sourceName, StringComparison.OrdinalIgnoreCase))
+            Cancel();
+        await LoadAsync();
+    }
+
+    private static string Format(double? value) => value.HasValue ? $"{value.Value:F1}" : "不限制";
+}
