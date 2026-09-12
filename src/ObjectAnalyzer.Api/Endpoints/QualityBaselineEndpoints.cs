@@ -39,7 +39,14 @@ public static class QualityBaselineEndpoints
                 IQualityBaselineStore store,
                 CancellationToken cancellationToken) =>
             {
-                var baseline = request with { SourceName = sourceName }.ToModel();
+                var baseline = new QualityBaseline(
+                    sourceName,
+                    request.MinimumOverallScore,
+                    request.MinimumCompleteness,
+                    request.MinimumValidity,
+                    request.MinimumUniqueness,
+                    request.MinimumConsistency,
+                    request.MinimumAnomalyControl);
                 try
                 {
                     baseline.Validate();
