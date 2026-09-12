@@ -11,13 +11,13 @@ public sealed class AnalysisJobService
     private readonly IAnalysisHistoryStore _historyStore;
     private readonly IAlertRuleStore _alertRuleStore;
     private readonly IWebhookDeliveryStore _webhookDeliveryStore;
-    private readonly IQualityBaselineStore _qualityBaselineStore;
+    private readonly IQualityBaselineStore? _qualityBaselineStore;
 
     public AnalysisJobService(
         IAnalysisHistoryStore historyStore,
         IAlertRuleStore alertRuleStore,
         IWebhookDeliveryStore webhookDeliveryStore,
-        IQualityBaselineStore qualityBaselineStore)
+        IQualityBaselineStore? qualityBaselineStore = null)
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
@@ -56,12 +56,16 @@ public sealed class AnalysisJobService
         job.IssueCount = result.QualityViolations.Count + checked((int)Math.Min(result.TotalDuplicateGroups, int.MaxValue));
         job.ResultJson = JsonSerializer.Serialize(result);
 
-        var qualityMetrics = QualityMetricsCalculator.Calculate(result);
-        var baseline = await _qualityBaselineStore.GetAsync(job.SourceName, cancellationToken);
-        if (baseline is not null)
+        if (_qualityBaselineStore is not null)
         {
-            var baselineEvaluation = QualityBaselineEvaluator.Evaluate(baseline, qualityMetrics);
-            job.QualityBaselineEvaluationJson = JsonSerializer.Serialize(baselineEvaluation);
+            var baseline = await _qualityBaselineStore.GetAsync(job.SourceName, cancellationToken);
+            if (baseline is not null)
+            {
+                var baselineEvaluation = QualityBaselineEvaluator.Evaluate(
+                    baseline,
+                    QualityMetricsCalculator.Calculate(result));
+                job.QualityBaselineEvaluationJson = JsonSerializer.Serialize(baselineEvaluation);
+            }
         }
 
         if (options is not null)
