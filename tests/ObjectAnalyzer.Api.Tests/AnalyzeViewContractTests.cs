@@ -230,7 +230,7 @@ public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Prog
         JsonElement snapshot = default;
         for (int i = 0; i < 100; i++)
         {
-            var response = await client.GetAsync($"/api/analyze/async/{jobId}");
+            var response = await client.GetAsync($"/api/analyze/async/{jobIdText}");
             Assert.True(response.IsSuccessStatusCode);
             snapshot = await response.Content.ReadFromJsonAsync<JsonElement>();
             if (snapshot.GetProperty("status").GetString() != "Running")
