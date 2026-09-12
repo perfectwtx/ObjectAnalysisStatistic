@@ -25,7 +25,7 @@ public static class QualityBaselineEvaluator
     }
 
     private static void AddFailure(
-        ICollection<QualityBaselineFailure> failures,
+        List<QualityBaselineFailure> failures,
         string metric,
         double actual,
         double? minimum)
