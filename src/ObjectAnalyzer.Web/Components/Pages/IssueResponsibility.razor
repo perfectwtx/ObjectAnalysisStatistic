@@ -1,0 +1,192 @@
+@page "/issues/responsibility"
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+@inject IQualityIssueQuery QualityIssueQuery
+@inject IQualityIssueResponsibilityStore ResponsibilityStore
+
+<PageTitle>问题责任</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>问题责任与处理</h1>
+            <p class="text-muted mb-0">为质量问题指定责任人，并跟踪问题的处理状态。</p>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+    </div>
+
+    @if (_loading)
+    {
+        <p>加载中...</p>
+    }
+    else if (_jobs.Count == 0)
+    {
+        <div class="alert alert-info">暂无分析任务。</div>
+    }
+    else
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <label class="form-label">分析任务</label>
+                <select class="form-select" @onchange="OnJobChanged">
+                    @foreach (var job in _jobs)
+                    {
+                        <option value="@job.Id" selected="@(job.Id == _selectedJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (_issues.Count == 0)
+        {
+            <div class="alert alert-success">当前分析没有质量问题，无需分配责任。</div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-header">问题责任清单</div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>字段</th>
+                                <th>检查类型</th>
+                                <th>次数</th>
+                                <th>责任人</th>
+                                <th>状态</th>
+                                <th>备注</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in _items)
+                        {
+                            <tr>
+                                <td><strong>@item.Issue.FieldName</strong></td>
+                                <td><span class="badge text-bg-warning">@item.Issue.Check</span></td>
+                                <td>@item.Issue.Count</td>
+                                <td style="min-width: 160px"><input class="form-control form-control-sm" @bind="item.Owner" placeholder="责任人" /></td>
+                                <td style="min-width: 130px">
+                                    <select class="form-select form-select-sm" @bind="item.Status">
+                                        <option value="Open">待处理</option>
+                                        <option value="InProgress">处理中</option>
+                                        <option value="Resolved">已解决</option>
+                                        <option value="Ignored">已忽略</option>
+                                    </select>
+                                </td>
+                                <td style="min-width: 220px"><input class="form-control form-control-sm" @bind="item.Comment" placeholder="处理备注" /></td>
+                                <td><button class="btn btn-sm btn-primary" @onclick="() => SaveAsync(item)">保存</button></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert alert-success mt-3">@_message</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="alert alert-danger mt-3">@_error</div>
+        }
+    }
+</div>
+
+@code {
+    private readonly List<AnalysisJob> _jobs = new();
+    private readonly List<IssueItem> _items = new();
+    private List<QualityIssue> _issues = new();
+    private AnalysisJob? _selectedJob;
+    private bool _loading;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _message = null;
+        _error = null;
+        try
+        {
+            _jobs.Clear();
+            _jobs.AddRange((await HistoryStore.GetRecentAsync(100))
+                .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+                .OrderByDescending(x => x.StartedAtUtc));
+            _selectedJob = _jobs.FirstOrDefault();
+            await LoadIssuesAsync(_selectedJob);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id))
+        {
+            _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
+            await LoadIssuesAsync(_selectedJob);
+        }
+    }
+
+    private async Task LoadIssuesAsync(AnalysisJob? job)
+    {
+        _issues = job is null ? new List<QualityIssue>() : (await QualityIssueQuery.GetByJobAsync(job.Id)).ToList();
+        _items.Clear();
+        if (job is null)
+            return;
+
+        var responsibilities = (await ResponsibilityStore.GetByJobAsync(job.Id))
+            .ToDictionary(x => (x.FieldName, x.Check), x => x, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var issue in _issues)
+        {
+            responsibilities.TryGetValue((issue.FieldName, issue.Check), out var responsibility);
+            _items.Add(new IssueItem
+            {
+                Issue = issue,
+                Owner = responsibility?.Owner,
+                Status = responsibility?.Status ?? "Open",
+                Comment = responsibility?.Comment
+            });
+        }
+    }
+
+    private async Task SaveAsync(IssueItem item)
+    {
+        _message = null;
+        _error = null;
+        try
+        {
+            var responsibility = new QualityIssueResponsibility(
+                item.Issue.JobId,
+                item.Issue.FieldName,
+                item.Issue.Check,
+                string.IsNullOrWhiteSpace(item.Owner) ? null : item.Owner.Trim(),
+                item.Status,
+                string.IsNullOrWhiteSpace(item.Comment) ? null : item.Comment.Trim(),
+                DateTime.UtcNow);
+            responsibility.Validate();
+            await ResponsibilityStore.SaveAsync(responsibility);
+            _message = $"已保存：{item.Issue.FieldName} / {item.Issue.Check}";
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed class IssueItem
+    {
+        public required QualityIssue Issue { get; init; }
+        public string? Owner { get; set; }
+        public string Status { get; set; } = "Open";
+        public string? Comment { get; set; }
+    }
+}
