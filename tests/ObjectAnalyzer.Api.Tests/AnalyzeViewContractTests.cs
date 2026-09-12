@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Api.Tests;
