@@ -56,6 +56,14 @@ public sealed class AnalysisJobService
         job.IssueCount = result.QualityViolations.Count + checked((int)Math.Min(result.TotalDuplicateGroups, int.MaxValue));
         job.ResultJson = JsonSerializer.Serialize(result);
 
+        var qualityMetrics = QualityMetricsCalculator.Calculate(result);
+        var baseline = await _qualityBaselineStore.GetAsync(job.SourceName, cancellationToken);
+        if (baseline is not null)
+        {
+            var baselineEvaluation = QualityBaselineEvaluator.Evaluate(baseline, qualityMetrics);
+            job.QualityBaselineEvaluationJson = JsonSerializer.Serialize(baselineEvaluation);
+        }
+
         if (options is not null)
         {
             job.GateResultsJson = JsonSerializer.Serialize(
