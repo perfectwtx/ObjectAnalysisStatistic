@@ -7,37 +7,31 @@ using Scalar.AspNetCore;
 // ── ObjectAnalyzer Mini API ──
 // 为 React 前端（Vite 开发服务器）提供 HTTP 分析接口。
 // 端点按资源拆分在 Endpoints/ 下，这里只做启动、服务注册与路由分组挂载：
-//   Endpoints/HealthEndpoints.cs   GET  /api/health
-//   Endpoints/RulesEndpoints.cs    POST /api/rules/validate、GET /api/rules/reference
-//   Endpoints/AnalyzeEndpoints.cs  POST /api/analyze、/api/analyze/config、/api/analyze/raw
+//   Endpoints/HealthEndpoints.cs           GET  /api/health
+//   Endpoints/RulesEndpoints.cs            POST /api/rules/validate、GET /api/rules/reference
+//   Endpoints/AnalyzeEndpoints.cs         POST /api/analyze、/api/analyze/config、/api/analyze/raw
+//   Endpoints/QualityBaselineEndpoints.cs GET/PUT/DELETE /api/quality-baselines
 var builder = WebApplication.CreateBuilder(args);
 
-// React 前端（Vite 开发服务器）跨域访问
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000")
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
-// 响应统一 camelCase、省略 null
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-    // 枚举序列化为字符串（默认是数字），与 OpenAPI / Scalar / 前端字符串状态码约定一致
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// OpenAPI 文档 + Scalar 交互式界面（/scalar）。
-// GenerateDocumentationFile 开启后，类型/属性的 XML 注释会自动进入 OpenAPI 描述。
 builder.Services.AddOpenApi();
 
-// 分析平台：API 与 Web 共用持久化作业、质量历史与告警能力。
 var historyDbPath = Path.Combine(AppContext.BaseDirectory, "data", "objectanalyzer.db");
 builder.Services.AddAnalysisPlatform(historyDbPath);
 
 var app = builder.Build();
 
-// 平台历史数据库初始化。这样同步/异步 API 在第一个请求到达前即可安全创建所需表。
 await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
 await app.Services.GetRequiredService<IQualityBaselineStore>().InitializeAsync();
 await app.Services.GetRequiredService<IAlertRuleStore>().InitializeAsync();
@@ -45,21 +39,21 @@ await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync()
 
 app.UseCors();
 
-app.MapOpenApi();           // GET /openapi/v1.json
+app.MapOpenApi();
 app.MapScalarApiReference(options =>
 {
     options.Title = "ObjectAnalyzer Mini API";
     options.Theme = ScalarTheme.Purple;
     options.DefaultHttpClient = new(ScalarTarget.CSharp, ScalarClient.HttpClient);
-});                         // GET /scalar
+});
 
-// 按资源挂载端点组（统一前缀 /api）
 var api = app.MapGroup("/api");
 api.MapHealthApi();
 api.MapRulesApi();
 api.MapAnalyzeApi();
 api.MapPreflightApi();
 api.MapAsyncAnalyzeApi();
+api.MapQualityBaselineApi();
 
 app.Run();
 
