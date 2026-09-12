@@ -142,12 +142,12 @@
         if (job is null)
             return;
 
-        var responsibilities = (await ResponsibilityStore.GetByJobAsync(job.Id))
-            .ToDictionary(x => (x.FieldName, x.Check), x => x, StringComparer.OrdinalIgnoreCase);
-
+        var responsibilities = await ResponsibilityStore.GetByJobAsync(job.Id);
         foreach (var issue in _issues)
         {
-            responsibilities.TryGetValue((issue.FieldName, issue.Check), out var responsibility);
+            var responsibility = responsibilities.FirstOrDefault(x =>
+                string.Equals(x.FieldName, issue.FieldName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.Check, issue.Check, StringComparison.OrdinalIgnoreCase));
             _items.Add(new IssueItem
             {
                 Issue = issue,
