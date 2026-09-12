@@ -5,18 +5,24 @@ using ObjectAnalyzer.Analysis.Gates;
 
 namespace ObjectAnalyzer.Platform;
 
-/// <summary>负责分析作业生命周期、质量评分、历史归档与质量告警入队。</summary>
+/// <summary>负责分析作业生命周期、质量评分、质量基线、历史归档与质量告警入队。</summary>
 public sealed class AnalysisJobService
 {
     private readonly IAnalysisHistoryStore _historyStore;
     private readonly IAlertRuleStore _alertRuleStore;
     private readonly IWebhookDeliveryStore _webhookDeliveryStore;
+    private readonly IQualityBaselineStore _qualityBaselineStore;
 
-    public AnalysisJobService(IAnalysisHistoryStore historyStore, IAlertRuleStore alertRuleStore, IWebhookDeliveryStore webhookDeliveryStore)
+    public AnalysisJobService(
+        IAnalysisHistoryStore historyStore,
+        IAlertRuleStore alertRuleStore,
+        IWebhookDeliveryStore webhookDeliveryStore,
+        IQualityBaselineStore qualityBaselineStore)
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
         _webhookDeliveryStore = webhookDeliveryStore;
+        _qualityBaselineStore = qualityBaselineStore;
     }
 
     public Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
@@ -62,6 +68,7 @@ public sealed class AnalysisJobService
             CreateFieldSnapshots(job.Id, result),
             CreateQualityIssues(job.Id, result),
             cancellationToken);
+
         await EnqueueAlertsAsync(job, result, previousJob, cancellationToken);
     }
 
