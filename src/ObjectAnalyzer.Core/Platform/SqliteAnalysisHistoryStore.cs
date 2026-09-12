@@ -5,6 +5,7 @@ namespace ObjectAnalyzer.Platform;
 /// <summary>默认的本地作业历史存储。数据库文件默认位于应用数据目录。</summary>
 public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
 {
+    private static readonly SemaphoreSlim s_writeLock = new(1, 1);
     private readonly string _connectionString;
 
     public SqliteAnalysisHistoryStore(string databasePath)
@@ -98,115 +99,131 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
 
     public async Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            INSERT INTO analysis_jobs
-            (id, source_name, source_type, status, started_at_utc, completed_at_utc,
-             duration_ms, total_objects, field_count, quality_score, issue_count,
-             error_message, result_json, gate_results_json)
-            VALUES
-            ($id, $sourceName, $sourceType, $status, $startedAt, $completedAt,
-             $duration, $totalObjects, $fieldCount, $qualityScore, $issueCount,
-             $errorMessage, $resultJson, $gateResultsJson)
-            ON CONFLICT(id) DO UPDATE SET
-                source_name = excluded.source_name,
-                source_type = excluded.source_type,
-                status = excluded.status,
-                started_at_utc = excluded.started_at_utc,
-                completed_at_utc = excluded.completed_at_utc,
-                duration_ms = excluded.duration_ms,
-                total_objects = excluded.total_objects,
-                field_count = excluded.field_count,
-                quality_score = excluded.quality_score,
-                issue_count = excluded.issue_count,
-                error_message = excluded.error_message,
-                result_json = excluded.result_json,
-                gate_results_json = excluded.gate_results_json;
-            """;
-        AddParameters(command, job);
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    public async Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default)
-    {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var transaction = connection.BeginTransaction();
+        await s_writeLock.WaitAsync(cancellationToken);
         try
         {
-            await ExecuteAsync(connection, transaction, """
-                INSERT INTO quality_snapshots
-                (job_id, source_name, occurred_at_utc, total_objects, field_count, issue_count,
-                 completeness, validity, uniqueness, consistency, anomaly_control, overall_score)
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO analysis_jobs
+                (id, source_name, source_type, status, started_at_utc, completed_at_utc,
+                 duration_ms, total_objects, field_count, quality_score, issue_count,
+                 error_message, result_json, gate_results_json)
                 VALUES
-                ($jobId, $sourceName, $occurredAt, $totalObjects, $fieldCount, $issueCount,
-                 $completeness, $validity, $uniqueness, $consistency, $anomalyControl, $overallScore)
-                ON CONFLICT(job_id) DO UPDATE SET
+                ($id, $sourceName, $sourceType, $status, $startedAt, $completedAt,
+                 $duration, $totalObjects, $fieldCount, $qualityScore, $issueCount,
+                 $errorMessage, $resultJson, $gateResultsJson)
+                ON CONFLICT(id) DO UPDATE SET
                     source_name = excluded.source_name,
-                    occurred_at_utc = excluded.occurred_at_utc,
+                    source_type = excluded.source_type,
+                    status = excluded.status,
+                    started_at_utc = excluded.started_at_utc,
+                    completed_at_utc = excluded.completed_at_utc,
+                    duration_ms = excluded.duration_ms,
                     total_objects = excluded.total_objects,
                     field_count = excluded.field_count,
+                    quality_score = excluded.quality_score,
                     issue_count = excluded.issue_count,
-                    completeness = excluded.completeness,
-                    validity = excluded.validity,
-                    uniqueness = excluded.uniqueness,
-                    consistency = excluded.consistency,
-                    anomaly_control = excluded.anomaly_control,
-                    overall_score = excluded.overall_score;
-                """,
-                new Dictionary<string, object?>
-                {
-                    ["$jobId"] = snapshot.JobId.ToString("D"), ["$sourceName"] = snapshot.SourceName,
-                    ["$occurredAt"] = snapshot.OccurredAtUtc.ToString("O"), ["$totalObjects"] = snapshot.TotalObjects,
-                    ["$fieldCount"] = snapshot.FieldCount, ["$issueCount"] = snapshot.IssueCount,
-                    ["$completeness"] = snapshot.Metrics.Completeness, ["$validity"] = snapshot.Metrics.Validity,
-                    ["$uniqueness"] = snapshot.Metrics.Uniqueness, ["$consistency"] = snapshot.Metrics.Consistency,
-                    ["$anomalyControl"] = snapshot.Metrics.AnomalyControl, ["$overallScore"] = snapshot.Metrics.OverallScore
-                }, cancellationToken);
-
-            foreach (var field in fields)
-            {
-                await ExecuteAsync(connection, transaction, """
-                    INSERT INTO field_quality_snapshots
-                    (job_id, field_name, coverage, null_rate, uniqueness, outlier_ratio)
-                    VALUES ($jobId, $fieldName, $coverage, $nullRate, $uniqueness, $outlierRatio)
-                    ON CONFLICT(job_id, field_name) DO UPDATE SET
-                        coverage = excluded.coverage, null_rate = excluded.null_rate,
-                        uniqueness = excluded.uniqueness, outlier_ratio = excluded.outlier_ratio;
-                    """,
-                    new Dictionary<string, object?>
-                    {
-                        ["$jobId"] = field.JobId.ToString("D"), ["$fieldName"] = field.FieldName,
-                        ["$coverage"] = field.Coverage, ["$nullRate"] = field.NullRate,
-                        ["$uniqueness"] = (object?)field.Uniqueness ?? DBNull.Value,
-                        ["$outlierRatio"] = (object?)field.OutlierRatio ?? DBNull.Value
-                    }, cancellationToken);
-            }
-
-            foreach (var issue in issues)
-            {
-                await ExecuteAsync(connection, transaction, """
-                    INSERT INTO quality_issues
-                    (job_id, field_name, check_type, issue_count, message)
-                    VALUES ($jobId, $fieldName, $checkType, $issueCount, $message)
-                    ON CONFLICT(job_id, field_name, check_type) DO UPDATE SET
-                        issue_count = excluded.issue_count, message = excluded.message;
-                    """,
-                    new Dictionary<string, object?>
-                    {
-                        ["$jobId"] = issue.JobId.ToString("D"), ["$fieldName"] = issue.FieldName,
-                        ["$checkType"] = issue.Check, ["$issueCount"] = issue.Count, ["$message"] = issue.Message
-                    }, cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
+                    error_message = excluded.error_message,
+                    result_json = excluded.result_json,
+                    gate_results_json = excluded.gate_results_json;
+                """;
+            AddParameters(command, job);
+            await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch
+        finally
         {
-            await transaction.RollbackAsync(CancellationToken.None);
-            throw;
+            s_writeLock.Release();
+        }
+    }
+
+    public async Task SaveQualitySnapshotAsync( QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default)
+    {
+        await s_writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = connection.BeginTransaction();
+            try
+            {
+                await ExecuteAsync(connection, transaction, """
+                    INSERT INTO quality_snapshots
+                    (job_id, source_name, occurred_at_utc, total_objects, field_count, issue_count,
+                     completeness, validity, uniqueness, consistency, anomaly_control, overall_score)
+                    VALUES
+                    ($jobId, $sourceName, $occurredAt, $totalObjects, $fieldCount, $issueCount,
+                     $completeness, $validity, $uniqueness, $consistency, $anomalyControl, $overallScore)
+                    ON CONFLICT(job_id) DO UPDATE SET
+                        source_name = excluded.source_name,
+                        occurred_at_utc = excluded.occurred_at_utc,
+                        total_objects = excluded.total_objects,
+                        field_count = excluded.field_count,
+                        issue_count = excluded.issue_count,
+                        completeness = excluded.completeness,
+                        validity = excluded.validity,
+                        uniqueness = excluded.uniqueness,
+                        consistency = excluded.consistency,
+                        anomaly_control = excluded.anomaly_control,
+                        overall_score = excluded.overall_score;
+                    """,
+                    new Dictionary<string, object?>
+                    {
+                        ["$jobId"] = snapshot.JobId.ToString("D"), ["$sourceName"] = snapshot.SourceName,
+                        ["$occurredAt"] = snapshot.OccurredAtUtc.ToString("O"), ["$totalObjects"] = snapshot.TotalObjects,
+                        ["$fieldCount"] = snapshot.FieldCount, ["$issueCount"] = snapshot.IssueCount,
+                        ["$completeness"] = snapshot.Metrics.Completeness, ["$validity"] = snapshot.Metrics.Validity,
+                        ["$uniqueness"] = snapshot.Metrics.Uniqueness, ["$consistency"] = snapshot.Metrics.Consistency,
+                        ["$anomalyControl"] = snapshot.Metrics.AnomalyControl, ["$overallScore"] = snapshot.Metrics.OverallScore
+                    }, cancellationToken);
+
+                foreach (var field in fields)
+                {
+                    await ExecuteAsync(connection, transaction, """
+                        INSERT INTO field_quality_snapshots
+                        (job_id, field_name, coverage, null_rate, uniqueness, outlier_ratio)
+                        VALUES ($jobId, $fieldName, $coverage, $nullRate, $uniqueness, $outlierRatio)
+                        ON CONFLICT(job_id, field_name) DO UPDATE SET
+                            coverage = excluded.coverage, null_rate = excluded.null_rate,
+                            uniqueness = excluded.uniqueness, outlier_ratio = excluded.outlier_ratio;
+                        """,
+                        new Dictionary<string, object?>
+                        {
+                            ["$jobId"] = field.JobId.ToString("D"), ["$fieldName"] = field.FieldName,
+                            ["$coverage"] = field.Coverage, ["$nullRate"] = field.NullRate,
+                            ["$uniqueness"] = (object?)field.Uniqueness ?? DBNull.Value,
+                            ["$outlierRatio"] = (object?)field.OutlierRatio ?? DBNull.Value
+                        }, cancellationToken);
+                }
+
+                foreach (var issue in issues)
+                {
+                    await ExecuteAsync(connection, transaction, """
+                        INSERT INTO quality_issues
+                        (job_id, field_name, check_type, issue_count, message)
+                        VALUES ($jobId, $fieldName, $checkType, $issueCount, $message)
+                        ON CONFLICT(job_id, field_name, check_type) DO UPDATE SET
+                            issue_count = excluded.issue_count, message = excluded.message;
+                        """,
+                        new Dictionary<string, object?>
+                        {
+                            ["$jobId"] = issue.JobId.ToString("D"), ["$fieldName"] = issue.FieldName,
+                            ["$checkType"] = issue.Check, ["$issueCount"] = issue.Count, ["$message"] = issue.Message
+                        }, cancellationToken);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
+            }
+        }
+        finally
+        {
+            s_writeLock.Release();
         }
     }
 
