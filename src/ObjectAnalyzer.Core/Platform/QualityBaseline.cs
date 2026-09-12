@@ -27,7 +27,7 @@ public sealed record QualityBaseline(
     private static void ValidateThreshold(double? value, string name)
     {
         if (value is < 0 or > 100)
-            throw new ArgumentOutOfRangeException(name, "质量阈值必须位于 0 到 100 之间。 ");
+            throw new ArgumentOutOfRangeException(name, "质量阈值必须位于 0 到 100 之间。");
     }
 }
 
