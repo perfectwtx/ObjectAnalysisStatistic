@@ -113,7 +113,7 @@
 
 @code {
     private readonly List<QualityBaseline> _baselines = new();
-    private QualityBaseline? _editing;
+    private QualityBaselineEditor? _editing;
     private bool _isNew;
     private bool _loading;
     private string? _error;
@@ -138,7 +138,7 @@
     {
         _isNew = true;
         _error = null;
-        _editing = new QualityBaseline("", 90, 90, 90, 90, 90, 90);
+        _editing = new QualityBaselineEditor();
         return Task.CompletedTask;
     }
 
@@ -146,7 +146,7 @@
     {
         _isNew = false;
         _error = null;
-        _editing = baseline with { };
+        _editing = QualityBaselineEditor.From(baseline);
     }
 
     private async Task SaveAsync()
@@ -154,13 +154,14 @@
         if (_editing is null) return;
         try
         {
-            _editing.Validate();
-            await BaselineStore.SaveAsync(_editing);
+            var baseline = _editing.ToModel();
+            baseline.Validate();
+            await BaselineStore.SaveAsync(baseline);
             _editing = null;
             _error = null;
             await LoadAsync();
         }
-        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        catch (ArgumentException ex)
         {
             _error = ex.Message;
         }
@@ -181,4 +182,35 @@
     }
 
     private static string Format(double? value) => value.HasValue ? $"{value.Value:F1}" : "不限制";
+
+    private sealed class QualityBaselineEditor
+    {
+        public string SourceName { get; set; } = "";
+        public double? MinimumOverallScore { get; set; } = 90;
+        public double? MinimumCompleteness { get; set; } = 90;
+        public double? MinimumValidity { get; set; } = 90;
+        public double? MinimumUniqueness { get; set; } = 90;
+        public double? MinimumConsistency { get; set; } = 90;
+        public double? MinimumAnomalyControl { get; set; } = 90;
+
+        public QualityBaseline ToModel() => new(
+            SourceName,
+            MinimumOverallScore,
+            MinimumCompleteness,
+            MinimumValidity,
+            MinimumUniqueness,
+            MinimumConsistency,
+            MinimumAnomalyControl);
+
+        public static QualityBaselineEditor From(QualityBaseline baseline) => new()
+        {
+            SourceName = baseline.SourceName,
+            MinimumOverallScore = baseline.MinimumOverallScore,
+            MinimumCompleteness = baseline.MinimumCompleteness,
+            MinimumValidity = baseline.MinimumValidity,
+            MinimumUniqueness = baseline.MinimumUniqueness,
+            MinimumConsistency = baseline.MinimumConsistency,
+            MinimumAnomalyControl = baseline.MinimumAnomalyControl
+        };
+    }
 }
