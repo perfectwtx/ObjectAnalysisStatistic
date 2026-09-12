@@ -53,7 +53,7 @@ public sealed class QualityBaselineTests
             MinimumUniqueness: null,
             MinimumConsistency: null,
             MinimumAnomalyControl: null);
-        var actual = new QualityMetrics(10, 96, 10, 10, 10);
+        var actual = new QualityMetrics(96, 10, 10, 10, 10);
 
         var result = QualityBaselineEvaluator.Evaluate(baseline, actual);
 
