@@ -6,11 +6,7 @@ using Scalar.AspNetCore;
 
 // ── ObjectAnalyzer Mini API ──
 // 为 React 前端（Vite 开发服务器）提供 HTTP 分析接口。
-// 端点按资源拆分在 Endpoints/ 下，这里只做启动、服务注册与路由分组挂载：
-//   Endpoints/HealthEndpoints.cs           GET  /api/health
-//   Endpoints/RulesEndpoints.cs            POST /api/rules/validate、GET /api/rules/reference
-//   Endpoints/AnalyzeEndpoints.cs         POST /api/analyze、/api/analyze/config、/api/analyze/raw
-//   Endpoints/QualityBaselineEndpoints.cs GET/PUT/DELETE /api/quality-baselines
+// 端点按资源拆分在 Endpoints/ 下，这里只做启动、服务注册与路由分组挂载。
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
@@ -33,6 +29,7 @@ builder.Services.AddAnalysisPlatform(historyDbPath);
 var app = builder.Build();
 
 await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
+await app.Services.GetRequiredService<IQualityIssueResponsibilityStore>().InitializeAsync();
 await app.Services.GetRequiredService<IQualityBaselineStore>().InitializeAsync();
 await app.Services.GetRequiredService<IAlertRuleStore>().InitializeAsync();
 await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync();
