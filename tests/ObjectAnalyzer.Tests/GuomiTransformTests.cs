@@ -31,7 +31,7 @@ public class GuomiTransformTests
     {
         // 用 BouncyCastle 加密得到合法 ciphertext，再让 transform 解密验证
         string keyHex = "0123456789abcdeffedcba9876543210";
-        string plain = "0123456789abcdeffedcba9876543210";
+        string plain = "0123456789abcdef fedcba9876543210".Replace(" ", "");
         byte[] expectedCipher = Sm4EncryptEcb(HexToBytes(keyHex), Encoding.UTF8.GetBytes(plain));
 
         var rules = new AnalysisRules();
@@ -335,14 +335,20 @@ public class GuomiTransformTests
 
     private static string ExportPublicKeyBase64(Org.BouncyCastle.Crypto.Parameters.ECPublicKeyParameters pub)
     {
-        // 导出为 04 || X (32) || Y (32) 未压缩点
-        byte[] x = pub.Q.AffineXCoord.ToBigInteger().ToByteArrayUnsigned();
-        byte[] y = pub.Q.AffineYCoord.ToBigInteger().ToByteArrayUnsigned();
-        var result = new byte[65];
+        // 导出为 04 || X (32) || Y (32) 未压缩点；坐标不足 32 字节时必须左侧补 0。
+        byte[] result = new byte[65];
         result[0] = 0x04;
-        Array.Copy(x, 0, result, 1, x.Length);
-        Array.Copy(y, 0, result, 33, y.Length);
+        WriteFixedWidth(pub.Q.AffineXCoord.ToBigInteger().ToByteArrayUnsigned(), result, 1);
+        WriteFixedWidth(pub.Q.AffineYCoord.ToBigInteger().ToByteArrayUnsigned(), result, 33);
         return Convert.ToBase64String(result);
+    }
+
+    private static void WriteFixedWidth(byte[] value, byte[] destination, int offset)
+    {
+        if (value.Length > 32)
+            throw new InvalidDataException($"SM2 公钥坐标长度不能超过 32 字节，当前 {value.Length} 字节。");
+
+        value.CopyTo(destination.AsSpan(offset + 32 - value.Length, value.Length));
     }
 
     private static byte[] Sm4EncryptEcb(byte[] key, byte[] plain)
