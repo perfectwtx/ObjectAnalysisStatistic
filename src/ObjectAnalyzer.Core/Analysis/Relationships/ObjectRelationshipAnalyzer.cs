@@ -89,8 +89,7 @@ public static class ObjectRelationshipAnalyzer
         state.NonNullCount++;
         foreach (var field in target.Keys)
         {
-            if (state.TargetFields.Count >= MaxTargetFields) break;
-            state.TargetFields.Add(field);
+            state.AddTargetField(field);
         }
     }
 
@@ -126,9 +125,13 @@ public static class ObjectRelationshipAnalyzer
         public string Kind { get; }
         public long OccurrenceCount { get; set; }
         public long NonNullCount { get; set; }
-        public List<string> TargetFields => _targetFields.Take(MaxTargetFields).ToList();
+        public IReadOnlyCollection<string> TargetFields => _targetFields;
 
-        public void AddTargetField(string field) => _targetFields.Add(field);
+        public void AddTargetField(string field)
+        {
+            if (_targetFields.Count < MaxTargetFields)
+                _targetFields.Add(field);
+        }
 
         public ObjectRelationship ToResult() => new()
         {
@@ -137,7 +140,7 @@ public static class ObjectRelationshipAnalyzer
             OccurrenceCount = OccurrenceCount,
             NonNullCount = NonNullCount,
             TargetFieldCount = _targetFields.Count,
-            TargetFields = TargetFields
+            TargetFields = _targetFields.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList()
         };
     }
 }
