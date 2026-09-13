@@ -10,9 +10,11 @@ public static class PlatformServiceCollectionExtensions
         services.AddSingleton<IQualityHistoryQuery>(_ => new SqliteQualityHistoryQuery(databasePath));
         services.AddSingleton<IQualityIssueQuery>(_ => new SqliteQualityIssueQuery(databasePath));
         services.AddSingleton<IQualityIssueResponsibilityStore>(_ => new SqliteQualityIssueResponsibilityStore(databasePath));
+        services.AddSingleton<IQualityIssueRemediationStore>(_ => new SqliteQualityIssueRemediationStore(databasePath));
         services.AddSingleton<IQualityBaselineStore>(_ => new SqliteQualityBaselineStore(databasePath));
         services.AddSingleton<IAlertRuleStore>(_ => new SqliteAlertRuleStore(databasePath));
         services.AddSingleton<IWebhookDeliveryStore>(_ => new SqliteWebhookDeliveryStore(databasePath));
+        services.AddScoped<QualityIssueRemediationVerifier>();
         services.AddScoped<AnalysisJobService>();
         services.AddScoped<AnalysisExecutionCoordinator>();
         return services;
