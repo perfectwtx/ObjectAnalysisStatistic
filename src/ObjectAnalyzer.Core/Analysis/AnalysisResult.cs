@@ -24,6 +24,10 @@ public class AnalysisResult
     /// </summary>
     public List<FieldViolation> QualityViolations { get; set; } = new();
 
+    /// <summary>从嵌套对象和对象集合中发现的数据关系。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<ObjectRelationship>? ObjectRelationships { get; set; }
+
     // ── P6.2 增量分析 / 断点续跑：AnalysisResult 级别合并 ──
 
     /// <summary>
@@ -38,6 +42,7 @@ public class AnalysisResult
     /// - 深度分析 维度（CorrelationMatrix / StringPatterns / UnicodeHygiene / FuzzyDuplicates /
     ///   TimeSeriesAnalyses / DistributionDiff / SamplingConfidence / SchemaDiff）：
     ///   仅在 <c>this</c> 为空时采用 <c>other</c>，避免覆盖当前 run 的结果（深度分析 不可增量合并）
+    /// - ObjectRelationships：按 Kind + Path 合并计数并合并目标字段摘要
     /// - <see cref="FilterExpression"/>：取 this（确定性优先）
     ///
     /// 不会抛异常——空对象合并保持幂等；用于跨多次增量 run 累积。
@@ -78,6 +83,40 @@ public class AnalysisResult
         if (other.QualityViolations is { Count: > 0 })
         {
             QualityViolations.AddRange(other.QualityViolations);
+        }
+
+        if (other.ObjectRelationships is { Count: > 0 })
+        {
+            ObjectRelationships ??= new List<ObjectRelationship>();
+            var byKey = ObjectRelationships.ToDictionary(
+                x => $"{x.Kind}\n{x.Path}",
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var incoming in other.ObjectRelationships)
+            {
+                string key = $"{incoming.Kind}\n{incoming.Path}";
+                if (!byKey.TryGetValue(key, out var existing))
+                {
+                    existing = new ObjectRelationship
+                    {
+                        Path = incoming.Path,
+                        Kind = incoming.Kind
+                    };
+                    ObjectRelationships.Add(existing);
+                    byKey[key] = existing;
+                }
+
+                existing.OccurrenceCount += incoming.OccurrenceCount;
+                existing.NonNullCount += incoming.NonNullCount;
+                foreach (var field in incoming.TargetFields)
+                {
+                    if (!existing.TargetFields.Contains(field, StringComparer.OrdinalIgnoreCase)
+                        && existing.TargetFields.Count < 50)
+                    {
+                        existing.TargetFields.Add(field);
+                    }
+                }
+                existing.TargetFieldCount = Math.Max(existing.TargetFieldCount, existing.TargetFields.Count);
+            }
         }
 
         // 深度分析 维度：this 为空时采用 other（避免覆盖当前 run）
