@@ -1,0 +1,140 @@
+@page "/quality/object-relationships"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>对象关系分析</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>对象关系分析</h1>
+            <p class="text-muted mb-0">查看最近一次成功分析发现的嵌套对象与对象集合关系。</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="alert alert-info">正在加载最近一次分析结果...</div>
+    }
+    else if (_job is null)
+    {
+        <div class="alert alert-secondary">暂无成功的分析记录。</div>
+    }
+    else if (_relationships.Count == 0)
+    {
+        <div class="alert alert-secondary">
+            最近一次分析没有发现嵌套对象关系。当前分析结果可能只包含扁平字段，或没有可识别的对象/集合结构。
+        </div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted">关系数量</div>
+                    <div class="display-6">@_relationships.Count</div>
+                </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted">对象关系</div>
+                    <div class="display-6">@_relationships.Count(x => x.Kind == "Object")</div>
+                </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted">集合关系</div>
+                    <div class="display-6">@_relationships.Count(x => x.Kind == "Collection")</div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>嵌套关系</span>
+                <span class="text-muted small">数据源：@_job.SourceName</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>路径</th>
+                                <th>类型</th>
+                                <th>出现次数</th>
+                                <th>目标字段数</th>
+                                <th>目标字段</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var relationship in _relationships)
+                        {
+                            <tr>
+                                <td><code>@relationship.Path</code></td>
+                                <td>
+                                    <span class="badge @(relationship.Kind == "Collection" ? "bg-info text-dark" : "bg-primary")">
+                                        @(relationship.Kind == "Collection" ? "对象集合" : "对象")
+                                    </span>
+                                </td>
+                                <td>@relationship.OccurrenceCount.ToString("N0")</td>
+                                <td>@relationship.TargetFieldCount</td>
+                                <td>
+                                    @if (relationship.TargetFields.Count == 0)
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@string.Join(", ", relationship.TargetFields)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-light border mt-3">
+            <strong>说明：</strong>路径使用点号表示嵌套层级，例如 <code>order.shipping.address</code>。对象集合会统计集合中可识别的对象元素，并汇总其目标字段。
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private AnalysisJob? _job;
+    private List<ObjectRelationship> _relationships = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HistoryStore.InitializeAsync();
+        var jobs = await HistoryStore.GetRecentAsync(100);
+        _job = jobs
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .FirstOrDefault();
+
+        if (_job is not null)
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+                _relationships = result?.ObjectRelationships?
+                    .OrderByDescending(x => x.OccurrenceCount)
+                    .ThenBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+                    .ToList() ?? new List<ObjectRelationship>();
+            }
+            catch (JsonException)
+            {
+                _relationships.Clear();
+            }
+        }
+
+        _loading = false;
+    }
+}
