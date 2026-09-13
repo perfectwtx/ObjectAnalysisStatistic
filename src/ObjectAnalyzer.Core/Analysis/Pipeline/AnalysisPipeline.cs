@@ -85,7 +85,11 @@ public static class AnalysisPipeline
             objects = WrapWithPreview(objects, preview, ctx.PreviewLimit);
         }
 
-        // 6. 物化判定：模糊去重需要随机访问；分布草图入口 AnalyzeDetailed 内部亦需多遍
+        // 6. 关系跟踪：与统计共用同一次枚举，记录嵌套对象/对象集合关系，避免再次读取输入。
+        IReadOnlyList<ObjectRelationship> objectRelationships = Array.Empty<ObjectRelationship>();
+        objects = ObjectRelationshipAnalyzer.Track(objects, relationships => objectRelationships = relationships);
+
+        // 7. 物化判定：模糊去重需要随机访问；分布草图入口 AnalyzeDetailed 内部亦需多遍
         bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField);
         bool needDistributionSketches =
             !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
@@ -94,7 +98,7 @@ public static class AnalysisPipeline
             ? objects.ToList()
             : new List<Dictionary<string, object?>>();
 
-        // 7. 模糊去重（--fuzzy-dedup-field）
+        // 8. 模糊去重（--fuzzy-dedup-field）
         FuzzyDuplicateReport? fuzzyReport = null;
         if (needFuzzyDedup)
         {
@@ -108,7 +112,7 @@ public static class AnalysisPipeline
             });
         }
 
-        // 8. 统计：进度端口包装（CLI：Spectre 进度条；API/Web：直接执行）
+        // 9. 统计：进度端口包装（CLI：Spectre 进度条；API/Web：直接执行）
         AnalysisResult result = null!;
         Dictionary<string, MergeableQuantileSketch>? quantileSketches = null;
         Dictionary<string, HyperLogLog>? distinctSketches = null;
@@ -145,13 +149,14 @@ public static class AnalysisPipeline
             }
         });
 
-        // 9. 回填与补充统计
+        // 10. 回填与补充统计
         if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
+        result.ObjectRelationships = objectRelationships.ToList();
         transformProcessor.ApplyFailures(result);
         result.FilterExpression = options.FieldSelection.Filter;
         BuildSamplingConfidence(result, options);
 
-        // 10. 预览回调（统计成功完成后一次性交付）
+        // 11. 预览回调（统计成功完成后一次性交付）
         ctx.PreviewSink?.Invoke(preview ?? new List<Dictionary<string, object?>>());
 
         return new PipelineResult
