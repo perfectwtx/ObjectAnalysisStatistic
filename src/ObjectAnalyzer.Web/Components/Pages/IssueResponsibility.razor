@@ -281,7 +281,7 @@
         try
         {
             var completed = string.Equals(item.RemediationStatus, "Completed", StringComparison.OrdinalIgnoreCase)
-                ? DateTime.UtcNow
+                ? (DateTime?)DateTime.UtcNow
                 : null;
             var remediation = new QualityIssueRemediation(
                 Guid.NewGuid(),
