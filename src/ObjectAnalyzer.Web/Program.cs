@@ -99,3 +99,20 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+app.UseAntiforgery();
+app.MapStaticAssets();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
+app.MapGet("/api/checkpoint/{*path}", (string path) =>
+{
+    var checkpointsRoot = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
+    var fullPath = Path.GetFullPath(Path.Combine(checkpointsRoot, path));
+    if (!fullPath.StartsWith(checkpointsRoot, StringComparison.OrdinalIgnoreCase))
+        return Results.BadRequest("拒绝访问：检查点路径必须在 %TEMP%/objectanalyzer-checkpoints/ 内。");
+    if (!System.IO.File.Exists(fullPath)) return Results.NotFound();
+    return Results.File(fullPath, "application/json", Path.GetFileName(fullPath));
+});
+
+app.Run();
+
+public partial class Program { }
