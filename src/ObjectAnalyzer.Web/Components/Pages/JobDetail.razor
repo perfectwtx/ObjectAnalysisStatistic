@@ -149,13 +149,28 @@
             </div>
 
             <div class="row g-3">
-                <div class="col-lg-6"><div class="card h-100"><div class="card-header">Schema 影响</div><div class="card-body">
+                <div class="col-lg-4"><div class="card h-100"><div class="card-header">Schema 影响</div><div class="card-body">
                     @if (_result.SchemaDiff is null) { <span class="text-muted">未产生 Schema Diff。</span> }
                     else { <div class="row text-center"><div class="col-4"><div class="fs-3">@_result.SchemaDiff.AddedFields.Count</div><div class="text-muted">新增</div></div><div class="col-4"><div class="fs-3">@_result.SchemaDiff.ChangedFields.Count</div><div class="text-muted">变更</div></div><div class="col-4"><div class="fs-3">@_result.SchemaDiff.RemovedFields.Count</div><div class="text-muted">删除</div></div></div> }
                 </div></div></div>
-                <div class="col-lg-6"><div class="card h-100"><div class="card-header">字段关系</div><div class="card-body">
+                <div class="col-lg-4"><div class="card h-100"><div class="card-header">字段关系</div><div class="card-body">
                     @if (_result.CorrelationMatrix is null) { <span class="text-muted">未产生字段相关性结果。</span> }
                     else { <div class="row text-center"><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Fields.Count</div><div class="text-muted">字段</div></div><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Samples</div><div class="text-muted">样本</div></div><div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.StrongPairs.Count</div><div class="text-muted">强相关</div></div></div> }
+                </div></div></div>
+                <div class="col-lg-4"><div class="card h-100"><div class="card-header">对象关系</div><div class="card-body">
+                    @if (_result.ObjectRelationships is null || _result.ObjectRelationships.Count == 0)
+                    {
+                        <span class="text-muted">未发现嵌套对象关系。</span>
+                    }
+                    else
+                    {
+                        <div class="row text-center mb-3">
+                            <div class="col-4"><div class="fs-3">@_result.ObjectRelationships.Count</div><div class="text-muted">关系</div></div>
+                            <div class="col-4"><div class="fs-3">@_result.ObjectRelationships.Count(x => x.Kind == "Object")</div><div class="text-muted">对象</div></div>
+                            <div class="col-4"><div class="fs-3">@_result.ObjectRelationships.Count(x => x.Kind == "Collection")</div><div class="text-muted">集合</div></div>
+                        </div>
+                        <a class="btn btn-sm btn-outline-primary" href="/quality/object-relationships">查看全部对象关系</a>
+                    }
                 </div></div></div>
             </div>
         }
