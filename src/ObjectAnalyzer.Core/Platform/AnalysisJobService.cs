@@ -12,17 +12,20 @@ public sealed class AnalysisJobService
     private readonly IAlertRuleStore _alertRuleStore;
     private readonly IWebhookDeliveryStore _webhookDeliveryStore;
     private readonly IQualityBaselineStore? _qualityBaselineStore;
+    private readonly QualityIssueRemediationVerifier? _remediationVerifier;
 
     public AnalysisJobService(
         IAnalysisHistoryStore historyStore,
         IAlertRuleStore alertRuleStore,
         IWebhookDeliveryStore webhookDeliveryStore,
-        IQualityBaselineStore? qualityBaselineStore = null)
+        IQualityBaselineStore? qualityBaselineStore = null,
+        QualityIssueRemediationVerifier? remediationVerifier = null)
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
         _webhookDeliveryStore = webhookDeliveryStore;
         _qualityBaselineStore = qualityBaselineStore;
+        _remediationVerifier = remediationVerifier;
     }
 
     public Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
@@ -74,12 +77,18 @@ public sealed class AnalysisJobService
                 QualityGateEvaluation.EvaluateAll(result, options));
         }
 
+        var currentIssues = CreateQualityIssues(job.Id, result);
         await _historyStore.SaveAsync(job, cancellationToken);
         await _historyStore.SaveQualitySnapshotAsync(
             CreateQualitySnapshot(job, result),
             CreateFieldSnapshots(job.Id, result),
-            CreateQualityIssues(job.Id, result),
+            currentIssues,
             cancellationToken);
+
+        if (_remediationVerifier is not null)
+        {
+            await _remediationVerifier.VerifyAsync(job, previousJob, currentIssues, cancellationToken);
+        }
 
         await EnqueueAlertsAsync(job, result, previousJob, cancellationToken);
     }
