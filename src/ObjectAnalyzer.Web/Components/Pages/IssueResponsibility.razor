@@ -3,14 +3,15 @@
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityIssueQuery QualityIssueQuery
 @inject IQualityIssueResponsibilityStore ResponsibilityStore
+@inject IQualityIssueRemediationStore RemediationStore
 
-<PageTitle>问题责任</PageTitle>
+<PageTitle>问题责任与整改</PageTitle>
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>问题责任与处理</h1>
-            <p class="text-muted mb-0">为质量问题指定责任人，并跟踪问题的处理状态。</p>
+            <h1>问题责任与整改</h1>
+            <p class="text-muted mb-0">为质量问题指定责任人，记录整改措施，并跟踪整改闭环。</p>
         </div>
         <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
     </div>
@@ -76,6 +77,82 @@
                                 </td>
                                 <td style="min-width: 220px"><input class="form-control form-control-sm" @bind="item.Comment" placeholder="处理备注" /></td>
                                 <td><button class="btn btn-sm btn-primary" @onclick="() => SaveAsync(item)">保存</button></td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="7">
+                                    <div class="p-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong>整改记录</strong>
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => StartRemediation(item)">新增整改</button>
+                                        </div>
+
+                                        @if (item.Remediations.Count == 0 && !item.AddingRemediation)
+                                        {
+                                            <span class="text-muted">暂无整改记录。</span>
+                                        }
+
+                                        @if (item.AddingRemediation)
+                                        {
+                                            <div class="border rounded p-3 mb-2 bg-white">
+                                                <div class="row g-2">
+                                                    <div class="col-md-5">
+                                                        <label class="form-label">整改措施</label>
+                                                        <input class="form-control form-control-sm" @bind="item.RemediationAction" placeholder="例如：补齐缺失数据并增加校验" />
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">状态</label>
+                                                        <select class="form-select form-select-sm" @bind="item.RemediationStatus">
+                                                            <option value="Planned">计划中</option>
+                                                            <option value="InProgress">处理中</option>
+                                                            <option value="Completed">已完成</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">截止日期</label>
+                                                        <input type="date" class="form-control form-control-sm" @bind="item.RemediationDueDate" />
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">备注</label>
+                                                        <input class="form-control form-control-sm" @bind="item.RemediationComment" placeholder="整改说明" />
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <button class="btn btn-sm btn-primary me-2" @onclick="() => SaveRemediationAsync(item)">保存整改</button>
+                                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => CancelRemediation(item)">取消</button>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        @if (item.Remediations.Count > 0)
+                                        {
+                                            <div class="table-responsive">
+                                                <table class="table table-sm mb-0 bg-white">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>整改措施</th>
+                                                            <th>状态</th>
+                                                            <th>截止日期</th>
+                                                            <th>完成时间</th>
+                                                            <th>备注</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    @foreach (var remediation in item.Remediations)
+                                                    {
+                                                        <tr>
+                                                            <td>@remediation.Action</td>
+                                                            <td>@GetRemediationStatusText(remediation.Status)</td>
+                                                            <td>@FormatDate(remediation.DueAtUtc)</td>
+                                                            <td>@FormatDateTime(remediation.CompletedAtUtc)</td>
+                                                            <td>@remediation.Comment</td>
+                                                        </tr>
+                                                    }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
                             </tr>
                         }
                         </tbody>
@@ -148,12 +225,14 @@
             var responsibility = responsibilities.FirstOrDefault(x =>
                 string.Equals(x.FieldName, issue.FieldName, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(x.Check, issue.Check, StringComparison.OrdinalIgnoreCase));
+            var remediations = await RemediationStore.GetByIssueAsync(issue.JobId, issue.FieldName, issue.Check);
             _items.Add(new IssueItem
             {
                 Issue = issue,
                 Owner = responsibility?.Owner,
                 Status = responsibility?.Status ?? "Open",
-                Comment = responsibility?.Comment
+                Comment = responsibility?.Comment,
+                Remediations = remediations.ToList()
             });
         }
     }
@@ -182,11 +261,73 @@
         }
     }
 
+    private void StartRemediation(IssueItem item)
+    {
+        _message = null;
+        _error = null;
+        item.AddingRemediation = true;
+        item.RemediationAction = null;
+        item.RemediationStatus = "Planned";
+        item.RemediationDueDate = null;
+        item.RemediationComment = null;
+    }
+
+    private void CancelRemediation(IssueItem item) => item.AddingRemediation = false;
+
+    private async Task SaveRemediationAsync(IssueItem item)
+    {
+        _message = null;
+        _error = null;
+        try
+        {
+            var completed = string.Equals(item.RemediationStatus, "Completed", StringComparison.OrdinalIgnoreCase)
+                ? DateTime.UtcNow
+                : null;
+            var remediation = new QualityIssueRemediation(
+                Guid.NewGuid(),
+                item.Issue.JobId,
+                item.Issue.FieldName,
+                item.Issue.Check,
+                item.RemediationAction?.Trim() ?? string.Empty,
+                item.RemediationStatus,
+                item.RemediationDueDate?.ToUniversalTime(),
+                completed,
+                string.IsNullOrWhiteSpace(item.RemediationComment) ? null : item.RemediationComment.Trim(),
+                DateTime.UtcNow);
+            remediation.Validate();
+            await RemediationStore.SaveAsync(remediation);
+            item.Remediations.Insert(0, remediation);
+            item.AddingRemediation = false;
+            _message = $"已新增整改：{item.Issue.FieldName} / {item.Issue.Check}";
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string GetRemediationStatusText(string status) => status switch
+    {
+        "Planned" => "计划中",
+        "InProgress" => "处理中",
+        "Completed" => "已完成",
+        _ => status
+    };
+
+    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("yyyy-MM-dd") ?? "-";
+    private static string FormatDateTime(DateTime? value) => value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-";
+
     private sealed class IssueItem
     {
         public required QualityIssue Issue { get; init; }
         public string? Owner { get; set; }
         public string Status { get; set; } = "Open";
         public string? Comment { get; set; }
+        public List<QualityIssueRemediation> Remediations { get; init; } = new();
+        public bool AddingRemediation { get; set; }
+        public string? RemediationAction { get; set; }
+        public string RemediationStatus { get; set; } = "Planned";
+        public DateTime? RemediationDueDate { get; set; }
+        public string? RemediationComment { get; set; }
     }
 }
