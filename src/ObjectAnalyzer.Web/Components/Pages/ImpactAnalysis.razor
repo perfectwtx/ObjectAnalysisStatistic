@@ -1,0 +1,133 @@
+@page "/quality/impact-analysis"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>影响分析</PageTitle>
+
+<h1 class="mb-4">影响分析</h1>
+
+@if (_loading)
+{
+    <div class="alert alert-info">正在加载最近一次分析结果...</div>
+}
+else if (_job is null)
+{
+    <div class="alert alert-secondary">暂无成功的分析记录。</div>
+}
+else if (_impact is null)
+{
+    <div class="alert alert-secondary">最近一次分析没有 Schema Diff，无法计算影响范围。</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">最高影响级别</div><div class="display-6">@GetLevelText(_impact.HighestLevel)</div></div></div></div>
+        <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">直接破坏性变更</div><div class="display-6">@_impact.BreakingChangeCount</div></div></div></div>
+        <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">受影响节点</div><div class="display-6">@_impact.Nodes.Count</div></div></div></div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">影响传播</div>
+        <div class="card-body">
+            <div><strong>数据源：</strong>@_job.SourceName</div>
+            <div><strong>分析时间：</strong>@_job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</div>
+            <div class="text-muted mt-2">影响分析会把 Schema 变更沿当前数据血缘向父对象和子节点传播，并降低间接影响等级。</div>
+        </div>
+    </div>
+
+    @if (_impact.Nodes.Count == 0)
+    {
+        <div class="alert alert-success">当前没有检测到需要传播的 Schema 影响。</div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">受影响节点</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead><tr><th>路径</th><th>类型</th><th>影响来源</th><th>级别</th><th>原因</th></tr></thead>
+                        <tbody>
+                        @foreach (var node in _impact.Nodes)
+                        {
+                            <tr>
+                                <td>@node.Path</td>
+                                <td>@GetTypeText(node.Type)</td>
+                                <td>@GetSourceText(node.Type)</td>
+                                <td><span class="badge @GetLevelClass(node.Level)">@GetLevelText(node.Level)</span></td>
+                                <td>@node.Reason</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private AnalysisJob? _job;
+    private ObjectAnalyzer.Analysis.ImpactAnalysis? _impact;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HistoryStore.InitializeAsync();
+        var jobs = await HistoryStore.GetRecentAsync(100);
+        _job = jobs
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .FirstOrDefault();
+
+        if (_job is not null)
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+                var lineage = DataLineageBuilder.Build(result?.ObjectRelationships ?? new List<ObjectRelationship>());
+                _impact = result?.SchemaDiff is null ? null : ImpactAnalysisBuilder.Build(result.SchemaDiff, lineage);
+            }
+            catch (JsonException)
+            {
+                _impact = null;
+            }
+        }
+
+        _loading = false;
+    }
+
+    private static string GetLevelText(ImpactLevel level) => level switch
+    {
+        ImpactLevel.Critical => "严重",
+        ImpactLevel.High => "高",
+        ImpactLevel.Medium => "中",
+        _ => "低"
+    };
+
+    private static string GetLevelClass(ImpactLevel level) => level switch
+    {
+        ImpactLevel.Critical => "bg-danger",
+        ImpactLevel.High => "bg-warning text-dark",
+        ImpactLevel.Medium => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+
+    private static string GetTypeText(ImpactType type) => type switch
+    {
+        ImpactType.ParentObject => "父对象",
+        ImpactType.ChildNode => "子节点",
+        ImpactType.RelatedObject => "关联对象",
+        _ => "Schema 字段"
+    };
+
+    private static string GetSourceText(ImpactType type) => type switch
+    {
+        ImpactType.ParentObject => "父级血缘",
+        ImpactType.ChildNode => "子级血缘",
+        ImpactType.RelatedObject => "关系血缘",
+        _ => "Schema Diff"
+    };
+}
