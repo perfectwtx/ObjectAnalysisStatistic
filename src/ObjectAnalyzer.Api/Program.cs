@@ -52,6 +52,7 @@ api.MapAnalyzeApi();
 api.MapPreflightApi();
 api.MapAsyncAnalyzeApi();
 api.MapQualityBaselineApi();
+api.MapDataLineageEndpoints();
 
 app.Run();
 
