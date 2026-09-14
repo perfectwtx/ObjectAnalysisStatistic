@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ObjectAnalyzer.Api;
+using ObjectAnalyzer.Api.Endpoints;
 using ObjectAnalyzer.Platform;
 using Scalar.AspNetCore;
 
