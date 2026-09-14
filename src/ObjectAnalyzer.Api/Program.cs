@@ -54,6 +54,7 @@ api.MapPreflightApi();
 api.MapAsyncAnalyzeApi();
 api.MapQualityBaselineApi();
 api.MapDataLineageEndpoints();
+api.MapImpactAnalysisEndpoints();
 
 app.Run();
 
