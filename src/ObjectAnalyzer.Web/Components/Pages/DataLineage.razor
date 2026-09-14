@@ -1,0 +1,193 @@
+@page "/quality/data-lineage"
+@using System.Text.Json
+@using ObjectAnalyzer.Analysis
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>数据血缘</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>数据血缘</h1>
+            <p class="text-muted mb-0">查看最近一次成功分析生成的对象、集合与字段层级血缘。</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="alert alert-info">正在加载最近一次分析结果...</div>
+    }
+    else if (_job is null)
+    {
+        <div class="alert alert-secondary">暂无成功的分析记录。</div>
+    }
+    else if (_lineage is null || _lineage.Nodes.Count == 0)
+    {
+        <div class="alert alert-secondary">
+            最近一次分析没有可展示的数据血缘。请先运行包含嵌套对象或对象集合的分析。
+        </div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted">节点数量</div>
+                    <div class="display-6">@_lineage.Nodes.Count</div>
+                </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted">关系节点</div>
+                    <div class="display-6">@_lineage.Nodes.Count(x => x.Kind != "Field")</div>
+                </div></div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100"><div class="card-body">
+                    <div class="text-muted">血缘边</div>
+                    <div class="display-6">@_lineage.Edges.Count</div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>血缘节点</span>
+                <span class="text-muted small">数据源：@_job.SourceName</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>路径</th>
+                                <th>类型</th>
+                                <th>深度</th>
+                                <th>出现次数</th>
+                                <th>目标字段</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var node in _lineage.Nodes.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <tr>
+                                <td>
+                                    <span style="display:inline-block;width:@(Math.Max(0, node.Depth - 1) * 20)px"></span>
+                                    @if (node.Depth > 1)
+                                    {
+                                        <span class="text-muted">└─ </span>
+                                    }
+                                    <code>@node.Path</code>
+                                </td>
+                                <td>
+                                    <span class="badge @NodeBadge(node.Kind)">@NodeLabel(node.Kind)</span>
+                                </td>
+                                <td>@node.Depth</td>
+                                <td>@node.OccurrenceCount.ToString("N0")</td>
+                                <td>
+                                    @if (node.TargetFields.Count == 0)
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@string.Join(", ", node.TargetFields)</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">血缘关系</div>
+            <div class="card-body p-0">
+                @if (_lineage.Edges.Count == 0)
+                {
+                    <div class="p-3 text-muted">当前结果没有可进一步展开的父子血缘边。</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead><tr><th>父节点</th><th>关系</th><th>子节点</th></tr></thead>
+                            <tbody>
+                            @foreach (var edge in _lineage.Edges.OrderBy(x => x.ParentPath, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.ChildPath, StringComparer.OrdinalIgnoreCase))
+                            {
+                                <tr>
+                                    <td><code>@edge.ParentPath</code></td>
+                                    <td>@EdgeLabel(edge.Kind)</td>
+                                    <td><code>@edge.ChildPath</code></td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="alert alert-light border mt-3">
+            <strong>说明：</strong>字段节点表示关系对象中的目标字段，父子边表示对象、集合与字段之间的包含关系。
+        </div>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private AnalysisJob? _job;
+    private DataLineage? _lineage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await HistoryStore.InitializeAsync();
+        var jobs = await HistoryStore.GetRecentAsync(100);
+        _job = jobs
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .FirstOrDefault();
+
+        if (_job is not null)
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+                _lineage = DataLineageBuilder.Build(result?.ObjectRelationships ?? Array.Empty<ObjectRelationship>());
+            }
+            catch (JsonException)
+            {
+                _lineage = null;
+            }
+        }
+
+        _loading = false;
+    }
+
+    private static string NodeLabel(string kind) => kind switch
+    {
+        "Object" => "对象",
+        "Collection" => "对象集合",
+        "Field" => "字段",
+        _ => kind
+    };
+
+    private static string NodeBadge(string kind) => kind switch
+    {
+        "Collection" => "bg-info text-dark",
+        "Field" => "bg-secondary",
+        _ => "bg-primary"
+    };
+
+    private static string EdgeLabel(string kind) => kind switch
+    {
+        "Contains" => "包含对象",
+        "ContainsCollection" => "包含集合",
+        "ContainsField" => "包含字段",
+        _ => kind
+    };
+}
