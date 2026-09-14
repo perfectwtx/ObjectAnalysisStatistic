@@ -169,7 +169,10 @@
                             <div class="col-4"><div class="fs-3">@_result.ObjectRelationships.Count(x => x.Kind == "Object")</div><div class="text-muted">对象</div></div>
                             <div class="col-4"><div class="fs-3">@_result.ObjectRelationships.Count(x => x.Kind == "Collection")</div><div class="text-muted">集合</div></div>
                         </div>
-                        <a class="btn btn-sm btn-outline-primary" href="/quality/object-relationships">查看全部对象关系</a>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a class="btn btn-sm btn-outline-primary" href="/quality/object-relationships">查看全部对象关系</a>
+                            <a class="btn btn-sm btn-outline-success" href="/quality/data-lineage">查看数据血缘</a>
+                        </div>
                     }
                 </div></div></div>
             </div>
