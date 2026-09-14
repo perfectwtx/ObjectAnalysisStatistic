@@ -11,6 +11,7 @@ ObjectAnalyzer 是一个面向结构化与半结构化数据的**对象分析与
 - **质量问题**：统一记录必填、类型、枚举、范围、Pattern、唯一性、异常等问题。
 - **Schema 分析**：Schema 快照、差异与破坏性变化识别。
 - **深度分析**：异常值、分布漂移、相关性、时间序列、字符串模式等。
+- **对象关系与血缘**：识别嵌套对象、对象集合及其字段结构，并生成可查询的数据血缘关系。
 - **历史与回归**：保存质量快照，支持质量趋势和前后回归分析。
 - **告警与 Webhook**：质量阈值、质量回退、关键问题、Schema 变化、分布漂移，以及 Outbox 可靠投递。
 - **安全**：PII 识别、出站脱敏、审计日志。
@@ -69,9 +70,10 @@ AnalysisResult
 AnalysisJob
   ├── QualitySnapshot
   ├── FieldQualitySnapshot
-  └── QualityIssue
+  ├── QualityIssue
+  └── ObjectRelationship
         ↓
-History / Dashboard / Alert
+ Data Lineage / Dashboard / Alert
         ↓
 Webhook Outbox
         ↓
@@ -100,6 +102,8 @@ CLI、API 和 Web 共用 Core 分析能力。Platform 层负责任务生命周�
 - `/quality/regression`：质量回归
 - `/quality/schema-impact`：Schema 影响分析
 - `/quality/relationships`：字段关系分析
+- `/quality/object-relationships`：对象关系分析
+- `/quality/data-lineage`：数据血缘
 - `/quality/recommendations`：治理建议
 - `/issues`：问题中心
 - `/alert-rules`：告警规则
