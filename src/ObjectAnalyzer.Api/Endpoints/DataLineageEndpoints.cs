@@ -8,14 +8,14 @@ namespace ObjectAnalyzer.Api.Endpoints;
 /// <summary>数据血缘查询接口。</summary>
 public static class DataLineageEndpoints
 {
-    public static IEndpointRouteBuilder MapDataLineageEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapDataLineageEndpoints(this RouteGroupBuilder app)
     {
         app.MapGet("/analysis/jobs/{jobId:guid}/lineage", async (
             Guid jobId,
             IAnalysisHistoryStore historyStore,
             CancellationToken cancellationToken) =>
         {
-            var job = await historyStore.GetByIdAsync(jobId, cancellationToken);
+            var job = await historyStore.GetAsync(jobId, cancellationToken);
             if (job is null)
                 return Results.NotFound();
 
@@ -35,7 +35,7 @@ public static class DataLineageEndpoints
             if (result is null)
                 return Results.Problem("分析结果为空。", statusCode: StatusCodes.Status500InternalServerError);
 
-            var lineage = DataLineageBuilder.Build(result.ObjectRelationships ?? Array.Empty<ObjectRelationship>());
+            var lineage = DataLineageBuilder.Build(result.ObjectRelationships ?? new List<ObjectRelationship>());
             return Results.Ok(lineage);
         });
 
