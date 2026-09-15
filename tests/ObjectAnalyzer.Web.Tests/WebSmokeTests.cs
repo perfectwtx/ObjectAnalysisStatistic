@@ -2,7 +2,7 @@ using System.Net;
 
 namespace ObjectAnalyzer.Web.Tests;
 
-/// <summary>Web 冒烟测试：验证应用可启动、首页可访问、静态资源与互操作脚本就绪。</summary>
+/// <summary>Web 冒烟测试：验证应用可启动、首页可访问、静态资源与核心质量分析页面可访问。</summary>
 public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
 {
     private readonly TestWebApplicationFactory _factory;
@@ -149,5 +149,18 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
         {
             try { File.Delete(snapshotPath); } catch { }
         }
+    }
+
+    [Theory]
+    [InlineData("/quality/data-lineage", "数据血缘")]
+    [InlineData("/quality/impact-analysis", "影响分析")]
+    public async Task QualityAnalysisPages_ReturnOk(string path, string title)
+    {
+        using var client = _factory.CreateClient();
+        using var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        string content = await response.Content.ReadAsStringAsync();
+        Assert.Contains(title, content);
     }
 }
