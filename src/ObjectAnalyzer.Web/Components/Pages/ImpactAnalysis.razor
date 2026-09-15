@@ -19,7 +19,7 @@ else if (_job is null)
 }
 else if (_impact is null)
 {
-    <div class="alert alert-secondary">最近一次分析没有 Schema Diff，无法计算影响范围。</div>
+    <div class="alert alert-secondary">最近一次分析结果无法解析。</div>
 }
 else
 {
@@ -89,7 +89,7 @@ else
             {
                 var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
                 var lineage = DataLineageBuilder.Build(result?.ObjectRelationships ?? new List<ObjectRelationship>());
-                _impact = result?.SchemaDiff is null ? null : ImpactAnalysisBuilder.Build(result.SchemaDiff, lineage);
+                _impact = result is null ? null : ImpactAnalysisBuilder.Build(result.SchemaDiff, lineage);
             }
             catch (JsonException)
             {
