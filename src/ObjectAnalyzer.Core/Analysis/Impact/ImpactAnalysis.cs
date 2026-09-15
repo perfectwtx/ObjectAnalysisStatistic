@@ -37,7 +37,8 @@ public static class ImpactAnalysisBuilder
 {
     public static ImpactAnalysis Build(SchemaDiff? diff, DataLineage? lineage)
     {
-        ArgumentNullException.ThrowIfNull(diff);
+        if (diff is null)
+            return new ImpactAnalysis(Array.Empty<ImpactedNode>(), ImpactLevel.Low, 0);
 
         var changedPaths = new Dictionary<string, ImpactLevel>(StringComparer.OrdinalIgnoreCase);
         foreach (var field in diff.RemovedFields)
@@ -53,7 +54,7 @@ public static class ImpactAnalysisBuilder
         foreach (var change in changedPaths)
         {
             var level = change.Value;
-            var type = level == ImpactLevel.Low ? ImpactType.SchemaChange : ImpactType.SchemaChange;
+            var type = ImpactType.SchemaChange;
             var reason = level switch
             {
                 ImpactLevel.Critical => "字段已删除，属于直接破坏性影响。",
