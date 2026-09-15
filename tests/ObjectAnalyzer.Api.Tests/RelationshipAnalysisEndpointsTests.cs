@@ -32,20 +32,20 @@ public class RelationshipAnalysisEndpointsTests : IClassFixture<WebApplicationFa
     }
 
     [Fact]
-    public async Task Lineage_InvalidJobId_ReturnsBadRequest()
+    public async Task Lineage_InvalidJobId_ReturnsNotFound()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analysis/jobs/not-a-guid/lineage");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task Impact_InvalidJobId_ReturnsBadRequest()
+    public async Task Impact_InvalidJobId_ReturnsNotFound()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analysis/jobs/not-a-guid/impact");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
