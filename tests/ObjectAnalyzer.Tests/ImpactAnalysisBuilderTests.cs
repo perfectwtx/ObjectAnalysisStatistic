@@ -59,4 +59,14 @@ public sealed class ImpactAnalysisBuilderTests
         Assert.Equal(ImpactType.SchemaChange, node.Type);
         Assert.Equal(ImpactLevel.Medium, result.HighestLevel);
     }
+
+    [Fact]
+    public void Build_WithMissingSchemaDiff_ReturnsEmptyLowImpact()
+    {
+        var result = ImpactAnalysisBuilder.Build(null, null);
+
+        Assert.Empty(result.Nodes);
+        Assert.Equal(ImpactLevel.Low, result.HighestLevel);
+        Assert.Equal(0, result.BreakingChangeCount);
+    }
 }
