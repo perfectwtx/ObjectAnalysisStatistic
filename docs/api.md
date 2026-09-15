@@ -14,6 +14,17 @@ API 是 Core 分析能力和前端 / 外部系统之间的 HTTP 适配层。业�
 - 获取数据质量信息
 - 获取问题信息
 - 获取历史分析结果
+- 获取对象关系与数据血缘
+- 获取 Schema 变更影响分析
+
+## 关系与影响分析
+
+分析作业成功后，可以基于作业结果查询对象关系、数据血缘和 Schema 影响分析。对应接口由 API 层统一从历史分析结果构建响应，调用方无需直接依赖 Core 内部的构建器实现。
+
+主要接口包括：
+
+- `GET /api/analysis/jobs/{jobId:guid}/lineage`：查询数据血缘
+- `GET /api/analysis/jobs/{jobId:guid}/impact`：查询 Schema 变更影响
 
 ## 接入原则
 
