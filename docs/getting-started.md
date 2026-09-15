@@ -31,6 +31,8 @@ dotnet run --project src/ObjectAnalyzer.Web
 
 启动后使用浏览器访问终端输出的地址。
 
+Web 当前包含质量总览、趋势、字段质量、Schema 影响、对象关系、数据血缘、影响分析和问题中心等页面。
+
 ## 4. 启动 API
 
 ```bash
@@ -39,13 +41,34 @@ dotnet run --project src/ObjectAnalyzer.Api
 
 API 提供 HTTP 分析能力以及 OpenAPI/Scalar 文档。
 
-## 5. 运行测试
+关系与影响分析接口包括：
+
+- `GET /api/analysis/jobs/{jobId:guid}/lineage`：查询数据血缘
+- `GET /api/analysis/jobs/{jobId:guid}/impact`：查询 Schema 变化影响
+
+## 5. Docker
+
+仓库提供 Dockerfile，用于构建 CLI 运行镜像。当前镜像定位为 CLI 执行环境，不替代 Web 或 API 宿主。
+
+构建镜像：
+
+```bash
+docker build -t objectanalyzer:latest .
+```
+
+查看 CLI 帮助：
+
+```bash
+docker run --rm objectanalyzer:latest --help
+```
+
+## 6. 运行测试
 
 ```bash
 dotnet test ObjectAnalyzer.sln -c Release
 ```
 
-## 6. 第一次使用建议
+## 7. 第一次使用建议
 
 建议按照以下顺序了解项目：
 
@@ -55,7 +78,7 @@ dotnet test ObjectAnalyzer.sln -c Release
 4. 需要自动化集成时使用 API。
 5. 需要持续监控时阅读数据质量、历史、告警文档。
 
-## 7. 文档导航
+## 8. 文档导航
 
 - [总体架构](architecture.md)
 - [分析引擎](analysis.md)
