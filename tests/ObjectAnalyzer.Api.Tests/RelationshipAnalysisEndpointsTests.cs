@@ -131,6 +131,75 @@ public sealed class RelationshipAnalysisSuccessfulEndpointsTests
     }
 
     [Fact]
+    public async Task Impact_SchemaChange_PropagatesToRelatedLineageNodes()
+    {
+        var job = CreateSucceededJob(new AnalysisResult
+        {
+            SchemaDiff = new SchemaDiff
+            {
+                BaselineSource = "orders-baseline",
+                CurrentSource = "orders-current",
+                HasBreakingChanges = true,
+                ChangedFields =
+                [
+                    new SchemaFieldChange
+                    {
+                        Path = "customer.id",
+                        Breaking = true,
+                        Changes =
+                        [
+                            new SchemaFieldChangeItem()
+                        ]
+                    }
+                ]
+            },
+            ObjectRelationships =
+            [
+                new ObjectRelationship
+                {
+                    Path = "customer",
+                    Kind = "Object",
+                    OccurrenceCount = 3,
+                    NonNullCount = 3,
+                    TargetFieldCount = 1,
+                    TargetFields = ["id"]
+                },
+                new ObjectRelationship
+                {
+                    Path = "customer.address",
+                    Kind = "Object",
+                    OccurrenceCount = 3,
+                    NonNullCount = 3,
+                    TargetFieldCount = 1,
+                    TargetFields = ["city"]
+                }
+            ]
+        });
+        _factory.Store.Set(job);
+
+        using var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/analysis/jobs/{job.Id}/impact");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("High", body.GetProperty("highestLevel").GetString());
+        Assert.Equal(1, body.GetProperty("breakingChangeCount").GetInt32());
+
+        var nodes = body.GetProperty("nodes").EnumerateArray().ToList();
+        Assert.Contains(nodes, node =>
+            node.GetProperty("path").GetString() == "customer.id"
+            && node.GetProperty("type").GetString() == "SchemaChange"
+            && node.GetProperty("level").GetString() == "High");
+        Assert.Contains(nodes, node =>
+            node.GetProperty("path").GetString() == "customer"
+            && node.GetProperty("type").GetString() == "ParentObject");
+        Assert.Contains(nodes, node =>
+            node.GetProperty("path").GetString() == "customer.address"
+            && node.GetProperty("type").GetString() == "ChildNode");
+    }
+
+    [Fact]
     public async Task Lineage_FailedJob_ReturnsConflict()
     {
         var job = new AnalysisJob
