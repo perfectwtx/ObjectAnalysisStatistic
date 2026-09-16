@@ -149,8 +149,8 @@ public static class QualityEndpoints
     private static async Task<Results<Ok<FieldCorrelationMatrix?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
         => await GetResultProperty(jobId, result => result.CorrelationMatrix, history, cancellationToken);
 
-    private static async Task<Results<Ok<IReadOnlyList<ObjectRelationship>>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
-        => await GetResultProperty(jobId, result => (IReadOnlyList<ObjectRelationship>)(result.ObjectRelationships ?? new List<ObjectRelationship>()), history, cancellationToken);
+    private static async Task<Results<Ok<IReadOnlyList<ObjectRelationship>?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
+        => await GetResultProperty(jobId, result => result.ObjectRelationships, history, cancellationToken);
 
     private static async Task<Results<Ok<SchemaDiff?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetSchemaImpact(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
         => await GetResultProperty(jobId, result => result.SchemaDiff, history, cancellationToken);
@@ -168,7 +168,7 @@ public static class QualityEndpoints
         try
         {
             var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
-            return TypedResults.Ok(result is null ? default : selector(result));
+            return TypedResults.Ok<T?>(result is null ? default : selector(result));
         }
         catch (JsonException)
         {
