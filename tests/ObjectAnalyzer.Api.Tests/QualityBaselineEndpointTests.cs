@@ -24,10 +24,17 @@ public sealed class QualityBaselineEndpointTests : IClassFixture<WebApplicationF
 
         try
         {
-            var put = await client.PutAsJsonAsync($"/api/quality-baselines/{sourceName}", request);
+            var post = await client.PostAsJsonAsync("/api/quality-baselines", request);
+            Assert.Equal(HttpStatusCode.OK, post.StatusCode);
+            var created = await post.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(sourceName, created.GetProperty("sourceName").GetString());
+            Assert.Equal(91, created.GetProperty("minimumOverallScore").GetDouble());
+
+            var putRequest = request with { MinimumOverallScore = 90 };
+            var put = await client.PutAsJsonAsync($"/api/quality-baselines/{sourceName}", putRequest);
             Assert.Equal(HttpStatusCode.OK, put.StatusCode);
             var saved = await put.Content.ReadFromJsonAsync<JsonElement>();
-            Assert.Equal(91, saved.GetProperty("minimumOverallScore").GetDouble());
+            Assert.Equal(90, saved.GetProperty("minimumOverallScore").GetDouble());
 
             var get = await client.GetAsync($"/api/quality-baselines/{sourceName}");
             Assert.Equal(HttpStatusCode.OK, get.StatusCode);

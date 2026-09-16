@@ -55,6 +55,10 @@ api.MapAsyncAnalyzeApi();
 api.MapQualityBaselineApi();
 api.MapDataLineageEndpoints();
 api.MapImpactAnalysisEndpoints();
+api.MapAnalysisHistoryApi();
+api.MapQualityApi();
+api.MapIssueApi();
+api.MapAlertRuleApi();
 
 app.Run();
 

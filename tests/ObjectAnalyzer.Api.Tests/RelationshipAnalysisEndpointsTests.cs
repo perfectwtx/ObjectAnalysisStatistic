@@ -15,17 +15,13 @@ public class RelationshipAnalysisEndpointsTests : IClassFixture<WebApplicationFa
 {
     private readonly WebApplicationFactory<Program> _factory;
 
-    public RelationshipAnalysisEndpointsTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
+    public RelationshipAnalysisEndpointsTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
     [Fact]
     public async Task Lineage_MissingJob_ReturnsNotFound()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/lineage");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -34,7 +30,6 @@ public class RelationshipAnalysisEndpointsTests : IClassFixture<WebApplicationFa
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/impact");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -43,7 +38,6 @@ public class RelationshipAnalysisEndpointsTests : IClassFixture<WebApplicationFa
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analysis/jobs/not-a-guid/lineage");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -52,21 +46,16 @@ public class RelationshipAnalysisEndpointsTests : IClassFixture<WebApplicationFa
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync("/api/analysis/jobs/not-a-guid/impact");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
 
 /// <summary>关系分析成功响应的端到端集成测试，使用内存历史存储隔离真实数据库。</summary>
-public sealed class RelationshipAnalysisSuccessfulEndpointsTests
-    : IClassFixture<RelationshipAnalysisWebApplicationFactory>
+public sealed class RelationshipAnalysisSuccessfulEndpointsTests : IClassFixture<RelationshipAnalysisWebApplicationFactory>
 {
     private readonly RelationshipAnalysisWebApplicationFactory _factory;
 
-    public RelationshipAnalysisSuccessfulEndpointsTests(RelationshipAnalysisWebApplicationFactory factory)
-    {
-        _factory = factory;
-    }
+    public RelationshipAnalysisSuccessfulEndpointsTests(RelationshipAnalysisWebApplicationFactory factory) => _factory = factory;
 
     [Fact]
     public async Task Lineage_SucceededJob_ReturnsNodesAndEdges()
@@ -74,17 +63,7 @@ public sealed class RelationshipAnalysisSuccessfulEndpointsTests
         var job = CreateSucceededJob(new AnalysisResult
         {
             ObjectRelationships =
-            [
-                new ObjectRelationship
-                {
-                    Path = "customer",
-                    Kind = "Object",
-                    OccurrenceCount = 3,
-                    NonNullCount = 3,
-                    TargetFieldCount = 2,
-                    TargetFields = ["id", "name"]
-                }
-            ]
+            [new ObjectRelationship { Path = "customer", Kind = "Object", OccurrenceCount = 3, NonNullCount = 3, TargetFieldCount = 2, TargetFields = ["id", "name"] }]
         });
         _factory.Store.Set(job);
 
@@ -95,9 +74,7 @@ public sealed class RelationshipAnalysisSuccessfulEndpointsTests
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(3, body.GetProperty("nodes").GetArrayLength());
         Assert.Equal(2, body.GetProperty("edges").GetArrayLength());
-        Assert.Contains(
-            body.GetProperty("nodes").EnumerateArray(),
-            node => node.GetProperty("path").GetString() == "customer.name");
+        Assert.Contains(body.GetProperty("nodes").EnumerateArray(), node => node.GetProperty("path").GetString() == "customer.name");
     }
 
     [Fact]
@@ -106,17 +83,7 @@ public sealed class RelationshipAnalysisSuccessfulEndpointsTests
         var job = CreateSucceededJob(new AnalysisResult
         {
             ObjectRelationships =
-            [
-                new ObjectRelationship
-                {
-                    Path = "customer",
-                    Kind = "Object",
-                    OccurrenceCount = 1,
-                    NonNullCount = 1,
-                    TargetFieldCount = 1,
-                    TargetFields = ["id"]
-                }
-            ]
+            [new ObjectRelationship { Path = "customer", Kind = "Object", OccurrenceCount = 1, NonNullCount = 1, TargetFieldCount = 1, TargetFields = ["id"] }]
         });
         _factory.Store.Set(job);
 
@@ -131,51 +98,67 @@ public sealed class RelationshipAnalysisSuccessfulEndpointsTests
     }
 
     [Fact]
+    public async Task Impact_SchemaChange_PropagatesToRelatedLineageNodes()
+    {
+        var job = CreateSucceededJob(new AnalysisResult
+        {
+            SchemaDiff = new SchemaDiff
+            {
+                BaselineSource = "orders-baseline",
+                CurrentSource = "orders-current",
+                HasBreakingChanges = true,
+                ChangedFields =
+                [new SchemaFieldChange { Path = "customer.id", Breaking = true, Changes = [new SchemaFieldChangeItem()] }]
+            },
+            ObjectRelationships =
+            [
+                new ObjectRelationship { Path = "customer", Kind = "Object", OccurrenceCount = 3, NonNullCount = 3, TargetFieldCount = 1, TargetFields = ["id"] },
+                new ObjectRelationship { Path = "customer.id.details", Kind = "Object", OccurrenceCount = 3, NonNullCount = 3, TargetFieldCount = 1, TargetFields = ["value"] }
+            ]
+        });
+        _factory.Store.Set(job);
+
+        using var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/analysis/jobs/{job.Id}/impact");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("High", body.GetProperty("highestLevel").GetString());
+        Assert.Equal(1, body.GetProperty("breakingChangeCount").GetInt32());
+
+        var nodes = body.GetProperty("nodes").EnumerateArray().ToList();
+        Assert.Contains(nodes, node => node.GetProperty("path").GetString() == "customer.id" && node.GetProperty("type").GetString() == "SchemaChange" && node.GetProperty("level").GetString() == "High");
+        Assert.Contains(nodes, node => node.GetProperty("path").GetString() == "customer" && node.GetProperty("type").GetString() == "ParentObject");
+        Assert.Contains(nodes, node => node.GetProperty("path").GetString() == "customer.id.details" && node.GetProperty("type").GetString() == "ChildNode");
+    }
+
+    [Fact]
     public async Task Lineage_FailedJob_ReturnsConflict()
     {
-        var job = new AnalysisJob
-        {
-            Id = Guid.NewGuid(),
-            SourceName = "failed.json",
-            SourceType = "json",
-            Status = AnalysisJobStatus.Failed
-        };
+        var job = new AnalysisJob { Id = Guid.NewGuid(), SourceName = "failed.json", SourceType = "json", Status = AnalysisJobStatus.Failed };
         _factory.Store.Set(job);
 
         using var client = _factory.CreateClient();
         var response = await client.GetAsync($"/api/analysis/jobs/{job.Id}/lineage");
-
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
     public async Task Impact_RunningJob_ReturnsConflict()
     {
-        var job = new AnalysisJob
-        {
-            Id = Guid.NewGuid(),
-            SourceName = "running.json",
-            SourceType = "json",
-            Status = AnalysisJobStatus.Running
-        };
+        var job = new AnalysisJob { Id = Guid.NewGuid(), SourceName = "running.json", SourceType = "json", Status = AnalysisJobStatus.Running };
         _factory.Store.Set(job);
 
         using var client = _factory.CreateClient();
         var response = await client.GetAsync($"/api/analysis/jobs/{job.Id}/impact");
-
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
-    private static AnalysisJob CreateSucceededJob(AnalysisResult result)
-        => new()
-        {
-            Id = Guid.NewGuid(),
-            SourceName = "orders.json",
-            SourceType = "json",
-            Status = AnalysisJobStatus.Succeeded,
-            CompletedAtUtc = DateTime.UtcNow,
-            ResultJson = JsonSerializer.Serialize(result)
-        };
+    private static AnalysisJob CreateSucceededJob(AnalysisResult result) => new()
+    {
+        Id = Guid.NewGuid(), SourceName = "orders.json", SourceType = "json", Status = AnalysisJobStatus.Succeeded,
+        CompletedAtUtc = DateTime.UtcNow, ResultJson = JsonSerializer.Serialize(result)
+    };
 }
 
 /// <summary>为关系分析成功响应测试提供隔离的内存历史存储。</summary>
@@ -196,26 +179,10 @@ public sealed class RelationshipAnalysisWebApplicationFactory : WebApplicationFa
 public sealed class InMemoryRelationshipHistoryStore : IAnalysisHistoryStore
 {
     private readonly Dictionary<Guid, AnalysisJob> _jobs = new();
-
     public void Set(AnalysisJob job) => _jobs[job.Id] = job;
-
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-    public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
-    {
-        _jobs[job.Id] = job;
-        return Task.CompletedTask;
-    }
-
-    public Task SaveQualitySnapshotAsync(
-        QualitySnapshot snapshot,
-        IReadOnlyList<FieldQualitySnapshot> fields,
-        IReadOnlyList<QualityIssue> issues,
-        CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-    public Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default)
-        => Task.FromResult(_jobs.GetValueOrDefault(id));
-
-    public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<AnalysisJob>>(_jobs.Values.Take(limit).ToList());
+    public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default) { _jobs[job.Id] = job; return Task.CompletedTask; }
+    public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(_jobs.GetValueOrDefault(id));
+    public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AnalysisJob>>(_jobs.Values.Take(limit).ToList());
 }
