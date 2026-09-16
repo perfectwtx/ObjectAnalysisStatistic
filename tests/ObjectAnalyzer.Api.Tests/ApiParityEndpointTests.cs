@@ -267,7 +267,19 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
             if (statusText != "Running")
             {
                 Assert.Equal("Completed", statusText);
-                return jobId;
+
+                // Registry 进入 Completed 后，持久化历史可能仍处于最后一个异步写入窗口。
+                // 等待历史端点可读，避免后续契约测试与后台持久化发生竞态。
+                for (var j = 0; j < 50; j++)
+                {
+                    var historyResponse = await client.GetAsync($"/api/analysis/jobs/{jobId}");
+                    if (historyResponse.IsSuccessStatusCode)
+                        return jobId;
+
+                    await Task.Delay(100);
+                }
+
+                throw new Xunit.Sdk.XunitException($"Async analysis job {jobId} completed in registry but was not persisted to analysis history within the test timeout.");
             }
 
             await Task.Delay(100);
