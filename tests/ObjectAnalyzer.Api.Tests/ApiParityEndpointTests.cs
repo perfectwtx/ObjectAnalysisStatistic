@@ -1,12 +1,13 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace ObjectAnalyzer.Api.Tests;
 
 /// <summary>
-/// Web/API 功能对齐后的查询端点冒烟测试。
-/// 这些测试重点保证 React 前端依赖的资源路由已经挂载，并能在空数据环境下正常返回。
+/// Web/API 功能对齐后的查询端点契约测试。
+/// 除了空数据路由冒烟测试，还通过真实异步分析作业验证详情类接口的响应形状。
 /// </summary>
 public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -18,6 +19,8 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     }
 
     private HttpClient CreateClient() => _factory.CreateClient();
+
+    private const string DataJson = """[{"name":"alice","age":30},{"name":"bob","age":25},{"name":"carol","age":41}]""";
 
     [Theory]
     [InlineData("/api/analysis/jobs")]
@@ -138,11 +141,86 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
-    public async Task QualityFieldsResponse_ContainsWebRequiredCollections()
+    public async Task JobOverview_ReturnsWebRequiredSections()
     {
-        var jobId = Guid.NewGuid();
+        var jobId = await RunAsyncAnalysisAsync();
+        var response = await CreateClient().GetAsync($"/api/analysis/jobs/{jobId}/overview");
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.True(body.TryGetProperty("job", out _));
+        Assert.True(body.TryGetProperty("metrics", out _));
+        Assert.True(body.TryGetProperty("baselineEvaluation", out _));
+        Assert.True(body.TryGetProperty("gateResults", out _));
+        Assert.True(body.TryGetProperty("issues", out _));
+        Assert.True(body.TryGetProperty("schemaDiff", out _));
+        Assert.True(body.TryGetProperty("correlationMatrix", out _));
+        Assert.True(body.TryGetProperty("objectRelationships", out _));
+    }
+
+    [Fact]
+    public async Task JobResult_ReturnsPersistedAnalysisResult()
+    {
+        var jobId = await RunAsyncAnalysisAsync();
+        var response = await CreateClient().GetAsync($"/api/analysis/jobs/{jobId}/result");
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(3, body.GetProperty("totalObjects").GetInt32());
+        Assert.True(body.TryGetProperty("fieldStatistics", out _));
+    }
+
+    [Fact]
+    public async Task QualityFieldsResponse_ReturnsWebRequiredCollections()
+    {
+        var jobId = await RunAsyncAnalysisAsync();
         var response = await CreateClient().GetAsync($"/api/quality/fields/{jobId}");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.True(body.TryGetProperty("fields", out var fields));
+        Assert.True(body.TryGetProperty("normalizedFields", out var normalizedFields));
+        Assert.True(body.TryGetProperty("issues", out var issues));
+        Assert.NotNull(fields);
+        Assert.NotNull(normalizedFields);
+        Assert.NotNull(issues);
+        Assert.NotEmpty(fields.EnumerateArray());
+    }
+
+    private async Task<Guid> RunAsyncAnalysisAsync()
+    {
+        var client = CreateClient();
+        var response = await client.PostAsJsonAsync("/api/analyze/async/config", new
+        {
+            dataText = DataJson,
+            format = "json"
+        });
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var submit = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var jobIdText = submit.GetProperty("jobId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(jobIdText));
+        var jobId = Guid.Parse(jobIdText!);
+
+        for (var i = 0; i < 100; i++)
+        {
+            var statusResponse = await client.GetAsync($"/api/analyze/async/{jobId:N}");
+            Assert.True(statusResponse.IsSuccessStatusCode, await statusResponse.Content.ReadAsStringAsync());
+            var status = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
+            var statusText = status.GetProperty("status").GetString();
+
+            if (statusText != "Running")
+            {
+                Assert.Equal("Completed", statusText);
+                return jobId;
+            }
+
+            await Task.Delay(100);
+        }
+
+        throw new Xunit.Sdk.XunitException($"Async analysis job {jobId} did not complete within the test timeout.");
     }
 }
