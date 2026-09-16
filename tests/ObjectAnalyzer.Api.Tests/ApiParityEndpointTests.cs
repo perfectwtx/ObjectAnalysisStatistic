@@ -136,4 +136,13 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         Assert.True(body.TryGetProperty("selectedJob", out _));
         Assert.True(body.TryGetProperty("issues", out _));
     }
+
+    [Fact]
+    public async Task QualityFieldsResponse_ContainsWebRequiredCollections()
+    {
+        var jobId = Guid.NewGuid();
+        var response = await CreateClient().GetAsync($"/api/quality/fields/{jobId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
