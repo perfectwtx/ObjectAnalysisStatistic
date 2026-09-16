@@ -118,7 +118,7 @@ public static class QualityEndpoints
     {
         var jobs = (await history.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
-            .OrderByDescending(x => x.StartedAtUtc).ToList();
+            .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc).ToList();
         var job = jobs.FirstOrDefault();
         if (job is null) return TypedResults.Ok(new QualityDashboardResponse(null, null, Array.Empty<QualitySnapshot>(), Array.Empty<QualityIssue>(), Array.Empty<QualityGateResult>()));
 
@@ -141,9 +141,16 @@ public static class QualityEndpoints
     {
         var job = await history.GetAsync(jobId, cancellationToken);
         if (job is null) return TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
-        var fields = await qualityHistory.GetFieldsByJobAsync(jobId, cancellationToken);
+        if (string.IsNullOrWhiteSpace(job.ResultJson)) return TypedResults.Ok(new FieldQualityResponse(job, Array.Empty<FieldStatistic>(), Array.Empty<FieldQualitySnapshot>(), Array.Empty<QualityIssue>()));
+
+        AnalysisResult? result;
+        try { result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson); }
+        catch (JsonException) { result = null; }
+
+        var fields = result?.FieldStatistics ?? new List<FieldStatistic>();
+        var normalizedFields = await qualityHistory.GetFieldsByJobAsync(jobId, cancellationToken);
         var qualityIssues = await issues.GetByJobAsync(jobId, cancellationToken);
-        return TypedResults.Ok(new FieldQualityResponse(job, fields, qualityIssues));
+        return TypedResults.Ok(new FieldQualityResponse(job, fields, normalizedFields, qualityIssues));
     }
 
     private static async Task<Results<Ok<FieldCorrelationMatrix?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
@@ -259,7 +266,7 @@ public static class QualityEndpoints
         IReadOnlyList<ObjectRelationship> ObjectRelationships);
 
     public sealed record QualityDashboardResponse(AnalysisJob? Job, QualityMetrics? Metrics, IReadOnlyList<QualitySnapshot> RecentSnapshots, IReadOnlyList<QualityIssue> TopIssues, IReadOnlyList<QualityGateResult> GateResults);
-    public sealed record FieldQualityResponse(AnalysisJob Job, IReadOnlyList<FieldQualitySnapshot> Fields, IReadOnlyList<QualityIssue> Issues);
+    public sealed record FieldQualityResponse(AnalysisJob Job, IReadOnlyList<FieldStatistic> Fields, IReadOnlyList<FieldQualitySnapshot> NormalizedFields, IReadOnlyList<QualityIssue> Issues);
     public sealed record QualityRecommendationsResponse(AnalysisJob? Job, IReadOnlyList<QualityRecommendation> Recommendations);
     public sealed record QualityRecommendation(string Field, string Check, long Count, string Message, string Action, string Rule, int Priority)
     {
