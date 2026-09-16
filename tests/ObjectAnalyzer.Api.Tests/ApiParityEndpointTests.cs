@@ -52,6 +52,14 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
+    public async Task JobOverview_NotFound_Returns404()
+    {
+        var response = await CreateClient().GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/overview");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task QualityFields_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/quality/fields/{Guid.NewGuid()}");
