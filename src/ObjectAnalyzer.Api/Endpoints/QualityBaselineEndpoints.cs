@@ -32,32 +32,14 @@ public static class QualityBaselineEndpoints
             .WithTags("质量基线")
             .WithSummary("获取指定数据源的质量基线");
 
+        routes.MapPost("/quality-baselines",
+            SaveBaseline)
+            .WithTags("质量基线")
+            .WithSummary("新增质量基线")
+            .WithDescription("创建质量基线。数据源名称来自请求体；所有阈值均为 0 到 100 的百分制。");
+
         routes.MapPut("/quality-baselines/{sourceName}",
-            async Task<Results<Ok<QualityBaseline>, BadRequest<ErrorResponse>>> (
-                string sourceName,
-                QualityBaselineRequest request,
-                IQualityBaselineStore store,
-                CancellationToken cancellationToken) =>
-            {
-                var baseline = new QualityBaseline(
-                    sourceName,
-                    request.MinimumOverallScore,
-                    request.MinimumCompleteness,
-                    request.MinimumValidity,
-                    request.MinimumUniqueness,
-                    request.MinimumConsistency,
-                    request.MinimumAnomalyControl);
-                try
-                {
-                    baseline.Validate();
-                    await store.SaveAsync(baseline, cancellationToken);
-                    return TypedResults.Ok(baseline);
-                }
-                catch (ArgumentException ex)
-                {
-                    return TypedResults.BadRequest(new ErrorResponse(ex.Message));
-                }
-            })
+            SaveBaselineByRoute)
             .WithTags("质量基线")
             .WithSummary("创建或更新质量基线")
             .WithDescription("数据源名称来自 URL；同一数据源重复保存会覆盖原基线。所有阈值均为 0 到 100 的百分制。");
@@ -75,5 +57,51 @@ public static class QualityBaselineEndpoints
             .WithSummary("删除质量基线");
 
         return routes;
+    }
+
+    private static async Task<Results<Ok<QualityBaseline>, BadRequest<ErrorResponse>>> SaveBaseline(
+        QualityBaselineRequest request,
+        IQualityBaselineStore store,
+        CancellationToken cancellationToken)
+    {
+        return await SaveAsync(request.SourceName, request, store, cancellationToken);
+    }
+
+    private static async Task<Results<Ok<QualityBaseline>, BadRequest<ErrorResponse>>> SaveBaselineByRoute(
+        string sourceName,
+        QualityBaselineRequest request,
+        IQualityBaselineStore store,
+        CancellationToken cancellationToken)
+    {
+        return await SaveAsync(sourceName, request, store, cancellationToken);
+    }
+
+    private static async Task<Results<Ok<QualityBaseline>, BadRequest<ErrorResponse>>> SaveAsync(
+        string sourceName,
+        QualityBaselineRequest request,
+        IQualityBaselineStore store,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(sourceName))
+            return TypedResults.BadRequest(new ErrorResponse("数据源名称不能为空。"));
+
+        var baseline = new QualityBaseline(
+            sourceName,
+            request.MinimumOverallScore,
+            request.MinimumCompleteness,
+            request.MinimumValidity,
+            request.MinimumUniqueness,
+            request.MinimumConsistency,
+            request.MinimumAnomalyControl);
+        try
+        {
+            baseline.Validate();
+            await store.SaveAsync(baseline, cancellationToken);
+            return TypedResults.Ok(baseline);
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(new ErrorResponse(ex.Message));
+        }
     }
 }
