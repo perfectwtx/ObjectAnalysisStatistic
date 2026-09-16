@@ -31,6 +31,7 @@ public static class QualityEndpoints
         analysis.MapGet("/jobs", GetJobs).WithSummary("获取分析作业历史");
         analysis.MapGet("/jobs/{jobId:guid}", GetJob).WithSummary("获取分析作业详情");
         analysis.MapGet("/jobs/{jobId:guid}/result", GetJobResult).WithSummary("获取分析作业结果");
+        analysis.MapGet("/jobs/{jobId:guid}/overview", GetJobOverview).WithSummary("获取分析作业完整详情");
         return routes;
     }
 
@@ -66,6 +67,51 @@ public static class QualityEndpoints
             return TypedResults.Ok(document.RootElement.Clone());
         }
         catch (JsonException) { return TypedResults.BadRequest(new ErrorResponse("该分析作业的历史结果 JSON 无法解析。")); }
+    }
+
+    private static async Task<Results<Ok<AnalysisJobOverviewResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetJobOverview(
+        Guid jobId,
+        IAnalysisHistoryStore history,
+        IQualityIssueQuery issues,
+        CancellationToken cancellationToken)
+    {
+        var job = await history.GetAsync(jobId, cancellationToken);
+        if (job is null)
+            return TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
+
+        if (string.IsNullOrWhiteSpace(job.ResultJson))
+            return TypedResults.BadRequest(new ErrorResponse("该分析作业没有可用的结果。"));
+
+        AnalysisResult? result;
+        try
+        {
+            result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+        }
+        catch (JsonException)
+        {
+            return TypedResults.BadRequest(new ErrorResponse("历史结果 JSON 无法解析。"));
+        }
+
+        if (result is null)
+            return TypedResults.BadRequest(new ErrorResponse("历史结果为空。"));
+
+        var qualityMetrics = QualityMetricsCalculator.Calculate(result);
+        var gateResults = DeserializeList<QualityGateResult>(job.GateResultsJson);
+        var baselineEvaluation = Deserialize<QualityBaselineEvaluation>(job.QualityBaselineEvaluationJson);
+        var qualityIssues = (await issues.GetByJobAsync(jobId, cancellationToken))
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.FieldName)
+            .ToList();
+
+        return TypedResults.Ok(new AnalysisJobOverviewResponse(
+            job,
+            qualityMetrics,
+            baselineEvaluation,
+            gateResults,
+            qualityIssues,
+            result.SchemaDiff,
+            result.CorrelationMatrix,
+            result.ObjectRelationships ?? new List<ObjectRelationship>()));
     }
 
     private static async Task<Ok<QualityDashboardResponse>> GetDashboard(IAnalysisHistoryStore history, IQualityHistoryQuery qualityHistory, IQualityIssueQuery issues, CancellationToken cancellationToken)
@@ -190,11 +236,27 @@ public static class QualityEndpoints
         return new QualityRecommendation(field, check, count, message, action, rule, priority);
     }
 
+    private static T? Deserialize<T>(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return default;
+        try { return JsonSerializer.Deserialize<T>(json); } catch (JsonException) { return default; }
+    }
+
     private static List<T> DeserializeList<T>(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return new List<T>();
         try { return JsonSerializer.Deserialize<List<T>>(json) ?? new List<T>(); } catch (JsonException) { return new List<T>(); }
     }
+
+    public sealed record AnalysisJobOverviewResponse(
+        AnalysisJob Job,
+        QualityMetrics Metrics,
+        QualityBaselineEvaluation? BaselineEvaluation,
+        IReadOnlyList<QualityGateResult> GateResults,
+        IReadOnlyList<QualityIssue> Issues,
+        SchemaDiff? SchemaDiff,
+        FieldCorrelationMatrix? CorrelationMatrix,
+        IReadOnlyList<ObjectRelationship> ObjectRelationships);
 
     public sealed record QualityDashboardResponse(AnalysisJob? Job, QualityMetrics? Metrics, IReadOnlyList<QualitySnapshot> RecentSnapshots, IReadOnlyList<QualityIssue> TopIssues, IReadOnlyList<QualityGateResult> GateResults);
     public sealed record FieldQualityResponse(AnalysisJob Job, IReadOnlyList<FieldQualitySnapshot> Fields, IReadOnlyList<QualityIssue> Issues);
