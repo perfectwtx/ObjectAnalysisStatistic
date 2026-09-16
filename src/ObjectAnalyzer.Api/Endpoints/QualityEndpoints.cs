@@ -72,7 +72,7 @@ public static class QualityEndpoints
     {
         var jobs = (await history.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
-            .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc).ToList();
+            .OrderByDescending(x => x.StartedAtUtc).ToList();
         var job = jobs.FirstOrDefault();
         if (job is null) return TypedResults.Ok(new QualityDashboardResponse(null, null, Array.Empty<QualitySnapshot>(), Array.Empty<QualityIssue>(), Array.Empty<QualityGateResult>()));
 
@@ -100,59 +100,76 @@ public static class QualityEndpoints
         return TypedResults.Ok(new FieldQualityResponse(job, fields, qualityIssues));
     }
 
-    private static async Task<Results<Ok<JsonElement>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken) => await GetResultSection(jobId, "correlationMatrix", history, cancellationToken);
-    private static async Task<Results<Ok<JsonElement>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken) => await GetResultSection(jobId, "objectRelationships", history, cancellationToken);
-    private static async Task<Results<Ok<JsonElement>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetSchemaImpact(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken) => await GetResultSection(jobId, "schemaDiff", history, cancellationToken);
+    private static async Task<Results<Ok<FieldCorrelationMatrix?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
+        => await GetResultProperty(jobId, result => result.CorrelationMatrix, history, cancellationToken);
 
-    private static async Task<Results<Ok<JsonElement>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetResultSection(Guid jobId, string propertyName, IAnalysisHistoryStore history, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<IReadOnlyList<ObjectRelationship>>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
+        => await GetResultProperty(jobId, result => (IReadOnlyList<ObjectRelationship>)(result.ObjectRelationships ?? new List<ObjectRelationship>()), history, cancellationToken);
+
+    private static async Task<Results<Ok<SchemaDiff?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetSchemaImpact(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
+        => await GetResultProperty(jobId, result => result.SchemaDiff, history, cancellationToken);
+
+    private static async Task<Results<Ok<T?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetResultProperty<T>(
+        Guid jobId,
+        Func<AnalysisResult, T?> selector,
+        IAnalysisHistoryStore history,
+        CancellationToken cancellationToken)
     {
         var job = await history.GetAsync(jobId, cancellationToken);
         if (job is null) return TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
         if (string.IsNullOrWhiteSpace(job.ResultJson)) return TypedResults.BadRequest(new ErrorResponse("该分析作业没有可用的结果。"));
+
         try
         {
-            using var document = JsonDocument.Parse(job.ResultJson);
-            if (!document.RootElement.TryGetProperty(propertyName, out var value)) return TypedResults.Ok((JsonElement)default);
-            return TypedResults.Ok(value.Clone());
+            var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            return TypedResults.Ok(result is null ? default : selector(result));
         }
-        catch (JsonException) { return TypedResults.BadRequest(new ErrorResponse("历史结果 JSON 无法解析。")); }
+        catch (JsonException)
+        {
+            return TypedResults.BadRequest(new ErrorResponse("历史结果 JSON 无法解析。"));
+        }
     }
 
     private static async Task<Ok<QualityRecommendationsResponse>> GetRecommendations(IAnalysisHistoryStore history, CancellationToken cancellationToken)
     {
-        var job = (await history.GetRecentAsync(100, cancellationToken)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
+        var job = (await history.GetRecentAsync(100, cancellationToken))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .FirstOrDefault();
         if (job is null) return TypedResults.Ok(new QualityRecommendationsResponse(null, Array.Empty<QualityRecommendation>()));
+
         var result = new List<QualityRecommendation>();
         try
         {
-            using var document = JsonDocument.Parse(job.ResultJson!);
-            if (document.RootElement.TryGetProperty("qualityViolations", out var violations) && violations.ValueKind == JsonValueKind.Array)
+            var analysisResult = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson!);
+            foreach (var violation in analysisResult?.QualityViolations ?? new List<FieldViolation>())
             {
-                foreach (var item in violations.EnumerateArray())
-                {
-                    var field = GetString(item, "field");
-                    if (string.IsNullOrWhiteSpace(field) || field == "-") continue;
-                    result.Add(BuildRecommendation(field, GetString(item, "check"), GetLong(item, "count"), GetString(item, "message")));
-                }
+                var field = violation.Field;
+                if (string.IsNullOrWhiteSpace(field) || field == "-") continue;
+                result.Add(BuildRecommendation(field, violation.Check, violation.Count, violation.Message));
             }
         }
         catch (JsonException) { }
+
         return TypedResults.Ok(new QualityRecommendationsResponse(job, result));
     }
 
     private static async Task<Ok<QualityRegressionReport?>> GetRegression(IAnalysisHistoryStore history, CancellationToken cancellationToken)
     {
-        var jobs = (await history.GetRecentAsync(100, cancellationToken)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).Take(2).ToList();
-        if (jobs.Count < 2) return TypedResults.Ok<QualityRegressionReport?>(null);
+        var jobs = (await history.GetRecentAsync(100, cancellationToken))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+            .OrderByDescending(x => x.StartedAtUtc)
+            .Take(2)
+            .ToList();
+        if (jobs.Count < 2 || jobs.Any(x => string.IsNullOrWhiteSpace(x.ResultJson))) return TypedResults.Ok<QualityRegressionReport?>(null);
+
         try
         {
             var current = JsonSerializer.Deserialize<AnalysisResult>(jobs[0].ResultJson!);
             var previous = JsonSerializer.Deserialize<AnalysisResult>(jobs[1].ResultJson!);
-            if (current is null || previous is null)
-                return TypedResults.Ok<QualityRegressionReport?>(null);
+            if (current is null || previous is null) return TypedResults.Ok<QualityRegressionReport?>(null);
 
-            QualityRegressionReport report = QualityRegressionAnalyzer.Analyze(previous, current);
-            return TypedResults.Ok<QualityRegressionReport?>(report);
+            return TypedResults.Ok<QualityRegressionReport?>(QualityRegressionAnalyzer.Analyze(previous, current));
         }
         catch (JsonException) { return TypedResults.Ok<QualityRegressionReport?>(null); }
     }
@@ -173,8 +190,6 @@ public static class QualityEndpoints
         return new QualityRecommendation(field, check, count, message, action, rule, priority);
     }
 
-    private static string GetString(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : "-";
-    private static long GetLong(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.TryGetInt64(out var number) ? number : 0;
     private static List<T> DeserializeList<T>(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return new List<T>();
