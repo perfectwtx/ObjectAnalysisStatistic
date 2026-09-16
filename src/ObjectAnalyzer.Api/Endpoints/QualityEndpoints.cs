@@ -137,17 +137,18 @@ public static class QualityEndpoints
         return TypedResults.Ok(await query.GetSnapshotsAsync(sourceName, actualLimit, cancellationToken));
     }
 
-    private static async Task<Results<Ok<FieldQualityResponse>, NotFound<ErrorResponse>>> GetFields(Guid jobId, IAnalysisHistoryStore history, IQualityHistoryQuery qualityHistory, IQualityIssueQuery issues, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<FieldQualityResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetFields(Guid jobId, IAnalysisHistoryStore history, IQualityHistoryQuery qualityHistory, IQualityIssueQuery issues, CancellationToken cancellationToken)
     {
         var job = await history.GetAsync(jobId, cancellationToken);
         if (job is null) return TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
-        if (string.IsNullOrWhiteSpace(job.ResultJson)) return TypedResults.Ok(new FieldQualityResponse(job, Array.Empty<FieldStatistic>(), Array.Empty<FieldQualitySnapshot>(), Array.Empty<QualityIssue>()));
+        if (string.IsNullOrWhiteSpace(job.ResultJson)) return TypedResults.BadRequest(new ErrorResponse("该分析作业没有可用的结果。"));
 
         AnalysisResult? result;
         try { result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson); }
-        catch (JsonException) { result = null; }
+        catch (JsonException) { return TypedResults.BadRequest(new ErrorResponse("历史结果 JSON 无法解析。")); }
+        if (result is null) return TypedResults.BadRequest(new ErrorResponse("历史结果为空。"));
 
-        var fields = result?.FieldStatistics ?? new List<FieldStatistic>();
+        var fields = result.FieldStatistics ?? new List<FieldStatistic>();
         var normalizedFields = await qualityHistory.GetFieldsByJobAsync(jobId, cancellationToken);
         var qualityIssues = await issues.GetByJobAsync(jobId, cancellationToken);
         return TypedResults.Ok(new FieldQualityResponse(job, fields, normalizedFields, qualityIssues));
