@@ -87,7 +87,7 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         var response = await CreateClient().GetAsync("/api/quality/dashboard");
         Assert.True(response.IsSuccessStatusCode);
 
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
         Assert.True(body.TryGetProperty("job", out _));
         Assert.True(body.TryGetProperty("metrics", out _));
         Assert.True(body.TryGetProperty("recentSnapshots", out _));
