@@ -7,10 +7,6 @@ using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Api;
 
-/// <summary>
-/// 面向 Web/React 的分析历史与质量查询 API。
-/// API 只负责组合 Platform 已有的查询能力，不复制质量计算和持久化逻辑。
-/// </summary>
 public static class QualityEndpoints
 {
     public static IEndpointRouteBuilder MapQualityApi(this IEndpointRouteBuilder routes)
@@ -142,7 +138,11 @@ public static class QualityEndpoints
         {
             var current = JsonSerializer.Deserialize<AnalysisResult>(jobs[0].ResultJson!);
             var previous = JsonSerializer.Deserialize<AnalysisResult>(jobs[1].ResultJson!);
-            return TypedResults.Ok(current is null || previous is null ? null : QualityRegressionAnalyzer.Analyze(previous, current));
+            if (current is null || previous is null)
+                return TypedResults.Ok<QualityRegressionReport?>(null);
+
+            QualityRegressionReport report = QualityRegressionAnalyzer.Analyze(previous, current);
+            return TypedResults.Ok<QualityRegressionReport?>(report);
         }
         catch (JsonException) { return TypedResults.Ok<QualityRegressionReport?>(null); }
     }
