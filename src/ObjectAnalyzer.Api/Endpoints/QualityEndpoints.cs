@@ -156,7 +156,7 @@ public static class QualityEndpoints
     private static async Task<Results<Ok<FieldCorrelationMatrix?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
         => await GetResultProperty(jobId, result => result.CorrelationMatrix, history, cancellationToken);
 
-    private static async Task<Results<Ok<IReadOnlyList<ObjectRelationship>?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<List<ObjectRelationship>?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
         => await GetResultProperty(jobId, result => result.ObjectRelationships, history, cancellationToken);
 
     private static async Task<Results<Ok<SchemaDiff?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetSchemaImpact(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
