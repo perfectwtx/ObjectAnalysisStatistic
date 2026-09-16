@@ -56,15 +56,17 @@ public static class QualityEndpoints
         return job is null ? TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}")) : TypedResults.Ok(job);
     }
 
-    private static async Task<Results<Ok<JsonElement>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetJobResult(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<AnalysisResult>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetJobResult(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
     {
         var job = await store.GetAsync(jobId, cancellationToken);
         if (job is null) return TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
         if (string.IsNullOrWhiteSpace(job.ResultJson)) return TypedResults.BadRequest(new ErrorResponse("该分析作业没有可用的结果。"));
         try
         {
-            using var document = JsonDocument.Parse(job.ResultJson);
-            return TypedResults.Ok(document.RootElement.Clone());
+            var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            return result is null
+                ? TypedResults.BadRequest(new ErrorResponse("该分析作业的历史结果为空。"))
+                : TypedResults.Ok(result);
         }
         catch (JsonException) { return TypedResults.BadRequest(new ErrorResponse("该分析作业的历史结果 JSON 无法解析。")); }
     }
