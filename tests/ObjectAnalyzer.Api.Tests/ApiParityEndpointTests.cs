@@ -184,10 +184,62 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         Assert.True(body.TryGetProperty("fields", out var fields));
         Assert.True(body.TryGetProperty("normalizedFields", out var normalizedFields));
         Assert.True(body.TryGetProperty("issues", out var issues));
-        Assert.NotNull(fields);
-        Assert.NotNull(normalizedFields);
-        Assert.NotNull(issues);
+        Assert.Equal(JsonValueKind.Array, fields.ValueKind);
+        Assert.Equal(JsonValueKind.Array, normalizedFields.ValueKind);
+        Assert.Equal(JsonValueKind.Array, issues.ValueKind);
         Assert.NotEmpty(fields.EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AnalysisJobList_ReturnsWebRequiredJobFields()
+    {
+        var jobId = await RunAsyncAnalysisAsync();
+        var response = await CreateClient().GetAsync("/api/analysis/jobs?limit=10");
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var jobs = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var job = jobs.EnumerateArray().First(x => x.GetProperty("id").GetGuid() == jobId);
+
+        Assert.True(job.TryGetProperty("startedAtUtc", out _));
+        Assert.True(job.TryGetProperty("status", out _));
+        Assert.True(job.TryGetProperty("totalObjects", out _));
+        Assert.True(job.TryGetProperty("fieldCount", out _));
+        Assert.True(job.TryGetProperty("qualityScore", out _));
+        Assert.True(job.TryGetProperty("issueCount", out _));
+        Assert.True(job.TryGetProperty("durationMs", out _));
+    }
+
+    [Fact]
+    public async Task QualityRelationships_ReturnsWebCompatibleResponse()
+    {
+        var jobId = await RunAsyncAnalysisAsync();
+        var response = await CreateClient().GetAsync($"/api/quality/relationships/{jobId}");
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.ValueKind is JsonValueKind.Object or JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task QualityObjectRelationships_ReturnsWebCompatibleArray()
+    {
+        var jobId = await RunAsyncAnalysisAsync();
+        var response = await CreateClient().GetAsync($"/api/quality/object-relationships/{jobId}");
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.ValueKind is JsonValueKind.Array or JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task QualitySchemaImpact_ReturnsWebCompatibleResponse()
+    {
+        var jobId = await RunAsyncAnalysisAsync();
+        var response = await CreateClient().GetAsync($"/api/quality/schema-impact/{jobId}");
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.ValueKind is JsonValueKind.Object or JsonValueKind.Null);
     }
 
     private async Task<Guid> RunAsyncAnalysisAsync()
