@@ -11,6 +11,8 @@ public static class IssueEndpoints
     {
         var issues = routes.MapGroup("/issues").WithTags("质量问题");
 
+        issues.MapGet("", GetIssueCenter).WithSummary("获取质量问题中心数据");
+
         issues.MapGet("/{jobId:guid}", async Task<Ok<IReadOnlyList<QualityIssue>>> (
             Guid jobId,
             IQualityIssueQuery query,
@@ -97,6 +99,31 @@ public static class IssueEndpoints
 
         return routes;
     }
+
+    private static async Task<Ok<IssueCenterResponse>> GetIssueCenter(
+        Guid? jobId,
+        IAnalysisHistoryStore history,
+        IQualityIssueQuery query,
+        CancellationToken cancellationToken)
+    {
+        var jobs = (await history.GetRecentAsync(100, cancellationToken))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+            .OrderByDescending(x => x.StartedAtUtc)
+            .ToList();
+        var selectedJob = jobId.HasValue
+            ? jobs.FirstOrDefault(x => x.Id == jobId.Value)
+            : jobs.FirstOrDefault();
+        var selectedIssues = selectedJob is null
+            ? Array.Empty<QualityIssue>()
+            : await query.GetByJobAsync(selectedJob.Id, cancellationToken);
+
+        return TypedResults.Ok(new IssueCenterResponse(jobs, selectedJob, selectedIssues));
+    }
+
+    public sealed record IssueCenterResponse(
+        IReadOnlyList<AnalysisJob> Jobs,
+        AnalysisJob? SelectedJob,
+        IReadOnlyList<QualityIssue> Issues);
 
     public sealed record IssueResponsibilityRequest(
         string? Owner = null,
