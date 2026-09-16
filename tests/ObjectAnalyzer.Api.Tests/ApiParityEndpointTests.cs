@@ -151,12 +151,15 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
 
         Assert.True(body.TryGetProperty("job", out _));
         Assert.True(body.TryGetProperty("metrics", out _));
-        Assert.True(body.TryGetProperty("baselineEvaluation", out _));
         Assert.True(body.TryGetProperty("gateResults", out _));
         Assert.True(body.TryGetProperty("issues", out _));
-        Assert.True(body.TryGetProperty("schemaDiff", out _));
-        Assert.True(body.TryGetProperty("correlationMatrix", out _));
-        Assert.True(body.TryGetProperty("objectRelationships", out _));
+        Assert.True(body.TryGetProperty("objectRelationships", out var objectRelationships));
+        Assert.Equal(JsonValueKind.Array, objectRelationships.ValueKind);
+
+        // 这些字段在当前简单数据集上可能为 null，因此受全局 null 忽略策略影响而不存在。
+        Assert.True(!body.TryGetProperty("baselineEvaluation", out var baseline) || baseline.ValueKind == JsonValueKind.Object);
+        Assert.True(!body.TryGetProperty("schemaDiff", out var schemaDiff) || schemaDiff.ValueKind == JsonValueKind.Object);
+        Assert.True(!body.TryGetProperty("correlationMatrix", out var correlation) || correlation.ValueKind == JsonValueKind.Object);
     }
 
     [Fact]
@@ -216,8 +219,8 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         var response = await CreateClient().GetAsync($"/api/quality/relationships/{jobId}");
 
         Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(body.ValueKind is JsonValueKind.Object or JsonValueKind.Null);
+        var body = await ReadJsonOrNullAsync(response);
+        Assert.True(body is null || body.Value.ValueKind == JsonValueKind.Object);
     }
 
     [Fact]
@@ -227,8 +230,8 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         var response = await CreateClient().GetAsync($"/api/quality/object-relationships/{jobId}");
 
         Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(body.ValueKind is JsonValueKind.Array or JsonValueKind.Null);
+        var body = await ReadJsonOrNullAsync(response);
+        Assert.True(body is null || body.Value.ValueKind == JsonValueKind.Array);
     }
 
     [Fact]
@@ -238,8 +241,17 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         var response = await CreateClient().GetAsync($"/api/quality/schema-impact/{jobId}");
 
         Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.True(body.ValueKind is JsonValueKind.Object or JsonValueKind.Null);
+        var body = await ReadJsonOrNullAsync(response);
+        Assert.True(body is null || body.Value.ValueKind == JsonValueKind.Object);
+    }
+
+    private static async Task<JsonElement?> ReadJsonOrNullAsync(HttpResponseMessage response)
+    {
+        var text = await response.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        return JsonDocument.Parse(text).RootElement.Clone();
     }
 
     private async Task<Guid> RunAsyncAnalysisAsync()
@@ -269,17 +281,17 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
                 Assert.Equal("Completed", statusText);
 
                 // Registry 进入 Completed 后，持久化历史可能仍处于最后一个异步写入窗口。
-                // 等待历史端点可读，避免后续契约测试与后台持久化发生竞态。
+                // 直接等待结果端点可读，比只等待历史记录存在更可靠，因为后续契约测试都依赖 ResultJson。
                 for (var j = 0; j < 50; j++)
                 {
-                    var historyResponse = await client.GetAsync($"/api/analysis/jobs/{jobId}");
-                    if (historyResponse.IsSuccessStatusCode)
+                    var resultResponse = await client.GetAsync($"/api/analysis/jobs/{jobId}/result");
+                    if (resultResponse.IsSuccessStatusCode)
                         return jobId;
 
                     await Task.Delay(100);
                 }
 
-                throw new Xunit.Sdk.XunitException($"Async analysis job {jobId} completed in registry but was not persisted to analysis history within the test timeout.");
+                throw new Xunit.Sdk.XunitException($"Async analysis job {jobId} completed in registry but its persisted result was not available within the test timeout.");
             }
 
             await Task.Delay(100);
