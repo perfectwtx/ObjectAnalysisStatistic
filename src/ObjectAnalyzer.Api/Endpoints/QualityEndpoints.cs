@@ -15,6 +15,7 @@ public static class QualityEndpoints
 
         quality.MapGet("/dashboard", GetDashboard).WithSummary("获取最近一次成功分析的质量总览");
         quality.MapGet("/trend", GetTrend).WithSummary("获取质量趋势");
+        quality.MapGet("/fields", GetFieldJobs).WithSummary("获取可查看字段质量的成功分析作业");
         quality.MapGet("/fields/{jobId:guid}", GetFields).WithSummary("获取指定作业的字段质量");
         quality.MapGet("/relationships/{jobId:guid}", GetRelationships).WithSummary("获取指定作业的字段关系");
         quality.MapGet("/object-relationships/{jobId:guid}", GetObjectRelationships).WithSummary("获取指定作业的对象关系");
@@ -37,6 +38,15 @@ public static class QualityEndpoints
     {
         var actualLimit = Math.Clamp(limit ?? 50, 1, 500);
         return TypedResults.Ok(await store.GetRecentAsync(actualLimit, cancellationToken));
+    }
+
+    private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetFieldJobs(IAnalysisHistoryStore store, CancellationToken cancellationToken)
+    {
+        var jobs = (await store.GetRecentAsync(100, cancellationToken))
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .ToList();
+        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>(jobs);
     }
 
     private static async Task<Results<Ok<AnalysisJob>, NotFound<ErrorResponse>>> GetJob(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
