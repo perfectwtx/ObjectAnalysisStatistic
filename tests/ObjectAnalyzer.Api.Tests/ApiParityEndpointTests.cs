@@ -31,7 +31,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task Parity_QueryEndpoints_ReturnSuccess(string path)
     {
         var response = await CreateClient().GetAsync(path);
-
         Assert.True(response.IsSuccessStatusCode, $"{path}: {(int)response.StatusCode}");
     }
 
@@ -39,7 +38,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task AnalysisJob_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -47,7 +45,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task JobResult_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/result");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -55,7 +52,20 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task JobOverview_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/overview");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 
+    [Fact]
+    public async Task DataLineage_NotFound_Returns404()
+    {
+        var response = await CreateClient().GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/lineage");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ImpactAnalysis_NotFound_Returns404()
+    {
+        var response = await CreateClient().GetAsync($"/api/analysis/jobs/{Guid.NewGuid()}/impact");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -63,7 +73,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task QualityFields_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/quality/fields/{Guid.NewGuid()}");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -71,7 +80,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task QualityRelationships_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/quality/relationships/{Guid.NewGuid()}");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -79,7 +87,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task QualityObjectRelationships_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/quality/object-relationships/{Guid.NewGuid()}");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -87,7 +94,6 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     public async Task QualitySchemaImpact_NotFound_Returns404()
     {
         var response = await CreateClient().GetAsync($"/api/quality/schema-impact/{Guid.NewGuid()}");
-
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
