@@ -23,8 +23,10 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
     [InlineData("/api/analysis/jobs")]
     [InlineData("/api/quality/dashboard")]
     [InlineData("/api/quality/trend")]
+    [InlineData("/api/quality/fields")]
     [InlineData("/api/quality/recommendations")]
     [InlineData("/api/quality/regression")]
+    [InlineData("/api/issues")]
     [InlineData("/api/alert-rules")]
     public async Task Parity_QueryEndpoints_ReturnSuccess(string path)
     {
@@ -93,5 +95,17 @@ public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory
         Assert.True(body.TryGetProperty("recentSnapshots", out _));
         Assert.True(body.TryGetProperty("topIssues", out _));
         Assert.True(body.TryGetProperty("gateResults", out _));
+    }
+
+    [Fact]
+    public async Task IssueCenter_ReturnsExpectedContractShape()
+    {
+        var response = await CreateClient().GetAsync("/api/issues");
+        Assert.True(response.IsSuccessStatusCode);
+
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.True(body.TryGetProperty("jobs", out _));
+        Assert.True(body.TryGetProperty("selectedJob", out _));
+        Assert.True(body.TryGetProperty("issues", out _));
     }
 }
