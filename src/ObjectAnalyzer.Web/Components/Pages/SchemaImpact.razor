@@ -6,10 +6,10 @@
 
 <PageTitle>Schema 影响分析</PageTitle>
 
-<div class="oa-analysis-page">
+<div class="oa-analysis-page oa-schema-impact-page">
     <div class="oa-analysis-header">
         <div>
-            <div class="oa-eyebrow">Quality Analysis</div>
+            <div class="oa-eyebrow">SCHEMA IMPACT</div>
             <h1>Schema 影响分析</h1>
             <p>对比最近一次分析与基线 Schema，快速定位新增、删除及字段变更。</p>
         </div>
@@ -18,28 +18,31 @@
 
     @if (_loading)
     {
-        <div class="alert alert-info">正在加载最近一次分析结果...</div>
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">…</div><strong>正在加载最近一次分析结果</strong><span>正在准备 Schema Diff。</span></div>
     }
     else if (_job is null)
     {
-        <div class="card"><div class="oa-empty-state"><strong>暂无成功的分析记录</strong>请先执行一次分析，再返回这里查看 Schema 变化。</div></div>
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再返回这里查看 Schema 变化。</span></div>
     }
     else if (_diff is null)
     {
-        <div class="card"><div class="oa-empty-state"><strong>暂无 Schema Diff</strong>请先配置基线 Schema 并执行一次分析。</div></div>
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂无 Schema Diff</strong><span>请先配置基线 Schema 并执行一次分析。</span></div>
     }
     else
     {
-        <div class="row g-3 mb-4">
-            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">破坏性变更</div><div class="oa-kpi-value">@(_diff.HasBreakingChanges ? "是" : "否")</div><div class="oa-kpi-meta">需要重点检查下游契约</div></div></div></div>
-            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">新增字段</div><div class="oa-kpi-value">@_diff.AddedFields.Count</div><div class="oa-kpi-meta">基线中不存在</div></div></div></div>
-            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">删除字段</div><div class="oa-kpi-value">@_diff.RemovedFields.Count</div><div class="oa-kpi-meta">当前 Schema 中不存在</div></div></div></div>
-            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">变更字段</div><div class="oa-kpi-value">@_diff.ChangedFields.Count</div><div class="oa-kpi-meta">存在属性变化</div></div></div></div>
+        <div class="oa-schema-kpis">
+            <div class="oa-schema-kpi @( _diff.HasBreakingChanges ? "is-danger" : "is-success")"><span>破坏性变更</span><strong>@(_diff.HasBreakingChanges ? "是" : "否")</strong><small>需要重点检查下游契约</small></div>
+            <div class="oa-schema-kpi"><span>新增字段</span><strong>@_diff.AddedFields.Count</strong><small>基线中不存在</small></div>
+            <div class="oa-schema-kpi is-danger"><span>删除字段</span><strong>@_diff.RemovedFields.Count</strong><small>当前 Schema 中不存在</small></div>
+            <div class="oa-schema-kpi"><span>变更字段</span><strong>@_diff.ChangedFields.Count</strong><small>存在属性变化</small></div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header">分析上下文</div>
-            <div class="card-body">
+        <div class="oa-panel mb-4">
+            <div class="oa-panel-header">
+                <div><div class="oa-panel-kicker">CONTEXT</div><h2>分析上下文</h2></div>
+                <span class="oa-count-badge">@(_diff.AddedFields.Count + _diff.RemovedFields.Count + _diff.ChangedFields.Count) 项变化</span>
+            </div>
+            <div class="oa-panel-body">
                 <div class="oa-context-grid">
                     <div><span>数据源</span><strong>@_job.SourceName</strong></div>
                     <div><span>分析时间</span><strong>@_job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</strong></div>
@@ -59,27 +62,46 @@
 
         @if (_diff.RemovedFields.Count > 0)
         {
-            <div class="card mb-4"><div class="card-header"><div class="oa-card-title-row"><span>删除字段</span><span class="oa-count-pill">@_diff.RemovedFields.Count</span></div></div><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>@foreach (var field in _diff.RemovedFields){<tr><td>@field.Path</td><td>@GetTypeName(field)</td><td><span class="badge bg-danger">破坏性</span></td></tr>}</tbody></table></div></div>
+            <div class="oa-panel mb-4">
+                <div class="oa-panel-header"><div><div class="oa-panel-kicker">REMOVED</div><h2>删除字段</h2></div><span class="oa-count-pill">@_diff.RemovedFields.Count</span></div>
+                <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
+                @foreach (var field in _diff.RemovedFields)
+                {
+                    <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="badge bg-danger">破坏性</span></td></tr>
+                }
+                </tbody></table></div>
+            </div>
         }
 
         @if (_diff.AddedFields.Count > 0)
         {
-            <div class="card mb-4"><div class="card-header"><div class="oa-card-title-row"><span>新增字段</span><span class="oa-count-pill">@_diff.AddedFields.Count</span></div></div><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>@foreach (var field in _diff.AddedFields){<tr><td>@field.Path</td><td>@GetTypeName(field)</td><td><span class="badge bg-success">非破坏性</span></td></tr>}</tbody></table></div></div>
+            <div class="oa-panel mb-4">
+                <div class="oa-panel-header"><div><div class="oa-panel-kicker">ADDED</div><h2>新增字段</h2></div><span class="oa-count-pill">@_diff.AddedFields.Count</span></div>
+                <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
+                @foreach (var field in _diff.AddedFields)
+                {
+                    <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="badge bg-success">非破坏性</span></td></tr>
+                }
+                </tbody></table></div>
+            </div>
         }
 
         @if (_diff.ChangedFields.Count > 0)
         {
-            <div class="card mb-4"><div class="card-header"><div class="oa-card-title-row"><span>字段变更</span><span class="oa-count-pill">@_diff.ChangedFields.Count</span></div></div><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
-            @foreach (var change in _diff.ChangedFields)
-            {
-                <tr><td>@change.Path</td><td><span class="badge @(change.Breaking ? "bg-danger" : "bg-secondary")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="text-muted">无详细变更</span>}else{<ul class="mb-0 ps-3">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
-            }
-            </tbody></table></div></div>
+            <div class="oa-panel mb-4">
+                <div class="oa-panel-header"><div><div class="oa-panel-kicker">CHANGED</div><h2>字段变更</h2></div><span class="oa-count-pill">@_diff.ChangedFields.Count</span></div>
+                <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
+                @foreach (var change in _diff.ChangedFields)
+                {
+                    <tr><td><code>@change.Path</code></td><td><span class="badge @(change.Breaking ? "bg-danger" : "bg-secondary")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="text-muted">无详细变更</span>}else{<ul class="mb-0 ps-3 oa-change-list">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
+                }
+                </tbody></table></div>
+            </div>
         }
 
         @if (_diff.AddedFields.Count == 0 && _diff.RemovedFields.Count == 0 && _diff.ChangedFields.Count == 0)
         {
-            <div class="card"><div class="oa-empty-state"><strong>Schema 与基线完全一致</strong>本次分析没有发现字段层面的 Schema 变化。</div></div>
+            <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">✓</div><strong>Schema 与基线完全一致</strong><span>本次分析没有发现字段层面的 Schema 变化。</span></div>
         }
     }
 </div>
