@@ -1,0 +1,46 @@
+name: Repair Home.razor
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore Home.razor from known-good commit and apply fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout a06c3162703f781202461065cc7ab4f08ee5f021 -- src/ObjectAnalyzer.Web/Components/Pages/Home.razor
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/ObjectAnalyzer.Web/Components/Pages/Home.razor')
+          s = p.read_text(encoding='utf-8-sig')
+          s = s.replace('@inject LocalizationService Loc\n@implements IDisposable', '@inject LocalizationService Loc\n@inject WebAnalysisExecutionService AnalysisExecutionService\n@implements IDisposable', 1)
+          old = '''var pipelineResult = await Task.Run(\n                () => Core.Analysis.Pipeline.AnalysisPipeline.Execute(analysisOptions, rules, runContext, token),\n                token);'''
+          new = '''var pipelineResult = await AnalysisExecutionService.ExecuteAsync(\n                State.FileName,\n                effectiveFormat,\n                analysisOptions,\n                rules,\n                runContext,\n                token);'''
+          if old not in s:
+              raise SystemExit('target analysis call not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8-sig', newline='')
+          PY
+      - name: Commit fix and remove repair workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/repair-home.yml
+          git add src/ObjectAnalyzer.Web/Components/Pages/Home.razor
+          git diff --cached --check
+          git commit -m "fix(web): persist analysis jobs from home page"
+          git push origin HEAD:main
