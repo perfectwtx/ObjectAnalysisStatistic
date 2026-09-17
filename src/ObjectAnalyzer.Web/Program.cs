@@ -30,6 +30,7 @@ builder.Services.AddScoped<LocalizationService>();
 
 var historyDbPath = Path.Combine(appBaseDir, "data", "objectanalyzer.db");
 builder.Services.AddAnalysisPlatform(historyDbPath);
+builder.Services.AddScoped<WebAnalysisExecutionService>();
 builder.Services.AddHttpClient("WebhookDelivery", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
@@ -54,7 +55,7 @@ await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync()
 // ── 静态资产启用 ──
 if (!builder.Environment.IsDevelopment())
 {
-    builder.WebHost.UseStaticWebAssets();
+    app.WebHost.UseStaticWebAssets();
 }
 
 // ── 静态资产兜底中间件 ──
