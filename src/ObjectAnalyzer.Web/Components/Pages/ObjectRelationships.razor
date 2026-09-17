@@ -6,118 +6,36 @@
 
 <PageTitle>对象关系分析</PageTitle>
 
-<div class="oa-analysis-page">
+<div class="oa-analysis-page oa-object-relationships-page">
     <div class="oa-analysis-header">
-        <div>
-            <div class="oa-eyebrow">Quality Analysis</div>
-            <h1>对象关系分析</h1>
-            <p>查看最近一次成功分析发现的嵌套对象与对象集合关系。</p>
-        </div>
+        <div><div class="oa-eyebrow">OBJECT RELATIONSHIPS</div><h1>对象关系分析</h1><p>查看最近一次成功分析发现的嵌套对象与对象集合关系。</p></div>
         <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
     </div>
 
     @if (_loading)
-    {
-        <div class="alert alert-info">正在加载最近一次分析结果...</div>
-    }
+    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">…</div><strong>正在加载最近一次分析结果</strong><span>正在准备对象关系数据。</span></div> }
     else if (_job is null)
-    {
-        <div class="card">
-            <div class="oa-empty-state">
-                <strong>暂无成功的分析记录</strong>
-                请先执行一次分析，再返回这里查看对象关系。
-            </div>
-        </div>
-    }
+    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再返回这里查看对象关系。</span></div> }
     else if (_relationships.Count == 0)
-    {
-        <div class="card">
-            <div class="oa-empty-state">
-                <strong>暂未发现嵌套对象关系</strong>
-                最近一次分析可能只包含扁平字段，或没有可识别的对象/集合结构。
-            </div>
-        </div>
-    }
+    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂未发现嵌套对象关系</strong><span>最近一次分析可能只包含扁平字段，或没有可识别的对象/集合结构。</span></div> }
     else
     {
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card oa-analysis-kpi h-100">
-                    <div class="card-body">
-                        <div class="oa-kpi-label">关系数量</div>
-                        <div class="oa-kpi-value">@_relationships.Count</div>
-                        <div class="oa-kpi-meta">发现的嵌套关系总数</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card oa-analysis-kpi h-100">
-                    <div class="card-body">
-                        <div class="oa-kpi-label">对象关系</div>
-                        <div class="oa-kpi-value">@_relationships.Count(x => x.Kind == "Object")</div>
-                        <div class="oa-kpi-meta">嵌套对象节点</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card oa-analysis-kpi h-100">
-                    <div class="card-body">
-                        <div class="oa-kpi-label">集合关系</div>
-                        <div class="oa-kpi-value">@_relationships.Count(x => x.Kind == "Collection")</div>
-                        <div class="oa-kpi-meta">对象集合节点</div>
-                    </div>
-                </div>
-            </div>
+        <div class="oa-object-kpis">
+            <div class="oa-object-kpi"><span>关系数量</span><strong>@_relationships.Count</strong><small>发现的嵌套关系总数</small></div>
+            <div class="oa-object-kpi"><span>对象关系</span><strong>@_relationships.Count(x => x.Kind == "Object")</strong><small>嵌套对象节点</small></div>
+            <div class="oa-object-kpi"><span>集合关系</span><strong>@_relationships.Count(x => x.Kind == "Collection")</strong><small>对象集合节点</small></div>
         </div>
-
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center gap-3">
-                <span>嵌套关系</span>
-                <span class="text-muted small text-truncate">数据源：@_job.SourceName</span>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>路径</th>
-                            <th>类型</th>
-                            <th>出现次数</th>
-                            <th>目标字段数</th>
-                            <th>目标字段</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var relationship in _relationships)
-                    {
-                        <tr>
-                            <td><code>@relationship.Path</code></td>
-                            <td>
-                                <span class="badge @(relationship.Kind == "Collection" ? "text-bg-info" : "text-bg-primary")">
-                                    @(relationship.Kind == "Collection" ? "对象集合" : "对象")
-                                </span>
-                            </td>
-                            <td>@relationship.OccurrenceCount.ToString("N0")</td>
-                            <td>@relationship.TargetFieldCount</td>
-                            <td>
-                                @if (relationship.TargetFields.Count == 0)
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                                else
-                                {
-                                    <span>@string.Join(", ", relationship.TargetFields)</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
+        <div class="oa-panel">
+            <div class="oa-panel-header"><div><div class="oa-panel-kicker">NESTED RELATIONSHIPS</div><h2>嵌套关系</h2></div><span class="oa-count-badge">@_relationships.Count 个</span></div>
+            <div class="oa-panel-body oa-object-context"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong></div>
+            <div class="oa-table-wrap oa-object-table-wrap">
+                <table class="table table-hover align-middle mb-0 oa-analysis-table">
+                    <thead><tr><th>路径</th><th>类型</th><th>出现次数</th><th>目标字段数</th><th>目标字段</th></tr></thead>
+                    <tbody>@foreach (var relationship in _relationships){<tr><td class="oa-object-path"><code>@relationship.Path</code></td><td><span class="badge @(relationship.Kind == "Collection" ? "text-bg-info" : "text-bg-primary")">@(relationship.Kind == "Collection" ? "对象集合" : "对象")</span></td><td>@relationship.OccurrenceCount.ToString("N0")</td><td>@relationship.TargetFieldCount</td><td class="oa-object-targets">@(relationship.TargetFields.Count == 0 ? "-" : string.Join(", ", relationship.TargetFields))</td></tr>}</tbody>
                 </table>
             </div>
         </div>
-
-        <div class="oa-analysis-note mt-3">
-            <strong>关系说明：</strong>路径使用点号表示嵌套层级，例如 <code>order.shipping.address</code>。对象集合会统计集合中可识别的对象元素，并汇总其目标字段。
-        </div>
+        <div class="oa-analysis-note"><strong>关系说明：</strong>路径使用点号表示嵌套层级，例如 <code>order.shipping.address</code>。对象集合会统计集合中可识别的对象元素，并汇总其目标字段。</div>
     }
 </div>
 
