@@ -4,23 +4,27 @@
 
 <PageTitle>分析作业中心</PageTitle>
 
-<div class="container-fluid py-4 oa-page oa-jobs-page">
-    <div class="d-flex justify-content-between align-items-center mb-4 oa-page-header">
+<div class="oa-analysis-page oa-jobs-page">
+    <div class="oa-analysis-header">
         <div>
             <div class="oa-eyebrow">ANALYSIS OPERATIONS</div>
             <h1>分析作业中心</h1>
-            <p class="text-muted mb-0">查看历史分析作业及其质量结果。</p>
+            <p>查看历史分析作业及其质量结果。</p>
         </div>
         <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
     @if (_loading)
     {
-        <div class="alert alert-info">加载中...</div>
+        <div class="oa-empty-state oa-panel">
+            <div class="oa-empty-icon">…</div>
+            <strong>正在加载分析作业</strong>
+            <span>正在读取最近 100 次分析记录。</span>
+        </div>
     }
     else if (_jobs.Count == 0)
     {
-        <div class="oa-empty-state">
+        <div class="oa-empty-state oa-panel">
             <div class="oa-empty-icon">◌</div>
             <h2>暂无历史作业</h2>
             <p>完成一次分析后，作业记录和质量结果会显示在这里。</p>
@@ -51,39 +55,40 @@
             </div>
         </div>
 
-        <div class="oa-section-heading">
-            <div>
-                <h2>最近分析</h2>
-                <p>按开始时间倒序显示最近的分析任务。</p>
+        <section class="oa-panel">
+            <div class="oa-panel-header">
+                <div>
+                    <div class="oa-panel-kicker">RECENT RUNS</div>
+                    <h2>最近分析</h2>
+                </div>
+                <span class="oa-count-badge">@_jobs.Count 条</span>
             </div>
-            <span class="oa-count-pill">@_jobs.Count 条</span>
-        </div>
-
-        <div class="table-responsive oa-data-table">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>时间</th><th>数据源</th><th>状态</th><th>对象数</th><th>字段数</th><th>质量分</th><th>问题数</th><th>耗时</th><th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var job in _jobs)
-                {
-                    <tr>
-                        <td><span class="oa-date">@job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</span><small>@job.StartedAtUtc.ToLocalTime().ToString("HH:mm:ss")</small></td>
-                        <td><strong>@job.SourceName</strong><small>@job.SourceType</small></td>
-                        <td><span class="oa-status-badge oa-status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span></td>
-                        <td>@job.TotalObjects.ToString("N0")</td>
-                        <td>@job.FieldCount.ToString("N0")</td>
-                        <td><strong class="oa-score">@(job.QualityScore?.ToString("F2") ?? "-")</strong></td>
-                        <td><span class="oa-issue-count">@job.IssueCount</span></td>
-                        <td>@(job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-")</td>
-                        <td><a class="btn btn-sm btn-outline-primary" href="/jobs/@job.Id">查看详情</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
+            <div class="oa-table-wrap">
+                <table class="table table-hover align-middle mb-0 oa-analysis-table oa-jobs-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th><th>数据源</th><th>状态</th><th>对象数</th><th>字段数</th><th>质量分</th><th>问题数</th><th>耗时</th><th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var job in _jobs)
+                    {
+                        <tr>
+                            <td><span class="oa-date">@job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</span><small>@job.StartedAtUtc.ToLocalTime().ToString("HH:mm:ss")</small></td>
+                            <td><strong>@job.SourceName</strong><small>@job.SourceType</small></td>
+                            <td><span class="oa-status-badge oa-status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span></td>
+                            <td>@job.TotalObjects.ToString("N0")</td>
+                            <td>@job.FieldCount.ToString("N0")</td>
+                            <td><strong class="oa-score">@(job.QualityScore?.ToString("F2") ?? "-")</strong></td>
+                            <td><span class="oa-issue-count">@job.IssueCount</span></td>
+                            <td>@(job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-")</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="/jobs/@job.Id">查看详情</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
     }
 </div>
 
