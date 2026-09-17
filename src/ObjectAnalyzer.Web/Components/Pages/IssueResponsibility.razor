@@ -292,8 +292,10 @@
                 item.RemediationStatus,
                 item.RemediationDueDate?.ToUniversalTime(),
                 completed,
-                string.IsNullOrWhiteSpace(item.RemediationComment) ? null : item.RemediationComment.Trim(),
-                DateTime.UtcNow);
+                string.IsNullOrWhiteSpace(item.RemediationComment) ? null : item.RemediationComment.Trim())
+            {
+                CreatedAtUtc = DateTime.UtcNow
+            };
             remediation.Validate();
             await RemediationStore.SaveAsync(remediation);
             item.Remediations.Insert(0, remediation);
