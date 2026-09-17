@@ -74,7 +74,7 @@ public static class IssueEndpoints
                 CancellationToken cancellationToken) =>
             {
                 var remediation = new QualityIssueRemediation(
-                    request.Id == Guid.Empty ? Guid.NewGuid() : request.Id,
+                    request.Id ?? Guid.NewGuid(),
                     jobId,
                     request.FieldName,
                     request.Check,
@@ -140,6 +140,6 @@ public static class IssueEndpoints
         DateTime? DueAtUtc = null,
         DateTime? CompletedAtUtc = null,
         string? Comment = null,
-        Guid Id = default,
+        Guid? Id = null,
         DateTime? CreatedAtUtc = null);
 }
