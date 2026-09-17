@@ -22,6 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Repair Home.razor
+        if: hashFiles('.github/repair-trigger.txt') != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -38,20 +39,10 @@ jobs:
           s = s.replace(old, new, 1)
           p.write_text(s, encoding='utf-8-sig', newline='')
           PY
-          git rm -f .github/workflows/repair-home.yml .github/repair-trigger.txt || true
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('.github/workflows/ci.yml')
-          s = p.read_text()
-          start = s.index('      - name: Repair Home.razor\n')
-          end = s.index('      - name: Setup .NET SDK\n', start)
-          s = s[:start] + s[end:]
-          s = s.replace('permissions:\n      contents: write', 'permissions:\n      contents: read', 1)
-          p.write_text(s)
-          PY
+          rm -f .github/repair-trigger.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/ObjectAnalyzer.Web/Components/Pages/Home.razor .github/workflows/ci.yml
+          git add src/ObjectAnalyzer.Web/Components/Pages/Home.razor .github/repair-trigger.txt
           git diff --cached --check
           git commit -m "fix(web): persist analysis jobs from home page"
           git push origin HEAD:main
