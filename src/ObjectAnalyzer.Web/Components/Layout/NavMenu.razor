@@ -1,0 +1,45 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+    <a class="navbar-brand" href="/">ObjectAnalyzer</a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav"
+            aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div id="main-nav" class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">首页</NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/jobs">分析任务</NavLink>
+            </li>
+
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    质量分析
+                </a>
+                <ul class="dropdown-menu">
+                    <li><NavLink class="dropdown-item" href="/quality">质量总览</NavLink></li>
+                    <li><NavLink class="dropdown-item" href="/quality/trend">质量趋势</NavLink></li>
+                    <li><NavLink class="dropdown-item" href="/quality/fields">字段质量</NavLink></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><NavLink class="dropdown-item" href="/quality/data-lineage">数据血缘</NavLink></li>
+                    <li><NavLink class="dropdown-item" href="/quality/schema-impact">Schema 影响</NavLink></li>
+                    <li><NavLink class="dropdown-item" href="/quality/impact-analysis">影响分析</NavLink></li>
+                    <li><NavLink class="dropdown-item" href="/quality/relationships">质量关系</NavLink></li>
+                    <li><NavLink class="dropdown-item" href="/quality/object-relationships">对象关系</NavLink></li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/issues">问题中心</NavLink>
+            </li>
+
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/alert-rules">告警规则</NavLink>
+            </li>
+        </ul>
+    </div>
+</nav>
