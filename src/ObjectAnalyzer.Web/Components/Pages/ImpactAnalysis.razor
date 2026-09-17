@@ -7,10 +7,10 @@
 
 <PageTitle>影响分析</PageTitle>
 
-<div class="oa-analysis-page">
+<div class="oa-analysis-page oa-impact-analysis-page">
     <div class="oa-analysis-header">
         <div>
-            <div class="oa-eyebrow">Quality Analysis</div>
+            <div class="oa-eyebrow">IMPACT ANALYSIS</div>
             <h1>影响分析</h1>
             <p>沿当前数据血缘查看 Schema 变更可能影响的父对象、子节点与关联对象。</p>
         </div>
@@ -19,58 +19,65 @@
 
     @if (_loading)
     {
-        <div class="alert alert-info">正在加载最近一次分析结果...</div>
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">…</div><strong>正在加载最近一次分析结果</strong><span>正在计算 Schema 变更的传播范围。</span></div>
     }
     else if (_job is null)
     {
-        <div class="card"><div class="oa-empty-state"><strong>暂无成功的分析记录</strong>请先执行一次分析，再查看影响范围。</div></div>
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再查看影响范围。</span></div>
     }
     else if (_impact is null)
     {
-        <div class="card"><div class="oa-empty-state"><strong>分析结果无法解析</strong>请检查最近一次成功作业的结果数据。</div></div>
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>分析结果无法解析</strong><span>请检查最近一次成功作业的结果数据。</span></div>
     }
     else
     {
-        <div class="row g-3 mb-4">
-            <div class="col-sm-6 col-xl-4"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">最高影响级别</div><div class="oa-kpi-value">@GetLevelText(_impact.HighestLevel)</div><div class="oa-kpi-meta">当前 Schema 影响范围</div></div></div></div>
-            <div class="col-sm-6 col-xl-4"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">直接破坏性变更</div><div class="oa-kpi-value">@_impact.BreakingChangeCount</div><div class="oa-kpi-meta">来自 Schema Diff 的直接影响</div></div></div></div>
-            <div class="col-sm-6 col-xl-4"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">受影响节点</div><div class="oa-kpi-value">@_impact.Nodes.Count</div><div class="oa-kpi-meta">沿数据血缘传播的节点</div></div></div></div>
+        <div class="oa-impact-kpis">
+            <div class="oa-impact-kpi"><span>最高影响级别</span><strong class="@GetLevelClass(_impact.HighestLevel)">@GetLevelText(_impact.HighestLevel)</strong><small>当前 Schema 影响范围</small></div>
+            <div class="oa-impact-kpi is-danger"><span>直接破坏性变更</span><strong>@_impact.BreakingChangeCount</strong><small>来自 Schema Diff 的直接影响</small></div>
+            <div class="oa-impact-kpi"><span>受影响节点</span><strong>@_impact.Nodes.Count</strong><small>沿数据血缘传播的节点</small></div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header">影响传播</div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6"><div class="oa-kpi-label">数据源</div><div class="fw-semibold mt-1 text-break">@_job.SourceName</div></div>
-                    <div class="col-md-6"><div class="oa-kpi-label">分析时间</div><div class="fw-semibold mt-1">@_job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</div></div>
+        <div class="oa-panel mb-4">
+            <div class="oa-panel-header">
+                <div><div class="oa-panel-kicker">PROPAGATION</div><h2>影响传播</h2></div>
+            </div>
+            <div class="oa-panel-body">
+                <div class="oa-impact-context">
+                    <div><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong></div>
+                    <div><span>分析时间</span><strong>@_job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</strong></div>
                 </div>
-                <div class="oa-analysis-note mt-3 rounded">影响分析会把 Schema 变更沿当前数据血缘向父对象和子节点传播，并降低间接影响等级。</div>
+                <div class="oa-analysis-note">影响分析会把 Schema 变更沿当前数据血缘向父对象和子节点传播，并降低间接影响等级。</div>
             </div>
         </div>
 
         @if (_impact.Nodes.Count == 0)
         {
-            <div class="card"><div class="oa-empty-state"><strong>当前没有检测到需要传播的 Schema 影响</strong>最近一次分析结果没有产生受影响节点。</div></div>
+            <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">✓</div><strong>当前没有检测到需要传播的 Schema 影响</strong><span>最近一次分析结果没有产生受影响节点。</span></div>
         }
         else
         {
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center"><span>受影响节点</span><span class="badge bg-primary">@_impact.Nodes.Count</span></div>
-                <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-                    <thead><tr><th>路径</th><th>类型</th><th>影响来源</th><th>级别</th><th>原因</th></tr></thead>
-                    <tbody>
-                    @foreach (var node in _impact.Nodes)
-                    {
-                        <tr>
-                            <td><code>@node.Path</code></td>
-                            <td>@GetTypeText(node.Type)</td>
-                            <td>@GetSourceText(node.Type)</td>
-                            <td><span class="badge @GetLevelClass(node.Level)">@GetLevelText(node.Level)</span></td>
-                            <td>@node.Reason</td>
-                        </tr>
-                    }
-                    </tbody>
-                </table></div></div>
+            <div class="oa-panel">
+                <div class="oa-panel-header">
+                    <div><div class="oa-panel-kicker">AFFECTED NODES</div><h2>受影响节点</h2></div>
+                    <span class="oa-count-badge">@_impact.Nodes.Count 个</span>
+                </div>
+                <div class="oa-table-wrap oa-impact-table-wrap">
+                    <table class="table table-hover align-middle mb-0 oa-analysis-table">
+                        <thead><tr><th>路径</th><th>类型</th><th>影响来源</th><th>级别</th><th>原因</th></tr></thead>
+                        <tbody>
+                        @foreach (var node in _impact.Nodes)
+                        {
+                            <tr>
+                                <td class="oa-impact-path"><code>@node.Path</code></td>
+                                <td><span class="oa-impact-type">@GetTypeText(node.Type)</span></td>
+                                <td>@GetSourceText(node.Type)</td>
+                                <td><span class="badge @GetLevelClass(node.Level)">@GetLevelText(node.Level)</span></td>
+                                <td class="oa-impact-reason">@node.Reason</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         }
     }
