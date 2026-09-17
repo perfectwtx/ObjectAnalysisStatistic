@@ -82,8 +82,10 @@ public static class IssueEndpoints
                     request.Status,
                     request.DueAtUtc,
                     request.CompletedAtUtc,
-                    request.Comment,
-                    request.CreatedAtUtc ?? DateTime.UtcNow);
+                    request.Comment)
+                {
+                    CreatedAtUtc = request.CreatedAtUtc ?? DateTime.UtcNow
+                };
                 try
                 {
                     remediation.Validate();
