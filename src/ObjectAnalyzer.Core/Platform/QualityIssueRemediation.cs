@@ -10,9 +10,10 @@ public sealed record QualityIssueRemediation(
     string Status = "Planned",
     DateTime? DueAtUtc = null,
     DateTime? CompletedAtUtc = null,
-    string? Comment = null,
-    DateTime CreatedAtUtc)
+    string? Comment = null)
 {
+    public DateTime CreatedAtUtc { get; init; }
+
     public void Validate()
     {
         if (Id == Guid.Empty)
