@@ -20,7 +20,6 @@
     padding-bottom: var(--oa-page-bottom) !important;
 }
 
-/* 页面标题区 */
 .page main > .content > .container > .d-flex:first-child,
 .page main > .content > .container-fluid > .d-flex:first-child {
     min-height: 76px;
@@ -30,83 +29,35 @@
     gap: 1rem;
 }
 
-.page main h1 {
-    color: var(--oa-text-1);
-    font-size: clamp(1.55rem, 2vw, 2rem);
-    font-weight: 760;
-    letter-spacing: -.028em;
-    line-height: 1.2;
-}
+.page main h1 { color: var(--oa-text-1); font-size: clamp(1.55rem, 2vw, 2rem); font-weight: 760; letter-spacing: -.028em; line-height: 1.2; }
 .page main h2 { color: var(--oa-text-1); font-size: 1.3rem; font-weight: 720; letter-spacing: -.018em; }
 .page main h3, .page main h4, .page main h5 { color: var(--oa-text-1); font-weight: 680; }
 .page main p.text-muted, .page main .text-muted { color: var(--oa-text-2) !important; }
+.page main h1 + p, .page main h2 + p, .page main h3 + p { margin-top: .45rem !important; line-height: 1.55; }
 
-/* 让常见的标题说明自然形成层次 */
-.page main h1 + p,
-.page main h2 + p,
-.page main h3 + p { margin-top: .45rem !important; line-height: 1.55; }
-
-/* 卡片 */
 .page main .card {
-    background: var(--oa-surface);
-    color: var(--oa-text-1);
-    border: 1px solid var(--oa-border);
-    border-radius: var(--oa-radius-lg);
-    box-shadow: var(--oa-shadow-sm);
-    overflow: hidden;
+    background: var(--oa-surface); color: var(--oa-text-1); border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-lg); box-shadow: var(--oa-shadow-sm); overflow: hidden;
     transition: border-color .16s ease, box-shadow .16s ease;
 }
 .page main .card:hover { border-color: var(--oa-border-strong); }
 .page main .card + .card { margin-top: 1.15rem; }
 .page main .card-body { padding: 1.4rem 1.5rem; }
 .page main .card-title { color: var(--oa-text-1); font-weight: 700; }
-.page main .card-header {
-    padding: 1rem 1.35rem;
-    color: var(--oa-text-1);
-    background: var(--oa-surface-2);
-    border-bottom: 1px solid var(--oa-border);
-    font-weight: 680;
-}
+.page main .card-header { padding: 1rem 1.35rem; color: var(--oa-text-1); background: var(--oa-surface-2); border-bottom: 1px solid var(--oa-border); font-weight: 680; }
 .page main .card-footer { background: var(--oa-surface-2); border-top: 1px solid var(--oa-border); }
 .page main .card.mb-3 { margin-bottom: 1.15rem !important; }
 .page main .card.mt-4 { margin-top: 1.75rem !important; }
 
-/* 表格容器 */
-.page main .table-responsive {
-    background: var(--oa-surface);
-    border: 1px solid var(--oa-border);
-    border-radius: var(--oa-radius-lg);
-    box-shadow: var(--oa-shadow-sm);
-    overflow: auto;
-}
+.page main .table-responsive { background: var(--oa-surface); border: 1px solid var(--oa-border); border-radius: var(--oa-radius-lg); box-shadow: var(--oa-shadow-sm); overflow: auto; }
 .page main .table { width: 100%; margin: 0; color: var(--oa-text-1); background: transparent; }
-.page main .table > :not(caption) > * > * {
-    padding: 1rem 1.05rem;
-    border-bottom-color: var(--oa-border);
-    background: transparent;
-    vertical-align: middle;
-}
-.page main .table thead th {
-    color: var(--oa-text-2);
-    background: var(--oa-surface-2);
-    font-size: .76rem;
-    font-weight: 720;
-    letter-spacing: .035em;
-    white-space: nowrap;
-    border-bottom: 1px solid var(--oa-border-strong);
-}
+.page main .table > :not(caption) > * > * { padding: 1rem 1.05rem; border-bottom-color: var(--oa-border); background: transparent; vertical-align: middle; }
+.page main .table thead th { color: var(--oa-text-2); background: var(--oa-surface-2); font-size: .76rem; font-weight: 720; letter-spacing: .035em; white-space: nowrap; border-bottom: 1px solid var(--oa-border-strong); }
 .page main .table tbody td { font-size: .88rem; }
 .page main .table tbody tr:last-child td { border-bottom: 0; }
 .page main .table-hover > tbody > tr:hover > * { color: var(--oa-text-1); background: var(--oa-accent-soft); }
 
-/* 操作区与按钮 */
-.page main .btn {
-    min-height: var(--oa-control-height);
-    padding-inline: 1rem;
-    border-radius: 9px;
-    font-weight: 620;
-    transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
-}
+.page main .btn { min-height: var(--oa-control-height); padding-inline: 1rem; border-radius: 9px; font-weight: 620; transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
 .page main .btn-sm { min-height: 34px; padding-inline: .75rem; border-radius: 8px; font-size: .82rem; }
 .page main .btn:not(:disabled):hover { transform: translateY(-1px); }
 .page main .btn-primary { background: var(--oa-accent); border-color: var(--oa-accent); color: var(--oa-on-accent); }
@@ -116,49 +67,51 @@
 .page main .btn-outline-secondary { color: var(--oa-text-2); border-color: var(--oa-border-strong); }
 .page main .btn-outline-secondary:hover { color: var(--oa-text-1); background: var(--oa-surface-3); border-color: var(--oa-border-strong); }
 
-/* 表单 */
 .page main .form-label { margin-bottom: .5rem; color: var(--oa-text-2); font-size: .82rem; font-weight: 650; }
-.page main .form-control,
-.page main .form-select {
-    min-height: var(--oa-control-height);
-    color: var(--oa-text-1);
-    background: var(--oa-surface-2);
-    border: 1px solid var(--oa-border-strong);
-    border-radius: 9px;
-}
+.page main .form-control, .page main .form-select { min-height: var(--oa-control-height); color: var(--oa-text-1); background: var(--oa-surface-2); border: 1px solid var(--oa-border-strong); border-radius: 9px; }
 .page main textarea.form-control { min-height: 100px; }
 .page main .form-control::placeholder { color: var(--oa-text-3); }
-.page main .form-control:focus,
-.page main .form-select:focus { color: var(--oa-text-1); background: var(--oa-surface); border-color: var(--oa-accent); }
+.page main .form-control:focus, .page main .form-select:focus { color: var(--oa-text-1); background: var(--oa-surface); border-color: var(--oa-accent); }
 .page main .form-text { color: var(--oa-text-3); font-size: .76rem; line-height: 1.5; }
 .page main .form-check-label { color: var(--oa-text-2); }
 
-/* 提示、状态、空状态 */
 .page main .alert { border-radius: var(--oa-radius-md); border-width: 1px; padding: 1rem 1.1rem; box-shadow: none; }
 .page main .alert-info { color: var(--oa-text-1); background: var(--oa-info-soft); border-color: color-mix(in srgb, var(--oa-info) 30%, transparent); }
 .page main .badge { border-radius: 999px; padding: .4rem .7rem; font-weight: 650; }
-
-/* Bootstrap grid 的纵向节奏 */
 .page main .row.g-3 { row-gap: 1.25rem !important; }
 .page main .row.g-2 { row-gap: .9rem !important; }
+.page main .container > .row, .page main .container-fluid > .row { --bs-gutter-y: 1.25rem; }
+.page main .container > .row + .row, .page main .container-fluid > .row + .row { margin-top: .15rem; }
 
-/* 通用数据区，避免多个内容块首尾粘连 */
-.page main .container > .row,
-.page main .container-fluid > .row { --bs-gutter-y: 1.25rem; }
-.page main .container > .row + .row,
-.page main .container-fluid > .row + .row { margin-top: .15rem; }
-
-/* 首页 dashboard */
 .app-shell { grid-template-columns: minmax(280px, 300px) 5px minmax(0, 1fr); }
 .main-area { padding: 1.6rem clamp(1.25rem, 2.8vw, 2.75rem) 2.75rem; }
 .side-scroll { padding: .9rem .85rem 1.35rem; gap: 1.05rem; }
 .side-group { padding: .95rem; border: 1px solid var(--oa-border); border-radius: var(--oa-radius-md); background: var(--oa-surface-2); }
 .side-group-title { margin-bottom: .55rem; }
 .side-brand { padding: .9rem 1rem; }
-
-/* 首页结果区域中的卡片不要过度压缩 */
 .main-area .card { border-radius: var(--oa-radius-lg); }
 .main-area .card-body { padding: 1.25rem 1.35rem; }
+
+/* 质量总览 KPI */
+.page main .row.g-3.mb-4:first-of-type > [class*="col-"] .card { position: relative; min-height: 142px; border-top: 3px solid var(--oa-accent-border); }
+.page main .row.g-3.mb-4:first-of-type > [class*="col-"] .card-body { display: flex; flex-direction: column; justify-content: center; padding: 1.25rem 1.35rem; }
+.page main .row.g-3.mb-4:first-of-type .text-muted:first-child { font-size: .78rem; font-weight: 650; letter-spacing: .02em; }
+.page main .row.g-3.mb-4:first-of-type .display-5 { margin: .25rem 0 .15rem; color: var(--oa-text-1); font-size: 2rem; line-height: 1.15; letter-spacing: -.035em; }
+
+/* 质量指标 */
+.page main .row.g-3.mb-4:nth-of-type(2) > [class*="col-"] .card { border-radius: var(--oa-radius-md); box-shadow: none; background: var(--oa-surface-2); }
+.page main .row.g-3.mb-4:nth-of-type(2) .fs-3 { margin-top: .18rem; font-size: 1.5rem !important; color: var(--oa-text-1); }
+.page main .progress { background: var(--oa-surface-3); border-radius: 999px; overflow: hidden; }
+.page main .progress-bar { background: var(--oa-accent); border-radius: inherit; }
+
+/* 质量门禁 */
+.page main .border.rounded.p-3 { border-color: var(--oa-border) !important; border-radius: var(--oa-radius-md) !important; background: var(--oa-surface-2); transition: border-color .15s ease, background-color .15s ease; }
+.page main .border.rounded.p-3:hover { border-color: var(--oa-accent-border) !important; background: var(--oa-accent-soft); }
+
+/* Top Issues */
+.page main .border-bottom.py-2 { padding: .8rem .15rem !important; border-bottom-color: var(--oa-border) !important; }
+.page main .border-bottom.py-2:last-child { border-bottom: 0 !important; }
+.page main .card-body .fs-3 { color: var(--oa-text-1); font-weight: 720; letter-spacing: -.02em; }
 
 @media (max-width: 1100px) {
     .app-shell { grid-template-columns: 260px 4px minmax(0, 1fr); }
@@ -172,16 +125,14 @@
     .side-scroll { max-height: 58vh; }
     .side-handle { display: none; }
     .main-area { padding: 1rem var(--oa-page-gutter) 2rem; }
-    .page main > .content > .container,
-    .page main > .content > .container-fluid { padding-inline: 1rem; }
-    .page main > .content > .container > .d-flex:first-child,
-    .page main > .content > .container-fluid > .d-flex:first-child {
-        align-items: flex-start !important;
-        flex-direction: column;
-        gap: .9rem;
-        min-height: 0;
-    }
+    .page main > .content > .container, .page main > .content > .container-fluid { padding-inline: 1rem; }
+    .page main > .content > .container > .d-flex:first-child, .page main > .content > .container-fluid > .d-flex:first-child { align-items: flex-start !important; flex-direction: column; gap: .9rem; min-height: 0; }
     .page main .table > :not(caption) > * > * { padding: .75rem .8rem; }
+}
+
+@media (max-width: 720px) {
+    .page main .row.g-3.mb-4:first-of-type > [class*="col-"] .card { min-height: 118px; }
+    .page main .row.g-3.mb-4:first-of-type .display-5 { font-size: 1.65rem; }
 }
 
 @media (max-width: 520px) {
