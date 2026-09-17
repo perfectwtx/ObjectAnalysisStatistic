@@ -11,7 +11,7 @@ public sealed record QualityIssueRemediation(
     DateTime? DueAtUtc = null,
     DateTime? CompletedAtUtc = null,
     string? Comment = null,
-    DateTime CreatedAtUtc = default)
+    DateTime CreatedAtUtc)
 {
     public void Validate()
     {
