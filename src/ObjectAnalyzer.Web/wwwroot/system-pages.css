@@ -1,0 +1,90 @@
+.oa-system-page {
+    min-height: calc(100vh - 3rem);
+    display: grid;
+    place-items: center;
+    padding: 3rem 1rem;
+}
+
+.oa-system-card {
+    width: min(760px, 100%);
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+    padding: 2.5rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 18px;
+    background: var(--oa-surface);
+    box-shadow: 0 12px 36px rgba(23, 30, 46, .07);
+}
+
+.oa-system-code {
+    width: 92px;
+    height: 92px;
+    display: grid;
+    place-items: center;
+    border-radius: 24px;
+    color: var(--oa-accent-strong);
+    background: var(--oa-accent-soft);
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -.04em;
+}
+
+.oa-system-card-error .oa-system-code {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.oa-system-card h1 {
+    margin: 0 0 .6rem;
+    font-size: 1.65rem;
+}
+
+.oa-system-card p {
+    margin: 0;
+    color: var(--oa-text-2);
+    line-height: 1.7;
+}
+
+.oa-system-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem;
+    margin-top: 1.5rem;
+}
+
+.oa-request-id {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem;
+    align-items: center;
+    margin-top: 1.25rem;
+    padding: .75rem .9rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 10px;
+    background: var(--oa-surface-2);
+    font-size: .78rem;
+}
+
+.oa-request-id span { color: var(--oa-text-2); font-weight: 650; }
+.oa-request-id code { overflow-wrap: anywhere; }
+
+.oa-error-help {
+    margin-top: 1.25rem;
+    padding: .8rem .9rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 10px;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-2);
+    font-size: .8rem;
+}
+
+.oa-error-help summary { color: var(--oa-text-1); font-weight: 650; cursor: pointer; }
+.oa-error-help p { margin-top: .7rem; font-size: .78rem; }
+
+@media (max-width: 640px) {
+    .oa-system-page { padding: 1.5rem .75rem; }
+    .oa-system-card { grid-template-columns: 1fr; gap: 1.25rem; padding: 1.5rem; }
+    .oa-system-code { width: 64px; height: 64px; border-radius: 18px; font-size: 1.25rem; }
+}
