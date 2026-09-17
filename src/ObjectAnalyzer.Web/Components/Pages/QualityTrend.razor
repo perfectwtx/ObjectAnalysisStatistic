@@ -29,26 +29,34 @@
         var delta = _snapshots.Count >= 2 ? latest.Metrics.OverallScore - _snapshots[1].Metrics.OverallScore : 0;
 
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@_snapshots.Count</div><div class="oa-kpi-meta">最近 100 次质量快照</div></div></div>
+            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@_snapshots.Count</div><div class="oa-kpi-meta">最近 100 次质量快照</div></div></div></div>
+            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">最新质量分</div><div class="oa-kpi-value">@FormatScore(latest.Metrics.OverallScore)</div><div class="oa-kpi-meta">@latest.SourceName</div></div></div></div>
+            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">平均质量分</div><div class="oa-kpi-value">@FormatScore(average)</div><div class="oa-kpi-meta">当前历史窗口平均值</div></div></div></div>
+            <div class="col-md-3"><div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">较上次变化</div><div class="oa-kpi-value">@(_snapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div><div class="oa-kpi-meta">@(_snapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div></div></div></div>
+        </div>
+
+        <div class="card mb-4 oa-trend-chart-card">
+            <div class="card-header">
+                <div class="oa-card-title-row"><span>质量分走势</span><span class="oa-count-pill">最近 @_snapshots.Count 次</span></div>
             </div>
-            <div class="col-md-3">
-                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">最新质量分</div><div class="oa-kpi-value">@FormatScore(latest.Metrics.OverallScore)</div><div class="oa-kpi-meta">@latest.SourceName</div></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">平均质量分</div><div class="oa-kpi-value">@FormatScore(average)</div><div class="oa-kpi-meta">当前历史窗口平均值</div></div></div>
-            </div>
-            <div class="col-md-3">
-                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">较上次变化</div><div class="oa-kpi-value">@(_snapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div><div class="oa-kpi-meta">@(_snapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div></div></div>
+            <div class="card-body">
+                <div class="oa-trend-chart">
+                    @foreach (var snapshot in _snapshots.AsEnumerable().Reverse().Take(30))
+                    {
+                        <div class="oa-trend-point" title="@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") · @snapshot.Metrics.OverallScore.ToString("F1")">
+                            <div class="oa-trend-bar-track"><div class="oa-trend-bar" style="height:@$"{Math.Clamp(snapshot.Metrics.OverallScore, 0, 100):F0}%""></div></div>
+                            <strong>@snapshot.Metrics.OverallScore.ToString("F0")</strong>
+                            <span>@snapshot.OccurredAtUtc.ToLocalTime().ToString("MM-dd")</span>
+                        </div>
+                    }
+                </div>
+                <div class="oa-trend-axis"><span>较早</span><span>最近</span></div>
             </div>
         </div>
 
         <div class="card mb-4">
             <div class="card-header">
-                <div class="oa-card-title-row">
-                    <span>质量快照</span>
-                    <span class="oa-count-pill">@_snapshots.Count</span>
-                </div>
+                <div class="oa-card-title-row"><span>质量快照</span><span class="oa-count-pill">@_snapshots.Count</span></div>
             </div>
             <div class="table-responsive">
                 <table class="table align-middle mb-0 oa-data-table">
@@ -81,11 +89,7 @@
                         {
                             var previous = _snapshots[1];
                             <div class="oa-trend-summary">
-                                <div class="oa-trend-main">
-                                    <span class="oa-trend-label">整体质量分</span>
-                                    <strong>@FormatScore(latest.Metrics.OverallScore)</strong>
-                                    <span class="oa-trend-delta">@(delta >= 0 ? "+" : "")@delta.ToString("F1")</span>
-                                </div>
+                                <div class="oa-trend-main"><span class="oa-trend-label">整体质量分</span><strong>@FormatScore(latest.Metrics.OverallScore)</strong><span class="oa-trend-delta">@(delta >= 0 ? "+" : "")@delta.ToString("F1")</span></div>
                                 <div class="oa-trend-compare">上一快照：@FormatScore(previous.Metrics.OverallScore)</div>
                             </div>
                             <div class="oa-dimension-list">
@@ -106,7 +110,7 @@
                     <div class="card-header">趋势说明</div>
                     <div class="card-body">
                         <p class="mb-2">当前页面使用标准化质量快照作为唯一数据来源。</p>
-                        <p class="text-muted mb-0">质量分用于概览，完整性、有效性和唯一性用于观察具体质量维度。后续可在此基础上增加时间范围、数据源筛选和可视化曲线。</p>
+                        <p class="text-muted mb-0">上方走势展示最近 30 次快照，完整表格保留全部历史窗口，便于结合问题数和质量维度进行对照。</p>
                     </div>
                 </div>
             </div>
@@ -118,10 +122,7 @@
     private bool _loading = true;
     private List<QualitySnapshot> _snapshots = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
