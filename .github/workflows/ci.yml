@@ -16,11 +16,15 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Repair Home.razor
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin main
           git checkout a06c3162703f781202461065cc7ab4f08ee5f021 -- src/ObjectAnalyzer.Web/Components/Pages/Home.razor
           python3 - <<'PY'
           from pathlib import Path
@@ -40,7 +44,7 @@ jobs:
           p = Path('.github/workflows/ci.yml')
           s = p.read_text()
           start = s.index('      - name: Repair Home.razor\n')
-          end = s.index('      - name: Checkout repository\n', start)
+          end = s.index('      - name: Setup .NET SDK\n', start)
           s = s[:start] + s[end:]
           s = s.replace('permissions:\n      contents: write', 'permissions:\n      contents: read', 1)
           p.write_text(s)
@@ -51,9 +55,6 @@ jobs:
           git diff --cached --check
           git commit -m "fix(web): persist analysis jobs from home page"
           git push origin HEAD:main
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
