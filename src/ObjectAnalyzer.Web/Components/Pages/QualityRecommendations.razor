@@ -6,54 +6,64 @@
 
 <PageTitle>质量修复建议</PageTitle>
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="oa-analysis-page oa-recommendations-page">
+    <div class="oa-analysis-header">
         <div>
+            <div class="oa-eyebrow">QUALITY GOVERNANCE</div>
             <h1>质量修复建议</h1>
-            <p class="text-muted mb-0">把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p>
+            <p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p>
         </div>
         <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
     </div>
 
     @if (_loading)
     {
-        <div class="alert alert-info">正在加载质量问题...</div>
+        <div class="oa-empty-state oa-recommendations-state">
+            <div class="oa-empty-icon">…</div>
+            <strong>正在加载质量问题</strong>
+            <span>正在读取最近一次成功的分析结果。</span>
+        </div>
     }
     else if (_recommendations.Count == 0)
     {
-        <div class="alert alert-success">当前没有可生成建议的质量问题。数据质量状态良好。</div>
+        <div class="oa-empty-state oa-empty-state-success oa-recommendations-state">
+            <div class="oa-empty-icon">✓</div>
+            <h3>当前没有可生成建议的质量问题</h3>
+            <p>最近一次成功分析没有发现需要生成治理建议的字段问题。</p>
+        </div>
     }
     else
     {
-        <div class="row g-3 mb-4">
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">待治理问题</div><div class="display-6">@_recommendations.Count</div></div></div></div>
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">涉及字段</div><div class="display-6">@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div></div></div></div>
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">违规次数</div><div class="display-6">@_recommendations.Sum(x => x.Count)</div></div></div></div>
+        <div class="oa-recommendation-kpis">
+            <div class="oa-analysis-kpi"><span>待治理问题</span><strong>@_recommendations.Count</strong><small>需要关注的质量问题</small></div>
+            <div class="oa-analysis-kpi"><span>涉及字段</span><strong>@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><small>存在质量风险的字段</small></div>
+            <div class="oa-analysis-kpi"><span>违规次数</span><strong>@_recommendations.Sum(x => x.Count)</strong><small>所有问题累计影响次数</small></div>
         </div>
 
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>治理建议</span>
-                <span class="text-muted small">@_sourceName · @_jobTime</span>
+        <div class="oa-panel oa-recommendations-panel">
+            <div class="oa-panel-header">
+                <div><div class="oa-panel-kicker">ACTION PLAN</div><h2>治理建议</h2></div>
+                <span class="oa-count-badge">@_sourceName · @_jobTime</span>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+            <div class="oa-panel-body oa-table-wrap">
+                <table class="table table-hover align-middle mb-0 oa-analysis-table oa-recommendation-table">
                     <thead><tr><th>优先级</th><th>字段</th><th>问题</th><th>影响</th><th>建议动作</th><th>建议规则</th></tr></thead>
                     <tbody>
                     @foreach (var item in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count))
                     {
                         <tr>
                             <td><span class="badge @(item.Priority >= 3 ? "bg-danger" : item.Priority == 2 ? "bg-warning text-dark" : "bg-secondary")">@item.PriorityText</span></td>
-                            <td><strong>@item.Field</strong></td>
-                            <td><span class="badge text-bg-warning">@QualityCheckTypes.Label(item.Check)</span><div class="small text-muted mt-1">@item.Message</div></td>
-                            <td>@item.Count 次</td>
-                            <td>@item.Action</td>
-                            <td><code>@item.Rule</code></td>
+                            <td><strong class="oa-recommendation-field">@item.Field</strong></td>
+                            <td><span class="badge text-bg-warning">@QualityCheckTypes.Label(item.Check)</span><div class="small text-muted mt-2 oa-recommendation-message">@item.Message</div></td>
+                            <td><span class="oa-number-value">@item.Count</span> 次</td>
+                            <td class="oa-recommendation-action">@item.Action</td>
+                            <td><code class="oa-recommendation-rule">@item.Rule</code></td>
                         </tr>
                     }
                     </tbody>
                 </table>
             </div>
+            <div class="oa-analysis-note">建议用于辅助治理决策，系统不会根据这些建议直接修改源数据。</div>
         </div>
     }
 </div>
