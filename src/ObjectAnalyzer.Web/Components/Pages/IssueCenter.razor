@@ -5,9 +5,10 @@
 
 <PageTitle>Issue Center</PageTitle>
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container py-4 oa-page oa-issues-page">
+    <div class="d-flex justify-content-between align-items-center mb-4 oa-page-header">
         <div>
+            <div class="oa-eyebrow">QUALITY MONITORING</div>
             <h1>质量问题中心</h1>
             <p class="text-muted mb-0">按分析任务查看标准化字段级质量问题，定位影响质量分的问题来源。</p>
         </div>
@@ -16,44 +17,74 @@
 
     @if (_loading)
     {
-        <p>加载中...</p>
+        <div class="alert alert-info">加载中...</div>
     }
     else if (_jobs.Count == 0)
     {
-        <div class="alert alert-info">暂无分析任务。</div>
+        <div class="oa-empty-state">
+            <div class="oa-empty-icon">✓</div>
+            <h2>暂无分析任务</h2>
+            <p>完成一次成功的分析后，这里会汇总字段级质量问题。</p>
+        </div>
     }
     else
     {
-        <div class="card mb-4">
+        <div class="oa-summary-grid mb-4">
+            <div class="oa-summary-card oa-summary-warning">
+                <span>当前问题项</span>
+                <strong>@_selectedIssues.Count</strong>
+                <small>标准化质量问题</small>
+            </div>
+            <div class="oa-summary-card">
+                <span>问题字段</span>
+                <strong>@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong>
+                <small>涉及字段数量</small>
+            </div>
+            <div class="oa-summary-card">
+                <span>违规次数</span>
+                <strong>@_selectedIssues.Sum(x => x.Count)</strong>
+                <small>当前作业累计</small>
+            </div>
+            <div class="oa-summary-card">
+                <span>质量分</span>
+                <strong>@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</strong>
+                <small>当前分析结果</small>
+            </div>
+        </div>
+
+        <div class="oa-issue-toolbar card mb-4">
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3"><strong>@_selectedIssues.Count</strong><div class="text-muted small">当前问题项</div></div>
-                    <div class="col-md-3"><strong>@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><div class="text-muted small">问题字段数</div></div>
-                    <div class="col-md-3"><strong>@_selectedIssues.Sum(x => x.Count)</strong><div class="text-muted small">违规发生次数</div></div>
-                    <div class="col-md-3"><strong>@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</strong><div class="text-muted small">质量分</div></div>
+                <div>
+                    <div class="oa-eyebrow">ANALYSIS RUN</div>
+                    <h2>问题明细</h2>
+                    <p class="mb-0">选择一次分析任务，查看该任务产生的标准化质量问题。</p>
+                </div>
+                <div class="oa-job-selector">
+                    <label class="form-label">分析任务</label>
+                    <select class="form-select" @onchange="OnJobChanged">
+                        @foreach (var job in _jobs)
+                        {
+                            <option value="@job.Id" selected="@(job.Id == _selectedJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                        }
+                    </select>
                 </div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>问题明细</span>
-                <select class="form-select form-select-sm" style="max-width: 360px" @onchange="OnJobChanged">
-                    @foreach (var job in _jobs)
-                    {
-                        <option value="@job.Id" selected="@(job.Id == _selectedJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
-                    }
-                </select>
-            </div>
+        <div class="card oa-issue-table-card">
             @if (_selectedIssues.Count == 0)
             {
-                <div class="card-body">
-                    <div class="alert alert-success mb-0">本次分析没有标准化质量违规。数据质量检查通过。</div>
+                <div class="oa-success-state">
+                    <div class="oa-success-icon">✓</div>
+                    <div>
+                        <h3>本次分析没有标准化质量违规</h3>
+                        <p>当前数据质量检查没有发现需要记录的问题。</p>
+                    </div>
                 </div>
             }
             else
             {
-                <div class="table-responsive">
+                <div class="table-responsive oa-data-table">
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
@@ -69,7 +100,7 @@
                                 <tr>
                                     <td><strong>@issue.FieldName</strong></td>
                                     <td><span class="badge text-bg-warning">@issue.Check</span></td>
-                                    <td>@issue.Count</td>
+                                    <td><span class="oa-issue-count">@issue.Count</span></td>
                                     <td>@issue.Message</td>
                                 </tr>
                             }
@@ -79,8 +110,9 @@
             }
         </div>
 
-        <div class="alert alert-secondary mt-3 mb-0 small">
-            标准化问题表当前保存字段、检查类型、违规次数和问题说明；历史 JSON 中的样本值不再作为问题中心的数据源。
+        <div class="oa-source-note mt-3">
+            <span>ⓘ</span>
+            <span>标准化问题表当前保存字段、检查类型、违规次数和问题说明；历史 JSON 中的样本值不再作为问题中心的数据源。</span>
         </div>
     }
 </div>
