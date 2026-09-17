@@ -1,3 +1,4 @@
+.oa-job-detail { max-width:1440px; margin:0 auto; padding:1.5rem 0 2.5rem; }
 .oa-job-detail .oa-job-hero { display:flex; justify-content:space-between; align-items:stretch; gap:2rem; padding:1.5rem 1.7rem; border:1px solid var(--oa-border); border-radius:var(--oa-radius-lg); background:linear-gradient(135deg,var(--oa-surface),var(--oa-surface-2)); box-shadow:var(--oa-shadow-sm); }
 .oa-job-hero-main { min-width:0; }
 .oa-job-kicker { color:var(--oa-accent); font-size:.68rem; font-weight:800; letter-spacing:.12em; }
@@ -35,5 +36,5 @@
 .oa-job-detail .table-responsive { border-radius:0 0 var(--oa-radius-lg) var(--oa-radius-lg); }
 .oa-job-detail .table th { white-space:nowrap; }
 .oa-job-detail .table td,.oa-job-detail .table th { padding:.72rem .85rem; }
-@media (max-width:1000px) { .oa-job-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .oa-info-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .oa-info-wide{grid-column:span 2;} .oa-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));} .oa-two-column,.oa-three-column{grid-template-columns:1fr;} }
-@media (max-width:700px) { .oa-job-detail .oa-job-hero{flex-direction:column;gap:1.2rem;padding:1.25rem;} .oa-job-score{min-width:0;padding:1rem 0 0;border-left:0;border-top:1px solid var(--oa-border);} .oa-job-summary-grid,.oa-metric-grid,.oa-info-grid{grid-template-columns:1fr;} .oa-info-wide{grid-column:span 1;} .oa-job-detail .oa-section-heading{margin-top:1.6rem;} }
+@media (max-width:1000px) { .oa-job-detail{padding-top:1.25rem;} .oa-job-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .oa-info-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .oa-info-wide{grid-column:span 2;} .oa-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));} .oa-two-column,.oa-three-column{grid-template-columns:1fr;} }
+@media (max-width:700px) { .oa-job-detail{padding:1rem 0 2rem;} .oa-job-detail .oa-job-hero{flex-direction:column;gap:1.2rem;padding:1.25rem;} .oa-job-score{min-width:0;padding:1rem 0 0;border-left:0;border-top:1px solid var(--oa-border);} .oa-job-summary-grid,.oa-metric-grid,.oa-info-grid{grid-template-columns:1fr;} .oa-info-wide{grid-column:span 1;} .oa-job-detail .oa-section-heading{margin-top:1.6rem;} }
