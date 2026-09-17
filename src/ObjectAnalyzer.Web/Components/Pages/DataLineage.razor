@@ -7,11 +7,12 @@
 
 <PageTitle>数据血缘</PageTitle>
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="oa-analysis-page">
+    <div class="oa-analysis-header">
         <div>
+            <div class="oa-eyebrow">Quality Analysis</div>
             <h1>数据血缘</h1>
-            <p class="text-muted mb-0">查看最近一次成功分析生成的对象、集合与字段层级血缘。</p>
+            <p>查看最近一次成功分析生成的对象、集合与字段层级血缘。</p>
         </div>
         <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
     </div>
@@ -22,22 +23,22 @@
     }
     else if (_job is null)
     {
-        <div class="alert alert-secondary">暂无成功的分析记录。</div>
+        <div class="card"><div class="oa-empty-state"><strong>暂无成功的分析记录</strong>请先执行一次分析，再查看数据血缘。</div></div>
     }
     else if (_lineage is null || _lineage.Nodes.Count == 0)
     {
-        <div class="alert alert-secondary">最近一次分析没有可展示的数据血缘。请先运行包含嵌套对象或对象集合的分析。</div>
+        <div class="card"><div class="oa-empty-state"><strong>暂无可展示的数据血缘</strong>请先运行包含嵌套对象或对象集合的分析。</div></div>
     }
     else
     {
         <div class="row g-3 mb-4">
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">节点数量</div><div class="display-6">@_lineage.Nodes.Count</div></div></div></div>
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">关系节点</div><div class="display-6">@_lineage.Nodes.Count(x => x.Kind != "Field")</div></div></div></div>
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted">血缘边</div><div class="display-6">@_lineage.Edges.Count</div></div></div></div>
+            <div class="col-sm-4"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">节点数量</div><div class="oa-kpi-value">@_lineage.Nodes.Count</div><div class="oa-kpi-meta">对象、集合与字段节点</div></div></div></div>
+            <div class="col-sm-4"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">关系节点</div><div class="oa-kpi-value">@_lineage.Nodes.Count(x => x.Kind != "Field")</div><div class="oa-kpi-meta">非字段层级节点</div></div></div></div>
+            <div class="col-sm-4"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">血缘边</div><div class="oa-kpi-value">@_lineage.Edges.Count</div><div class="oa-kpi-meta">父子层级关系</div></div></div></div>
         </div>
 
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center"><span>血缘节点</span><span class="text-muted small">数据源：@_job.SourceName</span></div>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center"><span>血缘节点</span><span class="text-muted small text-truncate" title="@_job.SourceName">数据源：@_job.SourceName</span></div>
             <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
                 <thead><tr><th>路径</th><th>类型</th><th>深度</th><th>出现次数</th><th>目标字段</th></tr></thead>
                 <tbody>
@@ -54,14 +55,15 @@
             </table></div></div>
         </div>
 
-        <div class="card mt-4">
-            <div class="card-header">血缘关系</div><div class="card-body p-0">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center"><span>血缘关系</span><span class="badge bg-secondary">@_lineage.Edges.Count</span></div>
+            <div class="card-body p-0">
             @if (_lineage.Edges.Count == 0)
-            { <div class="p-3 text-muted">当前结果没有可进一步展开的父子血缘边。</div> }
+            { <div class="oa-empty-state"><strong>暂无血缘边</strong>当前结果没有可进一步展开的父子血缘关系。</div> }
             else
-            { <div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead><tr><th>父节点</th><th>关系</th><th>子节点</th></tr></thead><tbody>
+            { <div class="table-responsive"><table class="table table-hover mb-0 align-middle"><thead><tr><th>父节点</th><th>关系</th><th>子节点</th></tr></thead><tbody>
                 @foreach (var edge in _lineage.Edges.OrderBy(x => x.ParentPath, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.ChildPath, StringComparer.OrdinalIgnoreCase))
-                { <tr><td><code>@edge.ParentPath</code></td><td>@EdgeLabel(edge.Kind)</td><td><code>@edge.ChildPath</code></td></tr> }
+                { <tr><td><code>@edge.ParentPath</code></td><td><span class="badge bg-light text-dark border">@EdgeLabel(edge.Kind)</span></td><td><code>@edge.ChildPath</code></td></tr> }
             </tbody></table></div> }
             </div>
         </div>
