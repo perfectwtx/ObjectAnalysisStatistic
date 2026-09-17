@@ -4,48 +4,62 @@
 
 <PageTitle>质量趋势</PageTitle>
 
-<h1 class="mb-4">质量趋势</h1>
-
-@if (_loading)
-{
-    <div class="alert alert-info">正在加载质量历史数据...</div>
-}
-else if (_snapshots.Count == 0)
-{
-    <div class="alert alert-secondary">暂无标准化质量历史数据。</div>
-}
-else
-{
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">分析次数</div><div class="display-6">@_snapshots.Count</div></div></div>
+<div class="oa-analysis-page">
+    <div class="oa-analysis-header">
+        <div>
+            <div class="oa-eyebrow">Quality Analysis</div>
+            <h1>质量趋势</h1>
+            <p>从历史质量快照观察整体质量分与核心质量维度的变化。</p>
         </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">最新质量分</div><div class="display-6">@FormatScore(_snapshots[0].Metrics.OverallScore)</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">平均质量分</div><div class="display-6">@FormatScore(_snapshots.Average(x => x.Metrics.OverallScore))</div></div></div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100"><div class="card-body"><div class="text-muted">累计问题</div><div class="display-6">@_snapshots.Sum(x => x.IssueCount)</div></div></div>
-        </div>
+        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header">质量分趋势</div>
-        <div class="card-body">
+    @if (_loading)
+    {
+        <div class="alert alert-info">正在加载质量历史数据...</div>
+    }
+    else if (_snapshots.Count == 0)
+    {
+        <div class="card"><div class="oa-empty-state"><strong>暂无质量历史数据</strong>完成至少一次成功分析后，这里会显示标准化质量快照。</div></div>
+    }
+    else
+    {
+        var latest = _snapshots[0];
+        var average = _snapshots.Average(x => x.Metrics.OverallScore);
+        var delta = _snapshots.Count >= 2 ? latest.Metrics.OverallScore - _snapshots[1].Metrics.OverallScore : 0;
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@_snapshots.Count</div><div class="oa-kpi-meta">最近 100 次质量快照</div></div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">最新质量分</div><div class="oa-kpi-value">@FormatScore(latest.Metrics.OverallScore)</div><div class="oa-kpi-meta">@latest.SourceName</div></div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">平均质量分</div><div class="oa-kpi-value">@FormatScore(average)</div><div class="oa-kpi-meta">当前历史窗口平均值</div></div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">较上次变化</div><div class="oa-kpi-value">@(_snapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div><div class="oa-kpi-meta">@(_snapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div></div></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="oa-card-title-row">
+                    <span>质量快照</span>
+                    <span class="oa-count-pill">@_snapshots.Count</span>
+                </div>
+            </div>
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
+                <table class="table align-middle mb-0 oa-data-table">
                     <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题数</th><th>对象数</th><th>完整性</th><th>有效性</th><th>唯一性</th></tr></thead>
                     <tbody>
                     @foreach (var snapshot in _snapshots)
                     {
                         <tr>
-                            <td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td class="text-nowrap">@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                             <td>@snapshot.SourceName</td>
-                            <td>
-                                <span class="badge @(snapshot.Metrics.OverallScore >= 90 ? "bg-success" : snapshot.Metrics.OverallScore >= 70 ? "bg-warning text-dark" : "bg-danger")">@snapshot.Metrics.OverallScore.ToString("F1")</span>
-                            </td>
+                            <td><span class="badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
                             <td>@snapshot.IssueCount</td>
                             <td>@snapshot.TotalObjects</td>
                             <td>@snapshot.Metrics.Completeness.ToString("F1")</td>
@@ -57,26 +71,48 @@ else
                 </table>
             </div>
         </div>
-    </div>
 
-    <div class="card">
-        <div class="card-header">趋势解读</div>
-        <div class="card-body">
-            @if (_snapshots.Count >= 2)
-            {
-                var latest = _snapshots[0].Metrics.OverallScore;
-                var previous = _snapshots[1].Metrics.OverallScore;
-                var delta = latest - previous;
-                <p class="mb-1">最近一次质量分较上一次 <strong>@(delta >= 0 ? "+" : "")@delta.ToString("F1")</strong>。</p>
-                <p class="text-muted mb-0">质量趋势现在直接来自标准化质量快照，可继续扩展时间范围、数据源筛选和维度趋势分析。</p>
-            }
-            else
-            {
-                <p class="text-muted mb-0">至少需要两次质量快照后才能判断质量变化趋势。</p>
-            }
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-header">最近质量变化</div>
+                    <div class="card-body">
+                        @if (_snapshots.Count >= 2)
+                        {
+                            var previous = _snapshots[1];
+                            <div class="oa-trend-summary">
+                                <div class="oa-trend-main">
+                                    <span class="oa-trend-label">整体质量分</span>
+                                    <strong>@FormatScore(latest.Metrics.OverallScore)</strong>
+                                    <span class="oa-trend-delta">@(delta >= 0 ? "+" : "")@delta.ToString("F1")</span>
+                                </div>
+                                <div class="oa-trend-compare">上一快照：@FormatScore(previous.Metrics.OverallScore)</div>
+                            </div>
+                            <div class="oa-dimension-list">
+                                <div><span>完整性</span><strong>@latest.Metrics.Completeness.ToString("F1")</strong></div>
+                                <div><span>有效性</span><strong>@latest.Metrics.Validity.ToString("F1")</strong></div>
+                                <div><span>唯一性</span><strong>@latest.Metrics.Uniqueness.ToString("F1")</strong></div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="oa-empty-state"><strong>趋势数据不足</strong>至少需要两次质量快照才能计算相邻变化。</div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card h-100">
+                    <div class="card-header">趋势说明</div>
+                    <div class="card-body">
+                        <p class="mb-2">当前页面使用标准化质量快照作为唯一数据来源。</p>
+                        <p class="text-muted mb-0">质量分用于概览，完整性、有效性和唯一性用于观察具体质量维度。后续可在此基础上增加时间范围、数据源筛选和可视化曲线。</p>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-}
+    }
+</div>
 
 @code {
     private bool _loading = true;
@@ -95,4 +131,7 @@ else
     }
 
     private static string FormatScore(double score) => score.ToString("F1");
+
+    private static string ScoreBadge(double score)
+        => score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
 }
