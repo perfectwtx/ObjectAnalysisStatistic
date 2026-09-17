@@ -1,274 +1,50 @@
 /* Home page refinement: reduce density while preserving the existing analysis workflow. */
-.app-shell {
-    grid-template-columns: minmax(260px, 288px) 4px minmax(0, 1fr);
-    background: transparent;
-}
-
-.app-shell .sidebar {
-    box-shadow: none;
-}
-
-.app-shell .side-scroll {
-    padding: .7rem .7rem 1rem;
-    gap: .7rem;
-}
-
-.app-shell .side-group {
-    padding: .8rem;
-    border-radius: 12px;
-}
-
-.app-shell .side-group-title {
-    margin-bottom: .45rem;
-    font-size: .68rem;
-}
-
-.app-shell .side-subgroup-title {
-    padding-top: .55rem;
-    margin-top: .25rem;
-    font-size: .66rem;
-}
-
-.app-shell .options-grid {
-    gap: .6rem .65rem;
-}
-
-.app-shell .option-item {
-    gap: .25rem;
-    font-size: .8rem;
-}
-
-.app-shell .option-item > span {
-    font-size: .74rem;
-}
-
-.app-shell .checkbox-item {
-    padding-top: .35rem;
-}
-
-.app-shell .option-item input[type="text"],
-.app-shell .option-item input[type="number"],
-.app-shell .option-item select {
-    min-height: 34px;
-    padding: .3rem .5rem;
-    font-size: .78rem;
-}
-
-.app-shell .option-group {
-    padding: .45rem .65rem;
-    margin-top: .35rem;
-}
-
-.app-shell .option-group > summary {
-    padding: .15rem 0;
-}
-
-.app-shell .opt-group-title {
-    font-size: .78rem;
-}
-
-.app-shell .opt-group-hint {
-    font-size: .68rem;
-}
-
-.app-shell .upload-area {
-    margin-bottom: .4rem;
-    padding: 1.2rem .8rem 1rem;
-    border-radius: 12px;
-}
-
-.app-shell .upload-area::before {
-    font-size: 1.35rem;
-    margin-bottom: .2rem;
-}
-
-.app-shell .upload-area p {
-    font-size: .78rem;
-}
-
-.app-shell .upload-area small {
-    font-size: .7rem;
-}
-
-.app-shell .uploaded-file {
-    margin-top: .55rem;
-    padding: .4rem .55rem;
-    font-size: .75rem;
-}
-
-.app-shell .side-group-run {
-    padding: .75rem;
-    background: linear-gradient(180deg, var(--oa-accent-soft), var(--oa-surface-2));
-    border-color: var(--oa-accent-border);
-}
-
-.app-shell .side-group-run .config-actions {
-    margin-top: 0;
-}
-
-.app-shell .side-group-run .btn-lg {
-    min-height: 40px;
-    padding: .55rem 1rem;
-    font-size: .88rem;
-}
-
-.app-shell .progress-status {
-    margin-top: .45rem;
-    font-size: .76rem;
-}
-
-.app-shell .main-area {
-    padding: 1.25rem clamp(1rem, 2.6vw, 2.5rem) 3rem;
-}
-
-.app-shell .topbar {
-    min-height: 34px;
-    margin-bottom: 1.25rem;
-}
-
-.app-shell .results-section {
-    width: min(100%, 1440px);
-    margin-inline: auto;
-    padding-top: 0;
-}
-
-.app-shell .results-header {
-    align-items: flex-start;
-    margin-bottom: 1.25rem;
-    padding: 1.1rem 1.2rem;
-    background: var(--oa-surface);
-    border: 1px solid var(--oa-border);
-    border-radius: 14px;
-    box-shadow: var(--oa-shadow-sm);
-}
-
-.app-shell .results-header h2 {
-    flex: 0 0 auto;
-    padding-top: .2rem;
-}
-
-.app-shell .results-header .header-actions {
-    flex: 1 1 620px;
-    justify-content: flex-end;
-    align-items: flex-start;
-}
-
-.app-shell .download-group {
-    padding: .25rem .45rem;
-    border-left: 1px solid var(--oa-border);
-}
-
-.app-shell .download-label {
-    width: 100%;
-    margin-bottom: .1rem;
-}
-
-.app-shell .summary-cards {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-    margin: 0 0 1.25rem;
-}
-
-.app-shell .summary-cards .card {
-    min-height: 112px;
-    padding: 1rem 1.1rem;
-    border-radius: 14px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.app-shell .summary-cards .card-value {
-    font-size: 1.85rem;
-}
-
-.app-shell .summary-cards .card-label {
-    font-size: .7rem;
-}
-
-.app-shell .charts-section {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    margin: 0 0 1.25rem;
-}
-
-.app-shell .chart-box {
-    min-height: 300px;
-    padding: 1.1rem 1.2rem;
-    border-radius: 14px;
-}
-
-.app-shell .chart-box h3 {
-    margin-bottom: .9rem;
-    font-size: .9rem;
-}
-
-.app-shell .detail-tabs {
-    margin: 0 0 1rem;
-}
-
-.app-shell .field-table,
-.app-shell .table-scroll,
-.app-shell .preview-col-select {
-    box-shadow: none;
-}
-
-.app-shell .field-table,
-.app-shell .table-scroll {
-    border-radius: 12px;
-}
-
-.app-shell .field-table th,
-.app-shell .field-table td {
-    padding: .7rem .85rem;
-}
-
-.app-shell .toolbar {
-    padding: .8rem;
-    margin-bottom: .85rem;
-    background: var(--oa-surface-2);
-    border: 1px solid var(--oa-border);
-    border-radius: 12px;
-}
-
-.app-shell .empty-state {
-    min-height: 500px;
-    max-width: 920px;
-    margin: 2rem auto;
-    background: var(--oa-surface);
-    box-shadow: var(--oa-shadow-sm);
-}
-
-.app-shell .result-warning,
-.app-shell .memory-warning,
-.app-shell .checkpoint-info,
-.app-shell .error {
-    margin-bottom: 1rem;
-}
-
-@media (max-width: 1180px) {
-    .app-shell { grid-template-columns: 240px 4px minmax(0, 1fr); }
-    .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .app-shell .results-header .header-actions { flex-basis: 100%; justify-content: flex-start; }
-    .app-shell .download-group { border-left: 0; border-top: 1px solid var(--oa-border); padding-left: 0; }
-}
-
-@media (max-width: 860px) {
-    .app-shell { display: block; }
-    .app-shell .sidebar { position: relative; width: 100%; height: auto; max-height: none; }
-    .app-shell .side-scroll { max-height: none; overflow: visible; }
-    .app-shell .side-handle { display: none; }
-    .app-shell .main-area { padding: 1rem; }
-    .app-shell .charts-section { grid-template-columns: 1fr; }
-    .app-shell .chart-box { min-height: 260px; }
-}
-
-@media (max-width: 560px) {
-    .app-shell .summary-cards { grid-template-columns: 1fr; }
-    .app-shell .results-header { padding: .9rem; }
-    .app-shell .results-header h2 { width: 100%; }
-    .app-shell .download-group { width: 100%; }
-    .app-shell .download-group .btn-sm { flex: 0 0 auto; }
-    .app-shell .options-grid,
-    .app-shell .side-group .options-grid { grid-template-columns: 1fr; }
-}
+.app-shell { grid-template-columns: minmax(260px, 288px) 4px minmax(0, 1fr); background: transparent; }
+.app-shell .sidebar { box-shadow: none; }
+.app-shell .side-scroll { padding: .7rem .7rem 1rem; gap: .7rem; }
+.app-shell .side-group { padding: .8rem; border-radius: 12px; }
+.app-shell .side-group-title { margin-bottom: .45rem; font-size: .68rem; }
+.app-shell .side-subgroup-title { padding-top: .55rem; margin-top: .25rem; font-size: .66rem; }
+.app-shell .options-grid { gap: .6rem .65rem; }
+.app-shell .option-item { gap: .25rem; font-size: .8rem; }
+.app-shell .option-item > span { font-size: .74rem; }
+.app-shell .checkbox-item { padding-top: .35rem; }
+.app-shell .option-item input[type="text"], .app-shell .option-item input[type="number"], .app-shell .option-item select { min-height: 34px; padding: .3rem .5rem; font-size: .78rem; }
+.app-shell .option-group { padding: .45rem .65rem; margin-top: .35rem; }
+.app-shell .option-group > summary { padding: .15rem 0; }
+.app-shell .opt-group-title { font-size: .78rem; }
+.app-shell .opt-group-hint { font-size: .68rem; }
+.app-shell .upload-area { margin-bottom: .4rem; padding: 1.2rem .8rem 1rem; border-radius: 12px; }
+.app-shell .upload-area::before { font-size: 1.35rem; margin-bottom: .2rem; }
+.app-shell .upload-area p { font-size: .78rem; }
+.app-shell .upload-area small { font-size: .7rem; }
+.app-shell .uploaded-file { margin-top: .55rem; padding: .4rem .55rem; font-size: .75rem; }
+.app-shell .side-group-run { padding: .75rem; background: linear-gradient(180deg, var(--oa-accent-soft), var(--oa-surface-2)); border-color: var(--oa-accent-border); }
+.app-shell .side-group-run .config-actions { margin-top: 0; }
+.app-shell .side-group-run .btn-lg { min-height: 40px; padding: .55rem 1rem; font-size: .88rem; }
+.app-shell .progress-status { margin-top: .45rem; font-size: .76rem; }
+.app-shell .main-area { padding: 1.25rem clamp(1rem, 2.6vw, 2.5rem) 3rem; }
+.app-shell .topbar { min-height: 34px; margin-bottom: 1.25rem; }
+.app-shell .results-section { width: min(100%, 1440px); margin-inline: auto; padding-top: 0; }
+.app-shell .results-header { align-items: flex-start; margin-bottom: 1.25rem; padding: 1.1rem 1.2rem; background: var(--oa-surface); border: 1px solid var(--oa-border); border-radius: 14px; box-shadow: var(--oa-shadow-sm); }
+.app-shell .results-header h2 { flex: 0 0 auto; padding-top: .2rem; }
+.app-shell .results-header .header-actions { flex: 1 1 620px; justify-content: flex-end; align-items: flex-start; }
+.app-shell .download-group { padding: .25rem .45rem; border-left: 1px solid var(--oa-border); }
+.app-shell .download-label { width: 100%; margin-bottom: .1rem; }
+.app-shell .summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin: 0 0 1.25rem; }
+.app-shell .summary-cards .card { min-height: 112px; padding: 1rem 1.1rem; border-radius: 14px; display: flex; flex-direction: column; justify-content: center; }
+.app-shell .summary-cards .card-value { font-size: 1.85rem; }
+.app-shell .summary-cards .card-label { font-size: .7rem; }
+.app-shell .charts-section { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0 0 1.25rem; }
+.app-shell .chart-box { min-height: 300px; padding: 1.1rem 1.2rem; border-radius: 14px; }
+.app-shell .chart-box h3 { margin-bottom: .9rem; font-size: .9rem; }
+.app-shell .detail-tabs { margin: 0 0 1rem; }
+.app-shell .field-table, .app-shell .table-scroll, .app-shell .preview-col-select { box-shadow: none; }
+.app-shell .field-table, .app-shell .table-scroll { border-radius: 12px; }
+.app-shell .field-table th, .app-shell .field-table td { padding: .7rem .85rem; }
+.app-shell .toolbar { padding: .8rem; margin-bottom: .85rem; background: var(--oa-surface-2); border: 1px solid var(--oa-border); border-radius: 12px; }
+.app-shell .empty-state { min-height: 500px; max-width: 920px; margin: 2rem auto; background: var(--oa-surface); box-shadow: var(--oa-shadow-sm); }
+.app-shell .result-warning, .app-shell .memory-warning, .app-shell .checkpoint-info, .app-shell .error { margin-bottom: 1rem; }
+@media (max-width: 1180px) { .app-shell { grid-template-columns: 240px 4px minmax(0, 1fr); } .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .app-shell .results-header .header-actions { flex-basis: 100%; justify-content: flex-start; } .app-shell .download-group { border-left: 0; border-top: 1px solid var(--oa-border); padding-left: 0; } }
+@media (max-width: 860px) { .app-shell { display: block; } .app-shell .sidebar { position: relative; width: 100%; height: auto; max-height: none; } .app-shell .side-scroll { max-height: none; overflow: visible; } .app-shell .side-handle { display: none; } .app-shell .main-area { padding: 1rem; } .app-shell .charts-section { grid-template-columns: 1fr; } .app-shell .chart-box { min-height: 260px; } }
+@media (max-width: 560px) { .app-shell .summary-cards { grid-template-columns: 1fr; } .app-shell .results-header { padding: .9rem; } .app-shell .results-header h2 { width: 100%; } .app-shell .download-group { width: 100%; } .app-shell .download-group .btn-sm { flex: 0 0 auto; } .app-shell .options-grid, .app-shell .side-group .options-grid { grid-template-columns: 1fr; } }
