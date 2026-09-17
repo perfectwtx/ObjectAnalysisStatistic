@@ -10,231 +10,311 @@
 
 <PageTitle>数据质量总览</PageTitle>
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="oa-analysis-page">
+    <div class="oa-analysis-header">
         <div>
+            <div class="oa-eyebrow">Data Quality</div>
             <h1>数据质量总览</h1>
-            <p class="text-muted mb-0">从质量分、问题、Schema、字段关系与质量门禁统一查看最近一次成功分析结果。</p>
+            <p>从质量分、问题、Schema、字段关系与质量门禁统一查看最近一次成功分析结果。</p>
         </div>
-        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
     @if (_loading)
     {
-        <div class="alert alert-info">正在加载质量数据...</div>
+        <div class="card oa-analysis-card">
+            <div class="card-body oa-analysis-empty">
+                <div class="oa-empty-icon">◌</div>
+                <strong>正在加载质量数据</strong>
+                <span>正在读取最近一次成功分析结果，请稍候。</span>
+            </div>
+        </div>
     }
     else if (_job is null || _result is null)
     {
-        <div class="alert alert-secondary">暂无可用的成功分析记录。请先执行一次数据分析。</div>
+        <div class="card oa-analysis-card">
+            <div class="card-body oa-analysis-empty">
+                <div class="oa-empty-icon">∅</div>
+                <strong>暂无可用的成功分析记录</strong>
+                <span>请先执行一次数据分析，完成后这里会展示质量总览。</span>
+            </div>
+        </div>
     }
     else
     {
-        <div class="row g-3 mb-4">
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="text-muted">质量总分</div>
-                        <div class="display-5 fw-semibold">@FormatScore(_job.QualityScore)</div>
-                        <div class="small text-muted">@GetScoreText(_job.QualityScore)</div>
-                    </div>
+        <section class="oa-dashboard-section">
+            <div class="oa-section-heading">
+                <div>
+                    <h2>质量概览</h2>
+                    <span>最近一次成功分析的核心指标</span>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="text-muted">质量问题</div>
-                        <div class="display-5 fw-semibold">@_job.IssueCount</div>
-                        <div class="small text-muted">标准化问题记录 @_topIssues.Count 条（Top 5）</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="text-muted">分析对象</div>
-                        <div class="display-5 fw-semibold">@_job.TotalObjects.ToString("N0")</div>
-                        <div class="small text-muted">字段 @_job.FieldCount 个</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="text-muted">Schema 状态</div>
-                        <div class="display-5 fw-semibold">@GetSchemaStatusIcon()</div>
-                        <div class="small text-muted">@GetSchemaStatusText()</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div class="row g-3 mb-4">
-            @foreach (var metric in _qualityMetrics)
-            {
-                <div class="col-xl-2 col-md-4 col-6">
-                    <div class="card h-100">
+            <div class="row g-3">
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card oa-analysis-kpi h-100">
                         <div class="card-body">
-                            <div class="text-muted small">@metric.Name</div>
-                            <div class="fs-3 fw-semibold">@metric.Value.ToString("F1")</div>
-                            <div class="progress mt-2" style="height:6px">
-                                <div class="progress-bar" role="progressbar" style="width:@GetProgressWidth(metric.Value)"></div>
-                            </div>
+                            <div class="oa-kpi-label">质量总分</div>
+                            <div class="oa-kpi-value">@FormatScore(_job.QualityScore)</div>
+                            <div class="oa-kpi-meta">@GetScoreText(_job.QualityScore)</div>
                         </div>
                     </div>
                 </div>
-            }
-        </div>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card oa-analysis-kpi h-100">
+                        <div class="card-body">
+                            <div class="oa-kpi-label">质量问题</div>
+                            <div class="oa-kpi-value">@_job.IssueCount</div>
+                            <div class="oa-kpi-meta">标准化问题记录 @_topIssues.Count 条（Top 5）</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card oa-analysis-kpi h-100">
+                        <div class="card-body">
+                            <div class="oa-kpi-label">分析对象</div>
+                            <div class="oa-kpi-value">@_job.TotalObjects.ToString("N0")</div>
+                            <div class="oa-kpi-meta">字段 @_job.FieldCount 个</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card oa-analysis-kpi h-100">
+                        <div class="card-body">
+                            <div class="oa-kpi-label">Schema 状态</div>
+                            <div class="oa-kpi-value oa-kpi-symbol">@GetSchemaStatusIcon()</div>
+                            <div class="oa-kpi-meta">@GetSchemaStatusText()</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>质量门禁</span>
-                @if (_gateResults.Count == 0)
+        <section class="oa-dashboard-section">
+            <div class="oa-section-heading">
+                <div>
+                    <h2>质量维度</h2>
+                    <span>从完整性、有效性、唯一性、一致性和异常控制观察质量构成</span>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                @foreach (var metric in _qualityMetrics)
                 {
-                    <span class="badge bg-secondary">历史记录未保存门禁结果</span>
-                }
-                else if (_gateResults.Any(x => x.Triggered))
-                {
-                    <span class="badge bg-danger">未通过</span>
-                }
-                else
-                {
-                    <span class="badge bg-success">全部通过</span>
+                    <div class="col-12 col-sm-6 col-md-4 col-xl">
+                        <div class="card oa-analysis-card oa-quality-metric-card h-100">
+                            <div class="card-body">
+                                <div class="oa-kpi-label">@metric.Name</div>
+                                <div class="oa-quality-metric-value">@metric.Value.ToString("F1")</div>
+                                <div class="oa-progress-track" aria-label="@metric.Name @metric.Value.ToString("F1")">
+                                    <div class="oa-progress-value" style="width:@GetProgressWidth(metric.Value)"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 }
             </div>
-            <div class="card-body">
-                @if (_gateResults.Count == 0)
-                {
-                    <div class="text-muted small">该作业是在质量门禁历史持久化之前产生的，因此无法还原当时的实际门禁配置。重新执行分析后会记录准确结果。</div>
-                }
-                else
-                {
-                    <div class="row g-2">
-                        @foreach (var gate in _gateResults)
+        </section>
+
+        <section class="oa-dashboard-section">
+            <div class="card oa-analysis-card">
+                <div class="card-body">
+                    <div class="oa-card-heading">
+                        <div>
+                            <h2>质量门禁</h2>
+                            <span>查看本次分析记录的门禁执行结果</span>
+                        </div>
+                        @if (_gateResults.Count == 0)
                         {
-                            <div class="col-xl-3 col-md-6">
-                                <div class="border rounded p-3 h-100">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <strong>@gate.Name</strong>
+                            <span class="badge bg-secondary">历史记录未保存门禁结果</span>
+                        }
+                        else if (_gateResults.Any(x => x.Triggered))
+                        {
+                            <span class="badge bg-danger">未通过</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">全部通过</span>
+                        }
+                    </div>
+
+                    @if (_gateResults.Count == 0)
+                    {
+                        <div class="oa-analysis-note">
+                            该作业是在质量门禁历史持久化之前产生的，因此无法还原当时的实际门禁配置。重新执行分析后会记录准确结果。
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var gate in _gateResults)
+                            {
+                                <div class="col-12 col-md-6 col-xl-3">
+                                    <div class="oa-gate-card h-100">
+                                        <div class="oa-gate-heading">
+                                            <strong>@gate.Name</strong>
+                                            @if (gate.Triggered)
+                                            {
+                                                <span class="badge bg-danger">❌ 未通过</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">✓ 通过</span>
+                                            }
+                                        </div>
+                                        <div class="oa-gate-meta">ExitCode: @gate.ExitCode</div>
                                         @if (gate.Triggered)
                                         {
-                                            <span class="badge bg-danger">❌ 未通过</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-success">✓ 通过</span>
+                                            <div class="oa-gate-error">@gate.FailureMessage</div>
                                         }
                                     </div>
-                                    <div class="small text-muted mt-2">ExitCode: @gate.ExitCode</div>
-                                    @if (gate.Triggered)
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="oa-dashboard-section">
+            <div class="row g-3">
+                <div class="col-12 col-xl-8">
+                    <div class="card oa-analysis-card h-100">
+                        <div class="card-body">
+                            <div class="oa-card-heading">
+                                <div>
+                                    <h2>最近质量趋势</h2>
+                                    <span>最近 8 次质量快照</span>
+                                </div>
+                                <a class="btn btn-sm btn-outline-secondary" href="/quality/trend">查看全部</a>
+                            </div>
+
+                            @if (_recentSnapshots.Count == 0)
+                            {
+                                <div class="oa-analysis-empty oa-analysis-empty-compact">
+                                    <span>暂无质量趋势快照。</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table align-middle mb-0">
+                                        <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var snapshot in _recentSnapshots.Take(8))
+                                            {
+                                                <tr>
+                                                    <td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td>
+                                                    <td>@snapshot.SourceName</td>
+                                                    <td><span class="badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
+                                                    <td>@snapshot.IssueCount</td>
+                                                    <td>@snapshot.TotalObjects.ToString("N0")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-4">
+                    <div class="card oa-analysis-card h-100">
+                        <div class="card-body">
+                            <div class="oa-card-heading">
+                                <div>
+                                    <h2>Top Issues</h2>
+                                    <span>数量最多的质量问题</span>
+                                </div>
+                                <a class="btn btn-sm btn-outline-secondary" href="/issues">问题中心</a>
+                            </div>
+
+                            @if (_topIssues.Count == 0)
+                            {
+                                <div class="oa-analysis-empty oa-analysis-empty-compact">
+                                    <strong>✓ 当前没有质量违规</strong>
+                                    <span>最近一次分析未发现标准化质量问题。</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="oa-issue-list">
+                                    @foreach (var issue in _topIssues)
                                     {
-                                        <div class="small text-danger mt-1">@gate.FailureMessage</div>
+                                        <div class="oa-issue-row">
+                                            <div class="oa-issue-content">
+                                                <strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong>
+                                                <span>@QualityCheckTypes.Label(issue.Check)</span>
+                                            </div>
+                                            <span class="badge bg-danger">@issue.Count</span>
+                                        </div>
                                     }
                                 </div>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-lg-8">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>最近质量趋势</span>
-                        <a class="btn btn-sm btn-link" href="/quality/trend">查看全部</a>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
-                                <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead>
-                                <tbody>
-                                    @foreach (var snapshot in _recentSnapshots.Take(8))
-                                    {
-                                        <tr>
-                                            <td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td>
-                                            <td>@snapshot.SourceName</td>
-                                            <td><span class="badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
-                                            <td>@snapshot.IssueCount</td>
-                                            <td>@snapshot.TotalObjects.ToString("N0")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                            }
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>Top Issues</span>
-                        <a class="btn btn-sm btn-link" href="/issues">问题中心</a>
-                    </div>
-                    <div class="card-body">
-                        @if (_topIssues.Count == 0)
-                        {
-                            <div class="text-success">✓ 当前没有质量违规。</div>
-                        }
-                        else
-                        {
-                            @foreach (var issue in _topIssues)
+        </section>
+
+        <section class="oa-dashboard-section">
+            <div class="row g-3">
+                <div class="col-12 col-xl-6">
+                    <div class="card oa-analysis-card h-100">
+                        <div class="card-body">
+                            <div class="oa-card-heading">
+                                <div>
+                                    <h2>Schema 影响</h2>
+                                    <span>最近一次分析的 Schema 变化</span>
+                                </div>
+                                <a class="btn btn-sm btn-outline-secondary" href="/quality/schema-impact">查看详情</a>
+                            </div>
+
+                            @if (_result.SchemaDiff is null)
                             {
-                                <div class="d-flex justify-content-between border-bottom py-2">
-                                    <div><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><div class="small text-muted">@QualityCheckTypes.Label(issue.Check)</div></div>
-                                    <span class="badge bg-danger">@issue.Count</span>
+                                <div class="oa-analysis-note">未产生 Schema Diff。</div>
+                            }
+                            else
+                            {
+                                <div class="oa-mini-stats">
+                                    <div><strong>@_result.SchemaDiff.AddedFields.Count</strong><span>新增字段</span></div>
+                                    <div><strong>@_result.SchemaDiff.ChangedFields.Count</strong><span>变更字段</span></div>
+                                    <div><strong>@_result.SchemaDiff.RemovedFields.Count</strong><span>删除字段</span></div>
                                 </div>
                             }
-                        }
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="row g-3">
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>Schema 影响</span><a class="btn btn-sm btn-link" href="/quality/schema-impact">查看详情</a>
-                    </div>
-                    <div class="card-body">
-                        @if (_result.SchemaDiff is null)
-                        {
-                            <span class="text-muted">未产生 Schema Diff。</span>
-                        }
-                        else
-                        {
-                            <div class="row text-center">
-                                <div class="col-4"><div class="fs-3">@_result.SchemaDiff.AddedFields.Count</div><div class="text-muted">新增</div></div>
-                                <div class="col-4"><div class="fs-3">@_result.SchemaDiff.ChangedFields.Count</div><div class="text-muted">变更</div></div>
-                                <div class="col-4"><div class="fs-3">@_result.SchemaDiff.RemovedFields.Count</div><div class="text-muted">删除</div></div>
+                <div class="col-12 col-xl-6">
+                    <div class="card oa-analysis-card h-100">
+                        <div class="card-body">
+                            <div class="oa-card-heading">
+                                <div>
+                                    <h2>字段关系</h2>
+                                    <span>相关性矩阵与强相关字段对</span>
+                                </div>
+                                <a class="btn btn-sm btn-outline-secondary" href="/quality/relationships">查看详情</a>
                             </div>
-                        }
+
+                            @if (_result.CorrelationMatrix is null)
+                            {
+                                <div class="oa-analysis-note">未产生字段相关性结果。</div>
+                            }
+                            else
+                            {
+                                <div class="oa-mini-stats">
+                                    <div><strong>@_result.CorrelationMatrix.Fields.Count</strong><span>参与字段</span></div>
+                                    <div><strong>@_result.CorrelationMatrix.Samples</strong><span>样本数量</span></div>
+                                    <div><strong>@_result.CorrelationMatrix.StrongPairs.Count</strong><span>强相关</span></div>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>字段关系</span><a class="btn btn-sm btn-link" href="/quality/relationships">查看详情</a>
-                    </div>
-                    <div class="card-body">
-                        @if (_result.CorrelationMatrix is null)
-                        {
-                            <span class="text-muted">未产生字段相关性结果。</span>
-                        }
-                        else
-                        {
-                            <div class="row text-center">
-                                <div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Fields.Count</div><div class="text-muted">字段</div></div>
-                                <div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.Samples</div><div class="text-muted">样本</div></div>
-                                <div class="col-4"><div class="fs-3">@_result.CorrelationMatrix.StrongPairs.Count</div><div class="text-muted">强相关</div></div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
     }
 </div>
 
