@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 
 namespace ObjectAnalyzer.Platform;
 
-/// <summary>SQLite 质量问题整改记录存储。</summary>
+/// <summary>基于 SQLite 的质量问题整改记录存储。</summary>
 public sealed class SqliteQualityIssueRemediationStore : IQualityIssueRemediationStore
 {
     private static readonly SemaphoreSlim s_writeLock = new(1, 1);
@@ -10,13 +10,12 @@ public sealed class SqliteQualityIssueRemediationStore : IQualityIssueRemediatio
 
     public SqliteQualityIssueRemediationStore(string databasePath)
     {
-        var fullPath = Path.GetFullPath(databasePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var directory = Path.GetDirectoryName(databasePath);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
         _connectionString = new SqliteConnectionStringBuilder
         {
-            DataSource = fullPath,
-            Mode = SqliteOpenMode.ReadWriteCreate,
-            Cache = SqliteCacheMode.Shared
+            DataSource = databasePath
         }.ToString();
     }
 
@@ -26,20 +25,18 @@ public sealed class SqliteQualityIssueRemediationStore : IQualityIssueRemediatio
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            CREATE TABLE IF NOT EXISTS quality_issue_remediations (
-                id TEXT PRIMARY KEY,
-                job_id TEXT NOT NULL,
-                field_name TEXT NOT NULL,
-                check_type TEXT NOT NULL,
-                action TEXT NOT NULL,
-                status TEXT NOT NULL,
-                due_at_utc TEXT NULL,
-                completed_at_utc TEXT NULL,
-                comment TEXT NULL,
-                created_at_utc TEXT NOT NULL
+            CREATE TABLE IF NOT EXISTS QualityIssueRemediations (
+                Id TEXT PRIMARY KEY,
+                JobId TEXT NOT NULL,
+                FieldName TEXT NOT NULL,
+                CheckName TEXT NOT NULL,
+                Action TEXT NOT NULL,
+                Status TEXT NOT NULL,
+                DueAtUtc TEXT NULL,
+                CompletedAtUtc TEXT NULL,
+                Comment TEXT NULL,
+                CreatedAtUtc TEXT NOT NULL
             );
-            CREATE INDEX IF NOT EXISTS ix_quality_issue_remediations_issue
-                ON quality_issue_remediations(job_id, field_name, check_type);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -54,28 +51,27 @@ public sealed class SqliteQualityIssueRemediationStore : IQualityIssueRemediatio
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT id, job_id, field_name, check_type, action, status,
-                   due_at_utc, completed_at_utc, comment, created_at_utc
-            FROM quality_issue_remediations
-            WHERE job_id = $jobId AND field_name = $fieldName AND check_type = $check
-            ORDER BY created_at_utc DESC;
+            SELECT Id, JobId, FieldName, CheckName, Action, Status,
+                   DueAtUtc, CompletedAtUtc, Comment, CreatedAtUtc
+            FROM QualityIssueRemediations
+            WHERE JobId = $jobId AND FieldName = $fieldName AND CheckName = $check
+            ORDER BY CreatedAtUtc DESC;
             """;
-        command.Parameters.AddWithValue("$jobId", jobId.ToString("D"));
+        command.Parameters.AddWithValue("$jobId", jobId.ToString());
         command.Parameters.AddWithValue("$fieldName", fieldName);
         command.Parameters.AddWithValue("$check", check);
 
+        var result = new List<QualityIssueRemediation>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        var items = new List<QualityIssueRemediation>();
         while (await reader.ReadAsync(cancellationToken))
-            items.Add(Read(reader));
-        return items;
+            result.Add(Read(reader));
+        return result;
     }
 
     public async Task SaveAsync(QualityIssueRemediation remediation, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(remediation);
         remediation.Validate();
-        var createdAt = remediation.CreatedAtUtc == default ? DateTime.UtcNow : remediation.CreatedAtUtc.ToUniversalTime();
+        var createdAt = remediation.CreatedAtUtc == default ? DateTime.UtcNow : remediation.CreatedAtUtc;
 
         await s_writeLock.WaitAsync(cancellationToken);
         try
@@ -84,21 +80,23 @@ public sealed class SqliteQualityIssueRemediationStore : IQualityIssueRemediatio
             await connection.OpenAsync(cancellationToken);
             await using var command = connection.CreateCommand();
             command.CommandText = """
-                INSERT INTO quality_issue_remediations
-                    (id, job_id, field_name, check_type, action, status,
-                     due_at_utc, completed_at_utc, comment, created_at_utc)
+                INSERT INTO QualityIssueRemediations
+                    (Id, JobId, FieldName, CheckName, Action, Status, DueAtUtc, CompletedAtUtc, Comment, CreatedAtUtc)
                 VALUES
-                    ($id, $jobId, $fieldName, $check, $action, $status,
-                     $dueAtUtc, $completedAtUtc, $comment, $createdAtUtc)
-                ON CONFLICT(id) DO UPDATE SET
-                    action = excluded.action,
-                    status = excluded.status,
-                    due_at_utc = excluded.due_at_utc,
-                    completed_at_utc = excluded.completed_at_utc,
-                    comment = excluded.comment;
+                    ($id, $jobId, $fieldName, $check, $action, $status, $dueAtUtc, $completedAtUtc, $comment, $createdAtUtc)
+                ON CONFLICT(Id) DO UPDATE SET
+                    JobId = excluded.JobId,
+                    FieldName = excluded.FieldName,
+                    CheckName = excluded.CheckName,
+                    Action = excluded.Action,
+                    Status = excluded.Status,
+                    DueAtUtc = excluded.DueAtUtc,
+                    CompletedAtUtc = excluded.CompletedAtUtc,
+                    Comment = excluded.Comment,
+                    CreatedAtUtc = excluded.CreatedAtUtc;
                 """;
-            command.Parameters.AddWithValue("$id", remediation.Id.ToString("D"));
-            command.Parameters.AddWithValue("$jobId", remediation.JobId.ToString("D"));
+            command.Parameters.AddWithValue("$id", remediation.Id.ToString());
+            command.Parameters.AddWithValue("$jobId", remediation.JobId.ToString());
             command.Parameters.AddWithValue("$fieldName", remediation.FieldName);
             command.Parameters.AddWithValue("$check", remediation.Check);
             command.Parameters.AddWithValue("$action", remediation.Action);
@@ -115,17 +113,24 @@ public sealed class SqliteQualityIssueRemediationStore : IQualityIssueRemediatio
         }
     }
 
-    private static QualityIssueRemediation Read(SqliteDataReader reader) => new(
-        Guid.Parse(reader.GetString(0)),
-        Guid.Parse(reader.GetString(1)),
-        reader.GetString(2),
-        reader.GetString(3),
-        reader.GetString(4),
-        reader.GetString(5),
-        reader.IsDBNull(6) ? null : ParseDate(reader.GetString(6)),
-        reader.IsDBNull(7) ? null : ParseDate(reader.GetString(7)),
-        reader.IsDBNull(8) ? null : reader.GetString(8),
-        ParseDate(reader.GetString(9)));
+    private static QualityIssueRemediation Read(SqliteDataReader reader)
+    {
+        var remediation = new QualityIssueRemediation(
+            Guid.Parse(reader.GetString(0)),
+            Guid.Parse(reader.GetString(1)),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetString(4),
+            reader.GetString(5),
+            reader.IsDBNull(6) ? null : ParseDate(reader.GetString(6)),
+            reader.IsDBNull(7) ? null : ParseDate(reader.GetString(7)),
+            reader.IsDBNull(8) ? null : reader.GetString(8))
+        {
+            CreatedAtUtc = ParseDate(reader.GetString(9))
+        };
+
+        return remediation;
+    }
 
     private static DateTime ParseDate(string value) =>
         DateTime.Parse(value, null, System.Globalization.DateTimeStyles.RoundtripKind);
