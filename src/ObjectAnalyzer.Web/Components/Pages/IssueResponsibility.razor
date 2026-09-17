@@ -7,28 +7,44 @@
 
 <PageTitle>问题责任与整改</PageTitle>
 
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="oa-analysis-page oa-responsibility-page">
+    <div class="oa-analysis-header">
         <div>
+            <div class="oa-eyebrow">ISSUE MANAGEMENT</div>
             <h1>问题责任与整改</h1>
-            <p class="text-muted mb-0">为质量问题指定责任人，记录整改措施，并跟踪整改闭环。</p>
+            <p>为质量问题指定责任人，记录整改措施，并跟踪整改闭环。</p>
         </div>
-        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
     @if (_loading)
     {
-        <p>加载中...</p>
+        <div class="oa-empty-state">
+            <div class="oa-empty-icon">↻</div>
+            <h3>正在加载问题数据</h3>
+            <p>正在读取最近一次成功的分析任务。</p>
+        </div>
     }
     else if (_jobs.Count == 0)
     {
-        <div class="alert alert-info">暂无分析任务。</div>
+        <div class="oa-empty-state">
+            <div class="oa-empty-icon">✓</div>
+            <h3>暂无可处理的分析任务</h3>
+            <p>完成一次成功的分析后，这里会显示对应的质量问题与整改记录。</p>
+        </div>
     }
     else
     {
-        <div class="card mb-4">
-            <div class="card-body">
-                <label class="form-label">分析任务</label>
+        <section class="oa-panel oa-job-selector-card">
+            <div class="oa-panel-header">
+                <div>
+                    <div class="oa-panel-kicker">CURRENT RUN</div>
+                    <h2>分析任务</h2>
+                </div>
+                <span class="oa-count-badge">@_jobs.Count 个任务</span>
+            </div>
+            <div class="oa-panel-body">
+                <label class="form-label">选择分析任务</label>
                 <select class="form-select" @onchange="OnJobChanged">
                     @foreach (var job in _jobs)
                     {
@@ -36,18 +52,51 @@
                     }
                 </select>
             </div>
+        </section>
+
+        <div class="oa-analysis-kpi-grid oa-responsibility-kpis">
+            <div class="oa-analysis-kpi">
+                <span>质量问题</span>
+                <strong>@_issues.Count</strong>
+                <small>当前分析发现的问题</small>
+            </div>
+            <div class="oa-analysis-kpi">
+                <span>已指定责任人</span>
+                <strong>@_items.Count(x => !string.IsNullOrWhiteSpace(x.Owner))</strong>
+                <small>已有责任归属的问题</small>
+            </div>
+            <div class="oa-analysis-kpi">
+                <span>处理中</span>
+                <strong>@_items.Count(x => x.Status == "InProgress")</strong>
+                <small>责任状态为处理中</small>
+            </div>
+            <div class="oa-analysis-kpi">
+                <span>整改记录</span>
+                <strong>@_items.Sum(x => x.Remediations.Count)</strong>
+                <small>已记录的整改措施</small>
+            </div>
         </div>
 
         @if (_issues.Count == 0)
         {
-            <div class="alert alert-success">当前分析没有质量问题，无需分配责任。</div>
+            <div class="oa-empty-state oa-empty-state-success">
+                <div class="oa-empty-icon">✓</div>
+                <h3>当前分析没有质量问题</h3>
+                <p>无需分配责任，也暂无需要跟踪的整改事项。</p>
+            </div>
         }
         else
         {
-            <div class="card">
-                <div class="card-header">问题责任清单</div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+            <section class="oa-panel oa-responsibility-panel">
+                <div class="oa-panel-header">
+                    <div>
+                        <div class="oa-panel-kicker">RESPONSIBILITY & REMEDIATION</div>
+                        <h2>问题责任清单</h2>
+                    </div>
+                    <span class="oa-count-badge">@_items.Count 个问题</span>
+                </div>
+                <div class="oa-table-wrap">
+                    <table class="table oa-analysis-table align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>字段</th>
@@ -56,18 +105,18 @@
                                 <th>责任人</th>
                                 <th>状态</th>
                                 <th>备注</th>
-                                <th></th>
+                                <th class="oa-action-column"></th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var item in _items)
                         {
-                            <tr>
+                            <tr class="oa-issue-row">
                                 <td><strong>@item.Issue.FieldName</strong></td>
                                 <td><span class="badge text-bg-warning">@item.Issue.Check</span></td>
-                                <td>@item.Issue.Count</td>
-                                <td style="min-width: 160px"><input class="form-control form-control-sm" @bind="item.Owner" placeholder="责任人" /></td>
-                                <td style="min-width: 130px">
+                                <td><span class="oa-number-value">@item.Issue.Count</span></td>
+                                <td class="oa-edit-cell"><input class="form-control form-control-sm" @bind="item.Owner" placeholder="责任人" /></td>
+                                <td class="oa-edit-cell">
                                     <select class="form-select form-select-sm" @bind="item.Status">
                                         <option value="Open">待处理</option>
                                         <option value="InProgress">处理中</option>
@@ -75,26 +124,29 @@
                                         <option value="Ignored">已忽略</option>
                                     </select>
                                 </td>
-                                <td style="min-width: 220px"><input class="form-control form-control-sm" @bind="item.Comment" placeholder="处理备注" /></td>
-                                <td><button class="btn btn-sm btn-primary" @onclick="() => SaveAsync(item)">保存</button></td>
+                                <td class="oa-edit-cell"><input class="form-control form-control-sm" @bind="item.Comment" placeholder="处理备注" /></td>
+                                <td class="oa-action-column"><button class="btn btn-sm btn-primary" @onclick="() => SaveAsync(item)">保存</button></td>
                             </tr>
-                            <tr class="table-light">
+                            <tr class="oa-remediation-row">
                                 <td colspan="7">
-                                    <div class="p-2">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <strong>整改记录</strong>
+                                    <div class="oa-remediation">
+                                        <div class="oa-remediation-header">
+                                            <div>
+                                                <strong>整改记录</strong>
+                                                <span>@item.Remediations.Count 条</span>
+                                            </div>
                                             <button class="btn btn-sm btn-outline-primary" @onclick="() => StartRemediation(item)">新增整改</button>
                                         </div>
 
                                         @if (item.Remediations.Count == 0 && !item.AddingRemediation)
                                         {
-                                            <span class="text-muted">暂无整改记录。</span>
+                                            <div class="oa-inline-empty">暂无整改记录。</div>
                                         }
 
                                         @if (item.AddingRemediation)
                                         {
-                                            <div class="border rounded p-3 mb-2 bg-white">
-                                                <div class="row g-2">
+                                            <div class="oa-remediation-editor">
+                                                <div class="row g-3">
                                                     <div class="col-md-5">
                                                         <label class="form-label">整改措施</label>
                                                         <input class="form-control form-control-sm" @bind="item.RemediationAction" placeholder="例如：补齐缺失数据并增加校验" />
@@ -116,8 +168,8 @@
                                                         <input class="form-control form-control-sm" @bind="item.RemediationComment" placeholder="整改说明" />
                                                     </div>
                                                 </div>
-                                                <div class="mt-2">
-                                                    <button class="btn btn-sm btn-primary me-2" @onclick="() => SaveRemediationAsync(item)">保存整改</button>
+                                                <div class="oa-editor-actions">
+                                                    <button class="btn btn-sm btn-primary" @onclick="() => SaveRemediationAsync(item)">保存整改</button>
                                                     <button class="btn btn-sm btn-outline-secondary" @onclick="() => CancelRemediation(item)">取消</button>
                                                 </div>
                                             </div>
@@ -125,8 +177,8 @@
 
                                         @if (item.Remediations.Count > 0)
                                         {
-                                            <div class="table-responsive">
-                                                <table class="table table-sm mb-0 bg-white">
+                                            <div class="oa-table-wrap oa-remediation-table">
+                                                <table class="table table-sm oa-analysis-table mb-0">
                                                     <thead>
                                                         <tr>
                                                             <th>整改措施</th>
@@ -158,16 +210,16 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
         }
 
         @if (!string.IsNullOrWhiteSpace(_message))
         {
-            <div class="alert alert-success mt-3">@_message</div>
+            <div class="alert alert-success oa-feedback">@_message</div>
         }
         @if (!string.IsNullOrWhiteSpace(_error))
         {
-            <div class="alert alert-danger mt-3">@_error</div>
+            <div class="alert alert-danger oa-feedback">@_error</div>
         }
     }
 </div>
