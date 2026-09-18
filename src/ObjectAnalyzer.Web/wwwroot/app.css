@@ -4370,3 +4370,111 @@ a, .btn-link {
         margin-left: 0;
     }
 }
+
+
+/* ─── 29. 首页运行与结果状态 ─── */
+.results-section .result-warning {
+    position: relative;
+    padding: .85rem 1rem .85rem 1.1rem;
+    border-radius: var(--oa-radius-md);
+    background: color-mix(in srgb, var(--oa-warning-soft) 78%, var(--oa-surface));
+}
+
+.results-section .result-warning-title {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    color: var(--oa-warning);
+    font-weight: 750;
+}
+
+.results-section .result-warning-text {
+    max-width: 960px;
+    overflow-wrap: anywhere;
+}
+
+.side-group-run .progress-status {
+    justify-content: center;
+    min-height: 30px;
+    margin-top: .5rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--oa-accent-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface);
+}
+
+.side-group-run .spinner-border {
+    flex: 0 0 auto;
+}
+
+.sidebar .memory-warning,
+.sidebar .error,
+.sidebar .checkpoint-info {
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.sidebar .error {
+    margin-top: .7rem;
+    padding: .7rem .8rem;
+    font-size: .8rem;
+    line-height: 1.45;
+}
+
+.sidebar .memory-warning {
+    padding: .55rem .75rem;
+    font-size: .78rem;
+    line-height: 1.4;
+}
+
+.sidebar .checkpoint-info {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: .6rem .75rem;
+    font-size: .78rem;
+    line-height: 1.4;
+}
+
+.results-section .pagination {
+    justify-content: space-between;
+    gap: .6rem;
+    margin: 0;
+    padding: .75rem .8rem;
+    border-top: 1px solid var(--oa-border);
+    background: var(--oa-surface-2);
+}
+
+.results-section .pagination span {
+    color: var(--oa-text-3);
+    font-size: .76rem;
+    font-weight: 650;
+}
+
+.results-section .pagination button {
+    min-width: 76px;
+    padding: .34rem .65rem;
+    border-radius: var(--oa-radius-sm);
+    font-size: .76rem;
+    font-weight: 650;
+}
+
+.results-section .truncated-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .15rem .4rem;
+    border-radius: 999px;
+    background: var(--oa-warning-soft);
+}
+
+@media (max-width: 560px) {
+    .results-section .pagination {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .results-section .pagination span {
+        order: -1;
+        width: 100%;
+        text-align: center;
+    }
+}
