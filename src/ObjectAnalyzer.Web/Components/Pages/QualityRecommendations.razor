@@ -51,13 +51,13 @@
     }
     else
     {
-        <div class="oa-recommendation-kpis">
+        <div class="oa-recommendation-kpis" aria-label="质量建议概览">
             <div class="oa-analysis-kpi"><span>待治理问题</span><strong>@_recommendations.Count</strong><small>需要关注的质量问题</small></div>
             <div class="oa-analysis-kpi"><span>涉及字段</span><strong>@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><small>存在质量风险的字段</small></div>
             <div class="oa-analysis-kpi"><span>违规次数</span><strong>@_recommendations.Sum(x => x.Count)</strong><small>所有问题累计影响次数</small></div>
         </div>
 
-        <div class="oa-panel oa-recommendations-panel">
+        <div class="oa-panel oa-recommendations-panel oa-governance-card">
             <div class="oa-panel-header">
                 <div><div class="oa-panel-kicker">ACTION PLAN</div><h2>治理建议</h2></div>
                 <span class="oa-count-badge">@_sourceName · @_jobTime</span>
@@ -82,7 +82,7 @@
                     </table>
                 </div>
             </div>
-            <div class="oa-analysis-note">建议用于辅助治理决策，系统不会根据这些建议直接修改源数据。</div>
+            <div class="oa-analysis-note oa-governance-note"><strong>治理边界</strong><span>建议用于辅助治理决策，系统不会根据这些建议直接修改源数据。</span></div>
         </div>
     }
 </div>
