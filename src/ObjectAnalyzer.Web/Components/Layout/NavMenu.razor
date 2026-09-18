@@ -1,6 +1,8 @@
+@inject NavigationManager Navigation
+
 <nav class="oa-nav">
     <div class="oa-nav__inner">
-        <a class="oa-nav__brand" href="/" aria-label="ObjectAnalyzer 首页">
+        <a class="oa-nav__brand" href="/" aria-label="ObjectAnalyzer 首页" @onclick="CloseMobileMenu">
             <span class="oa-nav__brand-mark">OA</span>
             <span>ObjectAnalyzer</span>
         </a>
@@ -18,6 +20,7 @@
                     <NavLink class="oa-nav__dropdown-link" href="/quality">质量总览</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/trend">质量趋势</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/fields">字段质量</NavLink>
+                    <NavLink class="oa-nav__dropdown-link" href="/quality/recommendations">修复建议</NavLink>
                     <div class="oa-nav__divider"></div>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/data-lineage">数据血缘</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/schema-impact">Schema 影响</NavLink>
@@ -29,6 +32,50 @@
 
             <NavLink class="oa-nav__link" href="/issues">问题中心</NavLink>
             <NavLink class="oa-nav__link" href="/alert-rules">告警规则</NavLink>
+        </div>
+
+        <button class="oa-nav__menu-button"
+                type="button"
+                aria-label="打开导航菜单"
+                aria-expanded="@_mobileMenuOpen"
+                aria-controls="oa-mobile-nav"
+                @onclick="ToggleMobileMenu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </div>
+
+    @if (_mobileMenuOpen)
+    {
+        <div class="oa-nav__mobile-backdrop" @onclick="CloseMobileMenu"></div>
+    }
+
+    <div id="oa-mobile-nav" class="oa-nav__mobile-panel @(_mobileMenuOpen ? "is-open" : "")" aria-hidden="@(!_mobileMenuOpen)">
+        <div class="oa-nav__mobile-header">
+            <span>导航</span>
+            <button type="button" class="oa-nav__mobile-close" aria-label="关闭导航菜单" @onclick="CloseMobileMenu">×</button>
+        </div>
+
+        <div class="oa-nav__mobile-links">
+            <NavLink class="oa-nav__mobile-link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">首页</NavLink>
+            <NavLink class="oa-nav__mobile-link" href="/jobs" @onclick="CloseMobileMenu">分析任务</NavLink>
+
+            <div class="oa-nav__mobile-section">
+                <div class="oa-nav__mobile-section-title">质量分析</div>
+                <NavLink class="oa-nav__mobile-link" href="/quality" @onclick="CloseMobileMenu">质量总览</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/trend" @onclick="CloseMobileMenu">质量趋势</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/fields" @onclick="CloseMobileMenu">字段质量</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/recommendations" @onclick="CloseMobileMenu">修复建议</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/data-lineage" @onclick="CloseMobileMenu">数据血缘</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/schema-impact" @onclick="CloseMobileMenu">Schema 影响</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/impact-analysis" @onclick="CloseMobileMenu">影响分析</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/relationships" @onclick="CloseMobileMenu">质量关系</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/object-relationships" @onclick="CloseMobileMenu">对象关系</NavLink>
+            </div>
+
+            <NavLink class="oa-nav__mobile-link" href="/issues" @onclick="CloseMobileMenu">问题中心</NavLink>
+            <NavLink class="oa-nav__mobile-link" href="/alert-rules" @onclick="CloseMobileMenu">告警规则</NavLink>
         </div>
     </div>
 </nav>
@@ -202,6 +249,12 @@
         background: var(--oa-border);
     }
 
+    .oa-nav__menu-button,
+    .oa-nav__mobile-panel,
+    .oa-nav__mobile-backdrop {
+        display: none;
+    }
+
     @@media (max-width: 900px) {
         .oa-nav__inner {
             padding: 0 16px;
@@ -223,33 +276,180 @@
     }
 
     @@media (max-width: 720px) {
-
         .oa-nav {
-            position: static;
+            position: sticky;
         }
 
         .oa-nav__inner {
-            align-items: flex-start;
-            flex-direction: column;
-            padding: 12px 16px;
+            flex-direction: row;
+            align-items: center;
+            min-height: 58px;
+            padding: 10px 14px;
         }
 
         .oa-nav__brand {
-            margin: 0 0 8px;
+            margin: 0;
         }
 
         .oa-nav__links {
-            width: 100%;
-            flex-wrap: wrap;
-            align-self: auto;
+            display: none;
         }
 
-        .oa-nav__link {
+        .oa-nav__menu-button {
+            display: inline-flex;
+            flex: 0 0 auto;
+            width: 42px;
+            height: 42px;
+            margin-left: auto;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 5px;
+            border: 1px solid var(--oa-border);
+            border-radius: 11px;
+            background: var(--oa-surface);
+            color: var(--oa-text-1);
+            cursor: pointer;
+            box-shadow: var(--oa-shadow-sm);
+        }
+
+        .oa-nav__menu-button span {
+            width: 18px;
+            height: 2px;
+            border-radius: 2px;
+            background: currentColor;
+        }
+
+        .oa-nav__mobile-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            z-index: 1001;
+            background: rgb(15 23 42 / 32%);
+            backdrop-filter: blur(2px);
+        }
+
+        .oa-nav__mobile-panel {
+            display: block;
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 1002;
+            width: min(86vw, 360px);
+            height: 100dvh;
+            overflow-y: auto;
+            border-left: 1px solid var(--oa-border);
+            background: var(--oa-surface);
+            box-shadow: -18px 0 45px rgb(15 23 42 / 16%);
+            transform: translateX(100%);
+            transition: transform .22s ease;
+        }
+
+        .oa-nav__mobile-panel.is-open {
+            transform: translateX(0);
+        }
+
+        .oa-nav__mobile-header {
+            position: sticky;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 64px;
+            padding: 0 18px;
+            border-bottom: 1px solid var(--oa-border);
+            background: color-mix(in srgb, var(--oa-surface) 94%, transparent);
+            backdrop-filter: blur(12px);
+        }
+
+        .oa-nav__mobile-header > span {
+            color: var(--oa-text-1);
+            font-size: .95rem;
+            font-weight: 700;
+        }
+
+        .oa-nav__mobile-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--oa-border);
+            border-radius: 9px;
+            background: var(--oa-surface-2);
+            color: var(--oa-text-2);
+            font-size: 1.35rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .oa-nav__mobile-links {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 12px;
+        }
+
+        .oa-nav__mobile-link {
+            display: flex;
+            align-items: center;
+            min-height: 46px;
+            padding: 0 13px;
+            border-radius: 10px;
+            color: var(--oa-text-2);
+            font-size: .92rem;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .oa-nav__mobile-link:hover,
+        .oa-nav__mobile-link.active {
+            background: var(--oa-accent-soft);
+            color: var(--oa-accent);
+        }
+
+        .oa-nav__mobile-section {
+            margin: 4px 0;
+            padding: 8px;
+            border: 1px solid var(--oa-border);
+            border-radius: 12px;
+            background: var(--oa-surface-2);
+        }
+
+        .oa-nav__mobile-section-title {
+            padding: 4px 10px 7px;
+            color: var(--oa-text-3);
+            font-size: .76rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+
+        .oa-nav__mobile-section .oa-nav__mobile-link {
             min-height: 42px;
         }
+    }
 
-        .oa-nav__link.active::after {
-            bottom: 2px;
+    @@media (max-width: 520px) {
+        .oa-nav__brand > span:last-child {
+            font-size: .92rem;
+        }
+
+        .oa-nav__mobile-panel {
+            width: min(92vw, 360px);
         }
     }
 </style>
+
+@code {
+    private bool _mobileMenuOpen;
+
+    private void ToggleMobileMenu()
+    {
+        _mobileMenuOpen = !_mobileMenuOpen;
+    }
+
+    private void CloseMobileMenu()
+    {
+        _mobileMenuOpen = false;
+    }
+}
