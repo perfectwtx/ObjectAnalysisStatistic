@@ -134,6 +134,157 @@
     border: 1px solid var(--oa-border);
     border-radius: 12px;
 }
+
+/* Control console: group options by task instead of presenting one dense field matrix. */
+.app-shell .side-scroll > .side-group:not(.side-group-run) {
+    box-shadow: none;
+}
+.app-shell .side-scroll > .side-group:nth-of-type(3) {
+    background: var(--oa-surface);
+}
+.app-shell .side-scroll > .side-group:nth-of-type(4) {
+    background: var(--oa-surface);
+}
+.app-shell .side-scroll > .option-group {
+    background: var(--oa-surface);
+    border: 1px solid var(--oa-border);
+    border-radius: 12px;
+    box-shadow: none;
+}
+.app-shell .side-scroll > .option-group + .option-group {
+    margin-top: .55rem;
+}
+.app-shell .side-scroll > .option-group > summary {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 32px;
+}
+.app-shell .side-scroll > .option-group > summary::marker {
+    color: var(--oa-text-3);
+}
+.app-shell .side-scroll > .option-group > .options-grid {
+    margin-top: .55rem;
+    padding-top: .55rem;
+    border-top: 1px solid var(--oa-border);
+}
+.app-shell .side-group .options-grid {
+    grid-template-columns: 1fr;
+}
+.app-shell .side-group .options-grid .option-item:not(.checkbox-item) {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: .55rem;
+}
+.app-shell .side-group .options-grid .option-item:not(.checkbox-item) > span {
+    min-width: 0;
+    line-height: 1.35;
+}
+.app-shell .side-group .options-grid .option-item:not(.checkbox-item) input,
+.app-shell .side-group .options-grid .option-item:not(.checkbox-item) select {
+    width: 100%;
+}
+.app-shell .side-group .options-grid .side-subgroup-title {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin-top: .2rem;
+    padding-top: .7rem;
+    border-top: 1px solid var(--oa-border);
+    color: var(--oa-text-1);
+    font-weight: 750;
+    letter-spacing: .01em;
+}
+.app-shell .side-group .options-grid .side-subgroup-title:first-child {
+    padding-top: .1rem;
+    border-top: 0;
+}
+.app-shell .side-group .options-grid .side-subgroup-title::before {
+    content: "";
+    width: 3px;
+    height: 14px;
+    flex: 0 0 3px;
+    border-radius: 3px;
+    background: var(--oa-accent);
+}
+.app-shell .side-group .option-advanced {
+    padding: .55rem .65rem;
+    background: var(--oa-surface-2);
+    border: 1px solid var(--oa-border);
+    border-radius: 9px;
+}
+.app-shell .side-group .option-advanced > summary {
+    color: var(--oa-text-2);
+    font-size: .72rem;
+    font-weight: 700;
+}
+.app-shell .side-group .option-advanced .option-item {
+    margin-top: .55rem;
+}
+.app-shell .side-group .option-advanced .option-item:not(.checkbox-item) {
+    grid-template-columns: minmax(0, 1fr);
+}
+.app-shell .side-group .option-advanced .option-item:not(.checkbox-item) input {
+    width: 100%;
+}
+.app-shell .side-group + .side-group {
+    margin-top: .15rem;
+}
+.app-shell .side-group:has(.rules-textarea) {
+    background: var(--oa-surface);
+}
+.app-shell .rules-textarea {
+    min-height: 150px;
+    margin-top: .25rem;
+    padding: .7rem;
+    border: 1px solid var(--oa-border-strong);
+    border-radius: 9px;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-1);
+    font-family: var(--oa-font-mono);
+    font-size: .72rem;
+    line-height: 1.55;
+    resize: vertical;
+}
+.app-shell .rules-doc {
+    max-height: 280px;
+    overflow: auto;
+    margin-top: .55rem;
+    padding: .7rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 9px;
+    background: var(--oa-surface-2);
+}
+.app-shell .rules-doc pre {
+    max-height: 180px;
+    overflow: auto;
+    margin: .45rem 0;
+}
+.app-shell .side-group:has(.rules-textarea) .option-item {
+    display: block;
+}
+.app-shell .side-group:has(.rules-textarea) .option-item > span {
+    display: block;
+    margin-bottom: .3rem;
+}
+.app-shell .side-group:has(.rules-textarea) .side-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .45rem;
+    margin-top: .55rem;
+}
+.app-shell .side-group:has(.rules-textarea) .side-row .file-ok {
+    font-size: .7rem;
+}
+.app-shell .side-scroll > .option-group[open] {
+    box-shadow: 0 4px 16px rgba(23,30,46,.04);
+}
+.app-shell .side-scroll > .option-group[open] > summary {
+    color: var(--oa-accent);
+}
 @media (max-width: 1180px) {
     .app-shell { grid-template-columns: 240px 4px minmax(0, 1fr); }
     .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
