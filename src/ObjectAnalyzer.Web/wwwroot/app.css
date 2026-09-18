@@ -4478,3 +4478,192 @@ a, .btn-link {
         text-align: center;
     }
 }
+
+
+/* ─── 30. 质量总览页面统一视觉 ─── */
+.oa-quality-dashboard-page {
+    max-width: 1680px;
+    margin: 0 auto;
+}
+
+.oa-quality-dashboard-page .oa-analysis-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-quality-dashboard-page .oa-analysis-header h1 {
+    margin-bottom: .35rem;
+}
+
+.oa-quality-dashboard-page .oa-analysis-header p {
+    max-width: 760px;
+    margin-bottom: 0;
+    color: var(--oa-text-3);
+    line-height: 1.55;
+}
+
+.oa-quality-dashboard-page .oa-dashboard-section {
+    margin-bottom: 1rem;
+}
+
+.oa-quality-dashboard-page .oa-section-heading {
+    margin-bottom: .65rem;
+}
+
+.oa-quality-dashboard-page .oa-section-heading h2 {
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.oa-quality-dashboard-page .oa-section-heading span {
+    color: var(--oa-text-3);
+    font-size: .74rem;
+}
+
+.oa-quality-dashboard-page .oa-analysis-card,
+.oa-quality-dashboard-page .oa-analysis-kpi {
+    border-color: var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.oa-quality-dashboard-page .oa-analysis-card {
+    background: var(--oa-surface);
+}
+
+.oa-quality-dashboard-page .oa-analysis-card:hover,
+.oa-quality-dashboard-page .oa-analysis-kpi:hover {
+    border-color: var(--oa-accent-border);
+    box-shadow: var(--oa-shadow-md);
+}
+
+.oa-quality-dashboard-page .oa-analysis-kpi {
+    overflow: hidden;
+    position: relative;
+}
+
+.oa-quality-dashboard-page .oa-analysis-kpi::after {
+    content: "";
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    right: -34px;
+    top: -38px;
+    border-radius: 50%;
+    background: var(--oa-accent-soft);
+    opacity: .55;
+}
+
+.oa-quality-dashboard-page .oa-kpi-value {
+    position: relative;
+    z-index: 1;
+    font-size: clamp(1.55rem, 2.2vw, 2rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-quality-dashboard-page .oa-kpi-label,
+.oa-quality-dashboard-page .oa-kpi-meta {
+    position: relative;
+    z-index: 1;
+}
+
+.oa-quality-dashboard-page .oa-kpi-label {
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+}
+
+.oa-quality-dashboard-page .oa-kpi-meta {
+    margin-top: .25rem;
+    color: var(--oa-text-3);
+    font-size: .72rem;
+}
+
+.oa-quality-dashboard-page .oa-card-heading {
+    min-width: 0;
+}
+
+.oa-quality-dashboard-page .oa-card-heading h2 {
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.oa-quality-dashboard-page .oa-card-heading span {
+    color: var(--oa-text-3);
+    font-size: .74rem;
+}
+
+.oa-quality-dashboard-page .oa-data-table {
+    font-size: .78rem;
+}
+
+.oa-quality-dashboard-page .oa-data-table thead th {
+    color: var(--oa-text-3);
+    font-size: .7rem;
+    font-weight: 750;
+    white-space: nowrap;
+    border-bottom-color: var(--oa-border-strong);
+}
+
+.oa-quality-dashboard-page .oa-data-table tbody tr {
+    transition: background-color .12s ease;
+}
+
+.oa-quality-dashboard-page .oa-data-table tbody tr:hover {
+    background: var(--oa-surface-2);
+}
+
+.oa-quality-dashboard-page .oa-issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+}
+
+.oa-quality-dashboard-page .oa-issue-row {
+    min-width: 0;
+    padding: .55rem .65rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+}
+
+.oa-quality-dashboard-page .oa-issue-content {
+    min-width: 0;
+}
+
+.oa-quality-dashboard-page .oa-issue-content strong,
+.oa-quality-dashboard-page .oa-issue-content span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oa-quality-dashboard-page .oa-mini-stats {
+    gap: .65rem;
+}
+
+.oa-quality-dashboard-page .oa-mini-stats > div {
+    min-width: 0;
+    padding: .65rem .7rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+}
+
+.oa-quality-dashboard-page .oa-analysis-empty {
+    min-height: 180px;
+}
+
+@media (max-width: 720px) {
+    .oa-quality-dashboard-page .oa-analysis-header {
+        gap: .75rem;
+    }
+
+    .oa-quality-dashboard-page .oa-analysis-header .btn {
+        width: 100%;
+    }
+}
