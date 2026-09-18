@@ -6,22 +6,7 @@
 
 <PageTitle>质量修复建议</PageTitle>
 
-<style>
-    .oa-recommendation-kpis { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.25rem; }
-    .oa-recommendation-kpis .oa-analysis-kpi { padding:1rem 1.1rem; border:1px solid var(--oa-border); border-radius:14px; background:var(--oa-surface); box-shadow:0 5px 18px rgba(23,30,46,.045); }
-    .oa-recommendation-kpis .oa-analysis-kpi span { display:block; color:var(--oa-text-2); font-size:.78rem; font-weight:650; }
-    .oa-recommendation-kpis .oa-analysis-kpi strong { display:block; margin-top:.4rem; color:var(--oa-text-1); font-size:1.75rem; line-height:1.1; }
-    .oa-recommendation-kpis .oa-analysis-kpi small { display:block; margin-top:.35rem; color:var(--oa-text-3); font-size:.72rem; }
-    .oa-recommendation-table { min-width:1050px; }
-    .oa-recommendation-field { color:var(--oa-text-1); }
-    .oa-recommendation-message { max-width:300px; line-height:1.55; }
-    .oa-recommendation-action { min-width:220px; line-height:1.55; }
-    .oa-recommendation-rule { display:inline-block; max-width:230px; overflow:hidden; padding:.35rem .5rem; border:1px solid var(--oa-border); border-radius:7px; background:var(--oa-surface-2); color:var(--oa-text-2); text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
-    .oa-recommendations-state span { display:block; font-size:.82rem; }
-    .oa-recommendations-panel .oa-panel-body { padding:0; }
-    .oa-recommendations-panel .oa-analysis-note { border-top:1px solid var(--oa-border); }
-    @media (max-width:820px) { .oa-recommendation-kpis { grid-template-columns:1fr; } }
-</style>
+
 
 <div class="oa-analysis-page oa-recommendations-page">
     <div class="oa-analysis-header">
@@ -30,12 +15,12 @@
             <h1>质量修复建议</h1>
             <p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p>
         </div>
-        <button class="btn btn-outline-primary" @onclick="LoadAsync">刷新</button>
+        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
     </div>
 
     @if (_loading)
     {
-        <div class="oa-empty-state oa-recommendations-state">
+        <div class="oa-panel oa-empty-state oa-recommendations-state">
             <div class="oa-empty-icon">…</div>
             <strong>正在加载质量问题</strong>
             <span>正在读取最近一次成功的分析结果。</span>
@@ -43,7 +28,7 @@
     }
     else if (_recommendations.Count == 0)
     {
-        <div class="oa-empty-state oa-empty-state-success oa-recommendations-state">
+        <div class="oa-panel oa-empty-state oa-empty-state-success oa-recommendations-state">
             <div class="oa-empty-icon">✓</div>
             <h3>当前没有可生成建议的质量问题</h3>
             <p>最近一次成功分析没有发现需要生成治理建议的字段问题。</p>
