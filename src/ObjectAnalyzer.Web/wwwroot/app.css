@@ -5896,3 +5896,334 @@ a, .btn-link {
         padding: .5rem .35rem;
     }
 }
+
+/* ─── 35. 对象关系分析页面 ─── */
+.oa-object-relationships-page {
+    max-width: 1680px;
+    margin: 0 auto;
+}
+
+.oa-object-relationships-page .oa-analysis-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-object-relationships-page .oa-analysis-header h1 {
+    margin-bottom: .35rem;
+}
+
+.oa-object-relationships-page .oa-analysis-header p {
+    max-width: 760px;
+    margin-bottom: 0;
+    color: var(--oa-text-3);
+    line-height: 1.55;
+}
+
+.oa-object-relationships-page .oa-panel {
+    overflow: hidden;
+    border-color: var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.oa-object-relationships-page .oa-panel:hover {
+    border-color: var(--oa-accent-border);
+}
+
+.oa-object-relationships-page .oa-object-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .8rem;
+    margin-bottom: 1rem;
+}
+
+.oa-object-relationships-page .oa-object-kpi {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    background: var(--oa-surface);
+    box-shadow: var(--oa-shadow-sm);
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.oa-object-relationships-page .oa-object-kpi::after {
+    content: "";
+    position: absolute;
+    width: 84px;
+    height: 84px;
+    top: -36px;
+    right: -28px;
+    border-radius: 50%;
+    background: var(--oa-accent-soft);
+    opacity: .65;
+}
+
+.oa-object-relationships-page .oa-object-kpi:hover {
+    border-color: var(--oa-accent-border);
+    box-shadow: var(--oa-shadow-md);
+    transform: translateY(-1px);
+}
+
+.oa-object-relationships-page .oa-object-kpi span,
+.oa-object-relationships-page .oa-object-kpi strong,
+.oa-object-relationships-page .oa-object-kpi small {
+    position: relative;
+    z-index: 1;
+    display: block;
+}
+
+.oa-object-relationships-page .oa-object-kpi span {
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.oa-object-relationships-page .oa-object-kpi strong {
+    margin-top: .2rem;
+    color: var(--oa-text-1);
+    font-size: clamp(1.5rem, 2.2vw, 2rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-object-relationships-page .oa-object-kpi small {
+    margin-top: .2rem;
+    color: var(--oa-text-3);
+    font-size: .7rem;
+}
+
+.oa-object-relationships-page .oa-panel-header {
+    min-width: 0;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-object-relationships-page .oa-panel-kicker {
+    color: var(--oa-accent);
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.oa-object-relationships-page .oa-panel-header h2 {
+    margin-top: .15rem;
+    color: var(--oa-text-1);
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.oa-object-relationships-page .oa-count-badge {
+    flex: 0 0 auto;
+    padding: .25rem .55rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 999px;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-2);
+    font-size: .68rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-object-relationships-page .oa-object-context {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+    padding: .65rem 1rem;
+    border-bottom: 1px solid var(--oa-border);
+    background: var(--oa-surface-2);
+    color: var(--oa-text-3);
+    font-size: .7rem;
+}
+
+.oa-object-relationships-page .oa-object-context strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--oa-text-1);
+    font-family: var(--oa-font-mono);
+    font-size: .72rem;
+}
+
+.oa-object-relationships-page .oa-object-table-wrap {
+    overflow: auto;
+}
+
+.oa-object-relationships-page .oa-analysis-table {
+    min-width: 980px;
+    font-size: .78rem;
+}
+
+.oa-object-relationships-page .oa-analysis-table thead th {
+    padding: .7rem .8rem;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-3);
+    border-bottom: 1px solid var(--oa-border-strong);
+    font-size: .69rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.oa-object-relationships-page .oa-analysis-table tbody td {
+    padding: .75rem .8rem;
+    border-bottom: 1px solid var(--oa-border);
+    color: var(--oa-text-2);
+    vertical-align: middle;
+}
+
+.oa-object-relationships-page .oa-analysis-table tbody tr {
+    transition: background-color .12s ease;
+}
+
+.oa-object-relationships-page .oa-analysis-table tbody tr:hover {
+    background: var(--oa-surface-2);
+}
+
+.oa-object-relationships-page .oa-analysis-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.oa-object-relationships-page .oa-analysis-table .badge {
+    font-size: .67rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.oa-object-relationships-page .oa-object-path {
+    min-width: 300px;
+}
+
+.oa-object-relationships-page .oa-object-path code {
+    display: inline-block;
+    max-width: 430px;
+    padding: .25rem .45rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+    color: var(--oa-accent-strong);
+    font-family: var(--oa-font-mono);
+    font-size: .73rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.oa-object-relationships-page .oa-object-targets {
+    max-width: 460px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.oa-object-relationships-page .oa-analysis-table tbody td:nth-child(3),
+.oa-object-relationships-page .oa-analysis-table tbody td:nth-child(4) {
+    color: var(--oa-text-1);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.oa-object-relationships-page .oa-analysis-note {
+    display: flex;
+    align-items: baseline;
+    gap: .35rem;
+    margin-top: .8rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-md);
+    background: var(--oa-surface-2);
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+.oa-object-relationships-page .oa-analysis-note strong {
+    flex: 0 0 auto;
+    color: var(--oa-text-1);
+}
+
+.oa-object-relationships-page .oa-analysis-note code {
+    padding: .08rem .3rem;
+    border-radius: 4px;
+    background: var(--oa-accent-soft);
+    color: var(--oa-accent-strong);
+    font-family: var(--oa-font-mono);
+    font-size: .7rem;
+}
+
+.oa-object-relationships-page .oa-empty-state {
+    min-height: 220px;
+}
+
+@media (max-width: 900px) {
+    .oa-object-relationships-page .oa-object-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .oa-object-relationships-page .oa-analysis-table {
+        min-width: 900px;
+    }
+
+    .oa-object-relationships-page .oa-object-path code {
+        max-width: 340px;
+    }
+}
+
+@media (max-width: 720px) {
+    .oa-object-relationships-page .oa-analysis-header {
+        gap: .75rem;
+    }
+
+    .oa-object-relationships-page .oa-analysis-header .btn {
+        width: 100%;
+    }
+
+    .oa-object-relationships-page .oa-object-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .oa-object-relationships-page .oa-object-kpi {
+        padding: .85rem .9rem;
+    }
+
+    .oa-object-relationships-page .oa-panel-header {
+        padding: .8rem;
+    }
+
+    .oa-object-relationships-page .oa-object-context {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .15rem;
+        padding: .65rem .8rem;
+    }
+
+    .oa-object-relationships-page .oa-analysis-note {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .2rem;
+        padding: .7rem .8rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .oa-object-relationships-page .oa-count-badge {
+        max-width: 45%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .oa-object-relationships-page .oa-object-path code {
+        max-width: 260px;
+    }
+
+    .oa-object-relationships-page .oa-analysis-table {
+        min-width: 820px;
+    }
+}
