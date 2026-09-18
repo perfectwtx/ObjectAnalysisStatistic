@@ -3648,3 +3648,80 @@ a, .btn-link {
         width: 100%;
     }
 }
+
+
+/* ─── 23. 首页数据源上传区 ─── */
+.side-group:has(.upload-area) {
+    border-color: var(--oa-accent-border);
+}
+
+.side-group:has(.upload-area) .upload-area {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 132px;
+    padding: 1rem;
+    border: 1px dashed var(--oa-border-strong);
+    border-radius: var(--oa-radius-md);
+    background:
+        radial-gradient(240px 90px at 50% 0%, var(--oa-accent-soft), transparent 72%),
+        var(--oa-surface-2);
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+.side-group:has(.upload-area) .upload-area:hover {
+    border-color: var(--oa-accent);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.side-group:has(.upload-area) .upload-area input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: .74rem;
+}
+
+.side-group:has(.upload-area) .upload-area::before {
+    content: "↑";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: .55rem;
+    border: 1px solid var(--oa-accent-border);
+    border-radius: 50%;
+    background: var(--oa-accent-soft);
+    color: var(--oa-accent);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.side-group:has(.upload-area) .upload-area .file-ok {
+    display: block;
+    max-width: 100%;
+    margin-top: .45rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--oa-success);
+    font-size: .74rem;
+}
+
+.side-group:has(.upload-area) .upload-area .file-hint,
+.side-group:has(.upload-area) .upload-area small {
+    line-height: 1.4;
+}
+
+.side-group:has(.upload-area) .upload-area .clear-btn {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 480px) {
+    .side-group:has(.upload-area) .upload-area {
+        min-height: 116px;
+        padding: .8rem;
+    }
+}
