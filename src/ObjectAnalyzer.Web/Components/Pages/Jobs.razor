@@ -82,7 +82,7 @@
                             <td><strong class="oa-score">@(job.QualityScore?.ToString("F2") ?? "-")</strong></td>
                             <td><span class="oa-issue-count">@job.IssueCount</span></td>
                             <td>@(job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-")</td>
-                            <td><a class="btn btn-sm btn-outline-primary" href="/jobs/@job.Id">查看详情</a></td>
+                            <td><a class="btn btn-sm btn-outline-secondary" href="/jobs/@job.Id">查看详情</a></td>
                         </tr>
                     }
                     </tbody>
