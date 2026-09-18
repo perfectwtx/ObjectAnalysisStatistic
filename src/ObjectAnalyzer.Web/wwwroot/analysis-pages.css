@@ -281,3 +281,21 @@
 .oa-responsibility-page .oa-remediation-table .table thead th{position:sticky;top:0;z-index:1;background:var(--oa-surface-2)}
 @media(max-width:820px){.oa-responsibility-page .oa-responsibility-panel .oa-table-wrap{max-height:620px}}
 @media(max-width:520px){.oa-responsibility-page .oa-responsibility-panel .oa-analysis-table{min-width:980px}.oa-responsibility-page .oa-feedback{font-size:.78rem}}
+
+
+/* Issue center */
+.oa-issues-page .oa-issue-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:1.25rem}
+.oa-issues-page .oa-analysis-kpi{min-height:118px}
+.oa-issues-page .oa-issue-selector-card{margin-bottom:1.25rem;box-shadow:none}
+.oa-issues-page .oa-issue-selector-card .card-body{padding:1rem 1.15rem}
+.oa-issues-page .oa-issue-selector-card .form-label{margin-bottom:.4rem;color:var(--oa-text-2);font-size:.75rem;font-weight:700}
+.oa-issues-page .oa-issue-selector-card .form-select{min-height:42px;border-color:var(--oa-border-strong);border-radius:10px}
+.oa-issues-page .oa-issue-table-card{overflow:hidden}
+.oa-issues-page .oa-issue-table-card .card-header{padding:1rem 1.15rem;background:var(--oa-surface);border-bottom:1px solid var(--oa-border)}
+.oa-issues-page .oa-issue-table-wrap{max-height:680px;overflow:auto}
+.oa-issues-page .oa-issue-table-wrap thead th{position:sticky;top:0;z-index:2;background:var(--oa-surface-2)}
+.oa-issues-page .oa-issue-table-wrap td{vertical-align:middle}
+.oa-issues-page .oa-issue-count{font-family:var(--oa-font-mono);font-weight:650;font-variant-numeric:tabular-nums}
+.oa-issues-page .oa-issue-table-wrap tbody tr:hover{background:var(--oa-surface-2)}
+@media(max-width:820px){.oa-issues-page .oa-issue-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.oa-issues-page .oa-issue-kpis{grid-template-columns:1fr}.oa-issues-page .oa-issue-table-wrap{max-height:560px}}
