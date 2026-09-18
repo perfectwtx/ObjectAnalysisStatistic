@@ -428,3 +428,48 @@
     .app-shell .download-group .btn-sm { flex: 0 0 auto; }
     .app-shell .options-grid, .app-shell .side-group .options-grid { grid-template-columns: 1fr; }
 }
+
+/* Desktop workspace proportion: keep the control console compact while giving the result canvas room to breathe. */
+@media (min-width: 1400px) {
+    .app-shell {
+        grid-template-columns: 300px 4px minmax(0, 1fr);
+    }
+    .app-shell .main-area {
+        padding-left: clamp(1.25rem, 2vw, 2.4rem);
+        padding-right: clamp(1.25rem, 2vw, 2.4rem);
+    }
+    .app-shell .results-section {
+        width: min(100%, 1480px);
+    }
+}
+@media (min-width: 1800px) {
+    .app-shell {
+        grid-template-columns: 316px 4px minmax(0, 1fr);
+    }
+    .app-shell .side-scroll {
+        padding-left: .85rem;
+        padding-right: .85rem;
+    }
+    .app-shell .results-section {
+        width: min(100%, 1520px);
+    }
+}
+
+/* Keep result sections visually connected without turning every block into a floating card. */
+.app-shell .results-section > .toolbar {
+    margin-top: .15rem;
+}
+.app-shell .results-section > .field-table {
+    margin-bottom: 1rem;
+}
+.app-shell .results-section > .p3-section,
+.app-shell .results-section > .deep-section,
+.app-shell .results-section > .duplicates-section,
+.app-shell .results-section > .preview-section {
+    box-shadow: none;
+}
+.app-shell .results-section > .p3-section,
+.app-shell .results-section > .deep-section {
+    border-left-color: var(--oa-border);
+    border-right-color: var(--oa-border);
+}
