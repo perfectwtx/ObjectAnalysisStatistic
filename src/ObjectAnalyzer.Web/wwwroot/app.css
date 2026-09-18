@@ -6274,3 +6274,66 @@ a, .btn-link {
 @media(max-width:900px){.oa-impact-analysis-page .oa-analysis-table{min-width:900px}.oa-impact-analysis-page .oa-impact-path code{max-width:340px}}
 @media(max-width:720px){.oa-impact-analysis-page .oa-analysis-header{gap:.75rem}.oa-impact-analysis-page .oa-analysis-header .btn{width:100%}.oa-impact-analysis-page .oa-impact-kpis,.oa-impact-analysis-page .oa-impact-context{grid-template-columns:1fr}.oa-impact-analysis-page .oa-impact-kpi{padding:.85rem .9rem}.oa-impact-analysis-page .oa-panel-header,.oa-impact-analysis-page .oa-panel-body{padding:.8rem}.oa-impact-analysis-page .oa-analysis-table{min-width:820px}.oa-impact-analysis-page .oa-impact-reason{min-width:260px}}
 @media(max-width:560px){.oa-impact-analysis-page .oa-count-badge{max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.oa-impact-analysis-page .oa-analysis-table{min-width:760px}.oa-impact-analysis-page .oa-impact-path code{max-width:280px}}
+
+/* ─── 38. 质量回归页面 ─── */
+.oa-regression-page{max-width:1680px;margin:0 auto}
+.oa-regression-page .oa-analysis-header{align-items:flex-start;padding-bottom:1rem;margin-bottom:1.2rem;border-bottom:1px solid var(--oa-border)}
+.oa-regression-page .oa-analysis-header h1{margin-bottom:.35rem}
+.oa-regression-page .oa-analysis-header p{max-width:760px;margin-bottom:0;color:var(--oa-text-3);line-height:1.55}
+.oa-regression-page .oa-regression-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:1rem}
+.oa-regression-page .oa-regression-kpi{position:relative;min-width:0;overflow:hidden;padding:1rem 1.1rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-lg);background:var(--oa-surface);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.oa-regression-page .oa-regression-kpi::after{content:"";position:absolute;width:84px;height:84px;top:-38px;right:-28px;border-radius:50%;background:var(--oa-accent-soft);opacity:.7}
+.oa-regression-page .oa-regression-kpi:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md);transform:translateY(-1px)}
+.oa-regression-page .oa-regression-kpi>span,.oa-regression-page .oa-regression-kpi>strong,.oa-regression-page .oa-regression-kpi>small{position:relative;z-index:1;display:block}
+.oa-regression-page .oa-regression-kpi>span{color:var(--oa-text-3);font-size:.72rem;font-weight:700}
+.oa-regression-page .oa-regression-kpi>strong{margin-top:.2rem;color:var(--oa-text-1);font-size:clamp(1.4rem,2.1vw,2rem);font-weight:800;font-variant-numeric:tabular-nums}
+.oa-regression-page .oa-regression-kpi>small{margin-top:.2rem;color:var(--oa-text-3);font-size:.7rem;line-height:1.4}
+.oa-regression-page .oa-panel{overflow:hidden;border-color:var(--oa-border);border-radius:var(--oa-radius-lg);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease}
+.oa-regression-page .oa-panel:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md)}
+.oa-regression-page .oa-panel-header{min-width:0;padding:.9rem 1rem;border-bottom:1px solid var(--oa-border)}
+.oa-regression-page .oa-panel-kicker{color:var(--oa-accent);font-size:.66rem;font-weight:800;letter-spacing:.08em}
+.oa-regression-page .oa-panel-header h2{margin-top:.15rem;color:var(--oa-text-1);font-size:1rem;font-weight:750}
+.oa-regression-page .oa-panel-header>.badge{font-size:.68rem;font-weight:750;white-space:nowrap}
+.oa-regression-page .oa-count-badge{flex:0 0 auto;padding:.25rem .55rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums}
+.oa-regression-page .oa-panel-body{padding:1rem}
+.oa-regression-page .oa-comparison-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+.oa-regression-page .oa-comparison-item{min-width:0;padding:.9rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-md);background:var(--oa-surface-2)}
+.oa-regression-page .oa-comparison-item>span{display:block;color:var(--oa-text-3);font-size:.68rem;font-weight:750;text-transform:uppercase;letter-spacing:.06em}
+.oa-regression-page .oa-comparison-item>strong{display:block;margin-top:.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--oa-text-1);font-family:var(--oa-font-mono);font-size:.78rem}
+.oa-regression-page .oa-comparison-item>small{display:block;margin-top:.35rem;color:var(--oa-text-3);font-size:.7rem;line-height:1.5}
+.oa-regression-page .oa-regression-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem;margin-top:.8rem}
+.oa-regression-page .oa-regression-stats>div{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.7rem .8rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-md);background:var(--oa-surface)}
+.oa-regression-page .oa-regression-stats span{color:var(--oa-text-3);font-size:.7rem;font-weight:700}
+.oa-regression-page .oa-regression-stats strong{color:var(--oa-text-1);font-size:.78rem;font-weight:750;font-variant-numeric:tabular-nums;text-align:right}
+.oa-regression-page .oa-table-wrap{overflow:auto}
+.oa-regression-page .oa-regression-table{min-width:920px;font-size:.78rem}
+.oa-regression-page .oa-regression-table thead th{padding:.7rem .8rem;background:var(--oa-surface-2);color:var(--oa-text-3);border-bottom:1px solid var(--oa-border-strong);font-size:.69rem;font-weight:750;white-space:nowrap}
+.oa-regression-page .oa-regression-table tbody td{padding:.72rem .8rem;border-bottom:1px solid var(--oa-border);color:var(--oa-text-2);vertical-align:middle}
+.oa-regression-page .oa-regression-table tbody tr{transition:background-color .12s ease}
+.oa-regression-page .oa-regression-table tbody tr:hover{background:var(--oa-surface-2)}
+.oa-regression-page .oa-regression-table tbody tr:last-child td{border-bottom:0}
+.oa-regression-page .oa-regression-table td code{display:inline-block;max-width:260px;padding:.2rem .38rem;border:1px solid var(--oa-border);border-radius:5px;background:var(--oa-surface-2);color:var(--oa-accent-strong);font-family:var(--oa-font-mono);font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.oa-regression-page .oa-regression-table td:nth-child(3),.oa-regression-page .oa-regression-table td:nth-child(4),.oa-regression-page .oa-regression-table td:nth-child(5){font-family:var(--oa-font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.oa-regression-page .oa-regression-table .badge{font-size:.67rem;font-weight:750;white-space:nowrap}
+.oa-regression-page .oa-regression-table td:last-child{min-width:260px;line-height:1.5;overflow-wrap:anywhere}
+.oa-regression-page .oa-success-state{display:flex;align-items:center;gap:.75rem;margin:0;padding:1rem;border-top:1px solid var(--oa-border);background:var(--oa-success-soft)}
+.oa-regression-page .oa-success-icon{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--oa-surface);color:var(--oa-success);font-weight:800;box-shadow:var(--oa-shadow-sm)}
+.oa-regression-page .oa-success-state h3{margin:0;color:var(--oa-text-1);font-size:.88rem;font-weight:750}
+.oa-regression-page .oa-success-state p{margin-top:.15rem;color:var(--oa-text-2);font-size:.74rem}
+.oa-regression-page .oa-empty-state{min-height:220px}
+@media(max-width:1000px){.oa-regression-page .oa-regression-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){
+.oa-regression-page .oa-analysis-header{gap:.75rem}
+.oa-regression-page .oa-regression-kpis,.oa-regression-page .oa-comparison-grid,.oa-regression-page .oa-regression-stats{grid-template-columns:1fr}
+.oa-regression-page .oa-regression-kpi{padding:.85rem .9rem}
+.oa-regression-page .oa-panel-header,.oa-regression-page .oa-panel-body{padding:.8rem}
+.oa-regression-page .oa-regression-table{min-width:820px}
+.oa-regression-page .oa-success-state{align-items:flex-start}
+}
+@media(max-width:560px){
+.oa-regression-page .oa-regression-kpis{gap:.6rem}
+.oa-regression-page .oa-count-badge{max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oa-regression-page .oa-regression-table{min-width:760px}
+.oa-regression-page .oa-regression-table td:last-child{min-width:220px}
+}
+
