@@ -5,8 +5,6 @@
             <span>ObjectAnalyzer</span>
         </a>
 
-        <button class="oa-nav__menu-toggle" type="button" aria-label="打开导航" aria-controls="oa-main-nav" aria-expanded="false">☰</button>
-
         <div class="oa-nav__links" id="oa-main-nav">
             <NavLink class="oa-nav__link" href="/" Match="NavLinkMatch.All">首页</NavLink>
             <NavLink class="oa-nav__link" href="/jobs">分析任务</NavLink>
@@ -86,8 +84,6 @@
         font-size: .72rem;
         font-weight: 800;
     }
-
-    .oa-nav__menu-toggle { display:none; }
 
     .oa-nav__links {
         display: flex;
@@ -227,11 +223,6 @@
     }
 
     @@media (max-width: 720px) {
-        .oa-nav__menu-toggle { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; margin-left:auto; border:1px solid var(--oa-border); border-radius:9px; background:var(--oa-surface-2); color:var(--oa-text-1); font-size:1.1rem; }
-        .oa-nav__inner { position:relative; }
-        .oa-nav__links { max-height:0; overflow:hidden; opacity:0; pointer-events:none; transition:max-height .2s ease, opacity .2s ease; }
-        .oa-nav__links:focus-within, .oa-nav__links:hover { max-height:420px; opacity:1; pointer-events:auto; }
-        .oa-nav__brand { margin-right:52px; }
 
         .oa-nav {
             position: static;
