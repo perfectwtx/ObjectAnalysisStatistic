@@ -1,5 +1,16 @@
 /* Home page refinement: reduce density while preserving the existing analysis workflow. */
 .app-shell { grid-template-columns: minmax(260px, 288px) 4px minmax(0, 1fr); background: transparent; }
+.app-shell .sidebar { min-width: 0; }
+.app-shell .main-area { min-width: 0; }
+.app-shell .results-section { width: min(100%, 1440px); }
+.app-shell .results-header,
+.app-shell .summary-cards,
+.app-shell .charts-section,
+.app-shell .detail-tabs,
+.app-shell .p3-section,
+.app-shell .deep-section,
+.app-shell .duplicates-section,
+.app-shell .preview-section { min-width: 0; }
 .app-shell .sidebar { box-shadow: none; }
 .app-shell .side-scroll { padding: .7rem .7rem 1rem; gap: .7rem; }
 .app-shell .side-group { padding: .8rem; border-radius: 12px; }
@@ -472,4 +483,20 @@
 .app-shell .results-section > .deep-section {
     border-left-color: var(--oa-border);
     border-right-color: var(--oa-border);
+}
+
+/* Wide-screen balance: keep the control console compact while giving the analysis canvas breathing room. */
+@media (min-width: 1440px) {
+    .app-shell { grid-template-columns: 280px 4px minmax(0, 1fr); }
+    .app-shell .main-area { padding-inline: clamp(1.5rem, 3vw, 3.5rem); }
+    .app-shell .results-section { width: min(100%, 1480px); }
+    .app-shell .summary-cards { gap: 1.1rem; }
+    .app-shell .charts-section { gap: 1.1rem; }
+}
+
+/* Intermediate widths: collapse the result grid before cards become cramped. */
+@media (min-width: 861px) and (max-width: 1120px) {
+    .app-shell { grid-template-columns: 250px 4px minmax(0, 1fr); }
+    .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .app-shell .charts-section { grid-template-columns: 1fr; }
 }
