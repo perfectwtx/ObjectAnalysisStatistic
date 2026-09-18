@@ -45,6 +45,118 @@
 .app-shell .toolbar { padding: .8rem; margin-bottom: .85rem; background: var(--oa-surface-2); border: 1px solid var(--oa-border); border-radius: 12px; }
 .app-shell .empty-state { min-height: 500px; max-width: 920px; margin: 2rem auto; background: var(--oa-surface); box-shadow: var(--oa-shadow-sm); }
 .app-shell .result-warning, .app-shell .memory-warning, .app-shell .checkpoint-info, .app-shell .error { margin-bottom: 1rem; }
-@media (max-width: 1180px) { .app-shell { grid-template-columns: 240px 4px minmax(0, 1fr); } .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .app-shell .results-header .header-actions { flex-basis: 100%; justify-content: flex-start; } .app-shell .download-group { border-left: 0; border-top: 1px solid var(--oa-border); padding-left: 0; } }
-@media (max-width: 860px) { .app-shell { display: block; } .app-shell .sidebar { position: relative; width: 100%; height: auto; max-height: none; } .app-shell .side-scroll { max-height: none; overflow: visible; } .app-shell .side-handle { display: none; } .app-shell .main-area { padding: 1rem; } .app-shell .charts-section { grid-template-columns: 1fr; } .app-shell .chart-box { min-height: 260px; } }
-@media (max-width: 560px) { .app-shell .summary-cards { grid-template-columns: 1fr; } .app-shell .results-header { padding: .9rem; } .app-shell .results-header h2 { width: 100%; } .app-shell .download-group { width: 100%; } .app-shell .download-group .btn-sm { flex: 0 0 auto; } .app-shell .options-grid, .app-shell .side-group .options-grid { grid-template-columns: 1fr; } }
+
+/* Dashboard hierarchy: the sidebar is a control console, the right side is the analysis canvas. */
+.app-shell .sidebar {
+    background: var(--oa-surface);
+    border-right: 1px solid var(--oa-border);
+}
+.app-shell .side-scroll {
+    scrollbar-width: thin;
+}
+.app-shell .side-group {
+    background: var(--oa-surface-2);
+    border: 1px solid var(--oa-border);
+}
+.app-shell .side-group-run {
+    position: sticky;
+    top: .7rem;
+    z-index: 3;
+    box-shadow: var(--oa-shadow-sm);
+}
+.app-shell .side-group-run .btn-primary {
+    width: 100%;
+}
+.app-shell .main-area {
+    background: var(--oa-bg);
+}
+.app-shell .topbar {
+    padding-inline: .15rem;
+}
+.app-shell .results-header h2 {
+    font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+    letter-spacing: -.02em;
+}
+.app-shell .result-file {
+    display: inline-block;
+    max-width: min(42vw, 560px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+.app-shell .summary-cards .card {
+    border-color: var(--oa-border);
+    box-shadow: var(--oa-shadow-sm);
+    transition: transform .16s ease, box-shadow .16s ease;
+}
+.app-shell .summary-cards .card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(23,30,46,.07);
+}
+.app-shell .charts-section .chart-box {
+    border: 1px solid var(--oa-border);
+    background: var(--oa-surface);
+    box-shadow: var(--oa-shadow-sm);
+}
+.app-shell .detail-tabs {
+    padding: .25rem;
+    background: var(--oa-surface);
+    border: 1px solid var(--oa-border);
+    border-radius: 12px;
+}
+.app-shell .detail-tabs button {
+    border-radius: 9px;
+}
+.app-shell .p3-section,
+.app-shell .deep-section,
+.app-shell .duplicates-section,
+.app-shell .preview-section {
+    margin-top: 1rem;
+}
+.app-shell .field-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--oa-surface-2);
+}
+.app-shell .field-table tbody tr {
+    min-height: 52px;
+}
+.app-shell .field-table code {
+    font-size: .74rem;
+}
+.app-shell .preview-section {
+    overflow: hidden;
+}
+.app-shell .preview-col-select {
+    padding: .7rem;
+    background: var(--oa-surface-2);
+    border: 1px solid var(--oa-border);
+    border-radius: 12px;
+}
+@media (max-width: 1180px) {
+    .app-shell { grid-template-columns: 240px 4px minmax(0, 1fr); }
+    .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .app-shell .results-header .header-actions { flex-basis: 100%; justify-content: flex-start; }
+    .app-shell .download-group { border-left: 0; border-top: 1px solid var(--oa-border); padding-left: 0; }
+    .app-shell .side-group-run { position: static; }
+}
+@media (max-width: 860px) {
+    .app-shell { display: block; }
+    .app-shell .sidebar { position: relative; width: 100%; height: auto; max-height: none; }
+    .app-shell .side-scroll { max-height: none; overflow: visible; }
+    .app-shell .side-handle { display: none; }
+    .app-shell .main-area { padding: 1rem; }
+    .app-shell .charts-section { grid-template-columns: 1fr; }
+    .app-shell .chart-box { min-height: 260px; }
+    .app-shell .side-group-run { position: static; }
+}
+@media (max-width: 560px) {
+    .app-shell .summary-cards { grid-template-columns: 1fr; }
+    .app-shell .results-header { padding: .9rem; }
+    .app-shell .results-header h2 { width: 100%; }
+    .app-shell .result-file { display: block; max-width: 100%; margin-top: .25rem; }
+    .app-shell .download-group { width: 100%; }
+    .app-shell .download-group .btn-sm { flex: 0 0 auto; }
+    .app-shell .options-grid, .app-shell .side-group .options-grid { grid-template-columns: 1fr; }
+}
