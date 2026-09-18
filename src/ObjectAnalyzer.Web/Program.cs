@@ -11,6 +11,13 @@ var builder = WebApplication.CreateBuilder(useAppBaseAsContentRoot
     ? new WebApplicationOptions { Args = args, ContentRootPath = appBaseDir }
     : new WebApplicationOptions { Args = args });
 
+// 静态 Web 资产需要在 Build 之前配置 WebHost。
+// WebApplication 构建完成后不再提供 WebHost 配置入口。
+if (!builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseStaticWebAssets();
+}
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents(options =>
@@ -51,12 +58,6 @@ await app.Services.GetRequiredService<IQualityIssueRemediationStore>().Initializ
 await app.Services.GetRequiredService<IQualityBaselineStore>().InitializeAsync();
 await app.Services.GetRequiredService<IAlertRuleStore>().InitializeAsync();
 await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync();
-
-// ── 静态资产启用 ──
-if (!builder.Environment.IsDevelopment())
-{
-    app.WebHost.UseStaticWebAssets();
-}
 
 // ── 静态资产兜底中间件 ──
 var sourceWwwroot = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
