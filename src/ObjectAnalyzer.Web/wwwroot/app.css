@@ -3725,3 +3725,118 @@ a, .btn-link {
         padding: .8rem;
     }
 }
+
+
+/* ─── 24. 首页顶部工具栏 ─── */
+.main-area > .topbar {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    min-width: 0;
+}
+
+.main-area > .topbar .file-chip {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: min(70%, 760px);
+    padding: .45rem .75rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 999px;
+    background: var(--oa-surface);
+    color: var(--oa-text-1);
+    font-size: .78rem;
+    font-weight: 600;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.main-area > .topbar .header-actions {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+.main-area > .topbar .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--oa-border);
+    border-radius: 50%;
+    background: var(--oa-surface);
+    color: var(--oa-text-2);
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+
+.main-area > .topbar .theme-toggle:hover {
+    color: var(--oa-accent);
+    border-color: var(--oa-accent-border);
+    background: var(--oa-accent-soft);
+}
+
+.main-area > .topbar .lang-switcher {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px;
+    border: 1px solid var(--oa-border);
+    border-radius: 999px;
+    background: var(--oa-surface);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.main-area > .topbar .lang-btn {
+    min-width: 40px;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color .15s ease, background-color .15s ease;
+}
+
+.main-area > .topbar .lang-btn:hover {
+    color: var(--oa-text-1);
+}
+
+.main-area > .topbar .lang-btn.active {
+    background: var(--oa-accent-soft);
+    color: var(--oa-accent-strong);
+}
+
+@media (max-width: 720px) {
+    .main-area > .topbar {
+        gap: .6rem;
+    }
+
+    .main-area > .topbar .file-chip {
+        max-width: 62%;
+    }
+}
+
+@media (max-width: 560px) {
+    .main-area > .topbar {
+        align-items: stretch;
+        flex-wrap: wrap;
+    }
+
+    .main-area > .topbar .file-chip {
+        order: 1;
+        width: 100%;
+        max-width: none;
+    }
+
+    .main-area > .topbar .header-actions {
+        order: 2;
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
