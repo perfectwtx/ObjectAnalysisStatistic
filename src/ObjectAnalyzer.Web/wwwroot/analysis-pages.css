@@ -471,3 +471,35 @@
     .oa-field-relationships-page .oa-correlation-field { min-width:160px; max-width:210px; }
     .oa-object-relationships-page .oa-object-targets { min-width:260px; }
 }
+
+
+/* Final responsive consistency */
+.oa-analysis-page .oa-recommendations-state {
+    min-height: 180px;
+}
+.oa-analysis-page .oa-recommendations-state span,
+.oa-analysis-page .oa-recommendations-state p {
+    color: var(--oa-text-2);
+}
+.oa-analysis-page .oa-recommendations-state h3 {
+    color: var(--oa-text-1);
+}
+.oa-analysis-page .oa-panel .oa-empty-icon {
+    flex-shrink: 0;
+}
+@media (max-width: 820px) {
+    .oa-analysis-page {
+        padding-left: .1rem;
+        padding-right: .1rem;
+    }
+    .oa-analysis-header .btn,
+    .oa-analysis-header button {
+        width: 100%;
+    }
+}
+@media (max-width: 520px) {
+    .oa-analysis-header {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+    }
+}
