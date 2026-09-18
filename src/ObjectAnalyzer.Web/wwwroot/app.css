@@ -4937,3 +4937,344 @@ a, .btn-link {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* ─── 32. 字段质量详情页面 ─── */
+.oa-field-detail-page {
+    max-width: 1680px;
+    margin: 0 auto;
+}
+
+.oa-field-detail-page .oa-analysis-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-field-detail-page .oa-analysis-header h1 {
+    margin-bottom: .35rem;
+}
+
+.oa-field-detail-page .oa-analysis-header p {
+    max-width: 760px;
+    margin-bottom: 0;
+    color: var(--oa-text-3);
+    line-height: 1.55;
+}
+
+.oa-field-detail-page .oa-panel {
+    border-color: var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.oa-field-detail-page .oa-panel:hover {
+    border-color: var(--oa-accent-border);
+}
+
+.oa-field-detail-page .oa-field-filter-card {
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.oa-field-detail-page .oa-panel-header {
+    min-width: 0;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-field-detail-page .oa-panel-kicker {
+    color: var(--oa-accent);
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.oa-field-detail-page .oa-panel-header h2 {
+    margin-top: .15rem;
+    color: var(--oa-text-1);
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.oa-field-detail-page .oa-count-badge {
+    flex: 0 0 auto;
+    padding: .25rem .55rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 999px;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-2);
+    font-size: .7rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-field-detail-page .oa-field-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 1.7fr);
+    gap: .8rem;
+    align-items: end;
+}
+
+.oa-field-detail-page .form-label {
+    margin-bottom: .35rem;
+    color: var(--oa-text-2);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.oa-field-detail-page .form-select {
+    width: 100%;
+    min-width: 0;
+    border-color: var(--oa-border-strong);
+    background-color: var(--oa-surface);
+    color: var(--oa-text-1);
+}
+
+.oa-field-detail-page .oa-field-filter-summary {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    min-width: 0;
+    min-height: 38px;
+    padding: .55rem .7rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    overflow: hidden;
+}
+
+.oa-field-detail-page .oa-field-filter-summary strong {
+    color: var(--oa-accent-strong);
+    font-size: .9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-field-detail-page .oa-field-filter-summary span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oa-field-detail-page .oa-field-table-card {
+    overflow: hidden;
+}
+
+.oa-field-detail-page .oa-table-wrap {
+    overflow: auto;
+}
+
+.oa-field-detail-page .oa-field-table {
+    min-width: 900px;
+    font-size: .78rem;
+}
+
+.oa-field-detail-page .oa-field-table thead th {
+    padding: .7rem .8rem;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-3);
+    border-bottom: 1px solid var(--oa-border-strong);
+    font-size: .69rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.oa-field-detail-page .oa-field-table tbody > tr:not(.oa-field-detail-row) {
+    transition: background-color .12s ease;
+}
+
+.oa-field-detail-page .oa-field-table tbody > tr:not(.oa-field-detail-row):hover {
+    background: var(--oa-surface-2);
+}
+
+.oa-field-detail-page .oa-field-table tbody td {
+    padding: .68rem .8rem;
+    border-bottom: 1px solid var(--oa-border);
+    color: var(--oa-text-2);
+    white-space: nowrap;
+}
+
+.oa-field-detail-page .oa-field-name {
+    color: var(--oa-text-1);
+    font-family: var(--oa-font-mono);
+    font-size: .76rem;
+}
+
+.oa-field-detail-page .oa-field-name strong {
+    display: inline-block;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+
+.oa-field-detail-page .oa-field-detail-row > td {
+    padding: 0;
+    background: var(--oa-surface-2);
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-field-detail-page .oa-field-detail {
+    padding: 1rem 1.1rem 1.1rem;
+    border-left: 3px solid var(--oa-accent);
+    background: linear-gradient(90deg, var(--oa-accent-soft), transparent 34%), var(--oa-surface-2);
+}
+
+.oa-field-detail-page .oa-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .55rem;
+    margin-bottom: .8rem;
+}
+
+.oa-field-detail-page .oa-detail-grid > div {
+    min-width: 0;
+    padding: .6rem .7rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface);
+}
+
+.oa-field-detail-page .oa-detail-grid span {
+    display: block;
+    margin-bottom: .18rem;
+    color: var(--oa-text-3);
+    font-size: .68rem;
+}
+
+.oa-field-detail-page .oa-detail-grid strong {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--oa-text-1);
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-field-detail-page .oa-detail-section {
+    margin-top: .7rem;
+    padding-top: .7rem;
+    border-top: 1px solid var(--oa-border);
+}
+
+.oa-field-detail-page .oa-detail-title {
+    margin-bottom: .45rem;
+    color: var(--oa-text-2);
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.oa-field-detail-page .oa-metric-line {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .45rem;
+}
+
+.oa-field-detail-page .oa-metric-line span {
+    padding: .45rem .55rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface);
+    color: var(--oa-text-2);
+    font-size: .7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-field-detail-page .oa-value-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .35rem .55rem;
+}
+
+.oa-field-detail-page .oa-value-list > div {
+    display: flex;
+    justify-content: space-between;
+    gap: .6rem;
+    min-width: 0;
+    padding: .4rem .55rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface);
+    font-size: .7rem;
+}
+
+.oa-field-detail-page .oa-value-list span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--oa-text-2);
+}
+
+.oa-field-detail-page .oa-value-list strong {
+    flex: 0 0 auto;
+    color: var(--oa-text-1);
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-field-detail-page .oa-field-detail .alert {
+    border: 1px solid color-mix(in srgb, var(--oa-warning) 28%, transparent);
+    border-left-width: 3px;
+    background: color-mix(in srgb, var(--oa-warning-soft) 78%, var(--oa-surface));
+    color: var(--oa-text-2);
+    font-size: .74rem;
+}
+
+.oa-field-detail-page .oa-empty-state {
+    min-height: 220px;
+}
+
+@media (max-width: 900px) {
+    .oa-field-detail-page .oa-field-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .oa-field-detail-page .oa-detail-grid,
+    .oa-field-detail-page .oa-metric-line {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .oa-field-detail-page .oa-analysis-header {
+        gap: .75rem;
+    }
+
+    .oa-field-detail-page .oa-analysis-header .btn {
+        width: 100%;
+    }
+
+    .oa-field-detail-page .oa-field-filter-summary {
+        flex-wrap: wrap;
+    }
+
+    .oa-field-detail-page .oa-field-filter-summary span {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 560px) {
+    .oa-field-detail-page .oa-panel-header {
+        padding: .8rem;
+    }
+
+    .oa-field-detail-page .oa-panel-body {
+        padding: .8rem;
+    }
+
+    .oa-field-detail-page .oa-detail-grid,
+    .oa-field-detail-page .oa-metric-line,
+    .oa-field-detail-page .oa-value-list {
+        grid-template-columns: 1fr;
+    }
+
+    .oa-field-detail-page .oa-field-detail {
+        padding: .85rem;
+    }
+}
