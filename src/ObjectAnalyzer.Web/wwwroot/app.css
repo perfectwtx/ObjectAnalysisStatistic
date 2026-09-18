@@ -3361,3 +3361,123 @@ a, .btn-link {
         padding: .7rem;
     }
 }
+
+
+/* ─── 21. 首页规则工作台层级优化 ─── */
+.side-group:has(.rule-editor) {
+    padding-bottom: .8rem;
+}
+
+.side-group:has(.rule-editor) > .option-item:first-of-type {
+    padding: .55rem .65rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+}
+
+.side-group:has(.rule-editor) > .option-item:first-of-type > span {
+    color: var(--oa-text-1);
+    font-weight: 650;
+}
+
+.rule-editor {
+    margin-top: .35rem;
+    padding: .7rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-md);
+    background: var(--oa-surface-2);
+}
+
+.rule-editor::before {
+    content: "可视化规则";
+    display: block;
+    margin-bottom: .15rem;
+    color: var(--oa-text-1);
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+
+.rule-editor .options-grid {
+    gap: .55rem;
+}
+
+.rule-editor .option-item {
+    padding: .05rem 0;
+}
+
+.rule-editor .option-item input[type="text"],
+.rule-editor .option-item input[type="number"],
+.rule-editor .option-item select {
+    width: 100%;
+}
+
+.side-group:has(.rules-textarea) > .option-item:has(.rules-textarea) {
+    margin-top: .75rem;
+    padding: .7rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-md);
+    background: var(--oa-surface-2);
+}
+
+.side-group:has(.rules-textarea) > .option-item:has(.rules-textarea) > span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .45rem;
+    color: var(--oa-text-1);
+    font-weight: 650;
+}
+
+.rules-textarea {
+    min-height: 120px;
+    margin-top: .05rem;
+}
+
+.side-group:has(.rules-textarea) > .side-row {
+    margin-top: .55rem;
+}
+
+.side-group:has(.rules-textarea) > .checkbox-item {
+    margin-top: .55rem;
+    padding: .5rem .65rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+}
+
+.side-group:has(.rules-doc) .option-group {
+    margin-top: .7rem;
+    border-color: var(--oa-border-strong);
+}
+
+.side-group:has(.rules-doc) .option-group > summary {
+    padding: .3rem 0;
+}
+
+.side-group:has(.rules-doc) .rules-doc {
+    max-height: 420px;
+    overflow: auto;
+    margin-top: .65rem;
+    padding-top: .65rem;
+    border-top: 1px solid var(--oa-border);
+}
+
+.side-group:has(.rules-doc) .rules-doc li {
+    padding: .2rem 0;
+}
+
+.side-group:has(.rules-doc) .rules-doc li span {
+    line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+    .rule-editor {
+        padding: .6rem;
+    }
+
+    .side-group:has(.rules-doc) .rules-doc {
+        max-height: 360px;
+    }
+}
