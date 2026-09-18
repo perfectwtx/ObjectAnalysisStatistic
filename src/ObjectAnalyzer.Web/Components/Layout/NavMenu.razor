@@ -14,17 +14,21 @@
                     <span>质量分析</span>
                     <span class="oa-nav__chevron">⌄</span>
                 </button>
-                <div class="oa-nav__dropdown">
+                <div class="oa-nav__dropdown oa-nav__dropdown--wide">
+                    <div class="oa-nav__dropdown-heading">分析</div>
                     <NavLink class="oa-nav__dropdown-link" href="/quality">质量总览</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/trend">质量趋势</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/fields">字段质量</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/recommendations">修复建议</NavLink>
-                    <div class="oa-nav__divider"></div>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/data-lineage">数据血缘</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/schema-impact">Schema 影响</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/impact-analysis">影响分析</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/relationships">质量关系</NavLink>
                     <NavLink class="oa-nav__dropdown-link" href="/quality/object-relationships">对象关系</NavLink>
+                    <div class="oa-nav__divider"></div>
+                    <div class="oa-nav__dropdown-heading">治理</div>
+                    <NavLink class="oa-nav__dropdown-link" href="/quality/regression">质量回归</NavLink>
+                    <NavLink class="oa-nav__dropdown-link" href="/quality/baselines">质量基线</NavLink>
                 </div>
             </div>
 
@@ -60,7 +64,7 @@
             <NavLink class="oa-nav__mobile-link" href="/jobs" @onclick="CloseMobileMenu">分析任务</NavLink>
 
             <div class="oa-nav__mobile-section">
-                <div class="oa-nav__mobile-section-title">质量分析</div>
+                <div class="oa-nav__mobile-section-title">质量分析 · 分析</div>
                 <NavLink class="oa-nav__mobile-link" href="/quality" @onclick="CloseMobileMenu">质量总览</NavLink>
                 <NavLink class="oa-nav__mobile-link" href="/quality/trend" @onclick="CloseMobileMenu">质量趋势</NavLink>
                 <NavLink class="oa-nav__mobile-link" href="/quality/fields" @onclick="CloseMobileMenu">字段质量</NavLink>
@@ -70,6 +74,12 @@
                 <NavLink class="oa-nav__mobile-link" href="/quality/impact-analysis" @onclick="CloseMobileMenu">影响分析</NavLink>
                 <NavLink class="oa-nav__mobile-link" href="/quality/relationships" @onclick="CloseMobileMenu">质量关系</NavLink>
                 <NavLink class="oa-nav__mobile-link" href="/quality/object-relationships" @onclick="CloseMobileMenu">对象关系</NavLink>
+            </div>
+
+            <div class="oa-nav__mobile-section">
+                <div class="oa-nav__mobile-section-title">质量分析 · 治理</div>
+                <NavLink class="oa-nav__mobile-link" href="/quality/regression" @onclick="CloseMobileMenu">质量回归</NavLink>
+                <NavLink class="oa-nav__mobile-link" href="/quality/baselines" @onclick="CloseMobileMenu">质量基线</NavLink>
             </div>
 
             <NavLink class="oa-nav__mobile-link" href="/issues" @onclick="CloseMobileMenu">问题中心</NavLink>
@@ -212,11 +222,25 @@
         transition: opacity .16s ease, transform .16s ease, visibility .16s ease;
     }
 
+    .oa-nav__dropdown--wide {
+        min-width: 250px;
+        max-height: min(78vh, 620px);
+        overflow-y: auto;
+    }
+
     .oa-nav__group:hover .oa-nav__dropdown,
     .oa-nav__group:focus-within .oa-nav__dropdown {
         opacity: 1;
         visibility: visible;
         transform: translateY(0);
+    }
+
+    .oa-nav__dropdown-heading {
+        padding: 5px 11px 4px;
+        color: var(--oa-text-3);
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .05em;
     }
 
     .oa-nav__dropdown-link {
