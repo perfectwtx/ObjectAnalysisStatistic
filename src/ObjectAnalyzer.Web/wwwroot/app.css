@@ -3481,3 +3481,170 @@ a, .btn-link {
         max-height: 360px;
     }
 }
+
+
+/* ─── 22. 首页运行时配置面板 ─── */
+.p6-config-group {
+    border-color: var(--oa-accent-border);
+    background: color-mix(in srgb, var(--oa-accent-soft) 24%, var(--oa-surface));
+}
+
+.p6-config-group > summary {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .2rem .1rem .65rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.p6-config-group > summary::before {
+    content: "⚙";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    flex: 0 0 1.55rem;
+    border: 1px solid var(--oa-accent-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-accent-soft);
+    color: var(--oa-accent);
+    font-size: .8rem;
+}
+
+.p6-config-group > summary .opt-group-title {
+    color: var(--oa-text-1);
+    font-weight: 700;
+}
+
+.p6-config-group > summary .opt-group-hint {
+    margin-left: auto;
+    max-width: 46%;
+    text-align: right;
+    line-height: 1.35;
+}
+
+.p6-config-group > .options-grid {
+    gap: .7rem .8rem;
+    margin-top: .8rem;
+}
+
+.p6-config-group > .options-grid > .option-item {
+    padding: .55rem .65rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface);
+}
+
+.p6-config-group > .options-grid > .checkbox-item {
+    min-height: 0;
+}
+
+.p6-config-group > .options-grid > .option-item > span {
+    display: block;
+    margin-bottom: .4rem;
+    color: var(--oa-text-2);
+    font-size: .74rem;
+    font-weight: 650;
+}
+
+.p6-config-group > .options-grid > .checkbox-item > span {
+    margin-bottom: 0;
+}
+
+.p6-config-group .file-option {
+    grid-column: 1 / -1;
+}
+
+.p6-config-group .file-field {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.p6-config-group .file-field input[type="file"] {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.p6-config-group .file-ok {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.p6-config-group .clear-btn {
+    flex: 0 0 auto;
+}
+
+.memory-warning,
+.checkpoint-info {
+    padding: .65rem .75rem;
+    border-radius: var(--oa-radius-md);
+}
+
+.memory-warning {
+    border: 1px solid color-mix(in srgb, var(--oa-warning) 32%, transparent);
+    background: color-mix(in srgb, var(--oa-warning) 9%, var(--oa-surface));
+}
+
+.checkpoint-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .7rem;
+    border: 1px solid var(--oa-accent-border);
+    background: color-mix(in srgb, var(--oa-accent-soft) 34%, var(--oa-surface));
+}
+
+.checkpoint-info > span {
+    min-width: 0;
+    line-height: 1.4;
+}
+
+.checkpoint-info > .btn {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+    .p6-config-group > summary {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .p6-config-group > summary .opt-group-hint {
+        width: 100%;
+        max-width: none;
+        margin-left: 2.2rem;
+        text-align: left;
+    }
+
+    .p6-config-group > .options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .p6-config-group .file-option {
+        grid-column: auto;
+    }
+
+    .p6-config-group .file-field {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .p6-config-group .file-field input[type="file"] {
+        width: 100%;
+    }
+
+    .checkpoint-info {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .checkpoint-info > .btn {
+        width: 100%;
+    }
+}
