@@ -4667,3 +4667,273 @@ a, .btn-link {
         width: 100%;
     }
 }
+
+
+/* ─── 31. 质量趋势页面 ─── */
+.oa-quality-trend-page {
+    max-width: 1680px;
+    margin: 0 auto;
+}
+
+.oa-quality-trend-page .oa-analysis-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-quality-trend-page .oa-analysis-header h1 {
+    margin-bottom: .35rem;
+}
+
+.oa-quality-trend-page .oa-analysis-header p {
+    max-width: 760px;
+    margin-bottom: 0;
+    color: var(--oa-text-3);
+    line-height: 1.55;
+}
+
+.oa-quality-trend-page .oa-dashboard-section {
+    margin-bottom: 1rem;
+}
+
+.oa-quality-trend-page .oa-section-heading {
+    margin-bottom: .65rem;
+}
+
+.oa-quality-trend-page .oa-section-heading h2 {
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.oa-quality-trend-page .oa-analysis-card,
+.oa-quality-trend-page .oa-analysis-kpi {
+    border-color: var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.oa-quality-trend-page .oa-analysis-card:hover,
+.oa-quality-trend-page .oa-analysis-kpi:hover {
+    border-color: var(--oa-accent-border);
+    box-shadow: var(--oa-shadow-md);
+}
+
+.oa-quality-trend-page .oa-analysis-kpi {
+    position: relative;
+    overflow: hidden;
+}
+
+.oa-quality-trend-page .oa-analysis-kpi::after {
+    content: "";
+    position: absolute;
+    width: 88px;
+    height: 88px;
+    right: -34px;
+    top: -36px;
+    border-radius: 50%;
+    background: var(--oa-accent-soft);
+    opacity: .5;
+}
+
+.oa-quality-trend-page .oa-kpi-value,
+.oa-quality-trend-page .oa-kpi-label,
+.oa-quality-trend-page .oa-kpi-meta {
+    position: relative;
+    z-index: 1;
+}
+
+.oa-quality-trend-page .oa-kpi-value {
+    font-size: clamp(1.55rem, 2.2vw, 2rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-quality-trend-page .oa-trend-chart-card {
+    overflow: hidden;
+}
+
+.oa-quality-trend-page .oa-trend-chart {
+    display: grid;
+    grid-template-columns: repeat(30, minmax(22px, 1fr));
+    align-items: end;
+    gap: .45rem;
+    min-height: 250px;
+    margin-top: 1rem;
+    padding: 1rem .75rem .5rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-md);
+    background:
+        repeating-linear-gradient(
+            to top,
+            transparent 0,
+            transparent calc(25% - 1px),
+            var(--oa-border) 25%
+        ),
+        var(--oa-surface-2);
+}
+
+.oa-quality-trend-page .oa-trend-point {
+    display: grid;
+    grid-template-rows: minmax(150px, 1fr) auto auto;
+    gap: .3rem;
+    min-width: 0;
+    text-align: center;
+}
+
+.oa-quality-trend-page .oa-trend-bar-track {
+    display: flex;
+    align-items: flex-end;
+    min-height: 150px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--oa-border) 42%, transparent);
+}
+
+.oa-quality-trend-page .oa-trend-bar {
+    width: 100%;
+    min-height: 3px;
+    border-radius: 5px 5px 2px 2px;
+    background: var(--oa-accent);
+    transition: height .2s ease, opacity .15s ease;
+}
+
+.oa-quality-trend-page .oa-trend-point:hover .oa-trend-bar {
+    opacity: .72;
+}
+
+.oa-quality-trend-page .oa-trend-point strong {
+    color: var(--oa-text-1);
+    font-size: .68rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-quality-trend-page .oa-trend-point > span {
+    color: var(--oa-text-3);
+    font-size: .62rem;
+    white-space: nowrap;
+}
+
+.oa-quality-trend-page .oa-trend-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: .4rem;
+    padding: 0 .2rem;
+    color: var(--oa-text-3);
+    font-size: .68rem;
+}
+
+.oa-quality-trend-page .oa-data-table {
+    font-size: .78rem;
+}
+
+.oa-quality-trend-page .oa-data-table thead th {
+    color: var(--oa-text-3);
+    font-size: .7rem;
+    font-weight: 750;
+    white-space: nowrap;
+    border-bottom-color: var(--oa-border-strong);
+}
+
+.oa-quality-trend-page .oa-data-table tbody tr {
+    transition: background-color .12s ease;
+}
+
+.oa-quality-trend-page .oa-data-table tbody tr:hover {
+    background: var(--oa-surface-2);
+}
+
+.oa-quality-trend-page .oa-trend-summary {
+    padding: .8rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-md);
+    background: var(--oa-surface-2);
+}
+
+.oa-quality-trend-page .oa-trend-main {
+    display: flex;
+    align-items: baseline;
+    gap: .55rem;
+    flex-wrap: wrap;
+}
+
+.oa-quality-trend-page .oa-trend-main strong {
+    font-size: 1.7rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-quality-trend-page .oa-trend-delta {
+    padding: .18rem .45rem;
+    border-radius: 999px;
+    background: var(--oa-accent-soft);
+    color: var(--oa-accent-strong);
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.oa-quality-trend-page .oa-trend-compare {
+    margin-top: .25rem;
+    color: var(--oa-text-3);
+    font-size: .72rem;
+}
+
+.oa-quality-trend-page .oa-dimension-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .5rem;
+    margin-top: .65rem;
+}
+
+.oa-quality-trend-page .oa-dimension-list > div {
+    display: flex;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .5rem .6rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface);
+}
+
+.oa-quality-trend-page .oa-dimension-list span {
+    color: var(--oa-text-3);
+    font-size: .7rem;
+}
+
+.oa-quality-trend-page .oa-dimension-list strong {
+    font-size: .75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+    .oa-quality-trend-page .oa-trend-chart {
+        grid-template-columns: repeat(15, minmax(28px, 1fr));
+        overflow-x: auto;
+    }
+
+    .oa-quality-trend-page .oa-trend-point {
+        min-width: 28px;
+    }
+}
+
+@media (max-width: 720px) {
+    .oa-quality-trend-page .oa-analysis-header {
+        gap: .75rem;
+    }
+
+    .oa-quality-trend-page .oa-analysis-header .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .oa-quality-trend-page .oa-trend-chart {
+        grid-template-columns: repeat(10, minmax(32px, 1fr));
+        min-height: 220px;
+        padding-inline: .55rem;
+    }
+
+    .oa-quality-trend-page .oa-dimension-list {
+        grid-template-columns: 1fr;
+    }
+}
