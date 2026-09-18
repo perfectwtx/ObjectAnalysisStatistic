@@ -16,14 +16,21 @@
 
     @if (_loading)
     {
-        <div class="alert alert-info">正在加载告警规则...</div>
+        <div class="card oa-analysis-card">
+            <div class="card-body oa-analysis-empty">
+                <div class="oa-empty-icon">◌</div>
+                <strong>正在加载告警规则</strong>
+                <span>正在读取当前质量告警配置，请稍候。</span>
+            </div>
+        </div>
     }
     else if (_rules.Count == 0)
     {
-        <div class="card">
-            <div class="oa-empty-state">
+        <div class="card oa-analysis-card">
+            <div class="card-body oa-analysis-empty">
+                <div class="oa-empty-icon">◌</div>
                 <strong>暂无告警规则</strong>
-                点击右上角“新增规则”创建第一条质量告警规则。
+                <span>点击右上角“新增规则”创建第一条质量告警规则。</span>
             </div>
         </div>
     }
