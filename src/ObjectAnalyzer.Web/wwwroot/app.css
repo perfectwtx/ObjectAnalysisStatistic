@@ -4070,3 +4070,154 @@ a, .btn-link {
         max-width: 100%;
     }
 }
+
+
+/* ─── 27. 首页字段分析与重复对象工作区 ─── */
+.results-section .field-table {
+    overflow: auto;
+    margin-bottom: 1rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    background: var(--oa-surface);
+}
+
+.results-section .field-table table {
+    min-width: 980px;
+}
+
+.results-section .field-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-2);
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--oa-border-strong);
+}
+
+.results-section .field-table td {
+    border-bottom: 1px solid var(--oa-border);
+    font-size: .78rem;
+    vertical-align: middle;
+}
+
+.results-section .field-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.results-section .field-table tbody tr:hover {
+    background: var(--oa-surface-2);
+}
+
+.results-section .field-table .field-name {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 150px;
+    background: var(--oa-surface);
+}
+
+.results-section .field-table thead .field-name {
+    z-index: 3;
+    background: var(--oa-surface-2);
+}
+
+.results-section .field-table tbody tr:hover .field-name {
+    background: var(--oa-surface-2);
+}
+
+.results-section .semantic-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 150px;
+    padding: .2rem .5rem;
+    border: 1px solid var(--oa-accent-border);
+    border-radius: 999px;
+    background: var(--oa-accent-soft);
+    color: var(--oa-accent-strong);
+    font-size: .7rem;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.results-section .coverage-bar {
+    min-width: 110px;
+}
+
+.results-section .duplicates-section {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    background: var(--oa-surface);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.results-section .duplicates-section h3 {
+    display: flex;
+    align-items: baseline;
+    gap: .45rem;
+    margin-bottom: .75rem;
+    padding-left: .65rem;
+    border-left: 3px solid var(--oa-warning);
+    color: var(--oa-text-1);
+    font-size: 1rem;
+}
+
+.results-section .dup-item {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: .7rem;
+    align-items: start;
+    padding: .65rem 0;
+    border-top: 1px solid var(--oa-border);
+}
+
+.results-section .dup-item:first-of-type {
+    border-top: 0;
+}
+
+.results-section .dup-count {
+    display: inline-flex;
+    justify-content: center;
+    padding: .2rem .4rem;
+    border-radius: 999px;
+    background: var(--oa-warning-soft);
+    color: var(--oa-warning);
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.results-section .dup-item code {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--oa-text-2);
+    font-size: .72rem;
+    line-height: 1.5;
+}
+
+.results-section .duplicates-note {
+    margin-top: .55rem;
+    color: var(--oa-text-3);
+    font-size: .74rem;
+}
+
+@media (max-width: 560px) {
+    .results-section .field-table .field-name {
+        min-width: 120px;
+    }
+
+    .results-section .duplicates-section {
+        padding: .8rem;
+    }
+
+    .results-section .dup-item {
+        grid-template-columns: 44px minmax(0, 1fr);
+        gap: .55rem;
+    }
+}
