@@ -4,7 +4,7 @@
 
 <PageTitle>质量基线</PageTitle>
 
-<div class="oa-analysis-page">
+<div class="oa-analysis-page oa-baselines-page>
     <div class="oa-analysis-header">
         <div>
             <div class="oa-eyebrow">Quality Governance</div>
@@ -44,8 +44,8 @@
                         <span>@_baselines.Count 个数据源</span>
                     </div>
                 </div>
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
+                <div class="oa-baseline-table-wrap">
+                    <table class="table align-middle mb-0 oa-baseline-table">
                         <thead>
                             <tr>
                                 <th>数据源</th>
@@ -62,14 +62,14 @@
                         @foreach (var baseline in _baselines)
                         {
                             <tr>
-                                <td><strong>@baseline.SourceName</strong></td>
-                                <td>@Format(baseline.MinimumOverallScore)</td>
-                                <td>@Format(baseline.MinimumCompleteness)</td>
-                                <td>@Format(baseline.MinimumValidity)</td>
-                                <td>@Format(baseline.MinimumUniqueness)</td>
-                                <td>@Format(baseline.MinimumConsistency)</td>
-                                <td>@Format(baseline.MinimumAnomalyControl)</td>
-                                <td class="text-end text-nowrap">
+                                <td class="oa-baseline-source"><strong>@baseline.SourceName</strong></td>
+                                <td class="oa-baseline-score">@Format(baseline.MinimumOverallScore)</td>
+                                <td class="oa-baseline-score">@Format(baseline.MinimumCompleteness)</td>
+                                <td class="oa-baseline-score">@Format(baseline.MinimumValidity)</td>
+                                <td class="oa-baseline-score">@Format(baseline.MinimumUniqueness)</td>
+                                <td class="oa-baseline-score">@Format(baseline.MinimumConsistency)</td>
+                                <td class="oa-baseline-score">@Format(baseline.MinimumAnomalyControl)</td>
+                                <td class="oa-baseline-actions">
                                     <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Edit(baseline)">编辑</button>
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(baseline.SourceName)">删除</button>
                                 </td>
@@ -84,7 +84,7 @@
 
     @if (_editing is not null)
     {
-        <div class="card oa-analysis-card oa-editor-card">
+        <div class="card oa-analysis-card oa-editor-card oa-baseline-editor">
             <div class="card-header">
                 <div>
                     <h2>@(_isNew ? "新增质量基线" : "编辑质量基线")</h2>
@@ -92,7 +92,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="row g-3">
+                <div class="oa-baseline-editor-grid">
                     <div class="col-12 col-md-6">
                         <label class="form-label">数据源名称</label>
                         <input class="form-control" @bind="_editing.SourceName" disabled="@(!_isNew)" />
