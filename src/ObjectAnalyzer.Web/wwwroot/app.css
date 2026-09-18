@@ -5278,3 +5278,296 @@ a, .btn-link {
         padding: .85rem;
     }
 }
+
+
+/* ─── 33. 质量修复建议页面 ─── */
+.oa-recommendations-page {
+    max-width: 1680px;
+    margin: 0 auto;
+}
+
+.oa-recommendations-page .oa-analysis-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-recommendations-page .oa-analysis-header h1 {
+    margin-bottom: .35rem;
+}
+
+.oa-recommendations-page .oa-analysis-header p {
+    max-width: 760px;
+    margin-bottom: 0;
+    color: var(--oa-text-3);
+    line-height: 1.55;
+}
+
+.oa-recommendations-page .oa-recommendations-state {
+    min-height: 220px;
+}
+
+.oa-recommendations-page .oa-recommendation-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .8rem;
+    margin-bottom: 1rem;
+}
+
+.oa-recommendations-page .oa-analysis-kpi {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    background: var(--oa-surface);
+    box-shadow: var(--oa-shadow-sm);
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.oa-recommendations-page .oa-analysis-kpi::after {
+    content: "";
+    position: absolute;
+    width: 82px;
+    height: 82px;
+    right: -30px;
+    top: -34px;
+    border-radius: 50%;
+    background: var(--oa-accent-soft);
+    opacity: .6;
+}
+
+.oa-recommendations-page .oa-analysis-kpi:hover {
+    border-color: var(--oa-accent-border);
+    box-shadow: var(--oa-shadow-md);
+    transform: translateY(-1px);
+}
+
+.oa-recommendations-page .oa-analysis-kpi span,
+.oa-recommendations-page .oa-analysis-kpi strong,
+.oa-recommendations-page .oa-analysis-kpi small {
+    position: relative;
+    z-index: 1;
+    display: block;
+}
+
+.oa-recommendations-page .oa-analysis-kpi span {
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.oa-recommendations-page .oa-analysis-kpi strong {
+    margin-top: .2rem;
+    color: var(--oa-text-1);
+    font-size: clamp(1.55rem, 2.2vw, 2rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-recommendations-page .oa-analysis-kpi small {
+    margin-top: .2rem;
+    color: var(--oa-text-3);
+    font-size: .7rem;
+}
+
+.oa-recommendations-page .oa-recommendations-panel {
+    overflow: hidden;
+    border-color: var(--oa-border);
+    border-radius: var(--oa-radius-lg);
+    box-shadow: var(--oa-shadow-sm);
+}
+
+.oa-recommendations-page .oa-panel-header {
+    min-width: 0;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.oa-recommendations-page .oa-panel-kicker {
+    color: var(--oa-accent);
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.oa-recommendations-page .oa-panel-header h2 {
+    margin-top: .15rem;
+    color: var(--oa-text-1);
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.oa-recommendations-page .oa-count-badge {
+    max-width: 52%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: .25rem .55rem;
+    border: 1px solid var(--oa-border);
+    border-radius: 999px;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-2);
+    font-size: .68rem;
+    font-weight: 650;
+}
+
+.oa-recommendations-page .oa-table-wrap {
+    overflow: auto;
+}
+
+.oa-recommendations-page .oa-recommendation-table {
+    min-width: 1120px;
+    font-size: .78rem;
+}
+
+.oa-recommendations-page .oa-recommendation-table thead th {
+    padding: .7rem .8rem;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-3);
+    border-bottom: 1px solid var(--oa-border-strong);
+    font-size: .69rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.oa-recommendations-page .oa-recommendation-table tbody td {
+    padding: .75rem .8rem;
+    border-bottom: 1px solid var(--oa-border);
+    color: var(--oa-text-2);
+    vertical-align: top;
+}
+
+.oa-recommendations-page .oa-recommendation-table tbody tr {
+    transition: background-color .12s ease;
+}
+
+.oa-recommendations-page .oa-recommendation-table tbody tr:hover {
+    background: var(--oa-surface-2);
+}
+
+.oa-recommendations-page .oa-recommendation-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.oa-recommendations-page .oa-recommendation-table .badge {
+    white-space: nowrap;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+.oa-recommendations-page .oa-recommendation-field {
+    display: inline-block;
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--oa-text-1);
+    font-family: var(--oa-font-mono);
+    font-size: .75rem;
+}
+
+.oa-recommendations-page .oa-recommendation-message {
+    max-width: 280px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.oa-recommendations-page .oa-number-value {
+    color: var(--oa-text-1);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-recommendations-page .oa-recommendation-action {
+    min-width: 220px;
+    color: var(--oa-text-1);
+    line-height: 1.5;
+}
+
+.oa-recommendations-page .oa-recommendation-rule {
+    display: block;
+    min-width: 180px;
+    max-width: 300px;
+    padding: .35rem .5rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+    color: var(--oa-accent-strong);
+    font-size: .7rem;
+    line-height: 1.45;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.oa-recommendations-page .oa-governance-note {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    margin: 0;
+    padding: .75rem 1rem;
+    border-top: 1px solid var(--oa-border);
+    background: var(--oa-surface-2);
+}
+
+.oa-recommendations-page .oa-governance-note strong {
+    flex: 0 0 auto;
+    color: var(--oa-text-1);
+    font-size: .72rem;
+}
+
+.oa-recommendations-page .oa-governance-note span {
+    color: var(--oa-text-3);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+    .oa-recommendations-page .oa-recommendation-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .oa-recommendations-page .oa-recommendation-table {
+        min-width: 1000px;
+    }
+}
+
+@media (max-width: 720px) {
+    .oa-recommendations-page .oa-analysis-header {
+        gap: .75rem;
+    }
+
+    .oa-recommendations-page .oa-analysis-header .btn {
+        width: 100%;
+    }
+
+    .oa-recommendations-page .oa-recommendation-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .oa-recommendations-page .oa-governance-note {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .2rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .oa-recommendations-page .oa-panel-header {
+        padding: .8rem;
+    }
+
+    .oa-recommendations-page .oa-panel-body {
+        padding: .8rem;
+    }
+
+    .oa-recommendations-page .oa-analysis-kpi {
+        padding: .85rem .9rem;
+    }
+
+    .oa-recommendations-page .oa-count-badge {
+        max-width: 45%;
+    }
+}
