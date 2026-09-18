@@ -209,3 +209,36 @@
     .oa-job-detail .oa-info-grid,.oa-job-detail .oa-metric-grid { grid-template-columns:1fr; }
     .oa-job-detail .oa-info-wide { grid-column:auto; }
 }
+
+
+/* Jobs and job detail density refinement */
+.oa-jobs-page .oa-summary-grid { margin-bottom: 1.35rem !important; }
+.oa-jobs-page .oa-summary-card { min-height: 118px; }
+.oa-jobs-page .oa-jobs-table { min-width: 1040px; }
+.oa-jobs-page .oa-jobs-table th:last-child,
+.oa-jobs-page .oa-jobs-table td:last-child { text-align: right; }
+.oa-jobs-page .oa-jobs-table tbody tr { height: 64px; }
+.oa-jobs-page .oa-jobs-table td:nth-child(2) { min-width: 170px; }
+.oa-jobs-page .oa-jobs-table td:nth-child(4),
+.oa-jobs-page .oa-jobs-table td:nth-child(5),
+.oa-jobs-page .oa-jobs-table td:nth-child(6),
+.oa-jobs-page .oa-jobs-table td:nth-child(7),
+.oa-jobs-page .oa-jobs-table td:nth-child(8) {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.oa-job-detail .oa-job-hero { min-height: 116px; }
+.oa-job-detail .oa-job-summary-grid .oa-summary-card { min-height: 116px; }
+.oa-job-detail .oa-info-grid { gap: .7rem; }
+.oa-job-detail .oa-metric-grid { gap: .7rem; }
+.oa-job-detail .oa-three-column .oa-panel-body { padding-top: .9rem; }
+.oa-job-detail .oa-issue-table-card .oa-table-wrap td:last-child {
+    min-width: 260px;
+    color: var(--oa-text-2);
+}
+@media (max-width: 820px) {
+    .oa-jobs-page .oa-analysis-header { margin-bottom: 1.1rem; }
+    .oa-jobs-page .oa-summary-grid { gap: .75rem; }
+    .oa-jobs-page .oa-summary-card { min-height: 104px; }
+    .oa-job-detail .oa-job-hero { min-height: 0; }
+}
