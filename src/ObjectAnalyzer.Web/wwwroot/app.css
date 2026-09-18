@@ -4221,3 +4221,152 @@ a, .btn-link {
         gap: .55rem;
     }
 }
+
+
+/* ─── 28. 首页高级分析卡片 ─── */
+.results-section .p3-section,
+.results-section .deep-section {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--oa-accent-soft) 22%, var(--oa-surface)), var(--oa-surface));
+    border-color: var(--oa-border);
+}
+
+.results-section .deep-section {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--oa-info-soft) 18%, var(--oa-surface)), var(--oa-surface));
+}
+
+.results-section .p3-header,
+.results-section .deep-header {
+    padding-bottom: .8rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.results-section .p3-header h2,
+.results-section .deep-header h2 {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0;
+    color: var(--oa-text-1);
+    font-weight: 750;
+}
+
+.results-section .p3-hint,
+.results-section .deep-hint {
+    margin: 0;
+    color: var(--oa-text-3);
+    font-size: .76rem;
+    line-height: 1.45;
+}
+
+.results-section .p3-card,
+.results-section .deep-card {
+    min-width: 0;
+    border-radius: var(--oa-radius-lg);
+    background: color-mix(in srgb, var(--oa-surface-2) 78%, var(--oa-surface));
+}
+
+.results-section .p3-card h3,
+.results-section .deep-card h3 {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    min-height: 1.5rem;
+    padding-bottom: .6rem;
+    border-bottom: 1px solid var(--oa-border);
+}
+
+.results-section .p3-card-stats,
+.results-section .deep-card-stats {
+    min-height: 36px;
+    margin-bottom: .65rem;
+}
+
+.results-section .p3-list li,
+.results-section .deep-list li {
+    min-width: 0;
+    background: var(--oa-surface);
+    transition: border-color .12s ease, background-color .12s ease;
+}
+
+.results-section .p3-list li:hover,
+.results-section .deep-list li:hover {
+    border-color: var(--oa-accent-border);
+    background: var(--oa-surface-2);
+}
+
+.results-section .p3-field,
+.results-section .deep-field {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.results-section .p3-spark {
+    max-width: 100%;
+    overflow: hidden;
+    margin-top: .5rem;
+    padding: .35rem;
+    border: 1px solid var(--oa-border);
+    border-radius: var(--oa-radius-sm);
+    background: var(--oa-surface-2);
+}
+
+.results-section .p3-spark svg {
+    display: block;
+    max-width: 100%;
+}
+
+.results-section .deep-corr {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    padding: .15rem .4rem;
+    border-radius: 999px;
+    background: var(--oa-surface-2);
+    color: var(--oa-text-2);
+    font-family: var(--oa-font-mono);
+    font-size: .7rem;
+    font-weight: 650;
+}
+
+.results-section .deep-corr.corr-pos {
+    background: var(--oa-success-soft);
+    color: var(--oa-success);
+}
+
+.results-section .deep-corr.corr-neg {
+    background: var(--oa-danger-soft);
+    color: var(--oa-danger);
+}
+
+@media (max-width: 720px) {
+    .results-section .p3-card-wide,
+    .results-section .deep-card-wide {
+        grid-column: span 1;
+    }
+
+    .results-section .p3-hint,
+    .results-section .deep-hint {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .results-section .p3-header,
+    .results-section .deep-header {
+        gap: .55rem;
+    }
+
+    .results-section .p3-card,
+    .results-section .deep-card {
+        padding: .9rem;
+    }
+
+    .results-section .deep-corr {
+        margin-left: 0;
+    }
+}
