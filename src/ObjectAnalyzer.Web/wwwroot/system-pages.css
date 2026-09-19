@@ -32,9 +32,45 @@
 }
 
 .oa-system-card-error .oa-system-code {
-    color: #991b1b;
-    background: #fee2e2;
+    color: var(--oa-danger);
+    background: var(--oa-danger-soft);
 }
+
+.oa-system-card {
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.oa-system-card:hover {
+    border-color: var(--oa-accent-border);
+    box-shadow: var(--oa-shadow-lg);
+    transform: translateY(-1px);
+}
+
+.oa-system-code {
+    flex-shrink: 0;
+}
+
+.oa-system-actions .btn {
+    min-width: 104px;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.oa-request-id code {
+    color: var(--oa-text-1);
+    background: var(--oa-surface-3);
+    border-radius: 6px;
+    padding: .18rem .4rem;
+}
+
+.oa-error-help summary {
+    list-style-position: inside;
+}
+
+.oa-error-help[open] {
+    border-color: var(--oa-accent-border);
+}
+
 
 .oa-system-card h1 {
     margin: 0 0 .6rem;
