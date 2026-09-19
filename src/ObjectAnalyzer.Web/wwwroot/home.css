@@ -102,7 +102,7 @@
 }
 .app-shell .summary-cards .card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 22px rgba(23,30,46,.07);
+    box-shadow: var(--oa-shadow-md);
 }
 .app-shell .charts-section .chart-box {
     border: 1px solid var(--oa-border);
@@ -408,7 +408,7 @@
     font-size: .7rem;
 }
 .app-shell .side-scroll > .option-group[open] {
-    box-shadow: 0 4px 16px rgba(23,30,46,.04);
+    box-shadow: var(--oa-shadow-sm);
 }
 .app-shell .side-scroll > .option-group[open] > summary {
     color: var(--oa-accent);
