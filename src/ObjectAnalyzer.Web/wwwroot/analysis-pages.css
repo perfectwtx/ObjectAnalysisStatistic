@@ -185,14 +185,14 @@
 
 
 /* Governance pages refinement */
-.oa-recommendations-page .oa-recommendation-kpis .oa-analysis-kpi::before{
+.oa-recommendations-page .oa-recommendation-kpis .oa-kpi-card::before{
     content:"";
     position:absolute;
     inset:0 0 auto;
     height:3px;
     background:var(--oa-accent);
 }
-.oa-recommendations-page .oa-recommendation-kpis .oa-analysis-kpi:nth-child(3)::before{background:#f59e0b}
+.oa-recommendations-page .oa-recommendation-kpis .oa-kpi-card:nth-child(3)::before{background:#f59e0b}
 .oa-recommendations-page .oa-governance-card{overflow:hidden}
 .oa-recommendations-page .oa-recommendation-table thead th{position:sticky;top:0;z-index:1;background:var(--oa-surface-2)}
 .oa-recommendations-page .oa-recommendation-table tbody tr{min-height:72px}
@@ -511,7 +511,7 @@
     box-shadow: var(--oa-shadow-md);
 }
 
-.oa-quality-dashboard-page .oa-analysis-kpi::after {
+.oa-quality-dashboard-page .oa-kpi-card::after {
     content: "";
     position: absolute;
     width: 90px;
@@ -675,7 +675,7 @@
 
 .oa-quality-trend-page .oa-analysis-card,
 .oa-quality-trend-page .oa-analysis-card:hover,
-.oa-quality-trend-page .oa-analysis-kpi {
+.oa-quality-trend-page .oa-kpi-card {
     position: relative;
     overflow: hidden;
 }
