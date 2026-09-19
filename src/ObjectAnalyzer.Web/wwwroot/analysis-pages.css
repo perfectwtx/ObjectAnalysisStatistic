@@ -1589,3 +1589,7 @@
         max-width: 45%;
     }
 }
+
+.oa-baselines-page .oa-analysis-empty{min-height:220px;display:flex;align-items:center;justify-content:center}
+
+.oa-alert-page .oa-analysis-empty{min-height:220px;display:flex;align-items:center;justify-content:center}
