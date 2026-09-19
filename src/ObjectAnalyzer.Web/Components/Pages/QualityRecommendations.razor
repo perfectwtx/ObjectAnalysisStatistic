@@ -57,7 +57,7 @@
                         <article class="oa-recommendation-item">
                             <div class="oa-recommendation-item-head">
                                 <div class="oa-recommendation-field-wrap"><span class="oa-recommendation-index">@(_recommendations.IndexOf(item) + 1).ToString("D2")</span><strong class="oa-recommendation-field">@item.Field</strong></div>
-                                <span class="oa-badge @(item.Priority >= 3 ? "is-danger" : item.Priority == 2 ? "is-warning" : "is-neutral")">@item.PriorityText优先</span>
+                                <span class="oa-badge @(item.Priority >= 3 ? "is-danger" : item.Priority == 2 ? "is-warning" : "is-neutral")">@(item.PriorityText)优先</span>
                             </div>
                             <div class="oa-recommendation-grid">
                                 <div><span>问题类型</span><strong>@QualityCheckTypes.Label(item.Check)</strong><p>@item.Message</p></div>
