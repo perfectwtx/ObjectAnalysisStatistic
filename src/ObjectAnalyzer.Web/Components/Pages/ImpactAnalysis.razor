@@ -71,7 +71,7 @@
                                 <td class="oa-impact-path"><code>@node.Path</code></td>
                                 <td><span class="oa-impact-type">@GetTypeText(node.Type)</span></td>
                                 <td>@GetSourceText(node.Type)</td>
-                                <td><span class="badge @GetLevelClass(node.Level)">@GetLevelText(node.Level)</span></td>
+                                <td><span class="oa-badge @GetLevelClass(node.Level)">@GetLevelText(node.Level)</span></td>
                                 <td class="oa-impact-reason">@node.Reason</td>
                             </tr>
                         }
@@ -107,7 +107,7 @@
     }
 
     private static string GetLevelText(ImpactLevel level) => level switch { ImpactLevel.Critical => "严重", ImpactLevel.High => "高", ImpactLevel.Medium => "中", _ => "低" };
-    private static string GetLevelClass(ImpactLevel level) => level switch { ImpactLevel.Critical => "bg-danger", ImpactLevel.High => "bg-warning text-dark", ImpactLevel.Medium => "bg-info text-dark", _ => "bg-secondary" };
+    private static string GetLevelClass(ImpactLevel level) => level switch { ImpactLevel.Critical => "is-danger", ImpactLevel.High => "is-warning", ImpactLevel.Medium => "is-info", _ => "is-neutral" };
     private static string GetTypeText(ImpactType type) => type switch { ImpactType.ParentObject => "父对象", ImpactType.ChildNode => "子节点", ImpactType.RelatedObject => "关联对象", _ => "Schema 字段" };
     private static string GetSourceText(ImpactType type) => type switch { ImpactType.ParentObject => "父级血缘", ImpactType.ChildNode => "子级血缘", ImpactType.RelatedObject => "关系血缘", _ => "Schema Diff" };
 }
