@@ -500,6 +500,15 @@
                     <span>ANALYSIS SIGNALS</span>
                     <small>Current dataset profile</small>
                 </div>
+                <div class="signal-items">
+                    <span class="signal-item"><i class="signal-dot is-accent"></i>Dataset loaded</span>
+                    <span class="signal-item"><i class="signal-dot is-info"></i>Field profiling</span>
+                    <span class="signal-item"><i class="signal-dot is-success"></i>Results available</span>
+                </div>
+            </div>
+            <div class="result-section-heading">
+                <span class="result-section-kicker">OVERVIEW</span>
+                <span class="result-section-note">Dataset-level metrics</span>
             </div>
             <div class="summary-cards">
                 <div class="card blue">
@@ -521,6 +530,10 @@
             </div>
 
             @* 图表区域 *@
+            <div class="result-section-heading">
+                <span class="result-section-kicker">SIGNALS</span>
+                <span class="result-section-note">Distribution and quality signals</span>
+            </div>
             <div class="charts-section">
                 <div class="chart-box">
                     <h3>@Loc["FieldCoverageChart"]</h3>
@@ -533,6 +546,10 @@
             </div>
 
             @* 明细选项卡 *@
+            <div class="result-section-heading">
+                <span class="result-section-kicker">FIELD INTELLIGENCE</span>
+                <span class="result-section-note">Inspect field-level findings</span>
+            </div>
             <div class="detail-tabs" role="tablist">
                 <button class="detail-tab @(_activeTab == "fields" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "fields")" @onclick='() => SetTab("fields")'>@Loc["TabFields"]</button>
                 <button class="detail-tab @(_activeTab == "deep" ? "active" : "")" role="tab" aria-selected="@(_activeTab == "deep")" @onclick='() => SetTab("deep")'>@Loc["TabDeep"]</button>
