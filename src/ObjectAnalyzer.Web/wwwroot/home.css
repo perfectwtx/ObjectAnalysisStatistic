@@ -500,3 +500,306 @@
     .app-shell .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .app-shell .charts-section { grid-template-columns: 1fr; }
 }
+
+/* -------------------------------------------------------------------------
+   Object Analyzer workspace redesign
+   The home page is the analysis workbench: controls on the left, signal on
+   the right. Keep the existing Blazor behavior and make the visual hierarchy
+   closer to a modern data-tool workspace.
+   ------------------------------------------------------------------------- */
+.app-shell{
+    grid-template-columns:minmax(286px,316px) 1px minmax(0,1fr);
+    min-height:calc(100vh - 1px);
+    background:var(--oa-bg);
+}
+.app-shell .sidebar{
+    background:color-mix(in srgb,var(--oa-surface) 97%,var(--oa-bg));
+    border-right:0;
+}
+.app-shell .side-handle{
+    width:1px;
+    background:var(--oa-border);
+}
+.app-shell .side-brand{
+    min-height:72px;
+    padding:0 18px;
+    border-bottom:1px solid var(--oa-border);
+    background:var(--oa-surface);
+}
+.app-shell .side-brand h1{
+    font-size:.94rem;
+    letter-spacing:-.02em;
+}
+.app-shell .brand-sub{
+    color:var(--oa-text-3);
+    font-size:.64rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+.app-shell .side-scroll{
+    padding:14px 12px 20px;
+    gap:10px;
+}
+.app-shell .side-group{
+    padding:11px;
+    border:1px solid var(--oa-border);
+    border-radius:12px;
+    background:var(--oa-surface);
+}
+.app-shell .side-group-title{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    color:var(--oa-text-3);
+    font-size:.64rem;
+    font-weight:750;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+}
+.app-shell .side-group-title::before{
+    content:"";
+    width:3px;
+    height:13px;
+    border-radius:3px;
+    background:var(--oa-accent);
+}
+.app-shell .side-group-run{
+    position:sticky;
+    top:10px;
+    z-index:10;
+    padding:10px;
+    background:linear-gradient(180deg,var(--oa-accent-soft),var(--oa-surface));
+    border-color:var(--oa-accent-border);
+    box-shadow:var(--oa-shadow-md);
+}
+.app-shell .side-group-run .btn-primary{
+    min-height:42px;
+    border-radius:9px;
+    font-weight:750;
+}
+.app-shell .progress-status{
+    padding:.55rem .65rem;
+    border:1px solid var(--oa-accent-border);
+    border-radius:8px;
+    background:var(--oa-surface);
+}
+.app-shell .main-area{
+    min-height:100vh;
+    padding:24px clamp(18px,3vw,48px) 56px;
+    background:
+        radial-gradient(900px 360px at 100% 0%,color-mix(in srgb,var(--oa-accent) 6%,transparent),transparent 68%),
+        var(--oa-bg);
+}
+.app-shell .topbar{
+    min-height:38px;
+    margin-bottom:20px;
+    padding:0;
+}
+.app-shell .topbar .file-chip{
+    border-color:var(--oa-border);
+    background:var(--oa-surface);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .results-section{
+    width:min(100%,1520px);
+}
+.app-shell .results-header{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:18px;
+    margin-bottom:14px;
+    padding:18px 20px;
+    border:1px solid var(--oa-border);
+    border-radius:14px;
+    background:var(--oa-surface);
+    box-shadow:var(--oa-shadow-sm);
+    overflow:hidden;
+}
+.app-shell .results-header::before{
+    content:"";
+    position:absolute;
+    inset:0 auto 0 0;
+    width:3px;
+    background:var(--oa-accent);
+}
+.app-shell .results-header h2{
+    margin:0;
+    font-size:1.18rem;
+    font-weight:780;
+    letter-spacing:-.025em;
+}
+.app-shell .results-header .header-actions{
+    align-items:center;
+    justify-content:flex-end;
+}
+.app-shell .summary-cards{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+    margin-bottom:14px;
+}
+.app-shell .summary-cards .card{
+    min-height:104px;
+    padding:14px 16px;
+    border-radius:12px;
+    border:1px solid var(--oa-border);
+    background:var(--oa-surface);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .summary-cards .card::before{
+    height:2px;
+}
+.app-shell .summary-cards .card-value{
+    font-size:1.65rem;
+    font-weight:780;
+}
+.app-shell .summary-cards .card-label{
+    margin-top:5px;
+    color:var(--oa-text-3);
+    font-size:.68rem;
+    font-weight:650;
+}
+.app-shell .charts-section{
+    grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);
+    gap:10px;
+    margin-bottom:14px;
+}
+.app-shell .chart-box{
+    min-height:315px;
+    padding:15px 17px;
+    border:1px solid var(--oa-border);
+    border-radius:12px;
+    background:var(--oa-surface);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .chart-box h3{
+    margin:0 0 12px;
+    font-size:.83rem;
+    font-weight:750;
+    color:var(--oa-text-1);
+}
+.app-shell .detail-tabs{
+    top:10px;
+    display:flex;
+    gap:3px;
+    width:max-content;
+    max-width:100%;
+    margin:4px 0 12px;
+    padding:4px;
+    border:1px solid var(--oa-border);
+    border-radius:10px;
+    background:color-mix(in srgb,var(--oa-surface) 92%,transparent);
+    box-shadow:var(--oa-shadow-sm);
+    backdrop-filter:blur(12px);
+}
+.app-shell .detail-tabs .detail-tab{
+    min-height:34px;
+    min-width:94px;
+    padding:0 12px;
+    border:0;
+    border-radius:7px;
+    color:var(--oa-text-2);
+    background:transparent;
+    font-size:.74rem;
+    font-weight:650;
+}
+.app-shell .detail-tabs .detail-tab:hover{
+    background:var(--oa-surface-2);
+    color:var(--oa-text-1);
+}
+.app-shell .detail-tabs .detail-tab.active{
+    color:var(--oa-accent-strong);
+    background:var(--oa-accent-soft);
+}
+.app-shell .field-table,
+.app-shell .duplicates-section,
+.app-shell .preview-section,
+.app-shell .p3-section,
+.app-shell .deep-section{
+    border-color:var(--oa-border);
+    border-radius:12px;
+}
+.app-shell .field-table{
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .field-table th{
+    height:40px;
+    background:var(--oa-surface-2);
+    color:var(--oa-text-3);
+    font-size:.67rem;
+    font-weight:750;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+}
+.app-shell .field-table td{
+    min-height:48px;
+    font-size:.76rem;
+}
+.app-shell .field-table tbody tr:hover{
+    background:var(--oa-surface-2);
+}
+.app-shell .toolbar{
+    border-color:var(--oa-border);
+    border-radius:10px;
+    background:var(--oa-surface);
+}
+.app-shell .empty-state{
+    min-height:460px;
+    border:1px dashed var(--oa-border-strong);
+    border-radius:14px;
+    background:var(--oa-surface);
+}
+@media (max-width:1180px){
+    .app-shell{
+        grid-template-columns:260px 1px minmax(0,1fr);
+    }
+    .app-shell .summary-cards{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .app-shell .charts-section{
+        grid-template-columns:1fr;
+    }
+}
+@media (max-width:860px){
+    .app-shell{
+        display:block;
+    }
+    .app-shell .sidebar{
+        width:100%;
+        max-height:none;
+    }
+    .app-shell .side-scroll{
+        max-height:none;
+        overflow:visible;
+    }
+    .app-shell .side-group-run{
+        position:static;
+    }
+    .app-shell .main-area{
+        padding:18px 14px 42px;
+    }
+    .app-shell .results-header{
+        grid-template-columns:1fr;
+    }
+    .app-shell .results-header .header-actions{
+        justify-content:flex-start;
+    }
+    .app-shell .detail-tabs{
+        width:100%;
+        overflow-x:auto;
+    }
+}
+@media (max-width:560px){
+    .app-shell .summary-cards{
+        grid-template-columns:1fr;
+    }
+    .app-shell .summary-cards .card{
+        min-height:88px;
+    }
+    .app-shell .charts-section{
+        grid-template-columns:1fr;
+    }
+    .app-shell .results-header{
+        padding:15px;
+    }
+}
