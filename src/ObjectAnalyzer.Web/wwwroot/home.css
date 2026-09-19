@@ -862,3 +862,29 @@
         display:none;
     }
 }
+
+/* Shell coordination: the global product navigation stays outside the analysis console.
+   On compact screens the global nav becomes a drawer, while the analysis controls stay
+   in normal document flow so the two navigation layers never compete for the same space. */
+.app-shell .sidebar{
+    border-right:1px solid var(--oa-border);
+    border-radius:0;
+}
+@media (max-width:760px){
+    .app-shell .main-area{
+        padding-top:68px;
+    }
+    .app-shell .sidebar{
+        border-right:0;
+        border-bottom:1px solid var(--oa-border);
+    }
+}
+@media (max-width:560px){
+    .app-shell .main-area{
+        padding-top:64px;
+    }
+    .app-shell .topbar{
+        min-height:32px;
+        margin-bottom:1rem;
+    }
+}
