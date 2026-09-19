@@ -87,7 +87,7 @@
 .oa-summary-card span { color: var(--oa-text-2); font-size: .76rem; font-weight: 650; }
 .oa-summary-card strong { margin: .25rem 0 .1rem; color: var(--oa-text-1); font-size: 1.85rem; line-height: 1.15; letter-spacing: -.035em; }
 .oa-summary-card small { color: var(--oa-text-3); font-size: .74rem; }
-.oa-summary-warning { border-top: 3px solid #f0b429; }
+.oa-summary-warning { border-top: 3px solid var(--oa-warning); }
 .oa-section-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; margin: 1.8rem 0 .85rem; }
 .oa-section-heading h2 { margin: 0; }
 .oa-section-heading p { margin: .3rem 0 0; color: var(--oa-text-2); font-size: .82rem; }
@@ -98,10 +98,10 @@
 .oa-data-table td small { display: block; margin-top: .18rem; color: var(--oa-text-3); font-size: .72rem; }
 .oa-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .oa-status-badge { display: inline-flex; align-items: center; padding: .36rem .62rem; border-radius: 999px; font-size: .73rem; font-weight: 700; }
-.oa-status-succeeded { color: #166534; background: #dcfce7; }
-.oa-status-failed { color: #991b1b; background: #fee2e2; }
-.oa-status-cancelled { color: #92400e; background: #fef3c7; }
-.oa-status-running { color: #1d4ed8; background: #dbeafe; }
+.oa-status-succeeded { color: var(--oa-success); background: var(--oa-success-soft); }
+.oa-status-failed { color: var(--oa-danger); background: var(--oa-danger-soft); }
+.oa-status-cancelled { color: var(--oa-warning); background: var(--oa-warning-soft); }
+.oa-status-running { color: var(--oa-info); background: var(--oa-info-soft); }
 .oa-score { font-variant-numeric: tabular-nums; }
 .oa-issue-count { display: inline-flex; min-width: 2rem; justify-content: center; padding: .2rem .45rem; border-radius: 999px; color: var(--oa-text-1); background: var(--oa-surface-3); font-weight: 700; font-variant-numeric: tabular-nums; }
 .oa-empty-state { min-height: 220px; padding: 3rem 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px dashed var(--oa-border-strong); border-radius: var(--oa-radius-lg); background: var(--oa-surface-2); color: var(--oa-text-2); }
