@@ -13,7 +13,7 @@
             <h1>Schema 影响分析</h1>
             <p>对比最近一次分析与基线 Schema，快速定位新增、删除及字段变更。</p>
         </div>
-        <a class="btn btn-outline-secondary" href="/quality/impact-analysis">影响传播</a>
+        <a class="btn btn-outline-secondary oa-header-action" href="/quality/impact-analysis">影响传播</a>
     </div>
 
     @if (_loading)
@@ -51,11 +51,11 @@
                 </div>
                 @if (_diff.HasBreakingChanges)
                 {
-                    <div class="alert alert-danger mt-3 mb-0">检测到破坏性 Schema 变更。建议重点检查下游接口、数据库映射和数据契约。</div>
+                    <div class="oa-inline-status is-danger mt-3">检测到破坏性 Schema 变更。建议重点检查下游接口、数据库映射和数据契约。</div>
                 }
                 else
                 {
-                    <div class="alert alert-success mt-3 mb-0">未检测到破坏性 Schema 变更。</div>
+                    <div class="oa-inline-status is-success mt-3">未检测到破坏性 Schema 变更。</div>
                 }
             </div>
         </div>
@@ -93,7 +93,7 @@
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
                 @foreach (var change in _diff.ChangedFields)
                 {
-                    <tr><td><code>@change.Path</code></td><td><span class="oa-badge @(change.Breaking ? "is-danger" : "is-neutral")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="text-muted">无详细变更</span>}else{<ul class="mb-0 ps-3 oa-change-list">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
+                    <tr><td><code>@change.Path</code></td><td><span class="oa-badge @(change.Breaking ? "is-danger" : "is-neutral")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="oa-muted">无详细变更</span>}else{<ul class="mb-0 ps-3 oa-change-list">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
                 }
                 </tbody></table></div>
             </div>
