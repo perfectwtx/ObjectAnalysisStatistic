@@ -9,53 +9,98 @@
 <PageTitle>字段质量详情</PageTitle>
 
 <div class="oa-analysis-page oa-field-detail-page">
-    <div class="oa-analysis-header">
-        <div><div class="oa-eyebrow">FIELD QUALITY</div><h1>字段质量详情</h1><p>按分析任务查看字段质量指标，并展开字段查看完整画像与质量问题。</p></div>
-        <a class="btn btn-outline-secondary" href="/quality">质量总览</a>
-    </div>
+    <header class="oa-analysis-header">
+        <div class="oa-field-title">
+            <div class="oa-eyebrow">Quality Analysis / Fields</div>
+            <div class="oa-field-title-row">
+                <div><h1>字段质量详情</h1><p>从字段覆盖率、Null、唯一性与质量违规等维度查看字段画像，展开任意字段查看完整细节。</p></div>
+                <a class="btn btn-outline-secondary" href="/quality">返回总览</a>
+            </div>
+        </div>
+    </header>
 
     @if (_loading)
-    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">…</div><strong>正在加载字段质量数据</strong><span>正在准备字段画像。</span></div> }
+    {
+        <div class="oa-empty-state oa-field-state"><div class="oa-empty-icon">◌</div><strong>正在加载字段质量数据</strong><span>正在准备字段画像。</span></div>
+    }
     else if (_jobs.Count == 0)
-    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析结果</strong><span>请先执行一次分析，再返回这里查看字段质量。</span></div> }
+    {
+        <div class="oa-empty-state oa-field-state"><div class="oa-empty-icon">∅</div><strong>暂无成功的分析结果</strong><span>请先执行一次分析，再返回这里查看字段质量。</span></div>
+    }
     else
     {
-        <div class="oa-panel oa-field-filter-card">
-            <div class="oa-panel-header"><div><div class="oa-panel-kicker">ANALYSIS SNAPSHOT</div><h2>分析任务</h2></div><span class="oa-count-badge">@_fields.Count 个字段</span></div>
-            <div class="oa-panel-body">
-                <div class="oa-field-filter-grid">
-                    <div><label class="form-label">分析任务</label><select class="form-select" value="@_selectedJobId" @onchange="OnJobChanged">@foreach (var job in _jobs){<option value="@job.Id">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>}</select></div>
-                    <div class="oa-field-filter-summary"><strong>@_fields.Count</strong><span>个字段</span><span>·</span><span>质量指标来自标准化字段快照</span><span>·</span><span>点击字段名展开详情</span></div>
+        var selectedJob = _jobs.FirstOrDefault(x => x.Id == _selectedJobId) ?? _jobs.First();
+
+        <section class="oa-dashboard-section">
+            <div class="oa-context-grid oa-field-context">
+                <div><span>当前数据源</span><strong>@selectedJob.SourceName</strong></div>
+                <div><span>分析时间</span><strong>@selectedJob.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</strong></div>
+                <div><span>字段数量</span><strong>@_fields.Count.ToString("N0")</strong></div>
+                <div><span>问题项</span><strong>@_violations.Count(x => x.Count > 0).ToString("N0")</strong></div>
+            </div>
+        </section>
+
+        <section class="oa-dashboard-section">
+            <div class="oa-dashboard-panel oa-field-selector-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">Analysis Snapshot</span><h2>分析任务</h2><p>切换历史成功任务，查看对应字段质量快照。</p></div>
+                    <span class="oa-badge is-neutral">@_fields.Count 个字段</span>
+                </div>
+                <div class="oa-field-selector-body">
+                    <label class="form-label">分析任务</label>
+                    <select class="form-select" value="@_selectedJobId" @onchange="OnJobChanged">
+                        @foreach (var job in _jobs)
+                        {
+                            <option value="@job.Id">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                        }
+                    </select>
+                    <div class="oa-field-selector-hint">质量指标来自标准化字段快照 · 点击字段名展开详细画像</div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="oa-panel oa-field-table-card">
-            <div class="oa-panel-header"><div><div class="oa-panel-kicker">FIELD PROFILE</div><h2>字段画像</h2></div><span class="oa-count-badge">@_violations.Count(x => x.Count > 0) 个问题项</span></div>
-            <div class="oa-table-wrap">
-                <table class="table table-hover align-middle mb-0 oa-field-table oa-analysis-table">
-                    <thead><tr><th>字段</th><th>主类型</th><th>语义类型</th><th>覆盖率</th><th>Null率</th><th>唯一性</th><th>问题</th></tr></thead>
-                    <tbody>
-                    @foreach (var field in _fields)
-                    {
-                        var normalized = _normalizedFields.FirstOrDefault(x => string.Equals(x.FieldName, field.FieldName, StringComparison.Ordinal));
-                        var violationCount = GetViolationCount(field.FieldName);
-                        <tr><td><button class="btn btn-link p-0 text-start oa-field-name" @onclick="() => ToggleField(field.FieldName)"><strong>@field.FieldName</strong></button></td><td>@field.PrimaryType</td><td>@(field.SemanticType ?? "-")</td><td>@(normalized is null ? field.Coverage.ToString("P1") : normalized.Coverage.ToString("P1"))</td><td>@(normalized is null ? "-" : normalized.NullRate.ToString("P1"))</td><td>@(normalized?.Uniqueness is double uniqueness ? uniqueness.ToString("P1") : field.DistinctCount?.ToString() ?? "-")</td><td>@if (violationCount > 0){<span class="oa-badge is-danger">@violationCount</span>}else{<span class="oa-badge is-success">正常</span>}</td></tr>
-                        @if (_selectedField == field.FieldName)
+        <section class="oa-dashboard-section">
+            <div class="oa-section-heading"><div><span class="oa-section-kicker">Field Profile</span><h2>字段画像</h2><span>按质量信号快速识别需要关注的字段</span></div></div>
+            <div class="oa-dashboard-panel oa-field-table-card">
+                <div class="oa-field-table-toolbar"><span>@_fields.Count 个字段</span><span>@_violations.Count(x => x.Count > 0) 个质量问题</span><span>点击字段名查看详情</span></div>
+                <div class="oa-table-wrap">
+                    <table class="oa-data-table oa-field-table">
+                        <thead><tr><th>字段</th><th>主类型</th><th>语义类型</th><th>覆盖率</th><th>Null率</th><th>唯一性</th><th>问题</th></tr></thead>
+                        <tbody>
+                        @foreach (var field in _fields)
                         {
-                            <tr class="oa-field-detail-row"><td colspan="7"><div class="oa-field-detail">
-                                <div class="oa-detail-grid"><div><span>出现次数</span><strong>@field.Count</strong></div><div><span>Null次数</span><strong>@field.NullCount</strong></div><div><span>默认值</span><strong>@(field.DefaultValueRepresentation ?? "-")</strong></div><div><span>数值范围</span><strong>@FormatRange(field)</strong></div></div>
-                                <div class="oa-detail-section"><div class="oa-detail-title">标准化质量指标</div>@if (normalized is not null){<div class="oa-metric-line"><span>覆盖率 @normalized.Coverage.ToString("P1")</span><span>Null率 @normalized.NullRate.ToString("P1")</span><span>唯一性 @(normalized.Uniqueness?.ToString("P1") ?? "-")</span><span>异常率 @(normalized.OutlierRatio?.ToString("P1") ?? "-")</span></div>}else{<div class="text-muted small">暂无标准化质量快照。</div>}</div>
-                                <div class="oa-detail-section"><div class="oa-detail-title">类型分布</div>@foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value)){<span class="oa-badge is-neutral me-1 mb-1">@type.Key: @type.Value</span>}</div>
-                                @if (field.ValueCounts.Count > 0){<div class="oa-detail-section"><div class="oa-detail-title">高频值</div><div class="oa-value-list">@foreach (var value in field.ValueCounts.OrderByDescending(x => x.Value).Take(10)){<div><span>@value.Key</span><strong>@value.Value</strong></div>}</div></div>}
-                                @foreach (var violation in GetViolations(field.FieldName)){<div class="alert alert-warning py-2 mt-3 mb-0"><strong>@QualityCheckTypes.Label(violation.Check)</strong>：@violation.Message</div>}
-                            </div></td></tr>
+                            var normalized = _normalizedFields.FirstOrDefault(x => string.Equals(x.FieldName, field.FieldName, StringComparison.Ordinal));
+                            var violationCount = GetViolationCount(field.FieldName);
+                            <tr class="@( _selectedField == field.FieldName ? "is-selected" : "")">
+                                <td><button class="oa-field-name" @onclick="() => ToggleField(field.FieldName)"><strong>@field.FieldName</strong><span>查看画像</span></button></td>
+                                <td><span class="oa-type-text">@field.PrimaryType</span></td>
+                                <td>@(field.SemanticType ?? "-")</td>
+                                <td><strong>@(normalized is null ? field.Coverage.ToString("P1") : normalized.Coverage.ToString("P1"))</strong></td>
+                                <td>@(normalized is null ? "-" : normalized.NullRate.ToString("P1"))</td>
+                                <td>@(normalized?.Uniqueness is double uniqueness ? uniqueness.ToString("P1") : field.DistinctCount?.ToString() ?? "-")</td>
+                                <td>@if (violationCount > 0){<span class="oa-badge is-danger">@violationCount</span>}else{<span class="oa-badge is-success">正常</span>}</td>
+                            </tr>
+                            @if (_selectedField == field.FieldName)
+                            {
+                                <tr class="oa-field-detail-row"><td colspan="7"><div class="oa-field-detail">
+                                    <div class="oa-detail-grid">
+                                        <div><span>出现次数</span><strong>@field.Count</strong></div>
+                                        <div><span>Null 次数</span><strong>@field.NullCount</strong></div>
+                                        <div><span>默认值</span><strong>@(field.DefaultValueRepresentation ?? "-")</strong></div>
+                                        <div><span>数值范围</span><strong>@FormatRange(field)</strong></div>
+                                    </div>
+                                    <div class="oa-detail-section"><div class="oa-detail-title">标准化质量指标</div>@if (normalized is not null){<div class="oa-metric-line"><span>覆盖率 @normalized.Coverage.ToString("P1")</span><span>Null率 @normalized.NullRate.ToString("P1")</span><span>唯一性 @(normalized.Uniqueness?.ToString("P1") ?? "-")</span><span>异常率 @(normalized.OutlierRatio?.ToString("P1") ?? "-")</span></div>}else{<span class="oa-detail-muted">暂无标准化质量快照。</span>}</div>
+                                    <div class="oa-detail-section"><div class="oa-detail-title">类型分布</div><div class="oa-detail-badges">@foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value)){<span class="oa-badge is-neutral">@type.Key: @type.Value</span>}</div></div>
+                                    @if (field.ValueCounts.Count > 0){<div class="oa-detail-section"><div class="oa-detail-title">高频值</div><div class="oa-value-list">@foreach (var value in field.ValueCounts.OrderByDescending(x => x.Value).Take(10)){<div><span>@value.Key</span><strong>@value.Value</strong></div>}</div></div>}
+                                    @if (GetViolations(field.FieldName).Count > 0){<div class="oa-detail-section oa-violation-section"><div class="oa-detail-title">质量问题</div>@foreach (var violation in GetViolations(field.FieldName)){<div class="oa-field-violation"><span class="oa-badge is-warning">@QualityCheckTypes.Label(violation.Check)</span><p>@violation.Message</p></div>}</div>}
+                                </div></td></tr>
+                            }
                         }
-                    }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        </section>
     }
 </div>
 
@@ -122,3 +167,4 @@
     private List<FieldViolation> GetViolations(string field) => _violations.Where(x => string.Equals(x.Field, field, StringComparison.Ordinal)).ToList();
     private static string FormatRange(FieldStatistic field) => field.MinNumber.HasValue && field.MaxNumber.HasValue ? $"{field.MinNumber:G6} ~ {field.MaxNumber:G6}" : "-";
 }
+
