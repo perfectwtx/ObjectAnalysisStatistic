@@ -820,15 +820,19 @@
 
             @* P3 高级分析 section：时间序列 + 异常值 + Schema 演进 *@
             <div class="p3-section">
-                <div class="p3-header">
-                    <h2>🔬 @Loc["P3InsightsTitle"]</h2>
-                    <p class="p3-hint">@Loc["P3InsightsHint"]</p>
+                <div class="result-section-heading advanced-heading">
+                    <div>
+                        <span class="result-section-kicker">ADVANCED INTELLIGENCE</span>
+                        <h2>@Loc["P3InsightsTitle"]</h2>
+                    </div>
+                    <span class="result-section-note">@Loc["P3InsightsHint"]</span>
                 </div>
 
                 <div class="p3-grid">
                     @* 时间序列卡片 *@
                     <div class="p3-card">
-                        <h3>📈 @Loc["TimeSeriesCard"]</h3>
+                        <div class="p3-card-kicker">TIME SERIES</div>
+                        <h3>@Loc["TimeSeriesCard"]</h3>
                         @{
                             var dtFields = State.Result.FieldStatistics
                                 .Where(f => f.DateTimeCount is long c && c > 0)
@@ -865,7 +869,8 @@
 
                     @* 异常值卡片 *@
                     <div class="p3-card">
-                        <h3>⚠️ @Loc["OutliersCard"]</h3>
+                        <div class="p3-card-kicker">OUTLIERS</div>
+                        <h3>@Loc["OutliersCard"]</h3>
                         @{
                             var outlierFields = State.Result.FieldStatistics
                                 .Where(f => f.OutlierCount is long c && c > 0)
@@ -900,7 +905,8 @@
 
                     @* Schema 演进卡片 *@
                     <div class="p3-card p3-card-wide">
-                        <h3>🔄 @Loc["SchemaDiffCard"]</h3>
+                        <div class="p3-card-kicker">SCHEMA EVOLUTION</div>
+                        <h3>@Loc["SchemaDiffCard"]</h3>
 
                         <div class="p3-baseline-row">
                             <InputFile OnChange="HandleBaselineUpload" accept=".json" />
