@@ -1955,3 +1955,18 @@
 .oa-field-relationships-page .oa-matrix-scroll{overflow:auto;max-width:100%}
 .oa-field-relationships-page .oa-matrix-scroll table{min-width:max-content}
 .oa-field-relationships-page .oa-matrix-scroll th,.oa-field-relationships-page .oa-matrix-scroll td{min-width:72px;padding:.45rem .55rem;font-variant-numeric:tabular-nums}
+
+/* Object relationships and impact analysis refinement */
+.oa-object-relationships-page .oa-header-action,.oa-impact-analysis-page .oa-header-action{min-width:96px}
+.oa-object-relationships-page .oa-object-context{display:flex;align-items:center;gap:.65rem;border-bottom:1px solid var(--oa-border);background:var(--oa-surface-2)}
+.oa-object-relationships-page .oa-object-context span{color:var(--oa-text-3);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.oa-object-relationships-page .oa-object-context strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--oa-text-1);font-size:.75rem}
+.oa-object-relationships-page .oa-object-path code,.oa-impact-analysis-page .oa-impact-path code{font-size:.72rem;color:var(--oa-text-1)}
+.oa-object-relationships-page .oa-object-targets{max-width:360px;color:var(--oa-text-2);font-size:.72rem;line-height:1.45}
+.oa-impact-analysis-page .oa-impact-type{display:inline-flex;min-height:25px;align-items:center;padding:.2rem .5rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.68rem;font-weight:700}
+.oa-impact-analysis-page .oa-impact-reason{max-width:420px;color:var(--oa-text-2);font-size:.72rem;line-height:1.5}
+.oa-impact-analysis-page .oa-kpi-card strong.is-danger,.oa-impact-analysis-page .oa-kpi-card strong.is-warning,.oa-impact-analysis-page .oa-kpi-card strong.is-info,.oa-impact-analysis-page .oa-kpi-card strong.is-neutral{font-size:1.45rem}
+@media(max-width:720px){
+ .oa-object-relationships-page .oa-object-context{align-items:flex-start;flex-direction:column;gap:.2rem}
+ .oa-object-relationships-page .oa-object-targets,.oa-impact-analysis-page .oa-impact-reason{max-width:240px}
+}
