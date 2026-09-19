@@ -437,11 +437,7 @@
     .oa-object-relationships-page .oa-object-path { min-width:250px; }
 }
 @media(max-width:520px){
-    .oa-schema-impact-page .oa-schema-kpi,
-    .oa-data-lineage-page .oa-lineage-kpi,
-    .oa-impact-analysis-page .oa-impact-kpi,
-    .oa-field-relationships-page .oa-correlation-kpi,
-    .oa-object-relationships-page .oa-object-kpi { min-height:104px; }
+    .oa-kpi-card { min-height:104px; }
     .oa-impact-analysis-page .oa-impact-reason { min-width:280px; }
     .oa-field-relationships-page .oa-correlation-field { min-width:160px; max-width:210px; }
     .oa-object-relationships-page .oa-object-targets { min-width:260px; }
