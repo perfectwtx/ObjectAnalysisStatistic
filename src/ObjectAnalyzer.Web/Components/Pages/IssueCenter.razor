@@ -17,7 +17,7 @@
 
     @if (_loading)
     {
-        <div class="alert alert-info">加载中...</div>
+        <div class="oa-panel oa-empty-state oa-loading-state"><div class="oa-empty-icon">◌</div><strong>正在加载问题中心</strong><span>正在读取最近一次分析结果。</span></div>
     }
     else if (_jobs.Count == 0)
     {
