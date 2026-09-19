@@ -1949,3 +1949,9 @@
 .oa-schema-impact-page .oa-inline-status.is-danger{border-color:color-mix(in srgb,var(--oa-danger) 30%,transparent);background:var(--oa-danger-soft);color:var(--oa-danger)}
 .oa-schema-impact-page .oa-inline-status.is-success{border-color:color-mix(in srgb,var(--oa-success) 30%,transparent);background:var(--oa-success-soft);color:var(--oa-success)}
 .oa-schema-impact-page .oa-muted{color:var(--oa-text-3)}
+
+/* Field relationships matrix refinement */
+.oa-field-relationships-page .oa-header-action{min-width:64px}
+.oa-field-relationships-page .oa-matrix-scroll{overflow:auto;max-width:100%}
+.oa-field-relationships-page .oa-matrix-scroll table{min-width:max-content}
+.oa-field-relationships-page .oa-matrix-scroll th,.oa-field-relationships-page .oa-matrix-scroll td{min-width:72px;padding:.45rem .55rem;font-variant-numeric:tabular-nums}
