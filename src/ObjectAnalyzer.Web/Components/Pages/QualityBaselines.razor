@@ -11,13 +11,12 @@
             <h1>质量基线</h1>
             <p>按数据源设置最低质量要求，分析完成后会自动记录本次基线评估结果。</p>
         </div>
-        <button class="btn btn-primary" @onclick="CreateAsync">新增基线</button>
+        <button class="btn btn-primary oa-header-action" @onclick="CreateAsync">新增基线</button>
     </div>
 
     @if (_loading)
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body oa-analysis-empty">
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-content">
                 <div class="oa-empty-icon">◌</div>
                 <strong>正在加载质量基线</strong>
                 <span>正在读取已配置的数据源基线。</span>
@@ -26,8 +25,7 @@
     }
     else if (_baselines.Count == 0)
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body oa-analysis-empty">
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-content">
                 <div class="oa-empty-icon">∅</div>
                 <strong>暂无质量基线</strong>
                 <span>未配置基线的数据源不会受到额外约束，可以点击右上角新增基线。</span>
@@ -36,9 +34,9 @@
     }
     else
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body">
-                <div class="oa-card-heading">
+        <div class="oa-panel oa-baseline-list-panel">
+            <div class="oa-panel-body">
+                <div class="oa-panel-header oa-baseline-panel-header">
                     <div>
                         <h2>已配置基线</h2>
                         <span>@_baselines.Count 个数据源</span>
@@ -84,16 +82,16 @@
 
     @if (_editing is not null)
     {
-        <div class="card oa-analysis-card oa-editor-card oa-baseline-editor">
-            <div class="card-header">
+        <div class="oa-panel oa-editor-card oa-baseline-editor">
+            <div class="oa-panel-header">
                 <div>
                     <h2>@(_isNew ? "新增质量基线" : "编辑质量基线")</h2>
                     <span>设置各质量维度的最低允许分数</span>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="oa-panel-body">
                 <div class="oa-baseline-editor-grid">
-                    <div class="col-12 col-md-6">
+                    <div>
                         <label class="form-label">数据源名称</label>
                         <input class="form-control" @bind="_editing.SourceName" disabled="@(!_isNew)" />
                         @if (!_isNew)
@@ -101,34 +99,34 @@
                             <div class="form-text">数据源名称是基线的唯一键。</div>
                         }
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div>
                         <label class="form-label">最低综合分</label>
                         <InputNumber class="form-control" @bind-Value="_editing.MinimumOverallScore" />
                     </div>
-                    <div class="col-12 col-sm-6 col-lg-3">
+                    <div>
                         <label class="form-label">最低完整性</label>
                         <InputNumber class="form-control" @bind-Value="_editing.MinimumCompleteness" />
                     </div>
-                    <div class="col-12 col-sm-6 col-lg-3">
+                    <div>
                         <label class="form-label">最低有效性</label>
                         <InputNumber class="form-control" @bind-Value="_editing.MinimumValidity" />
                     </div>
-                    <div class="col-12 col-sm-6 col-lg-3">
+                    <div>
                         <label class="form-label">最低唯一性</label>
                         <InputNumber class="form-control" @bind-Value="_editing.MinimumUniqueness" />
                     </div>
-                    <div class="col-12 col-sm-6 col-lg-3">
+                    <div>
                         <label class="form-label">最低一致性</label>
                         <InputNumber class="form-control" @bind-Value="_editing.MinimumConsistency" />
                     </div>
-                    <div class="col-12 col-sm-6 col-lg-3">
+                    <div>
                         <label class="form-label">最低异常控制</label>
                         <InputNumber class="form-control" @bind-Value="_editing.MinimumAnomalyControl" />
                     </div>
                 </div>
                 @if (!string.IsNullOrWhiteSpace(_error))
                 {
-                    <div class="alert alert-danger mt-3 mb-0">@_error</div>
+                    <div class="oa-baseline-error">@_error</div>
                 }
                 <div class="oa-editor-actions">
                     <button class="btn btn-primary" @onclick="SaveAsync">保存</button>
