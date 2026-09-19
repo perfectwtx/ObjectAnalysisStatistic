@@ -48,42 +48,30 @@
                 </div>
             </div>
 
-            <div class="row g-3">
-                <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="card oa-analysis-kpi h-100">
-                        <div class="card-body">
+            <div class="oa-kpi-grid is-4">
+                <div class="oa-kpi-card">
                             <div class="oa-kpi-label">分析次数</div>
                             <div class="oa-kpi-value">@_snapshots.Count</div>
                             <div class="oa-kpi-meta">最近 100 次质量快照</div>
                         </div>
-                    </div>
                 </div>
-                <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="card oa-analysis-kpi h-100">
-                        <div class="card-body">
+                <div class="oa-kpi-card">
                             <div class="oa-kpi-label">最新质量分</div>
                             <div class="oa-kpi-value">@FormatScore(latest.Metrics.OverallScore)</div>
                             <div class="oa-kpi-meta">@latest.SourceName</div>
                         </div>
-                    </div>
                 </div>
-                <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="card oa-analysis-kpi h-100">
-                        <div class="card-body">
+                <div class="oa-kpi-card">
                             <div class="oa-kpi-label">平均质量分</div>
                             <div class="oa-kpi-value">@FormatScore(average)</div>
                             <div class="oa-kpi-meta">当前历史窗口平均值</div>
                         </div>
-                    </div>
                 </div>
-                <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="card oa-analysis-kpi h-100">
-                        <div class="card-body">
+                <div class="oa-kpi-card">
                             <div class="oa-kpi-label">较上次变化</div>
                             <div class="oa-kpi-value">@(_snapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div>
                             <div class="oa-kpi-meta">@(_snapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div>
                         </div>
-                    </div>
                 </div>
             </div>
         </section>
