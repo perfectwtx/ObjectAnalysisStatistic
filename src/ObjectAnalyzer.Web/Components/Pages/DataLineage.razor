@@ -31,7 +31,7 @@
     }
     else
     {
-        <div class="oa-kpi-grid">
+        <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card"><span>节点数量</span><strong>@_lineage.Nodes.Count</strong><small>对象、集合与字段节点</small></div>
             <div class="oa-kpi-card"><span>层级节点</span><strong>@_lineage.Nodes.Count(x => x.Kind != "Field")</strong><small>非字段结构节点</small></div>
             <div class="oa-kpi-card"><span>血缘边</span><strong>@_lineage.Edges.Count</strong><small>父子层级关系</small></div>
