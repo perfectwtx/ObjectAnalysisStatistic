@@ -146,12 +146,12 @@
                                         @if (item.AddingRemediation)
                                         {
                                             <div class="oa-remediation-editor">
-                                                <div class="row g-3">
-                                                    <div class="col-md-5">
+                                                <div class="oa-remediation-editor-grid">
+                                                    <div>
                                                         <label class="form-label">整改措施</label>
                                                         <input class="form-control form-control-sm" @bind="item.RemediationAction" placeholder="例如：补齐缺失数据并增加校验" />
                                                     </div>
-                                                    <div class="col-md-2">
+                                                    <div>
                                                         <label class="form-label">状态</label>
                                                         <select class="form-select form-select-sm" @bind="item.RemediationStatus">
                                                             <option value="Planned">计划中</option>
@@ -163,7 +163,7 @@
                                                         <label class="form-label">截止日期</label>
                                                         <input type="date" class="form-control form-control-sm" @bind="item.RemediationDueDate" />
                                                     </div>
-                                                    <div class="col-md-3">
+                                                    <div>
                                                         <label class="form-label">备注</label>
                                                         <input class="form-control form-control-sm" @bind="item.RemediationComment" placeholder="整改说明" />
                                                     </div>
@@ -215,11 +215,11 @@
 
         @if (!string.IsNullOrWhiteSpace(_message))
         {
-            <div class="alert alert-success oa-feedback">@_message</div>
+            <div class="oa-feedback oa-feedback-success">@_message</div>
         }
         @if (!string.IsNullOrWhiteSpace(_error))
         {
-            <div class="alert alert-danger oa-feedback">@_error</div>
+            <div class="oa-feedback oa-feedback-danger">@_error</div>
         }
     }
 </div>
