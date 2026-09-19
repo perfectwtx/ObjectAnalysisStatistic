@@ -378,6 +378,14 @@
 
     <main class="main-area">
         <div class="topbar">
+            <div class="workspace-identity">
+                <span class="workspace-kicker">OBJECT ANALYSIS</span>
+                <span class="workspace-title">Analysis Workbench</span>
+            </div>
+            <div class="workspace-status">
+                <span class="status-dot @(State.IsLoading ? "is-busy" : "is-ready")"></span>
+                <span>@(State.IsLoading ? "分析中" : State.Result != null ? "Analysis Ready" : "等待数据")</span>
+            </div>
             @if (State.Result != null)
             {
                 <span class="file-chip" title="@State.FileName">📄 @State.FileName</span>
@@ -433,7 +441,17 @@
             }
             @* 结果标题栏 *@
             <div class="results-header">
-                <h2>@Loc["ResultsTitle"] <span class="result-file">@State.FileName</span></h2>
+                <div class="results-heading">
+                    <span class="results-kicker">ANALYSIS RESULT</span>
+                    <h2>@Loc["ResultsTitle"]</h2>
+                    <div class="results-meta">
+                        <span class="result-file" title="@State.FileName">📄 @State.FileName</span>
+                        <span class="meta-separator">•</span>
+                        <span>@State.Result.TotalObjects.ToString("N0") objects</span>
+                        <span class="meta-separator">•</span>
+                        <span>@State.Result.FieldStatistics.Count fields</span>
+                    </div>
+                </div>
                 <div class="header-actions">
                     <div class="download-group">
                         <span class="download-label">@Loc["ReportDownload"]</span>
@@ -468,6 +486,12 @@
             </div>
 
             @* 摘要卡片 *@
+            <div class="signal-strip">
+                <div class="signal-label">
+                    <span>ANALYSIS SIGNALS</span>
+                    <small>Current dataset profile</small>
+                </div>
+            </div>
             <div class="summary-cards">
                 <div class="card blue">
                     <div class="card-value">@State.Result.TotalObjects</div>
