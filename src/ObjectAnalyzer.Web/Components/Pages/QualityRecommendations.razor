@@ -6,69 +6,71 @@
 
 <PageTitle>质量修复建议</PageTitle>
 
-
-
 <div class="oa-analysis-page oa-recommendations-page">
-    <div class="oa-analysis-header">
-        <div>
-            <div class="oa-eyebrow">QUALITY GOVERNANCE</div>
-            <h1>质量修复建议</h1>
-            <p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p>
+    <header class="oa-analysis-header">
+        <div class="oa-recommendation-title">
+            <div class="oa-eyebrow">Quality Governance / Recommendations</div>
+            <div class="oa-recommendation-title-row">
+                <div><h1>质量修复建议</h1><p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p></div>
+                <button class="btn btn-outline-secondary oa-recommendation-refresh" @onclick="LoadAsync">刷新数据</button>
+            </div>
         </div>
-        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
-    </div>
+    </header>
 
     @if (_loading)
     {
-        <div class="oa-panel oa-empty-state oa-recommendations-state">
-            <div class="oa-empty-icon">…</div>
-            <strong>正在加载质量问题</strong>
-            <span>正在读取最近一次成功的分析结果。</span>
-        </div>
+        <div class="oa-empty-state oa-recommendations-state"><div class="oa-empty-icon">◌</div><strong>正在加载质量问题</strong><span>正在读取最近一次成功的分析结果。</span></div>
     }
     else if (_recommendations.Count == 0)
     {
-        <div class="oa-panel oa-empty-state oa-empty-state-success oa-recommendations-state">
-            <div class="oa-empty-icon">✓</div>
-            <h3>当前没有可生成建议的质量问题</h3>
-            <p>最近一次成功分析没有发现需要生成治理建议的字段问题。</p>
-        </div>
+        <div class="oa-empty-state oa-empty-state-success oa-recommendations-state"><div class="oa-empty-icon">✓</div><strong>当前没有可生成建议的质量问题</strong><span>最近一次成功分析没有发现需要生成治理建议的字段问题。</span></div>
     }
     else
     {
-        <div class="oa-kpi-grid is-3 oa-recommendation-kpis" aria-label="质量建议概览">
-            <div class="oa-kpi-card"><span>待治理问题</span><strong>@_recommendations.Count</strong><small>需要关注的质量问题</small></div>
-            <div class="oa-kpi-card"><span>涉及字段</span><strong>@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><small>存在质量风险的字段</small></div>
-            <div class="oa-kpi-card"><span>违规次数</span><strong>@_recommendations.Sum(x => x.Count)</strong><small>所有问题累计影响次数</small></div>
-        </div>
+        <section class="oa-dashboard-section">
+            <div class="oa-context-grid oa-recommendation-context">
+                <div><span>当前数据源</span><strong>@_sourceName</strong></div>
+                <div><span>分析时间</span><strong>@_jobTime</strong></div>
+                <div><span>待治理问题</span><strong>@_recommendations.Count</strong></div>
+                <div><span>涉及字段</span><strong>@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong></div>
+            </div>
+        </section>
 
-        <div class="oa-panel oa-recommendations-panel oa-governance-card">
-            <div class="oa-panel-header">
-                <div><div class="oa-panel-kicker">ACTION PLAN</div><h2>治理建议</h2></div>
-                <span class="oa-count-badge">@_sourceName · @_jobTime</span>
+        <section class="oa-dashboard-section">
+            <div class="oa-section-heading"><div><span class="oa-section-kicker">Risk Overview</span><h2>治理信号</h2><span>按问题规模与优先级快速识别治理重点</span></div></div>
+            <div class="oa-kpi-grid is-3">
+                <div class="oa-kpi-card is-danger"><div class="oa-kpi-label">待治理问题</div><div class="oa-kpi-value">@_recommendations.Count</div><div class="oa-kpi-meta">需要关注的质量问题</div></div>
+                <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">涉及字段</div><div class="oa-kpi-value">@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">存在质量风险的字段</div></div>
+                <div class="oa-kpi-card is-info"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@_recommendations.Sum(x => x.Count)</div><div class="oa-kpi-meta">所有问题累计影响次数</div></div>
             </div>
-            <div class="oa-panel-body">
-                <div class="oa-table-wrap">
-                    <table class="table table-hover align-middle mb-0 oa-analysis-table oa-recommendation-table">
-                        <thead><tr><th>优先级</th><th>字段</th><th>问题</th><th>影响</th><th>建议动作</th><th>建议规则</th></tr></thead>
-                        <tbody>
-                        @foreach (var item in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count))
-                        {
-                            <tr>
-                                <td><span class="oa-badge @(item.Priority >= 3 ? "is-danger" : item.Priority == 2 ? "is-warning" : "is-neutral")">@item.PriorityText</span></td>
-                                <td><strong class="oa-recommendation-field">@item.Field</strong></td>
-                                <td><span class="oa-badge is-warning">@QualityCheckTypes.Label(item.Check)</span><div class="small text-muted mt-2 oa-recommendation-message">@item.Message</div></td>
-                                <td><span class="oa-number-value">@item.Count</span> 次</td>
-                                <td class="oa-recommendation-action">@item.Action</td>
-                                <td><code class="oa-recommendation-rule">@item.Rule</code></td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
+        </section>
+
+        <section class="oa-dashboard-section">
+            <article class="oa-dashboard-panel oa-recommendations-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">Action Plan</span><h2>治理建议</h2><p>建议按照优先级处理，不会自动修改源数据。</p></div>
+                    <span class="oa-badge is-neutral">@_recommendations.Count 条建议</span>
                 </div>
-            </div>
-            <div class="oa-analysis-note oa-governance-note"><strong>治理边界</strong><span>建议用于辅助治理决策，系统不会根据这些建议直接修改源数据。</span></div>
-        </div>
+                <div class="oa-recommendation-list">
+                    @foreach (var item in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count))
+                    {
+                        <article class="oa-recommendation-item">
+                            <div class="oa-recommendation-item-head">
+                                <div class="oa-recommendation-field-wrap"><span class="oa-recommendation-index">@(_recommendations.IndexOf(item) + 1).ToString("D2")</span><strong class="oa-recommendation-field">@item.Field</strong></div>
+                                <span class="oa-badge @(item.Priority >= 3 ? "is-danger" : item.Priority == 2 ? "is-warning" : "is-neutral")">@item.PriorityText优先</span>
+                            </div>
+                            <div class="oa-recommendation-grid">
+                                <div><span>问题类型</span><strong>@QualityCheckTypes.Label(item.Check)</strong><p>@item.Message</p></div>
+                                <div><span>影响次数</span><strong class="oa-recommendation-count">@item.Count.ToString("N0")</strong><p>当前分析快照</p></div>
+                                <div><span>建议动作</span><strong>@item.Action</strong></div>
+                                <div><span>建议规则</span><code>@item.Rule</code></div>
+                            </div>
+                        </article>
+                    }
+                </div>
+                <div class="oa-dashboard-note oa-governance-note"><strong>治理边界</strong><span>这些建议用于辅助治理决策，系统不会根据建议直接修改源数据。具体规则仍需结合业务口径确认。</span></div>
+            </article>
+        </section>
     }
 </div>
 
@@ -137,3 +139,4 @@
         public string PriorityText => Priority >= 3 ? "高" : Priority == 2 ? "中" : "低";
     }
 }
+
