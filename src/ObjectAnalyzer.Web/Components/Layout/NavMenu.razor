@@ -1,89 +1,93 @@
-<nav class="oa-nav">
-    <div class="oa-nav__inner">
-        <a class="oa-nav__brand" href="/" aria-label="ObjectAnalyzer 首页" @onclick="CloseMobileMenu">
-            <span class="oa-nav__brand-mark">OA</span>
-            <span>ObjectAnalyzer</span>
+<aside class="oa-sidebar" aria-label="主导航">
+    <div class="oa-sidebar__brand">
+        <a class="oa-sidebar__brand-link" href="/" @onclick="CloseMobileMenu" aria-label="ObjectAnalyzer 首页">
+            <span class="oa-sidebar__logo">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6h4.2v12H4Zm6 0V9h4.2v9H10Zm6 0V4h4v14h-4Z"/></svg>
+            </span>
+            <span class="oa-sidebar__brand-copy">
+                <strong>ObjectAnalyzer</strong>
+                <small>Data Intelligence</small>
+            </span>
         </a>
+        <button class="oa-sidebar__mobile-close" type="button" aria-label="关闭导航菜单" @onclick="CloseMobileMenu">×</button>
+    </div>
 
-        <div class="oa-nav__links" id="oa-main-nav">
-            <NavLink class="oa-nav__link" href="/" Match="NavLinkMatch.All">首页</NavLink>
-            <NavLink class="oa-nav__link" href="/jobs">分析任务</NavLink>
-
-            <div class="oa-nav__group">
-                <button class="oa-nav__link oa-nav__link--dropdown" type="button" aria-haspopup="true">
-                    <span>质量分析</span>
-                    <span class="oa-nav__chevron">⌄</span>
-                </button>
-                <div class="oa-nav__dropdown oa-nav__dropdown--wide">
-                    <div class="oa-nav__dropdown-heading">分析</div>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality">质量总览</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/trend">质量趋势</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/fields">字段质量</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/recommendations">修复建议</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/data-lineage">数据血缘</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/schema-impact">Schema 影响</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/impact-analysis">影响分析</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/relationships">质量关系</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/object-relationships">对象关系</NavLink>
-                    <div class="oa-nav__divider"></div>
-                    <div class="oa-nav__dropdown-heading">治理</div>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/regression">质量回归</NavLink>
-                    <NavLink class="oa-nav__dropdown-link" href="/quality/baselines">质量基线</NavLink>
-                </div>
-            </div>
-
-            <NavLink class="oa-nav__link" href="/issues">问题中心</NavLink>
-            <NavLink class="oa-nav__link" href="/alert-rules">告警规则</NavLink>
+    <div class="oa-sidebar__scroll">
+        <div class="oa-sidebar__section">
+            <div class="oa-sidebar__section-label">Workspace</div>
+            <NavLink class="oa-sidebar__link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">⌂</span><span>分析工作台</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/jobs" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">◫</span><span>分析任务</span>
+            </NavLink>
         </div>
 
-        <button class="oa-nav__menu-button"
-                type="button"
-                aria-label="打开导航菜单"
-                aria-expanded="@_mobileMenuOpen"
-                aria-controls="oa-mobile-nav"
-                @onclick="ToggleMobileMenu">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
+        <div class="oa-sidebar__section">
+            <div class="oa-sidebar__section-label">Data Quality</div>
+            <NavLink class="oa-sidebar__link" href="/quality" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">◈</span><span>质量总览</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/trend" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">⌁</span><span>质量趋势</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/fields" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">▦</span><span>字段质量</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/recommendations" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">✦</span><span>修复建议</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/regression" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">↗</span><span>质量回归</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/baselines" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">⊙</span><span>质量基线</span>
+            </NavLink>
+        </div>
+
+        <div class="oa-sidebar__section">
+            <div class="oa-sidebar__section-label">Relationships</div>
+            <NavLink class="oa-sidebar__link" href="/quality/data-lineage" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">⌘</span><span>数据血缘</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/relationships" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">⌬</span><span>字段关系</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/object-relationships" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">◎</span><span>对象关系</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/schema-impact" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">◇</span><span>Schema 影响</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/quality/impact-analysis" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">↯</span><span>影响分析</span>
+            </NavLink>
+        </div>
+
+        <div class="oa-sidebar__section">
+            <div class="oa-sidebar__section-label">Governance</div>
+            <NavLink class="oa-sidebar__link" href="/issues" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">!</span><span>问题中心</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/issues/responsibility" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">◉</span><span>责任治理</span>
+            </NavLink>
+            <NavLink class="oa-sidebar__link" href="/alert-rules" @onclick="CloseMobileMenu">
+                <span class="oa-sidebar__icon">△</span><span>告警规则</span>
+            </NavLink>
+        </div>
     </div>
+
+    <div class="oa-sidebar__footer">
+        <div class="oa-sidebar__status"><span></span><div><strong>Analyzer Ready</strong><small>Local analysis engine</small></div></div>
+    </div>
+
+    <button class="oa-sidebar__mobile-trigger" type="button" aria-label="打开导航菜单" aria-expanded="@_mobileMenuOpen" @onclick="ToggleMobileMenu">
+        <span></span><span></span><span></span>
+    </button>
 
     @if (_mobileMenuOpen)
     {
-        <div class="oa-nav__mobile-backdrop" @onclick="CloseMobileMenu"></div>
+        <div class="oa-sidebar__mobile-backdrop" @onclick="CloseMobileMenu"></div>
     }
-
-    <div id="oa-mobile-nav" class="oa-nav__mobile-panel @(_mobileMenuOpen ? "is-open" : "")" aria-hidden="@(!_mobileMenuOpen)">
-        <div class="oa-nav__mobile-header">
-            <span>导航</span>
-            <button type="button" class="oa-nav__mobile-close" aria-label="关闭导航菜单" @onclick="CloseMobileMenu">×</button>
-        </div>
-
-        <div class="oa-nav__mobile-links">
-            <NavLink class="oa-nav__mobile-link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">首页</NavLink>
-            <NavLink class="oa-nav__mobile-link" href="/jobs" @onclick="CloseMobileMenu">分析任务</NavLink>
-
-            <div class="oa-nav__mobile-section">
-                <div class="oa-nav__mobile-section-title">质量分析 · 分析</div>
-                <NavLink class="oa-nav__mobile-link" href="/quality" @onclick="CloseMobileMenu">质量总览</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/trend" @onclick="CloseMobileMenu">质量趋势</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/fields" @onclick="CloseMobileMenu">字段质量</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/recommendations" @onclick="CloseMobileMenu">修复建议</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/data-lineage" @onclick="CloseMobileMenu">数据血缘</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/schema-impact" @onclick="CloseMobileMenu">Schema 影响</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/impact-analysis" @onclick="CloseMobileMenu">影响分析</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/relationships" @onclick="CloseMobileMenu">质量关系</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/object-relationships" @onclick="CloseMobileMenu">对象关系</NavLink>
-            </div>
-
-            <div class="oa-nav__mobile-section">
-                <div class="oa-nav__mobile-section-title">质量分析 · 治理</div>
-                <NavLink class="oa-nav__mobile-link" href="/quality/regression" @onclick="CloseMobileMenu">质量回归</NavLink>
-                <NavLink class="oa-nav__mobile-link" href="/quality/baselines" @onclick="CloseMobileMenu">质量基线</NavLink>
-            </div>
-
-            <NavLink class="oa-nav__mobile-link" href="/issues" @onclick="CloseMobileMenu">问题中心</NavLink>
-            <NavLink class="oa-nav__mobile-link" href="/alert-rules" @onclick="CloseMobileMenu">告警规则</NavLink>
-        </div>
-    </div>
-</nav>
+</aside>
