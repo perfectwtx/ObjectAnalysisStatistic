@@ -1942,3 +1942,10 @@
 .oa-responsibility-page .oa-inline-actions{display:flex;flex-wrap:wrap;gap:.5rem}
 @media(max-width:900px){.oa-responsibility-page .oa-responsibility-filter-grid{grid-template-columns:1fr 1fr}.oa-responsibility-page .oa-responsibility-filter-grid> :last-child{grid-column:1/-1}.oa-responsibility-page .oa-responsibility-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.oa-responsibility-page .oa-responsibility-filter-grid,.oa-responsibility-page .oa-responsibility-grid{grid-template-columns:1fr}}
+
+/* Schema impact status refinement */
+.oa-schema-impact-page .oa-header-action{min-width:96px}
+.oa-schema-impact-page .oa-inline-status{padding:.72rem .85rem;border:1px solid;border-radius:9px;font-size:.74rem;line-height:1.5}
+.oa-schema-impact-page .oa-inline-status.is-danger{border-color:color-mix(in srgb,var(--oa-danger) 30%,transparent);background:var(--oa-danger-soft);color:var(--oa-danger)}
+.oa-schema-impact-page .oa-inline-status.is-success{border-color:color-mix(in srgb,var(--oa-success) 30%,transparent);background:var(--oa-success-soft);color:var(--oa-success)}
+.oa-schema-impact-page .oa-muted{color:var(--oa-text-3)}
