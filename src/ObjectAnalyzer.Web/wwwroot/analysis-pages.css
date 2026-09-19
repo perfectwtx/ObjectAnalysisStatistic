@@ -110,8 +110,65 @@
 @media (max-width:820px) { .oa-analysis-page{padding-top:1rem;} .oa-analysis-header{flex-direction:column;} .oa-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .oa-rule-head{flex-direction:column;} .oa-trend-summary{align-items:flex-start;flex-direction:column;} .oa-trend-chart{height:190px;} .oa-trend-bar-track{height:135px;} .oa-kpi-grid.is-4{grid-template-columns:repeat(2,minmax(0,1fr));} .oa-panel-header{align-items:flex-start;flex-direction:column;} }
 @media (max-width:520px) { .oa-analysis-header h1{font-size:1.45rem;} .oa-analysis-page .card-body{padding:.9rem;} .oa-analysis-page .table td,.oa-analysis-page .table th{padding:.65rem .7rem;} .oa-detail-grid{grid-template-columns:1fr;} .oa-value-list,.oa-dimension-list{grid-template-columns:1fr;} .oa-editor-actions{flex-direction:column;} .oa-trend-chart{gap:2px;} .oa-trend-point strong,.oa-trend-point > span{font-size:.55rem;} .oa-kpi-grid.is-4{grid-template-columns:1fr;} .oa-remediation{margin-left:.55rem;margin-right:.55rem;} .oa-remediation-header{align-items:flex-start;flex-direction:column;} }
 
-/* Regression page */
-.oa-comparison-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.oa-comparison-item{padding:.9rem 1rem;border:1px solid var(--oa-border);border-radius:10px;background:var(--oa-surface-2)}.oa-comparison-item span{display:block;color:var(--oa-text-2);font-size:.72rem;font-weight:700}.oa-comparison-item strong{display:block;margin-top:.25rem;color:var(--oa-text-1);font-size:.92rem}.oa-comparison-item small{display:block;margin-top:.25rem;color:var(--oa-text-3);font-size:.72rem}.oa-regression-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--oa-border)}.oa-regression-stats>div{display:flex;justify-content:space-between;gap:1rem;padding:.65rem .75rem;background:var(--oa-surface-2);border-radius:9px}.oa-regression-stats span{color:var(--oa-text-2);font-size:.75rem}.oa-regression-stats strong{color:var(--oa-text-1);font-size:.8rem}/* Schema impact */
+/* Regression workspace */
+.oa-regression-page{max-width:1680px;padding-top:1.25rem}
+.oa-regression-page .oa-analysis-header{margin-bottom:1rem;padding:0 0 1rem}
+.oa-regression-title{width:100%}
+.oa-regression-page .oa-analysis-header h1{font-size:clamp(1.65rem,2.2vw,2rem);letter-spacing:-.025em}
+.oa-regression-page .oa-analysis-header p{max-width:820px;color:var(--oa-text-3);line-height:1.55}
+.oa-regression-state{margin-top:1rem}
+.oa-regression-context{grid-template-columns:1.35fr 1.35fr 1fr 1fr;margin-bottom:1rem}
+.oa-regression-context>div{min-height:70px}
+.oa-regression-context small{display:block;margin-top:.25rem;color:var(--oa-text-3);font-size:.66rem}
+.oa-regression-kpis{margin-bottom:1rem}
+.oa-regression-kpis .oa-kpi-card{min-height:118px}
+.oa-regression-summary{margin-bottom:1rem}
+.oa-regression-summary .oa-panel-header,.oa-regression-panel .oa-panel-header{align-items:flex-start}
+.oa-regression-summary .oa-panel-header p,.oa-regression-panel .oa-panel-header p{margin:.2rem 0 0;color:var(--oa-text-3);font-size:.7rem}
+.oa-regression-verdict{display:grid;grid-template-columns:minmax(180px,.65fr) 1px minmax(0,1.35fr);align-items:center;gap:1.25rem}
+.oa-regression-verdict-main{display:flex;align-items:baseline;flex-wrap:wrap;gap:.55rem}
+.oa-regression-verdict-main span{color:var(--oa-text-2);font-size:.72rem}
+.oa-regression-verdict-main strong{color:var(--oa-text-1);font-size:2rem;line-height:1;font-variant-numeric:tabular-nums}
+.oa-regression-verdict-main small{color:var(--oa-text-3);font-size:.68rem}
+.oa-regression-verdict-divider{height:48px;background:var(--oa-border)}
+.oa-regression-signal-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}
+.oa-regression-signal-list>div{padding:.7rem .75rem;border:1px solid var(--oa-border);border-radius:9px;background:var(--oa-surface-2)}
+.oa-regression-signal-list span{display:block;color:var(--oa-text-3);font-size:.65rem}
+.oa-regression-signal-list strong{display:block;margin-top:.25rem;color:var(--oa-text-1);font-size:.82rem;font-variant-numeric:tabular-nums}
+.oa-regression-panel{margin-bottom:1rem}
+.oa-regression-panel:last-child{margin-bottom:0}
+.oa-regression-table{width:100%;min-width:920px;border-collapse:collapse;font-size:.75rem}
+.oa-regression-table th{padding:.7rem .8rem;background:var(--oa-surface-2);border-bottom:1px solid var(--oa-border-strong);color:var(--oa-text-3);font-size:.67rem;font-weight:750;text-align:left;white-space:nowrap}
+.oa-regression-table td{padding:.72rem .8rem;border-bottom:1px solid var(--oa-border);color:var(--oa-text-2);vertical-align:middle}
+.oa-regression-table tbody tr{transition:background-color .12s ease}
+.oa-regression-table tbody tr:hover{background:var(--oa-surface-2)}
+.oa-regression-table tbody tr:last-child td{border-bottom:0}
+.oa-regression-table code{color:var(--oa-text-1);font-family:var(--oa-font-mono);font-size:.7rem}
+.oa-regression-table .oa-number-value{font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+.oa-regression-reasons{min-width:260px;max-width:520px;line-height:1.5}
+.oa-violation-table{min-width:760px}
+.oa-delta-danger{color:var(--oa-danger);font-weight:750;font-variant-numeric:tabular-nums}
+.oa-regression-success{margin:0;border:0;border-radius:0;background:var(--oa-surface-2)}
+@media(max-width:1000px){
+ .oa-regression-context{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .oa-regression-verdict{grid-template-columns:1fr;gap:.8rem}
+ .oa-regression-verdict-divider{width:100%;height:1px}
+ .oa-regression-signal-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ .oa-regression-page .oa-analysis-header{margin-bottom:.8rem}
+ .oa-regression-context{grid-template-columns:1fr}
+ .oa-regression-signal-list{grid-template-columns:1fr}
+ .oa-regression-panel .oa-panel-header,.oa-regression-summary .oa-panel-header{padding:.8rem .9rem}
+ .oa-regression-verdict{padding:.1rem 0}
+}
+@media(max-width:560px){
+ .oa-regression-page .oa-analysis-header h1{font-size:1.45rem}
+ .oa-regression-page .oa-kpi-grid.is-4{grid-template-columns:1fr}
+ .oa-regression-page .oa-kpi-card{min-height:104px}
+ .oa-regression-context>div{min-height:64px}
+}
+/* Schema impact */
 .oa-context-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}.oa-context-grid.is-compact{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:.85rem}.oa-context-grid>div{min-width:0;padding:.8rem .85rem;border:1px solid var(--oa-border);border-radius:10px;background:var(--oa-surface-2)}.oa-context-grid span{display:block;margin-bottom:.25rem;color:var(--oa-text-2);font-size:.72rem;font-weight:650}.oa-context-grid strong{display:block;overflow-wrap:anywhere;color:var(--oa-text-1);font-size:.82rem}.oa-change-list{margin-top:.1rem!important;line-height:1.65}
 /* Field detail */
 .oa-analysis-page .oa-field-filter-card{margin-bottom:1.25rem}.oa-analysis-page .oa-field-filter-card .card-body{padding:1rem 1.15rem}.oa-analysis-page .oa-field-filter-card .form-label{margin-bottom:.4rem;color:var(--oa-text-2);font-size:.75rem;font-weight:700}.oa-analysis-page .oa-field-filter-card .form-select{min-height:42px;border-color:var(--oa-border-strong);border-radius:10px}.oa-analysis-page .oa-field-table-card .card-header{display:flex;align-items:center;justify-content:space-between;gap:1rem}.oa-analysis-page .oa-field-table-card .table-responsive{border-radius:0 0 14px 14px}.oa-analysis-page .oa-field-table tbody tr:not(.oa-field-detail-row):hover{background:var(--oa-surface-2)}.oa-analysis-page .oa-field-name{display:inline-flex;align-items:center;max-width:100%;padding:.15rem 0}.oa-analysis-page .oa-field-name strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.oa-analysis-page .oa-field-detail{background:var(--oa-surface-2)}
