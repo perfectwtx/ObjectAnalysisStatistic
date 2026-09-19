@@ -35,13 +35,13 @@
             <div class="oa-kpi-card is-info"><div class="oa-kpi-label">质量分</div><div class="oa-kpi-value">@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</div><div class="oa-kpi-meta">当前分析结果</div></div>
         </div>
 
-        <div class="card mb-4 oa-issue-selector-card">
-            <div class="card-body">
-                <div class="row g-3 align-items-end">
-                    <div class="col-lg-7">
+        <div class="oa-panel oa-issue-selector-card">
+            <div class="oa-panel-body">
+                <div class="oa-issue-selector-grid">
+                    <div>
                         <div class="oa-eyebrow">ANALYSIS RUN</div>
-                        <h2 class="h5 mb-1">问题明细</h2>
-                        <p class="text-muted mb-0">选择一次分析任务，查看该任务产生的标准化质量问题。</p>
+                        <h2>问题明细</h2>
+                        <p>选择一次分析任务，查看该任务产生的标准化质量问题。</p>
                     </div>
                     <div>
                         <label class="form-label">分析任务</label>
