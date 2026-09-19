@@ -233,6 +233,7 @@
     private string GetSchemaStatusIcon() => _result?.SchemaDiff switch { null => "-", { HasBreakingChanges: true } => "⚠", _ => "✓" };
     private string GetSchemaStatusText() => _result?.SchemaDiff switch { null => "未产生 Schema Diff", { HasBreakingChanges: true } => "存在破坏性变更", _ => "无破坏性变更" };
     private static string GetProgressWidth(double value) => $"{Math.Clamp(value, 0d, 100d):F0}%";
+    private static string GetMetricState(double value) => value >= 90 ? "良好" : value >= 70 ? "关注" : "风险";
     private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
     private static string GetScoreText(double? score) => !score.HasValue ? "未计算" : score >= 90 ? "优秀" : score >= 70 ? "需要关注" : "质量风险";
     private static string ScoreBadge(double score) => score >= 90 ? "is-success" : score >= 70 ? "is-warning" : "is-danger";
