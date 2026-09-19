@@ -13,9 +13,15 @@
     align-items: start;
     padding: 2.5rem;
     border: 1px solid var(--oa-border);
-    border-radius: 18px;
+    border-radius: var(--oa-radius-lg);
     background: var(--oa-surface);
-    box-shadow: 0 12px 36px rgba(23, 30, 46, .07);
+    box-shadow: var(--oa-shadow-lg);
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.oa-system-card:hover {
+    border-color: var(--oa-accent-border);
+    transform: translateY(-1px);
 }
 
 .oa-system-code {
@@ -23,7 +29,8 @@
     height: 92px;
     display: grid;
     place-items: center;
-    border-radius: 24px;
+    flex-shrink: 0;
+    border-radius: var(--oa-radius-xl);
     color: var(--oa-accent-strong);
     background: var(--oa-accent-soft);
     font-size: 1.65rem;
@@ -34,20 +41,6 @@
 .oa-system-card-error .oa-system-code {
     color: var(--oa-danger);
     background: var(--oa-danger-soft);
-}
-
-.oa-system-card {
-    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-}
-
-.oa-system-card:hover {
-    border-color: var(--oa-accent-border);
-    box-shadow: var(--oa-shadow-lg);
-    transform: translateY(-1px);
-}
-
-.oa-system-code {
-    flex-shrink: 0;
 }
 
 .oa-system-actions .btn {
