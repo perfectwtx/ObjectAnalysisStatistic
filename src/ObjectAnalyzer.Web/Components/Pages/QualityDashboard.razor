@@ -46,11 +46,11 @@
             <div class="oa-section-heading">
                 <div><h2>质量概览</h2><span>最近一次成功分析的核心指标</span></div>
             </div>
-            <div class="row g-3">
-                <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">质量总分</div><div class="oa-kpi-value">@FormatScore(_job.QualityScore)</div><div class="oa-kpi-meta">@GetScoreText(_job.QualityScore)</div></div></div></div>
-                <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">质量问题</div><div class="oa-kpi-value">@_job.IssueCount</div><div class="oa-kpi-meta">Top 5 已列入问题摘要</div></div></div></div>
-                <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">分析对象</div><div class="oa-kpi-value">@_job.TotalObjects.ToString("N0")</div><div class="oa-kpi-meta">字段 @_job.FieldCount 个</div></div></div></div>
-                <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">Schema 状态</div><div class="oa-kpi-value oa-kpi-symbol">@GetSchemaStatusIcon()</div><div class="oa-kpi-meta">@GetSchemaStatusText()</div></div></div></div>
+            <div class="oa-kpi-grid is-4">
+                <div class="oa-kpi-card"><div class="oa-kpi-label">质量总分</div><div class="oa-kpi-value">@FormatScore(_job.QualityScore)</div><div class="oa-kpi-meta">@GetScoreText(_job.QualityScore)</div></div>
+                <div class="oa-kpi-card"><div class="oa-kpi-label">质量问题</div><div class="oa-kpi-value">@_job.IssueCount</div><div class="oa-kpi-meta">Top 5 已列入问题摘要</div></div>
+                <div class="oa-kpi-card"><div class="oa-kpi-label">分析对象</div><div class="oa-kpi-value">@_job.TotalObjects.ToString("N0")</div><div class="oa-kpi-meta">字段 @_job.FieldCount 个</div></div>
+                <div class="oa-kpi-card"><div class="oa-kpi-label">Schema 状态</div><div class="oa-kpi-value oa-kpi-symbol">@GetSchemaStatusIcon()</div><div class="oa-kpi-meta">@GetSchemaStatusText()</div></div>
             </div>
         </section>
 
