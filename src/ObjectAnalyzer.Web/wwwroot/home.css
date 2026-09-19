@@ -1045,3 +1045,110 @@
 @media (prefers-reduced-motion:reduce){
     .app-shell .status-dot.is-busy{animation:none}
 }
+
+/* Analysis control console */
+.app-shell .console-heading{
+    display:flex;
+    flex-direction:column;
+    gap:.2rem;
+    margin:0 0 1rem;
+    padding:.15rem .1rem .8rem;
+    border-bottom:1px solid var(--oa-border);
+}
+.app-shell .console-kicker{
+    color:var(--oa-accent);
+    font-size:.62rem;
+    font-weight:850;
+    letter-spacing:.12em;
+}
+.app-shell .console-caption{
+    color:var(--oa-text-3);
+    font-size:.68rem;
+    line-height:1.4;
+}
+.app-shell .side-group{
+    margin-bottom:.85rem;
+    padding:0 0 .9rem;
+    border-bottom:1px solid var(--oa-border);
+}
+.app-shell .side-group:last-child{
+    border-bottom:0;
+}
+.app-shell .side-group-title{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    margin-bottom:.7rem;
+}
+.app-shell .group-index{
+    display:inline-grid;
+    place-items:center;
+    width:24px;
+    height:20px;
+    border:1px solid var(--oa-border);
+    border-radius:5px;
+    color:var(--oa-text-3);
+    background:var(--oa-surface-2);
+    font-family:var(--oa-font-mono);
+    font-size:.58rem;
+    font-weight:800;
+}
+.app-shell .side-group-run{
+    margin:0 0 .85rem;
+    padding:.8rem;
+    border:1px solid var(--oa-accent-border);
+    border-radius:12px;
+    background:var(--oa-accent-soft);
+}
+.app-shell .run-context{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.6rem;
+    margin-bottom:.65rem;
+    color:var(--oa-text-2);
+    font-size:.65rem;
+}
+.app-shell .run-context-label{
+    color:var(--oa-accent-strong);
+    font-size:.58rem;
+    font-weight:850;
+    letter-spacing:.1em;
+}
+.app-shell .side-group-run .config-actions{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:.5rem;
+}
+.app-shell .side-group-run .config-actions .btn-primary{
+    min-height:42px;
+    font-weight:760;
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .side-group-run .config-actions .btn-outline{
+    min-height:42px;
+}
+.app-shell .side-group-run .progress-status{
+    margin-top:.65rem;
+    padding-top:.65rem;
+    border-top:1px solid var(--oa-accent-border);
+    color:var(--oa-text-2);
+    font-size:.68rem;
+}
+.app-shell .side-group .option-group{
+    border:1px solid var(--oa-border);
+    border-radius:9px;
+    background:var(--oa-surface-2);
+}
+.app-shell .side-group .option-group summary{
+    min-height:38px;
+    padding:.6rem .7rem;
+}
+.app-shell .side-group .option-advanced{
+    margin-top:.25rem;
+}
+@media (max-width:860px){
+    .app-shell .console-heading{
+        margin-top:.2rem;
+    }
+}
