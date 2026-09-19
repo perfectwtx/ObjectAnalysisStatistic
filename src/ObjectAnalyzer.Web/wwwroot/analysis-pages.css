@@ -11,12 +11,6 @@
 .oa-analysis-page .table { --bs-table-bg:transparent; }
 .oa-analysis-page .table thead th { color:var(--oa-text-2); background:var(--oa-surface-2); font-size:.78rem; font-weight:700; white-space:nowrap; border-bottom-color:var(--oa-border); }
 .oa-analysis-page .table td, .oa-analysis-page .table th { padding:.8rem .9rem; }
-.oa-analysis-kpi { min-height:122px; position:relative; }
-.oa-kpi-grid{display:grid;gap:1rem;margin-bottom:1.25rem}.oa-kpi-grid.is-4{grid-template-columns:repeat(4,minmax(0,1fr))}.oa-kpi-grid.is-3{grid-template-columns:repeat(3,minmax(0,1fr))}.oa-kpi-card{position:relative;min-height:122px;padding:1rem 1.1rem;border:1px solid var(--oa-border);border-radius:14px;background:var(--oa-surface);box-shadow:var(--oa-shadow-sm);overflow:hidden}.oa-kpi-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--oa-accent)}.oa-kpi-card.is-danger::before{background:var(--oa-danger)}.oa-kpi-card.is-success::before{background:var(--oa-success)}.oa-kpi-card.is-warning::before{background:var(--oa-warning)}.oa-kpi-card.is-info::before{background:var(--oa-info)}.oa-kpi-card span,.oa-kpi-card .oa-kpi-label{display:block;color:var(--oa-text-2);font-size:.78rem;font-weight:650}.oa-kpi-card strong,.oa-kpi-card .oa-kpi-value{display:block;margin-top:.4rem;color:var(--oa-text-1);font-size:1.8rem;line-height:1.1;font-variant-numeric:tabular-nums}.oa-kpi-card small,.oa-kpi-card .oa-kpi-meta{display:block;margin-top:.35rem;color:var(--oa-text-3);font-size:.72rem}.oa-kpi-card .oa-kpi-label{font-weight:600}.oa-kpi-card .oa-kpi-value{font-weight:750;font-size:1.75rem}
-.oa-analysis-kpi::before { content:""; position:absolute; inset:0 0 auto; height:3px; background:var(--oa-accent); }
-.oa-analysis-kpi .oa-kpi-label { color:var(--oa-text-2); font-size:.78rem; font-weight:600; }
-.oa-analysis-kpi .oa-kpi-value { margin-top:.45rem; color:var(--oa-text-1); font-size:1.75rem; font-weight:750; line-height:1.15; }
-.oa-analysis-kpi .oa-kpi-meta { margin-top:.35rem; color:var(--oa-text-3); font-size:.76rem; }
 .oa-analysis-page .alert { border-radius:12px; border-width:1px; padding:1rem 1.1rem; }
 .oa-analysis-page .badge { border-radius:999px; padding:.4em .7em; font-weight:650; }
 .oa-matrix-wrap { max-height:620px; overflow:auto; }
@@ -529,7 +523,7 @@
 }
 
 .oa-quality-dashboard-page .oa-analysis-card:hover,
-.oa-quality-dashboard-page .oa-analysis-kpi:hover {
+.oa-quality-dashboard-page .oa-kpi-card:hover {
     border-color: var(--oa-accent-border);
     box-shadow: var(--oa-shadow-md);
 }
@@ -1310,7 +1304,7 @@
     margin-bottom: 1rem;
 }
 
-.oa-recommendations-page .oa-analysis-kpi {
+.oa-recommendations-page .oa-kpi-card {
     position: relative;
     min-width: 0;
     overflow: hidden;
@@ -1322,7 +1316,7 @@
     transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
 
-.oa-recommendations-page .oa-analysis-kpi::after {
+.oa-recommendations-page .oa-kpi-card::after {
     content: "";
     position: absolute;
     width: 82px;
@@ -1334,27 +1328,27 @@
     opacity: .6;
 }
 
-.oa-recommendations-page .oa-analysis-kpi:hover {
+.oa-recommendations-page .oa-kpi-card:hover {
     border-color: var(--oa-accent-border);
     box-shadow: var(--oa-shadow-md);
     transform: translateY(-1px);
 }
 
-.oa-recommendations-page .oa-analysis-kpi span,
-.oa-recommendations-page .oa-analysis-kpi strong,
-.oa-recommendations-page .oa-analysis-kpi small {
+.oa-recommendations-page .oa-kpi-card span,
+.oa-recommendations-page .oa-kpi-card strong,
+.oa-recommendations-page .oa-kpi-card small {
     position: relative;
     z-index: 1;
     display: block;
 }
 
-.oa-recommendations-page .oa-analysis-kpi span {
+.oa-recommendations-page .oa-kpi-card span {
     color: var(--oa-text-3);
     font-size: .72rem;
     font-weight: 700;
 }
 
-.oa-recommendations-page .oa-analysis-kpi strong {
+.oa-recommendations-page .oa-kpi-card strong {
     margin-top: .2rem;
     color: var(--oa-text-1);
     font-size: clamp(1.55rem, 2.2vw, 2rem);
@@ -1362,7 +1356,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-.oa-recommendations-page .oa-analysis-kpi small {
+.oa-recommendations-page .oa-kpi-card small {
     margin-top: .2rem;
     color: var(--oa-text-3);
     font-size: .7rem;
@@ -1558,7 +1552,7 @@
         padding: .8rem;
     }
 
-    .oa-recommendations-page .oa-analysis-kpi {
+    .oa-recommendations-page .oa-kpi-card {
         padding: .85rem .9rem;
     }
 
