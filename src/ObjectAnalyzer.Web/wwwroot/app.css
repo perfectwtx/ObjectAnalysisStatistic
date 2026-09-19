@@ -637,13 +637,13 @@ a, .btn-link {
 
 .btn-primary {
     color: var(--oa-on-accent);
-    background: linear-gradient(135deg, var(--oa-accent) 0%, #3b82f6 120%);
+    background: linear-gradient(135deg, var(--oa-accent) 0%, var(--oa-info) 120%);
     border-color: transparent;
     box-shadow: 0 4px 14px -4px rgba(56, 189, 248, 0.45);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, var(--oa-accent-strong) 0%, #2563eb 120%);
+    background: linear-gradient(135deg, var(--oa-accent-strong) 0%, var(--oa-info) 120%);
     box-shadow: 0 6px 18px -4px rgba(56, 189, 248, 0.55);
 }
 
@@ -1265,10 +1265,10 @@ a, .btn-link {
     background: var(--card-accent, var(--oa-accent));
 }
 
-.card.blue   { --card-accent: #6366f1; }
-.card.green  { --card-accent: #10b981; }
-.card.orange { --card-accent: #f59e0b; }
-.card.purple { --card-accent: #0ea5e9; }
+.card.blue   { --card-accent: var(--oa-accent); }
+.card.green  { --card-accent: var(--oa-success); }
+.card.orange { --card-accent: var(--oa-warning); }
+.card.purple { --card-accent: var(--oa-info); }
 
 .card-value {
     font-size: 1.75rem;
@@ -1564,7 +1564,7 @@ a, .btn-link {
     top: 0;
     left: 0;
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    background: linear-gradient(90deg, var(--oa-accent), var(--oa-accent-strong));
     border-radius: 999px;
     transition: width 0.3s ease;
 }
@@ -1587,7 +1587,7 @@ a, .btn-link {
     position: absolute;
     top: 0;
     height: 100%;
-    background: rgba(217, 119, 6, 0.75);
+    background: color-mix(in srgb, var(--oa-warning) 75%, transparent);
     transition: width 0.3s ease;
 }
 
@@ -1617,11 +1617,11 @@ a, .btn-link {
 }
 
 .coverage-null {
-    color: var(--oa-warning, #d97706);
+    color: var(--oa-warning);
 }
 
 .coverage-missing {
-    color: var(--oa-danger, #dc2626);
+    color: var(--oa-danger);
 }
 
 /* ─── 10. 徽章与标签系统 ─── */
@@ -1639,18 +1639,14 @@ a, .btn-link {
 
 .semantic-badge {
     display: inline-block;
-    background: rgba(124, 58, 237, 0.1);
-    color: #7c3aed;
-    border: 1px solid rgba(124, 58, 237, 0.25);
+    background: color-mix(in srgb, var(--oa-accent-strong) 10%, transparent);
+    color: var(--oa-accent-strong);
+    border: 1px solid color-mix(in srgb, var(--oa-accent-strong) 25%, transparent);
     padding: 0.08rem 0.45rem;
     border-radius: 6px;
     font-size: 0.78rem;
     margin: 0.1rem;
     font-weight: 600;
-}
-
-[data-bs-theme="dark"] .semantic-badge {
-    color: #c4b5fd;
 }
 
 .rule-badge {
