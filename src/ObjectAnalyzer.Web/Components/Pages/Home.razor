@@ -84,8 +84,13 @@
             </div>
         </div>
         <div class="side-scroll">
+            <div class="console-heading">
+                <span class="console-kicker">CONTROL CONSOLE</span>
+                <span class="console-caption">Configure analysis inputs and execution</span>
+            </div>
+
             <div class="side-group">
-                <div class="side-group-title">@Loc["SideSourceTitle"]</div>
+                <div class="side-group-title"><span class="group-index">01</span>@Loc["SideSourceTitle"]</div>
 
             <div class="config-fields" style="pointer-events:@(State.IsLoading ? "none" : "auto");opacity:@(State.IsLoading ? 0.6 : 1)">
             <div class="upload-area">
@@ -105,6 +110,10 @@
             </div>
 
             <div class="side-group side-group-run">
+                <div class="run-context">
+                    <span class="run-context-label">EXECUTION</span>
+                    <span>@(State.IsLoading ? "Analysis in progress" : State.Result != null ? "Ready to analyze again" : "Ready to start")</span>
+                </div>
                 <div class="config-actions">
                     <button class="btn btn-primary btn-lg" @onclick="RunAnalysis"
                             disabled="@State.IsLoading">
@@ -125,7 +134,7 @@
             </div>
 
             <div class="side-group">
-                <div class="side-group-title">@Loc["SideOptionsTitle"]</div>
+                <div class="side-group-title"><span class="group-index">02</span>@Loc["SideOptionsTitle"]</div>
             <div class="config-fields" style="pointer-events:@(State.IsLoading ? "none" : "auto");opacity:@(State.IsLoading ? 0.6 : 1)">
             <div class="options-grid">
                 <div class="side-subgroup-title">@Loc["GroupParsing"]</div>
@@ -224,7 +233,7 @@
             </div>
 
             <div class="side-group">
-                <div class="side-group-title">@Loc["SideRulesTitle"]</div>
+                <div class="side-group-title"><span class="group-index">03</span>@Loc["SideRulesTitle"]</div>
                 <div class="option-item">
                     <span>@Loc["OptRulesFile"]</span>
                     <div class="file-field">
