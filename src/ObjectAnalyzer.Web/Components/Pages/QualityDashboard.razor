@@ -11,132 +11,179 @@
 <PageTitle>数据质量总览</PageTitle>
 
 <div class="oa-analysis-page oa-quality-dashboard-page">
-    <div class="oa-analysis-header">
-        <div>
-            <div class="oa-eyebrow">Data Quality</div>
-            <h1>数据质量总览</h1>
-            <p>从质量分、问题、Schema、字段关系与质量门禁统一查看最近一次成功分析结果。</p>
+    <header class="oa-analysis-header">
+        <div class="oa-dashboard-title">
+            <div class="oa-eyebrow">Data Quality / Overview</div>
+            <div class="oa-dashboard-title-row">
+                <div>
+                    <h1>数据质量总览</h1>
+                    <p>把最近一次成功分析拆成质量评分、质量维度、门禁与风险摘要，快速定位需要处理的区域。</p>
+                </div>
+                <button class="btn btn-outline-secondary oa-dashboard-refresh" @onclick="LoadAsync">刷新数据</button>
+            </div>
         </div>
-        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
-    </div>
+    </header>
 
     @if (_loading)
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body oa-analysis-empty">
-                <div class="oa-empty-icon">◌</div>
-                <strong>正在加载质量数据</strong>
-                <span>正在读取最近一次成功分析结果，请稍候。</span>
-            </div>
+        <div class="oa-empty-state oa-dashboard-state">
+            <div class="oa-empty-icon">◌</div>
+            <strong>正在加载质量数据</strong>
+            <span>正在读取最近一次成功分析结果，请稍候。</span>
         </div>
     }
     else if (_job is null || _result is null)
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body oa-analysis-empty">
-                <div class="oa-empty-icon">∅</div>
-                <strong>暂无可用的成功分析记录</strong>
-                <span>请先执行一次数据分析，完成后这里会展示质量总览。</span>
-            </div>
+        <div class="oa-empty-state oa-dashboard-state">
+            <div class="oa-empty-icon">∅</div>
+            <strong>暂无可用的成功分析记录</strong>
+            <span>请先执行一次数据分析，完成后这里会展示质量总览。</span>
         </div>
     }
     else
     {
-        <section class="oa-dashboard-section">
+        <section class="oa-dashboard-context">
+            <div class="oa-context-grid">
+                <div><span>当前数据源</span><strong>@_recentSnapshots.FirstOrDefault()?.SourceName</strong></div>
+                <div><span>分析时间</span><strong>@((_job.CompletedAtUtc ?? _job.StartedAtUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</strong></div>
+                <div><span>分析对象</span><strong>@_job.TotalObjects.ToString("N0")</strong></div>
+                <div><span>字段</span><strong>@_job.FieldCount.ToString("N0")</strong></div>
+            </div>
+        </section>
+
+        <section class="oa-dashboard-section oa-dashboard-overview">
             <div class="oa-section-heading">
-                <div><h2>质量概览</h2><span>最近一次成功分析的核心指标</span></div>
+                <div><span class="oa-section-kicker">Overview</span><h2>质量概览</h2><span>当前分析结果的关键健康信号</span></div>
             </div>
             <div class="oa-kpi-grid is-4">
-                <div class="oa-kpi-card"><div class="oa-kpi-label">质量总分</div><div class="oa-kpi-value">@FormatScore(_job.QualityScore)</div><div class="oa-kpi-meta">@GetScoreText(_job.QualityScore)</div></div>
-                <div class="oa-kpi-card"><div class="oa-kpi-label">质量问题</div><div class="oa-kpi-value">@_job.IssueCount</div><div class="oa-kpi-meta">Top 5 已列入问题摘要</div></div>
-                <div class="oa-kpi-card"><div class="oa-kpi-label">分析对象</div><div class="oa-kpi-value">@_job.TotalObjects.ToString("N0")</div><div class="oa-kpi-meta">字段 @_job.FieldCount 个</div></div>
-                <div class="oa-kpi-card"><div class="oa-kpi-label">Schema 状态</div><div class="oa-kpi-value oa-kpi-symbol">@GetSchemaStatusIcon()</div><div class="oa-kpi-meta">@GetSchemaStatusText()</div></div>
+                <div class="oa-kpi-card is-accent"><div class="oa-kpi-label">质量总分</div><div class="oa-kpi-value">@FormatScore(_job.QualityScore)</div><div class="oa-kpi-meta">@GetScoreText(_job.QualityScore)</div></div>
+                <div class="oa-kpi-card @(_job.IssueCount > 0 ? "is-danger" : "is-success")"><div class="oa-kpi-label">质量问题</div><div class="oa-kpi-value">@_job.IssueCount.ToString("N0")</div><div class="oa-kpi-meta">最近一次分析发现</div></div>
+                <div class="oa-kpi-card is-info"><div class="oa-kpi-label">分析对象</div><div class="oa-kpi-value">@_job.TotalObjects.ToString("N0")</div><div class="oa-kpi-meta">覆盖 @_job.FieldCount.ToString("N0") 个字段</div></div>
+                <div class="oa-kpi-card @(_result.SchemaDiff?.HasBreakingChanges == true ? "is-danger" : "is-success")"><div class="oa-kpi-label">Schema 状态</div><div class="oa-kpi-value oa-kpi-symbol">@GetSchemaStatusIcon()</div><div class="oa-kpi-meta">@GetSchemaStatusText()</div></div>
             </div>
         </section>
 
         <section class="oa-dashboard-section">
-            <div class="oa-section-heading"><div><h2>质量维度</h2><span>完整性、有效性、唯一性、一致性与异常控制</span></div></div>
-            <div class="row g-3">
+            <div class="oa-section-heading">
+                <div><span class="oa-section-kicker">Dimensions</span><h2>质量维度</h2><span>五个维度共同构成当前质量画像</span></div>
+            </div>
+            <div class="oa-quality-dimension-grid">
                 @foreach (var metric in _qualityMetrics)
                 {
-                    <div class="col-12 col-sm-6 col-md-4 col-xl">
-                        <div class="card oa-analysis-card oa-quality-metric-card h-100"><div class="card-body">
-                            <div class="oa-kpi-label">@metric.Name</div>
-                            <div class="oa-quality-metric-value">@metric.Value.ToString("F1")</div>
-                            <div class="oa-progress-track" aria-label="@metric.Name @metric.Value.ToString("F1")"><div class="oa-progress-value" style="width:@GetProgressWidth(metric.Value)"></div></div>
-                        </div></div>
+                    <div class="oa-quality-dimension">
+                        <div class="oa-quality-dimension-head"><span>@metric.Name</span><strong>@metric.Value.ToString("F1")</strong></div>
+                        <div class="oa-progress-track" aria-label="@metric.Name @metric.Value.ToString("F1")"><div class="oa-progress-value" style="width:@GetProgressWidth(metric.Value)"></div></div>
+                        <div class="oa-quality-dimension-foot"><span>质量得分</span><span>@GetMetricState(metric.Value)</span></div>
                     </div>
                 }
             </div>
         </section>
 
         <section class="oa-dashboard-section">
-            <div class="card oa-analysis-card">
-                <div class="card-body">
-                    <div class="oa-card-heading"><div><h2>质量门禁</h2><span>查看本次分析记录的门禁执行结果</span></div>
-                        @if (_gateResults.Count == 0) { <span class="oa-badge is-neutral">历史记录未保存门禁结果</span> }
-                        else if (_gateResults.Any(x => x.Triggered)) { <span class="oa-badge is-danger">未通过</span> }
-                        else { <span class="oa-badge is-success">全部通过</span> }
-                    </div>
-                    @if (_gateResults.Count == 0)
-                    {
-                        <div class="oa-analysis-note">该作业是在质量门禁历史持久化之前产生的，因此无法还原当时的实际门禁配置。重新执行分析后会记录准确结果。</div>
-                    }
-                    else
-                    {
-                        <div class="row g-3">
-                            @foreach (var gate in _gateResults)
-                            {
-                                <div class="col-12 col-md-6 col-xl-3"><div class="oa-gate-card h-100">
-                                    <div class="oa-gate-heading"><strong>@gate.Name</strong>@if (gate.Triggered) { <span class="oa-badge is-danger">❌ 未通过</span> } else { <span class="oa-badge is-success">✓ 通过</span> }</div>
-                                    <div class="oa-gate-meta">ExitCode: @gate.ExitCode</div>
-                                    @if (gate.Triggered) { <div class="oa-gate-error">@gate.FailureMessage</div> }
-                                </div></div>
-                            }
-                        </div>
-                    }
+            <article class="oa-dashboard-panel oa-gate-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">Quality Gate</span><h2>质量门禁</h2><p>本次分析是否触发质量控制规则</p></div>
+                    @if (_gateResults.Count == 0) { <span class="oa-badge is-neutral">历史记录未保存门禁结果</span> }
+                    else if (_gateResults.Any(x => x.Triggered)) { <span class="oa-badge is-danger">未通过</span> }
+                    else { <span class="oa-badge is-success">全部通过</span> }
                 </div>
-            </div>
+                @if (_gateResults.Count == 0)
+                {
+                    <div class="oa-dashboard-note">该作业是在质量门禁历史持久化之前产生的，因此无法还原当时的实际门禁配置。重新执行分析后会记录准确结果。</div>
+                }
+                else
+                {
+                    <div class="oa-gate-grid">
+                        @foreach (var gate in _gateResults)
+                        {
+                            <div class="oa-gate-card">
+                                <div class="oa-gate-heading"><strong>@gate.Name</strong>@if (gate.Triggered) { <span class="oa-badge is-danger">未通过</span> } else { <span class="oa-badge is-success">通过</span> }</div>
+                                <div class="oa-gate-meta">ExitCode: @gate.ExitCode</div>
+                                @if (gate.Triggered) { <div class="oa-gate-error">@gate.FailureMessage</div> }
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
         </section>
 
-        <section class="oa-dashboard-section">
-            <div class="row g-3">
-                <div class="col-12 col-xl-8"><div class="card oa-analysis-card h-100"><div class="card-body">
-                    <div class="oa-card-heading"><div><h2>最近质量趋势</h2><span>最近 8 次质量快照</span></div><a class="btn btn-sm btn-outline-secondary" href="/quality/trend">查看全部</a></div>
-                    @if (_recentSnapshots.Count == 0) { <div class="oa-analysis-empty oa-analysis-empty-compact"><span>暂无质量趋势快照。</span></div> }
-                    else
-                    {
-                        <div class="table-responsive"><table class="table align-middle mb-0 oa-data-table"><thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题</th><th>对象</th></tr></thead><tbody>
-                        @foreach (var snapshot in _recentSnapshots.Take(8))
-                        { <tr><td class="text-nowrap">@snapshot.OccurredAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</td><td>@snapshot.SourceName</td><td><span class="badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td><td>@snapshot.IssueCount</td><td>@snapshot.TotalObjects.ToString("N0")</td></tr> }
-                        </tbody></table></div>
-                    }
-                </div></div></div>
+        <section class="oa-dashboard-section oa-dashboard-main-grid">
+            <article class="oa-dashboard-panel oa-trend-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">History</span><h2>最近质量趋势</h2><p>最近 8 次质量快照</p></div>
+                    <a class="btn btn-sm btn-outline-secondary" href="/quality/trend">查看趋势</a>
+                </div>
+                @if (_recentSnapshots.Count == 0)
+                {
+                    <div class="oa-empty-state oa-dashboard-panel-empty"><span>暂无质量趋势快照。</span></div>
+                }
+                else
+                {
+                    <div class="oa-trend-list">
+                        @foreach (var snapshot in _recentSnapshots.Take(8).Reverse())
+                        {
+                            <div class="oa-trend-row">
+                                <span class="oa-trend-date">@snapshot.OccurredAtUtc.ToLocalTime().ToString("MM-dd")</span>
+                                <div class="oa-trend-track"><span style="width:@GetProgressWidth(snapshot.Metrics.OverallScore)"></span></div>
+                                <strong>@snapshot.Metrics.OverallScore.ToString("F1")</strong>
+                                <span class="oa-trend-issues">@snapshot.IssueCount 问题</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
 
-                <div class="col-12 col-xl-4"><div class="card oa-analysis-card h-100"><div class="card-body">
-                    <div class="oa-card-heading"><div><h2>Top Issues</h2><span>数量最多的质量问题</span></div><a class="btn btn-sm btn-outline-secondary" href="/issues">问题中心</a></div>
-                    @if (_topIssues.Count == 0) { <div class="oa-analysis-empty oa-analysis-empty-compact"><strong>✓ 当前没有质量违规</strong><span>最近一次分析未发现标准化质量问题。</span></div> }
-                    else
-                    {
-                        <div class="oa-issue-list">@foreach (var issue in _topIssues) { <div class="oa-issue-row"><div class="oa-issue-content"><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><span>@QualityCheckTypes.Label(issue.Check)</span></div><span class="oa-badge is-danger">@issue.Count</span></div>}</div>
-                    }
-                </div></div></div>
-            </div>
+            <article class="oa-dashboard-panel oa-issues-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">Risk</span><h2>Top Issues</h2><p>数量最多的质量问题</p></div>
+                    <a class="btn btn-sm btn-outline-secondary" href="/issues">问题中心</a>
+                </div>
+                @if (_topIssues.Count == 0)
+                {
+                    <div class="oa-empty-state oa-dashboard-panel-empty"><strong>✓ 当前没有质量违规</strong><span>最近一次分析未发现标准化质量问题。</span></div>
+                }
+                else
+                {
+                    <div class="oa-issue-list">
+                        @foreach (var issue in _topIssues)
+                        {
+                            <div class="oa-issue-row"><div class="oa-issue-content"><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><span>@QualityCheckTypes.Label(issue.Check)</span></div><span class="oa-badge is-danger">@issue.Count</span></div>
+                        }
+                    </div>
+                }
+            </article>
         </section>
 
-        <section class="oa-dashboard-section">
-            <div class="row g-3">
-                <div class="col-12 col-xl-6"><div class="card oa-analysis-card h-100"><div class="card-body">
-                    <div class="oa-card-heading"><div><h2>Schema 影响</h2><span>最近一次分析的 Schema 变化</span></div><a class="btn btn-sm btn-outline-secondary" href="/quality/schema-impact">查看详情</a></div>
-                    @if (_result.SchemaDiff is null) { <div class="oa-analysis-note">未产生 Schema Diff。</div> }
-                    else { <div class="oa-mini-stats"><div><strong>@_result.SchemaDiff.AddedFields.Count</strong><span>新增字段</span></div><div><strong>@_result.SchemaDiff.ChangedFields.Count</strong><span>变更字段</span></div><div><strong>@_result.SchemaDiff.RemovedFields.Count</strong><span>删除字段</span></div></div> }
-                </div></div></div>
-                <div class="col-12 col-xl-6"><div class="card oa-analysis-card h-100"><div class="card-body">
-                    <div class="oa-card-heading"><div><h2>字段关系</h2><span>相关性矩阵与强相关字段对</span></div><a class="btn btn-sm btn-outline-secondary" href="/quality/relationships">查看详情</a></div>
-                    @if (_result.CorrelationMatrix is null) { <div class="oa-analysis-note">未产生字段相关性结果。</div> }
-                    else { <div class="oa-mini-stats"><div><strong>@_result.CorrelationMatrix.Fields.Count</strong><span>参与字段</span></div><div><strong>@_result.CorrelationMatrix.Samples</strong><span>样本数量</span></div><div><strong>@_result.CorrelationMatrix.StrongPairs.Count</strong><span>强相关</span></div></div> }
-                </div></div></div>
-            </div>
+        <section class="oa-dashboard-section oa-dashboard-main-grid">
+            <article class="oa-dashboard-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">Schema</span><h2>Schema 影响</h2><p>最近一次分析检测到的结构变化</p></div>
+                    <a class="btn btn-sm btn-outline-secondary" href="/quality/schema-impact">查看详情</a>
+                </div>
+                @if (_result.SchemaDiff is null)
+                {
+                    <div class="oa-dashboard-note">未产生 Schema Diff。</div>
+                }
+                else
+                {
+                    <div class="oa-mini-stats"><div><strong>@_result.SchemaDiff.AddedFields.Count</strong><span>新增字段</span></div><div><strong>@_result.SchemaDiff.ChangedFields.Count</strong><span>变更字段</span></div><div><strong>@_result.SchemaDiff.RemovedFields.Count</strong><span>删除字段</span></div></div>
+                }
+            </article>
+
+            <article class="oa-dashboard-panel">
+                <div class="oa-panel-header">
+                    <div><span class="oa-panel-kicker">Relationships</span><h2>字段关系</h2><p>相关性矩阵与强相关字段对</p></div>
+                    <a class="btn btn-sm btn-outline-secondary" href="/quality/relationships">查看详情</a>
+                </div>
+                @if (_result.CorrelationMatrix is null)
+                {
+                    <div class="oa-dashboard-note">未产生字段相关性结果。</div>
+                }
+                else
+                {
+                    <div class="oa-mini-stats"><div><strong>@_result.CorrelationMatrix.Fields.Count</strong><span>参与字段</span></div><div><strong>@_result.CorrelationMatrix.Samples.ToString("N0")</strong><span>样本数量</span></div><div><strong>@_result.CorrelationMatrix.StrongPairs.Count</strong><span>强相关</span></div></div>
+                }
+            </article>
         </section>
     }
 </div>
