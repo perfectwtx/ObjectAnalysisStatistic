@@ -55,7 +55,7 @@
                         @foreach (var item in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count))
                         {
                             <tr>
-                                <td><span class="badge @(item.Priority >= 3 ? "bg-danger" : item.Priority == 2 ? "bg-warning text-dark" : "bg-secondary")">@item.PriorityText</span></td>
+                                <td><span class="oa-badge @(item.Priority >= 3 ? "is-danger" : item.Priority == 2 ? "is-warning" : "is-neutral")">@item.PriorityText</span></td>
                                 <td><strong class="oa-recommendation-field">@item.Field</strong></td>
                                 <td><span class="oa-badge is-warning">@QualityCheckTypes.Label(item.Check)</span><div class="small text-muted mt-2 oa-recommendation-message">@item.Message</div></td>
                                 <td><span class="oa-number-value">@item.Count</span> 次</td>
