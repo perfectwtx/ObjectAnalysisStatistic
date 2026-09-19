@@ -41,23 +41,23 @@
     }
     else
     {
-        <section class="oa-regression-kpis">
-            <div class="oa-regression-kpi">
+        <section class="oa-kpi-grid">
+            <div class="oa-kpi-card">
                 <span>质量分变化</span>
                 <strong class="@ScoreClass(_report.ScoreDelta)">@FormatDelta(_report.ScoreDelta)</strong>
                 <small>当前质量分相对基线</small>
             </div>
-            <div class="oa-regression-kpi">
+            <div class="oa-kpi-card">
                 <span>问题数变化</span>
                 <strong class="@DeltaClass(-_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong>
                 <small>标准化问题项变化</small>
             </div>
-            <div class="oa-regression-kpi">
+            <div class="oa-kpi-card">
                 <span>回归字段</span>
                 <strong>@_report.FieldRegressions.Count(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)</strong>
                 <small>发生质量下降的字段</small>
             </div>
-            <div class="oa-regression-kpi">
+            <div class="oa-kpi-card">
                 <span>新增/增加违规</span>
                 <strong>@_report.ViolationRegressions.Count</strong>
                 <small>需要进一步关注的违规</small>
