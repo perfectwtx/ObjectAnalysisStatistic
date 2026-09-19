@@ -1935,3 +1935,10 @@
  .oa-data-lineage-page .oa-lineage-context{align-items:flex-start;flex-direction:column;gap:.25rem}
  .oa-data-lineage-page .oa-lineage-targets{max-width:220px}
 }
+
+/* Responsibility layout cleanup */
+.oa-responsibility-page .oa-responsibility-filter-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.7fr) auto;align-items:end;gap:1rem}
+.oa-responsibility-page .oa-responsibility-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.oa-responsibility-page .oa-inline-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+@media(max-width:900px){.oa-responsibility-page .oa-responsibility-filter-grid{grid-template-columns:1fr 1fr}.oa-responsibility-page .oa-responsibility-filter-grid> :last-child{grid-column:1/-1}.oa-responsibility-page .oa-responsibility-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.oa-responsibility-page .oa-responsibility-filter-grid,.oa-responsibility-page .oa-responsibility-grid{grid-template-columns:1fr}}
