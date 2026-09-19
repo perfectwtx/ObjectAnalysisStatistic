@@ -52,11 +52,11 @@
                     <span class="oa-badge is-neutral">@_recommendations.Count 条建议</span>
                 </div>
                 <div class="oa-recommendation-list">
-                    @foreach (var item in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count))
+                    @foreach (var (item, index) in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count).Select((item, index) => (item, index + 1)))
                     {
                         <article class="oa-recommendation-item">
                             <div class="oa-recommendation-item-head">
-                                <div class="oa-recommendation-field-wrap"><span class="oa-recommendation-index">@(_recommendations.IndexOf(item) + 1).ToString("D2")</span><strong class="oa-recommendation-field">@item.Field</strong></div>
+                                <div class="oa-recommendation-field-wrap"><span class="oa-recommendation-index">@(index.ToString("D2"))</span><strong class="oa-recommendation-field">@item.Field</strong></div>
                                 <span class="oa-badge @(item.Priority >= 3 ? "is-danger" : item.Priority == 2 ? "is-warning" : "is-neutral")">@(item.PriorityText)优先</span>
                             </div>
                             <div class="oa-recommendation-grid">
