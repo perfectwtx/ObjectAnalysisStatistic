@@ -6460,3 +6460,117 @@ a, .btn-link {
 .oa-alert-page .oa-condition{font-size:.66rem}
 }
 
+/* ─── 41. 数据血缘页面 ─── */
+.oa-data-lineage-page{max-width:1680px;margin:0 auto}
+.oa-data-lineage-page .oa-analysis-header,.oa-issues-page .oa-analysis-header,.oa-jobs-page .oa-analysis-header{align-items:flex-start;padding-bottom:1rem;margin-bottom:1.2rem;border-bottom:1px solid var(--oa-border)}
+.oa-data-lineage-page .oa-analysis-header h1,.oa-issues-page .oa-analysis-header h1,.oa-jobs-page .oa-analysis-header h1{margin-bottom:.35rem}
+.oa-data-lineage-page .oa-analysis-header p,.oa-issues-page .oa-analysis-header p,.oa-jobs-page .oa-analysis-header p{max-width:760px;margin-bottom:0;color:var(--oa-text-3);line-height:1.55}
+.oa-data-lineage-page .oa-analysis-header .btn,.oa-issues-page .oa-analysis-header .btn,.oa-jobs-page .oa-analysis-header .btn{flex:0 0 auto}
+.oa-data-lineage-page .oa-lineage-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:1rem}
+.oa-data-lineage-page .oa-lineage-kpi{position:relative;overflow:hidden;min-width:0;padding:1rem 1.1rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-lg);background:var(--oa-surface);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.oa-data-lineage-page .oa-lineage-kpi::after{content:"";position:absolute;width:82px;height:82px;top:-38px;right:-28px;border-radius:50%;background:var(--oa-accent-soft);opacity:.7}
+.oa-data-lineage-page .oa-lineage-kpi:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md);transform:translateY(-1px)}
+.oa-data-lineage-page .oa-lineage-kpi>span,.oa-data-lineage-page .oa-lineage-kpi>strong,.oa-data-lineage-page .oa-lineage-kpi>small{position:relative;z-index:1;display:block}
+.oa-data-lineage-page .oa-lineage-kpi>span{color:var(--oa-text-3);font-size:.72rem;font-weight:700}
+.oa-data-lineage-page .oa-lineage-kpi>strong{margin-top:.2rem;color:var(--oa-text-1);font-size:clamp(1.45rem,2.1vw,2rem);font-weight:800;font-variant-numeric:tabular-nums}
+.oa-data-lineage-page .oa-lineage-kpi>small{margin-top:.2rem;color:var(--oa-text-3);font-size:.7rem}
+.oa-data-lineage-page .oa-panel{overflow:hidden;border-color:var(--oa-border);border-radius:var(--oa-radius-lg);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease}
+.oa-data-lineage-page .oa-panel:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md)}
+.oa-data-lineage-page .oa-panel-header{min-width:0;padding:.9rem 1rem;border-bottom:1px solid var(--oa-border)}
+.oa-data-lineage-page .oa-panel-kicker{color:var(--oa-accent);font-size:.66rem;font-weight:800;letter-spacing:.08em}
+.oa-data-lineage-page .oa-panel-header h2{margin-top:.15rem;color:var(--oa-text-1);font-size:1rem;font-weight:750}
+.oa-data-lineage-page .oa-count-badge{flex:0 0 auto;padding:.25rem .55rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums}
+.oa-data-lineage-page .oa-lineage-context{display:flex;align-items:center;gap:.65rem;padding:.7rem 1rem;border-bottom:1px solid var(--oa-border);background:var(--oa-surface-2)}
+.oa-data-lineage-page .oa-lineage-context span{color:var(--oa-text-3);font-size:.67rem;font-weight:750;text-transform:uppercase;letter-spacing:.06em}
+.oa-data-lineage-page .oa-lineage-context strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--oa-text-1);font-size:.76rem}
+.oa-data-lineage-page .oa-table-wrap{overflow:auto}
+.oa-data-lineage-page .oa-analysis-table{min-width:940px;font-size:.78rem}
+.oa-data-lineage-page .oa-analysis-table thead th{padding:.7rem .8rem;background:var(--oa-surface-2);color:var(--oa-text-3);border-bottom:1px solid var(--oa-border-strong);font-size:.69rem;font-weight:750;white-space:nowrap}
+.oa-data-lineage-page .oa-analysis-table tbody td{padding:.72rem .8rem;border-bottom:1px solid var(--oa-border);color:var(--oa-text-2);vertical-align:middle}
+.oa-data-lineage-page .oa-analysis-table tbody tr{transition:background-color .12s ease}
+.oa-data-lineage-page .oa-analysis-table tbody tr:hover{background:var(--oa-surface-2)}
+.oa-data-lineage-page .oa-analysis-table tbody tr:last-child td{border-bottom:0}
+.oa-data-lineage-page .oa-lineage-path{min-width:360px;white-space:nowrap}
+.oa-data-lineage-page .oa-lineage-indent{display:inline-block;vertical-align:middle}
+.oa-data-lineage-page .oa-lineage-path code,.oa-data-lineage-page .oa-analysis-table td code{display:inline-block;max-width:460px;padding:.22rem .4rem;border:1px solid var(--oa-border);border-radius:5px;background:var(--oa-surface-2);color:var(--oa-accent-strong);font-family:var(--oa-font-mono);font-size:.71rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.oa-data-lineage-page .oa-lineage-targets{min-width:240px;max-width:460px;line-height:1.5;overflow-wrap:anywhere}
+.oa-data-lineage-page .oa-analysis-table .badge{font-size:.67rem;font-weight:750;white-space:nowrap}
+.oa-data-lineage-page .oa-empty-state{min-height:220px}
+.oa-data-lineage-page .oa-panel+.oa-panel{margin-top:1rem}
+@media(max-width:1000px){.oa-data-lineage-page .oa-lineage-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.oa-data-lineage-page .oa-analysis-table{min-width:860px}}
+@media(max-width:720px){.oa-data-lineage-page .oa-analysis-header,.oa-issues-page .oa-analysis-header,.oa-jobs-page .oa-analysis-header{gap:.75rem}.oa-data-lineage-page .oa-analysis-header .btn,.oa-issues-page .oa-analysis-header .btn,.oa-jobs-page .oa-analysis-header .btn{width:100%}.oa-data-lineage-page .oa-lineage-kpis{grid-template-columns:1fr}.oa-data-lineage-page .oa-lineage-kpi{padding:.85rem .9rem}.oa-data-lineage-page .oa-panel-header,.oa-data-lineage-page .oa-lineage-context{padding:.8rem}.oa-data-lineage-page .oa-analysis-table{min-width:780px}.oa-data-lineage-page .oa-lineage-path{min-width:300px}}
+@media(max-width:560px){.oa-data-lineage-page .oa-analysis-table{min-width:720px}.oa-data-lineage-page .oa-lineage-path code{max-width:330px}}
+
+/* ─── 42. 问题中心页面 ─── */
+.oa-issues-page{max-width:1680px;margin:0 auto}
+.oa-issues-page .oa-issue-kpis{margin-bottom:1rem!important}
+.oa-issues-page .oa-analysis-kpi{overflow:hidden;border:1px solid var(--oa-border);border-radius:var(--oa-radius-lg);background:var(--oa-surface);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.oa-issues-page .oa-analysis-kpi:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md);transform:translateY(-1px)}
+.oa-issues-page .oa-analysis-kpi .card-body{padding:1rem 1.1rem}
+.oa-issues-page .oa-kpi-label{color:var(--oa-text-3);font-size:.72rem;font-weight:700}
+.oa-issues-page .oa-kpi-value{margin-top:.2rem;color:var(--oa-text-1);font-size:clamp(1.4rem,2.1vw,2rem);font-weight:800;font-variant-numeric:tabular-nums}
+.oa-issues-page .oa-kpi-meta{margin-top:.2rem;color:var(--oa-text-3);font-size:.7rem}
+.oa-issues-page .oa-issue-selector-card{border:1px solid var(--oa-border);border-radius:var(--oa-radius-lg);background:var(--oa-surface);box-shadow:var(--oa-shadow-sm)}
+.oa-issues-page .oa-issue-selector-card .card-body{padding:1rem}
+.oa-issues-page .oa-issue-selector-card h2{color:var(--oa-text-1);font-size:1rem;font-weight:750}
+.oa-issues-page .form-label{margin-bottom:.3rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-issues-page .form-select{min-height:38px;border-color:var(--oa-border-strong);border-radius:var(--oa-radius-sm);background-color:var(--oa-surface);color:var(--oa-text-1);font-size:.78rem}
+.oa-issues-page .oa-issue-table-card{overflow:hidden;border:1px solid var(--oa-border)!important;border-radius:var(--oa-radius-lg);background:var(--oa-surface)}
+.oa-issues-page .oa-issue-table-card .card-header{padding:.9rem 1rem!important;border-bottom:1px solid var(--oa-border)!important;background:var(--oa-surface-2)!important;color:var(--oa-text-1);font-size:.86rem;font-weight:750}
+.oa-issues-page .oa-count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;padding:0 .5rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface);color:var(--oa-text-2);font-size:.68rem;font-weight:750;font-variant-numeric:tabular-nums}
+.oa-issues-page .oa-issue-table-wrap{border:0}
+.oa-issues-page .oa-issue-table-wrap table{min-width:760px;font-size:.78rem}
+.oa-issues-page .oa-issue-table-wrap thead th{padding:.7rem .8rem;background:var(--oa-surface-2);color:var(--oa-text-3);border-bottom:1px solid var(--oa-border-strong);font-size:.69rem;font-weight:750;white-space:nowrap}
+.oa-issues-page .oa-issue-table-wrap tbody td{padding:.72rem .8rem;border-bottom:1px solid var(--oa-border);color:var(--oa-text-2);vertical-align:middle}
+.oa-issues-page .oa-issue-table-wrap tbody tr:last-child td{border-bottom:0}
+.oa-issues-page .oa-issue-table-wrap tbody tr:hover{background:var(--oa-surface-2)}
+.oa-issues-page .oa-issue-table-wrap td:first-child strong{color:var(--oa-text-1);font-family:var(--oa-font-mono);font-size:.75rem}
+.oa-issues-page .oa-issue-table-wrap td:nth-child(3){white-space:nowrap}
+.oa-issues-page .oa-issue-count{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:.2rem .45rem;border-radius:999px;background:var(--oa-danger-soft);color:var(--oa-danger);font-size:.68rem;font-weight:800;font-variant-numeric:tabular-nums}
+.oa-issues-page .oa-issue-table-wrap .badge{font-size:.67rem;font-weight:750;white-space:nowrap}
+.oa-issues-page .oa-analysis-note{padding:.7rem .8rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-md);background:var(--oa-surface-2);color:var(--oa-text-3);font-size:.72rem;line-height:1.5}
+.oa-issues-page .oa-empty-state{min-height:220px}
+@media(max-width:720px){.oa-issues-page .oa-analysis-kpi .card-body,.oa-issues-page .oa-issue-selector-card .card-body{padding:.8rem}.oa-issues-page .oa-issue-table-card .card-header{padding:.8rem!important}.oa-issues-page .oa-issue-table-wrap table{min-width:680px}}
+@media(max-width:560px){.oa-issues-page .oa-issue-table-wrap table{min-width:620px}}
+
+/* ─── 43. 作业中心页面 ─── */
+.oa-jobs-page{max-width:1680px;margin:0 auto}
+.oa-jobs-page .oa-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;margin-bottom:1rem!important}
+.oa-jobs-page .oa-summary-card{position:relative;overflow:hidden;min-width:0;padding:1rem 1.1rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-lg);background:var(--oa-surface);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.oa-jobs-page .oa-summary-card::after{content:"";position:absolute;width:82px;height:82px;top:-38px;right:-28px;border-radius:50%;background:var(--oa-accent-soft);opacity:.7}
+.oa-jobs-page .oa-summary-card:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md);transform:translateY(-1px)}
+.oa-jobs-page .oa-summary-card span,.oa-jobs-page .oa-summary-card strong,.oa-jobs-page .oa-summary-card small{position:relative;z-index:1;display:block}
+.oa-jobs-page .oa-summary-card span{color:var(--oa-text-3);font-size:.72rem;font-weight:700}
+.oa-jobs-page .oa-summary-card strong{margin-top:.2rem;color:var(--oa-text-1);font-size:clamp(1.45rem,2.1vw,2rem);font-weight:800;font-variant-numeric:tabular-nums}
+.oa-jobs-page .oa-summary-card small{margin-top:.2rem;color:var(--oa-text-3);font-size:.7rem}
+.oa-jobs-page .oa-panel{overflow:hidden;border-color:var(--oa-border);border-radius:var(--oa-radius-lg);box-shadow:var(--oa-shadow-sm);transition:border-color .15s ease,box-shadow .15s ease}
+.oa-jobs-page .oa-panel:hover{border-color:var(--oa-accent-border);box-shadow:var(--oa-shadow-md)}
+.oa-jobs-page .oa-panel-header{min-width:0;padding:.9rem 1rem;border-bottom:1px solid var(--oa-border)}
+.oa-jobs-page .oa-panel-kicker{color:var(--oa-accent);font-size:.66rem;font-weight:800;letter-spacing:.08em}
+.oa-jobs-page .oa-panel-header h2{margin-top:.15rem;color:var(--oa-text-1);font-size:1rem;font-weight:750}
+.oa-jobs-page .oa-count-badge{flex:0 0 auto;padding:.25rem .55rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums}
+.oa-jobs-page .oa-table-wrap{overflow:auto}
+.oa-jobs-page .oa-jobs-table{min-width:1120px;font-size:.77rem}
+.oa-jobs-page .oa-jobs-table thead th{padding:.7rem .75rem;background:var(--oa-surface-2);color:var(--oa-text-3);border-bottom:1px solid var(--oa-border-strong);font-size:.68rem;font-weight:750;white-space:nowrap}
+.oa-jobs-page .oa-jobs-table tbody td{padding:.72rem .75rem;border-bottom:1px solid var(--oa-border);color:var(--oa-text-2);vertical-align:middle;white-space:nowrap}
+.oa-jobs-page .oa-jobs-table tbody tr{transition:background-color .12s ease}
+.oa-jobs-page .oa-jobs-table tbody tr:hover{background:var(--oa-surface-2)}
+.oa-jobs-page .oa-jobs-table tbody tr:last-child td{border-bottom:0}
+.oa-jobs-page .oa-jobs-table td:first-child{min-width:130px}
+.oa-jobs-page .oa-jobs-table td:nth-child(2){min-width:180px}
+.oa-jobs-page .oa-jobs-table td:nth-child(6){font-family:var(--oa-font-mono);font-variant-numeric:tabular-nums}
+.oa-jobs-page .oa-jobs-table td strong{color:var(--oa-text-1);font-weight:700}
+.oa-jobs-page .oa-jobs-table td small{display:block;margin-top:.12rem;color:var(--oa-text-3);font-size:.66rem}
+.oa-jobs-page .oa-date{font-family:var(--oa-font-mono);font-size:.72rem}
+.oa-jobs-page .oa-score{font-family:var(--oa-font-mono);font-variant-numeric:tabular-nums}
+.oa-jobs-page .oa-status-badge{display:inline-flex;align-items:center;min-height:24px;padding:.2rem .5rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.66rem;font-weight:750}
+.oa-jobs-page .oa-status-succeeded{border-color:rgba(22,163,74,.28);background:var(--oa-success-soft);color:var(--oa-success)}
+.oa-jobs-page .oa-status-failed,.oa-jobs-page .oa-status-cancelled{border-color:rgba(220,38,38,.28);background:var(--oa-danger-soft);color:var(--oa-danger)}
+.oa-jobs-page .oa-status-running,.oa-jobs-page .oa-status-pending{border-color:rgba(2,132,199,.28);background:var(--oa-info-soft);color:var(--oa-info)}
+.oa-jobs-page .oa-issue-count{color:var(--oa-danger);font-family:var(--oa-font-mono);font-weight:800;font-variant-numeric:tabular-nums}
+.oa-jobs-page .oa-jobs-table .btn{font-size:.68rem;font-weight:700;white-space:nowrap}
+.oa-jobs-page .oa-empty-state{min-height:220px}
+@media(max-width:1000px){.oa-jobs-page .oa-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oa-jobs-page .oa-jobs-table{min-width:1040px}}
+@media(max-width:720px){.oa-jobs-page .oa-summary-grid{grid-template-columns:1fr}.oa-jobs-page .oa-summary-card{padding:.85rem .9rem}.oa-jobs-page .oa-panel-header{padding:.8rem}.oa-jobs-page .oa-jobs-table{min-width:980px}}
+@media(max-width:560px){.oa-jobs-page .oa-jobs-table{min-width:900px}.oa-jobs-page .oa-jobs-table td:first-child{min-width:120px}.oa-jobs-page .oa-jobs-table td:nth-child(2){min-width:160px}}
+
