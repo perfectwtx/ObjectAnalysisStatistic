@@ -803,3 +803,62 @@
         padding:15px;
     }
 }
+
+.app-shell .topbar::before{
+    content:"ANALYSIS WORKSPACE";
+    margin-right:auto;
+    color:var(--oa-text-3);
+    font-size:.64rem;
+    font-weight:800;
+    letter-spacing:.12em;
+}
+.app-shell .topbar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+.app-shell .topbar .topbar-actions{
+    margin-left:auto;
+}
+.app-shell .empty-state{
+    position:relative;
+    overflow:hidden;
+}
+.app-shell .empty-state::before{
+    content:"";
+    position:absolute;
+    width:220px;
+    height:220px;
+    top:-110px;
+    right:-60px;
+    border-radius:50%;
+    background:var(--oa-accent-soft);
+    opacity:.6;
+}
+.app-shell .empty-state .empty-icon{
+    position:relative;
+    display:grid;
+    place-items:center;
+    width:56px;
+    height:56px;
+    margin-bottom:12px;
+    border:1px solid var(--oa-accent-border);
+    border-radius:14px;
+    background:var(--oa-accent-soft);
+}
+.app-shell .empty-state h2{
+    position:relative;
+    margin-bottom:6px;
+    font-size:1.05rem;
+    font-weight:750;
+}
+.app-shell .empty-state p{
+    position:relative;
+    max-width:520px;
+    line-height:1.6;
+}
+@media (max-width:700px){
+    .app-shell .topbar::before{
+        display:none;
+    }
+}
