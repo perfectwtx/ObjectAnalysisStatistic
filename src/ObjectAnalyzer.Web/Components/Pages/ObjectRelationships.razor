@@ -20,10 +20,10 @@
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂未发现嵌套对象关系</strong><span>最近一次分析可能只包含扁平字段，或没有可识别的对象/集合结构。</span></div> }
     else
     {
-        <div class="oa-object-kpis">
-            <div class="oa-object-kpi"><span>关系数量</span><strong>@_relationships.Count</strong><small>发现的嵌套关系总数</small></div>
-            <div class="oa-object-kpi"><span>对象关系</span><strong>@_relationships.Count(x => x.Kind == "Object")</strong><small>嵌套对象节点</small></div>
-            <div class="oa-object-kpi"><span>集合关系</span><strong>@_relationships.Count(x => x.Kind == "Collection")</strong><small>对象集合节点</small></div>
+        <div class="oa-kpi-grid is-3">
+            <div class="oa-kpi-card"><span>关系数量</span><strong>@_relationships.Count</strong><small>发现的嵌套关系总数</small></div>
+            <div class="oa-kpi-card"><span>对象关系</span><strong>@_relationships.Count(x => x.Kind == "Object")</strong><small>嵌套对象节点</small></div>
+            <div class="oa-kpi-card"><span>集合关系</span><strong>@_relationships.Count(x => x.Kind == "Collection")</strong><small>对象集合节点</small></div>
         </div>
         <div class="oa-panel">
             <div class="oa-panel-header"><div><div class="oa-panel-kicker">NESTED RELATIONSHIPS</div><h2>嵌套关系</h2></div><span class="oa-count-badge">@_relationships.Count 个</span></div>
