@@ -5362,9 +5362,9 @@ a, .btn-link {
 .oa-jobs-page .oa-date{font-family:var(--oa-font-mono);font-size:.72rem}
 .oa-jobs-page .oa-score{font-family:var(--oa-font-mono);font-variant-numeric:tabular-nums}
 .oa-jobs-page .oa-status-badge{display:inline-flex;align-items:center;min-height:24px;padding:.2rem .5rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.66rem;font-weight:750}
-.oa-jobs-page .oa-status-succeeded{border-color:rgba(22,163,74,.28);background:var(--oa-success-soft);color:var(--oa-success)}
-.oa-jobs-page .oa-status-failed,.oa-jobs-page .oa-status-cancelled{border-color:rgba(220,38,38,.28);background:var(--oa-danger-soft);color:var(--oa-danger)}
-.oa-jobs-page .oa-status-running,.oa-jobs-page .oa-status-pending{border-color:rgba(2,132,199,.28);background:var(--oa-info-soft);color:var(--oa-info)}
+.oa-jobs-page .oa-status-succeeded{border-color:color-mix(in srgb, var(--oa-success) 28%, transparent);background:var(--oa-success-soft);color:var(--oa-success)}
+.oa-jobs-page .oa-status-failed,.oa-jobs-page .oa-status-cancelled{border-color:color-mix(in srgb, var(--oa-danger) 28%, transparent);background:var(--oa-danger-soft);color:var(--oa-danger)}
+.oa-jobs-page .oa-status-running,.oa-jobs-page .oa-status-pending{border-color:color-mix(in srgb, var(--oa-info) 28%, transparent);background:var(--oa-info-soft);color:var(--oa-info)}
 .oa-jobs-page .oa-issue-count{color:var(--oa-danger);font-family:var(--oa-font-mono);font-weight:800;font-variant-numeric:tabular-nums}
 .oa-jobs-page .oa-jobs-table .btn{font-size:.68rem;font-weight:700;white-space:nowrap}
 .oa-jobs-page .oa-empty-state{min-height:220px}
