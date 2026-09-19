@@ -32,23 +32,23 @@
     }
     else
     {
-        <div class="oa-summary-grid mb-4">
-            <div class="oa-summary-card">
+        <div class="oa-kpi-grid is-4 mb-4">
+            <div class="oa-kpi-card">
                 <span>历史作业</span>
                 <strong>@_jobs.Count</strong>
                 <small>最近 100 次记录</small>
             </div>
-            <div class="oa-summary-card">
+            <div class="oa-kpi-card">
                 <span>已完成</span>
                 <strong>@_jobs.Count(x => x.Status == AnalysisJobStatus.Succeeded)</strong>
                 <small>成功分析作业</small>
             </div>
-            <div class="oa-summary-card">
+            <div class="oa-kpi-card">
                 <span>质量问题</span>
                 <strong>@_jobs.Sum(x => x.IssueCount)</strong>
                 <small>累计标准化问题</small>
             </div>
-            <div class="oa-summary-card">
+            <div class="oa-kpi-card">
                 <span>最近质量分</span>
                 <strong>@(_jobs.FirstOrDefault()?.QualityScore?.ToString("F1") ?? "-")</strong>
                 <small>最新一条分析结果</small>
