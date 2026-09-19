@@ -11,13 +11,12 @@
             <h1>质量告警规则</h1>
             <p>配置质量分、完整性、质量回归、严重问题和 Schema 变更告警。</p>
         </div>
-        <button class="btn btn-primary" @onclick="CreateRuleAsync">新增规则</button>
+        <button class="btn btn-primary oa-header-action" @onclick="CreateRuleAsync">新增规则</button>
     </div>
 
     @if (_loading)
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body oa-analysis-empty">
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-content">
                 <div class="oa-empty-icon">◌</div>
                 <strong>正在加载告警规则</strong>
                 <span>正在读取当前质量告警配置，请稍候。</span>
@@ -26,8 +25,7 @@
     }
     else if (_rules.Count == 0)
     {
-        <div class="card oa-analysis-card">
-            <div class="card-body oa-analysis-empty">
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-content">
                 <div class="oa-empty-icon">◌</div>
                 <strong>暂无告警规则</strong>
                 <span>点击右上角“新增规则”创建第一条质量告警规则。</span>
@@ -36,11 +34,15 @@
     }
     else
     {
+        <div class="oa-kpi-grid is-3 oa-alert-kpis">
+            <div class="oa-kpi-card is-info"><span>规则总数</span><strong>@_rules.Count</strong><small>当前已配置告警规则</small></div>
+            <div class="oa-kpi-card is-success"><span>已启用</span><strong>@_rules.Count(x => x.Enabled)</strong><small>正在参与质量监控</small></div>
+            <div class="oa-kpi-card"><span>Webhook</span><strong>@_rules.Count(x => !string.IsNullOrWhiteSpace(x.WebhookUrl))</strong><small>配置了通知出口</small></div>
+        </div>
         <div class="oa-rule-list">
             @foreach (var rule in _rules)
             {
-                <div class="card oa-rule-card">
-                    <div class="card-body">
+                <div class="oa-panel oa-rule-card"><div class="oa-panel-body">
                         <div class="oa-rule-head">
                             <div class="min-w-0">
                                 <div class="oa-rule-title-row">
@@ -51,7 +53,7 @@
                                 </div>
                                 <div class="oa-rule-subtitle">质量监控触发条件</div>
                             </div>
-                            <div class="d-flex gap-2 flex-shrink-0">
+                            <div class="oa-rule-actions">
                                 <button class="btn btn-sm btn-outline-primary" @onclick="() => EditAsync(rule)">编辑</button>
                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(rule.Id)">删除</button>
                             </div>
@@ -84,7 +86,7 @@
                             }
                             @if (!HasConditions(rule))
                             {
-                                <span class="text-muted small">未配置触发条件</span>
+                                <span class="oa-rule-empty">未配置触发条件</span>
                             }
                         </div>
 
@@ -103,50 +105,50 @@
 
     @if (_editing is not null)
     {
-        <div class="card oa-editor-card">
-            <div class="card-header">
+        <div class="oa-panel oa-editor-card">
+            <div class="oa-panel-header">
                 <div>
                     <div class="oa-eyebrow">Rule Editor</div>
                     <h2>@(_editing.Id == Guid.Empty ? "新增规则" : "编辑规则")</h2>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">取消</button>
             </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-lg-6">
+            <div class="oa-panel-body">
+                <div class="oa-rule-editor-grid">
+                    <div>
                         <label class="form-label">规则名称</label>
                         <input class="form-control" @bind="_editing.Name" />
                     </div>
-                    <div class="col-lg-3 d-flex align-items-end">
+                    <div class="oa-rule-editor-field is-end">
                         <label class="oa-switch-field">
                             <input type="checkbox" @bind="_editing.Enabled" />
                             <span>启用规则</span>
                         </label>
                     </div>
-                    <div class="col-lg-3">
+                    <div>
                         <label class="form-label">质量分低于</label>
                         <InputNumber class="form-control" @bind-Value="_editing.QualityScoreBelow" />
                     </div>
-                    <div class="col-lg-3">
+                    <div>
                         <label class="form-label">质量回归达到</label>
                         <InputNumber class="form-control" @bind-Value="_editing.QualityRegressionBelow" />
                         <div class="form-text">例如 5 表示较上一次下降 5 分或以上。</div>
                     </div>
-                    <div class="col-lg-3">
+                    <div>
                         <label class="form-label">完整性低于</label>
                         <InputNumber class="form-control" @bind-Value="_editing.CompletenessBelow" />
                     </div>
-                    <div class="col-lg-3">
+                    <div>
                         <label class="form-label">分布漂移高于</label>
                         <InputNumber class="form-control" @bind-Value="_editing.DistributionDriftAbove" />
                     </div>
-                    <div class="col-lg-3 d-flex align-items-end">
+                    <div class="oa-rule-editor-field is-end">
                         <label class="oa-check-field"><input type="checkbox" @bind="_editing.CriticalIssue" /><span>严重问题</span></label>
                     </div>
-                    <div class="col-lg-3 d-flex align-items-end">
+                    <div class="oa-rule-editor-field is-end">
                         <label class="oa-check-field"><input type="checkbox" @bind="_editing.BreakingSchemaChange" /><span>Breaking Schema</span></label>
                     </div>
-                    <div class="col-12">
+                    <div class="oa-rule-editor-wide">
                         <label class="form-label">Webhook 地址</label>
                         <input class="form-control" @bind="_editing.WebhookUrl" placeholder="https://..." />
                     </div>
