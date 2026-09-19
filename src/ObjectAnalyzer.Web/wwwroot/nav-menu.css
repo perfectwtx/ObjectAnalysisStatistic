@@ -151,8 +151,6 @@
 .oa-sidebar__mobile-close,
 .oa-sidebar__mobile-backdrop{display:none}
 
-body:has(.app-shell) .oa-global-sidebar{display:none}
-body:has(.app-shell) .oa-global-shell{display:block}
 body:has(.app-shell) .oa-global-main{background:transparent}
 body:has(.app-shell) .oa-global-content{padding:0;max-width:none}
 
@@ -210,7 +208,6 @@ body:has(.app-shell) .oa-global-content{padding:0;max-width:none}
         backdrop-filter:blur(2px);
     }
     .oa-global-content{padding:22px 16px 36px}
-    body:has(.app-shell) .oa-sidebar__mobile-trigger{display:none}
 }
 @media (prefers-reduced-motion:reduce){
     .oa-sidebar__link,.oa-sidebar{transition:none}
