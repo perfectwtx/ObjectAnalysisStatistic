@@ -20,11 +20,11 @@
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂无字段相关性结果</strong><span>最近一次分析没有生成字段关系数据，请在分析配置中启用字段关系分析后重新执行。</span></div> }
     else
     {
-        <div class="oa-correlation-kpis">
-            <div class="oa-correlation-kpi"><span>参与字段</span><strong>@_matrix.Fields.Count</strong><small>纳入相关性计算的字段</small></div>
-            <div class="oa-correlation-kpi"><span>样本数</span><strong>@_matrix.Samples</strong><small>本次相关性分析样本</small></div>
-            <div class="oa-correlation-kpi"><span>强相关关系</span><strong>@_matrix.StrongPairs.Count</strong><small>达到当前强相关阈值</small></div>
-            <div class="oa-correlation-kpi"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong><small>最近一次成功分析</small></div>
+        <div class="oa-kpi-grid is-4">
+            <div class="oa-kpi-card"><span>参与字段</span><strong>@_matrix.Fields.Count</strong><small>纳入相关性计算的字段</small></div>
+            <div class="oa-kpi-card"><span>样本数</span><strong>@_matrix.Samples</strong><small>本次相关性分析样本</small></div>
+            <div class="oa-kpi-card"><span>强相关关系</span><strong>@_matrix.StrongPairs.Count</strong><small>达到当前强相关阈值</small></div>
+            <div class="oa-kpi-card"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong><small>最近一次成功分析</small></div>
         </div>
 
         <div class="oa-panel mb-4">
