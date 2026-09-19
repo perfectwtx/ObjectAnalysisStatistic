@@ -186,9 +186,9 @@
     private static string DeltaClass(int value) => value > 0 ? "text-danger" : value < 0 ? "text-success" : "";
     private static string StatusClass(QualityRegressionStatus status) => status switch
     {
-        QualityRegressionStatus.Severe => "bg-danger", QualityRegressionStatus.Regressed => "bg-warning text-dark",
-        QualityRegressionStatus.Improved => "bg-success", QualityRegressionStatus.Added => "bg-info text-dark",
-        QualityRegressionStatus.Removed => "bg-secondary", _ => "bg-secondary"
+        QualityRegressionStatus.Severe => "is-danger", QualityRegressionStatus.Regressed => "is-warning",
+        QualityRegressionStatus.Improved => "is-success", QualityRegressionStatus.Added => "is-info",
+        QualityRegressionStatus.Removed => "is-neutral", _ => "is-neutral"
     };
     private static string StatusText(QualityRegressionStatus status) => status switch
     {
