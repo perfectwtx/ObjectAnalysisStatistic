@@ -21,7 +21,7 @@
     }
     else if (_jobs.Count == 0)
     {
-        <div class="card oa-empty-state">
+        <div class="oa-empty-state">
             <strong>暂无分析任务</strong>
             <span>完成一次成功的分析后，这里会汇总字段级质量问题。</span>
         </div>
@@ -29,10 +29,10 @@
     else
     {
         <div class="oa-kpi-grid is-4 oa-issue-kpis">
-            <div class="col-12 col-sm-6 col-xl-3"><div class="oa-kpi-card"><div class="card-body"><div class="oa-kpi-label">当前问题项</div><div class="oa-kpi-value">@_selectedIssues.Count</div><div class="oa-kpi-meta">标准化质量问题</div></div></div></div>
-            <div class="col-12 col-sm-6 col-xl-3"><div class="oa-kpi-card"><div class="card-body"><div class="oa-kpi-label">问题字段</div><div class="oa-kpi-value">@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">涉及字段数量</div></div></div></div>
-            <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-kpi-card h-100"><div class="card-body"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@_selectedIssues.Sum(x => x.Count)</div><div class="oa-kpi-meta">当前作业累计</div></div></div></div>
-            <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-kpi-card h-100"><div class="card-body"><div class="oa-kpi-label">质量分</div><div class="oa-kpi-value">@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</div><div class="oa-kpi-meta">当前分析结果</div></div></div></div>
+            <div class="oa-kpi-card"><div class="oa-kpi-label">当前问题项</div><div class="oa-kpi-value">@_selectedIssues.Count</div><div class="oa-kpi-meta">标准化质量问题</div></div>
+            <div class="oa-kpi-card"><div class="oa-kpi-label">问题字段</div><div class="oa-kpi-value">@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">涉及字段数量</div></div>
+            <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@_selectedIssues.Sum(x => x.Count)</div><div class="oa-kpi-meta">当前作业累计</div></div>
+            <div class="oa-kpi-card is-info"><div class="oa-kpi-label">质量分</div><div class="oa-kpi-value">@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</div><div class="oa-kpi-meta">当前分析结果</div></div>
         </div>
 
         <div class="card mb-4 oa-issue-selector-card">
@@ -43,7 +43,7 @@
                         <h2 class="h5 mb-1">问题明细</h2>
                         <p class="text-muted mb-0">选择一次分析任务，查看该任务产生的标准化质量问题。</p>
                     </div>
-                    <div class="col-lg-5">
+                    <div>
                         <label class="form-label">分析任务</label>
                         <select class="form-select" @onchange="OnJobChanged">
                             @foreach (var job in _jobs)
@@ -56,9 +56,9 @@
             </div>
         </div>
 
-        <div class="card oa-issue-table-card oa-panel shadow-none">
-            <div class="card-header d-flex justify-content-between align-items-center bg-transparent border-0 px-0 pt-0">
-                <span>质量问题列表</span>
+        <div class="oa-panel oa-issue-table-card">
+            <div class="oa-panel-header">
+                <div><span class="oa-panel-kicker">Issue Inventory</span><h2>质量问题列表</h2></div>
                 <span class="oa-count-pill">@_selectedIssues.Count</span>
             </div>
             @if (_selectedIssues.Count == 0)
@@ -70,7 +70,7 @@
             }
             else
             {
-                <div class="table-responsive oa-data-table oa-issue-table-wrap">
+                <div class="oa-table-wrap oa-data-table oa-issue-table-wrap">
                     <table class="table table-hover align-middle mb-0">
                         <thead><tr><th>字段</th><th>检查类型</th><th>次数</th><th>问题说明</th></tr></thead>
                         <tbody>
