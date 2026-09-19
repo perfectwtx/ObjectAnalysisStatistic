@@ -31,7 +31,7 @@
             <div class="oa-table-wrap oa-object-table-wrap">
                 <table class="table table-hover align-middle mb-0 oa-analysis-table">
                     <thead><tr><th>路径</th><th>类型</th><th>出现次数</th><th>目标字段数</th><th>目标字段</th></tr></thead>
-                    <tbody>@foreach (var relationship in _relationships){<tr><td class="oa-object-path"><code>@relationship.Path</code></td><td><span class="badge @(relationship.Kind == "Collection" ? "text-bg-info" : "text-bg-primary")">@(relationship.Kind == "Collection" ? "对象集合" : "对象")</span></td><td>@relationship.OccurrenceCount.ToString("N0")</td><td>@relationship.TargetFieldCount</td><td class="oa-object-targets">@(relationship.TargetFields.Count == 0 ? "-" : string.Join(", ", relationship.TargetFields))</td></tr>}</tbody>
+                    <tbody>@foreach (var relationship in _relationships){<tr><td class="oa-object-path"><code>@relationship.Path</code></td><td><span class="oa-badge @(relationship.Kind == "Collection" ? "is-info" : "is-accent")">@(relationship.Kind == "Collection" ? "对象集合" : "对象")</span></td><td>@relationship.OccurrenceCount.ToString("N0")</td><td>@relationship.TargetFieldCount</td><td class="oa-object-targets">@(relationship.TargetFields.Count == 0 ? "-" : string.Join(", ", relationship.TargetFields))</td></tr>}</tbody>
                 </table>
             </div>
         </div>
