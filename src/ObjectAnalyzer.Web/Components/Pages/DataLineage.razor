@@ -14,7 +14,7 @@
             <h1>数据血缘</h1>
             <p>查看最近一次成功分析生成的对象、集合与字段层级血缘。</p>
         </div>
-        <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+        <a class="btn btn-outline-secondary oa-header-action" href="/jobs">作业中心</a>
     </div>
 
     @if (_loading)
@@ -53,7 +53,7 @@
                     @foreach (var node in _lineage.Nodes.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase))
                     {
                         <tr>
-                            <td class="oa-lineage-path"><span class="oa-lineage-indent" style="width:@(Math.Max(0, node.Depth - 1) * 20)px"></span>@if (node.Depth > 1) { <span class="text-muted">└─ </span> }<code>@node.Path</code></td>
+                            <td class="oa-lineage-path"><span class="oa-lineage-indent" style="width:@(Math.Max(0, node.Depth - 1) * 20)px"></span>@if (node.Depth > 1) { <span class="oa-lineage-branch">└─</span> }<code>@node.Path</code></td>
                             <td><span class="oa-badge @NodeBadge(node.Kind)">@NodeLabel(node.Kind)</span></td>
                             <td>@node.Depth</td><td>@node.OccurrenceCount.ToString("N0")</td>
                             <td class="oa-lineage-targets">@(node.TargetFields.Count == 0 ? "-" : string.Join(", ", node.TargetFields))</td>
