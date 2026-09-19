@@ -91,3 +91,12 @@
         <div class="oa-sidebar__mobile-backdrop" @onclick="CloseMobileMenu"></div>
     }
 </aside>
+
+
+@code {
+    private bool _mobileMenuOpen;
+
+    private void ToggleMobileMenu() => _mobileMenuOpen = !_mobileMenuOpen;
+
+    private void CloseMobileMenu() => _mobileMenuOpen = false;
+}
