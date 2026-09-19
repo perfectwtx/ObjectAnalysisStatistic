@@ -1212,3 +1212,215 @@
         justify-content:flex-start;
     }
 }
+
+/* Field intelligence table */
+.app-shell .toolbar{
+    display:grid;
+    grid-template-columns:minmax(220px,1fr) 170px auto;
+    align-items:center;
+    gap:.55rem;
+    margin:0 0 .7rem;
+    padding:.65rem;
+    border:1px solid var(--oa-border);
+    border-radius:10px;
+    background:var(--oa-surface-2);
+}
+.app-shell .toolbar input,
+.app-shell .toolbar select,
+.app-shell .toolbar button{
+    min-height:36px;
+}
+.app-shell .field-table{
+    overflow:hidden;
+    border:1px solid var(--oa-border);
+    border-radius:12px;
+    background:var(--oa-surface);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .field-table .table-scroll,
+.app-shell .field-table{
+    overflow-x:auto;
+}
+.app-shell .field-table table{
+    width:100%;
+    min-width:1120px;
+    border-collapse:separate;
+    border-spacing:0;
+}
+.app-shell .field-table th{
+    position:sticky;
+    top:0;
+    z-index:1;
+    padding:.7rem .75rem;
+    border-bottom:1px solid var(--oa-border-strong);
+    background:var(--oa-surface-2);
+    color:var(--oa-text-3);
+    font-size:.62rem;
+    font-weight:800;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    white-space:nowrap;
+}
+.app-shell .field-table td{
+    padding:.7rem .75rem;
+    border-bottom:1px solid var(--oa-border);
+    color:var(--oa-text-2);
+    font-size:.72rem;
+    vertical-align:top;
+}
+.app-shell .field-table tbody tr:last-child td{
+    border-bottom:0;
+}
+.app-shell .field-table tbody tr:hover td{
+    background:var(--oa-surface-2);
+}
+.app-shell .field-table .field-name{
+    min-width:180px;
+    color:var(--oa-text-1);
+    font-weight:700;
+}
+.app-shell .field-table .field-name code{
+    display:inline-block;
+    max-width:260px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.app-shell .field-table .semantic-badge,
+.app-shell .field-table .type-badge,
+.app-shell .field-table .rule-badge{
+    display:inline-flex;
+    align-items:center;
+    margin:.1rem .2rem .1rem 0;
+    padding:.2rem .45rem;
+    border:1px solid var(--oa-border);
+    border-radius:5px;
+    background:var(--oa-surface-2);
+    color:var(--oa-text-2);
+    font-size:.62rem;
+    font-weight:700;
+    white-space:nowrap;
+}
+.app-shell .field-table .semantic-badge{
+    border-color:var(--oa-accent-border);
+    background:var(--oa-accent-soft);
+    color:var(--oa-accent-strong);
+}
+.app-shell .field-table .rule-badge{
+    border-color:color-mix(in srgb,var(--oa-success) 28%,transparent);
+    background:var(--oa-success-soft);
+    color:var(--oa-success);
+}
+.app-shell .field-table .coverage-bar{
+    position:relative;
+    min-width:145px;
+    height:8px;
+    overflow:hidden;
+    border-radius:99px;
+    background:var(--oa-border);
+}
+.app-shell .field-table .coverage-fill,
+.app-shell .field-table .coverage-fill-null{
+    position:absolute;
+    top:0;
+    bottom:0;
+}
+.app-shell .field-table .coverage-fill{
+    left:0;
+    background:var(--oa-success);
+}
+.app-shell .field-table .coverage-fill-null{
+    background:var(--oa-warning);
+}
+.app-shell .field-table .coverage-bar > span{
+    display:block;
+    margin-top:12px;
+    color:var(--oa-text-2);
+    font-family:var(--oa-font-mono);
+    font-size:.62rem;
+    white-space:nowrap;
+}
+.app-shell .field-table .coverage-breakdown{
+    display:flex;
+    flex-direction:column;
+    gap:.12rem;
+    margin-top:1.15rem;
+    color:var(--oa-text-3);
+    font-size:.58rem;
+}
+.app-shell .field-table .coverage-actual{color:var(--oa-success)}
+.app-shell .field-table .coverage-null{color:var(--oa-warning)}
+.app-shell .field-table .coverage-missing{color:var(--oa-danger)}
+.app-shell .field-table .datetime-range{
+    min-width:130px;
+}
+.app-shell .field-table .datetime-min,
+.app-shell .field-table .datetime-max{
+    color:var(--oa-text-1);
+    font-family:var(--oa-font-mono);
+    font-size:.61rem;
+}
+.app-shell .field-table .datetime-sep{
+    color:var(--oa-text-3);
+    font-size:.58rem;
+}
+.app-shell .field-table .datetime-spark{
+    margin-top:.35rem;
+}
+.app-shell .field-table .outlier-clean{
+    display:inline-flex;
+    padding:.2rem .45rem;
+    border-radius:5px;
+    background:var(--oa-success-soft);
+    color:var(--oa-success);
+    font-size:.61rem;
+    font-weight:750;
+}
+.app-shell .field-table .outlier-badge{
+    display:inline-flex;
+    padding:.2rem .45rem;
+    border:1px solid color-mix(in srgb,var(--oa-warning) 30%,transparent);
+    border-radius:5px;
+    background:var(--oa-warning-soft);
+    color:var(--oa-warning);
+    font-size:.61rem;
+    font-weight:750;
+}
+.app-shell .field-table .outlier-bounds{
+    max-width:160px;
+    margin-top:.25rem;
+    color:var(--oa-text-3);
+    font-family:var(--oa-font-mono);
+    font-size:.56rem;
+}
+.app-shell .field-table .na{
+    color:var(--oa-text-3);
+}
+.app-shell .field-table .default-val{
+    display:inline-block;
+    max-width:130px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.app-shell .field-table .truncated-hint{
+    display:block;
+    margin-top:.25rem;
+    color:var(--oa-text-3);
+    font-size:.56rem;
+}
+.app-shell .field-table .enum-violations{
+    display:flex;
+    flex-direction:column;
+    gap:.18rem;
+    margin-top:.3rem;
+}
+.app-shell .field-table .violation{
+    color:var(--oa-danger);
+    font-size:.58rem;
+}
+@media (max-width:760px){
+    .app-shell .toolbar{
+        grid-template-columns:1fr;
+    }
+}
