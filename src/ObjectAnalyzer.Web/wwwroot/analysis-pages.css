@@ -1880,3 +1880,21 @@
 .oa-issues-page .oa-issue-table-card .oa-panel-header>div{min-width:0}
 .oa-issues-page .oa-issue-table-card .oa-panel-kicker{display:block;margin-bottom:.15rem}
 @media(max-width:720px){.oa-issues-page .oa-issue-selector-grid{grid-template-columns:1fr}}
+
+/* Quality baselines workspace refinement */
+.oa-baselines-page .oa-header-action{min-width:96px}
+.oa-baselines-page .oa-baseline-list-panel{overflow:hidden}
+.oa-baselines-page .oa-baseline-panel-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0 0 .85rem;border-bottom:1px solid var(--oa-border)}
+.oa-baselines-page .oa-baseline-panel-header h2{margin:0;font-size:.98rem;font-weight:780}
+.oa-baselines-page .oa-baseline-panel-header span{display:block;margin-top:.2rem;color:var(--oa-text-3);font-size:.7rem}
+.oa-baselines-page .oa-baseline-table{font-size:.75rem}
+.oa-baselines-page .oa-baseline-table th{font-size:.67rem;letter-spacing:.02em}
+.oa-baselines-page .oa-baseline-score{color:var(--oa-text-1);font-weight:700}
+.oa-baselines-page .oa-baseline-editor .oa-panel-header{align-items:flex-start}
+.oa-baselines-page .oa-baseline-editor .oa-panel-header h2{margin:0;font-size:1rem;font-weight:780}
+.oa-baselines-page .oa-baseline-editor .oa-panel-header span{display:block;margin-top:.2rem;color:var(--oa-text-3);font-size:.7rem}
+.oa-baselines-page .oa-baseline-editor-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.oa-baselines-page .oa-baseline-editor-grid>div:first-child{grid-column:span 2}
+.oa-baselines-page .oa-baseline-error{margin-top:1rem;padding:.75rem .85rem;border:1px solid color-mix(in srgb,var(--oa-danger) 30%,transparent);border-radius:9px;background:var(--oa-danger-soft);color:var(--oa-danger);font-size:.74rem;line-height:1.5}
+@media(max-width:900px){.oa-baselines-page .oa-baseline-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oa-baselines-page .oa-baseline-editor-grid>div:first-child{grid-column:1/-1}}
+@media(max-width:520px){.oa-baselines-page .oa-baseline-editor-grid{grid-template-columns:1fr}.oa-baselines-page .oa-baseline-editor-grid>div:first-child{grid-column:auto}}
