@@ -31,10 +31,10 @@
     }
     else
     {
-        <div class="oa-impact-kpis">
-            <div class="oa-impact-kpi"><span>最高影响级别</span><strong class="@GetLevelClass(_impact.HighestLevel)">@GetLevelText(_impact.HighestLevel)</strong><small>当前 Schema 影响范围</small></div>
-            <div class="oa-impact-kpi is-danger"><span>直接破坏性变更</span><strong>@_impact.BreakingChangeCount</strong><small>来自 Schema Diff 的直接影响</small></div>
-            <div class="oa-impact-kpi"><span>受影响节点</span><strong>@_impact.Nodes.Count</strong><small>沿数据血缘传播的节点</small></div>
+        <div class="oa-kpi-grid">
+            <div class="oa-kpi-card"><span>最高影响级别</span><strong class="@GetLevelClass(_impact.HighestLevel)">@GetLevelText(_impact.HighestLevel)</strong><small>当前 Schema 影响范围</small></div>
+            <div class="oa-kpi-card is-danger"><span>直接破坏性变更</span><strong>@_impact.BreakingChangeCount</strong><small>来自 Schema Diff 的直接影响</small></div>
+            <div class="oa-kpi-card"><span>受影响节点</span><strong>@_impact.Nodes.Count</strong><small>沿数据血缘传播的节点</small></div>
         </div>
 
         <div class="oa-panel mb-4">
