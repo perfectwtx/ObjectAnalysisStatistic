@@ -124,7 +124,7 @@
                                 <tr>
                                     <td class="text-nowrap">@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                     <td>@snapshot.SourceName</td>
-                                    <td><span class="badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
+                                    <td><span class="oa-badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
                                     <td>@snapshot.IssueCount</td>
                                     <td>@snapshot.TotalObjects</td>
                                     <td>@snapshot.Metrics.Completeness.ToString("F1")</td>
@@ -215,5 +215,5 @@
     private static string FormatScore(double score) => score.ToString("F1");
 
     private static string ScoreBadge(double score)
-        => score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
+        => score >= 90 ? "is-success" : score >= 70 ? "is-warning" : "is-danger";
 }
