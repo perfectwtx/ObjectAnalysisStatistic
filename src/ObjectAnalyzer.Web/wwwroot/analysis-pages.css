@@ -1920,3 +1920,18 @@
 .oa-responsibility-page .oa-feedback-danger{border:1px solid color-mix(in srgb,var(--oa-danger) 30%,transparent);background:var(--oa-danger-soft);color:var(--oa-danger)}
 @media(max-width:900px){.oa-responsibility-page .oa-remediation-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.oa-responsibility-page .oa-remediation-editor-grid{grid-template-columns:1fr}}
+
+/* Data lineage workspace refinement */
+.oa-data-lineage-page .oa-header-action{min-width:88px}
+.oa-data-lineage-page .oa-lineage-context{display:flex;align-items:center;gap:.7rem;padding:.7rem 1rem;border-top:1px solid var(--oa-border);border-bottom:1px solid var(--oa-border);background:var(--oa-surface-2)}
+.oa-data-lineage-page .oa-lineage-context span{color:var(--oa-text-3);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.oa-data-lineage-page .oa-lineage-context strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--oa-text-1);font-size:.75rem}
+.oa-data-lineage-page .oa-lineage-path{white-space:nowrap}
+.oa-data-lineage-page .oa-lineage-path code{color:var(--oa-text-1);font-size:.72rem}
+.oa-data-lineage-page .oa-lineage-indent{display:inline-block;vertical-align:middle}
+.oa-data-lineage-page .oa-lineage-branch{display:inline-block;margin-right:.3rem;color:var(--oa-text-3)}
+.oa-data-lineage-page .oa-lineage-targets{max-width:320px;color:var(--oa-text-2);font-size:.72rem}
+@media(max-width:720px){
+ .oa-data-lineage-page .oa-lineage-context{align-items:flex-start;flex-direction:column;gap:.25rem}
+ .oa-data-lineage-page .oa-lineage-targets{max-width:220px}
+}
