@@ -28,9 +28,9 @@
     }
     else
     {
-        <div class="row g-3 mb-4 oa-issue-kpis">
-            <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi"><div class="card-body"><div class="oa-kpi-label">当前问题项</div><div class="oa-kpi-value">@_selectedIssues.Count</div><div class="oa-kpi-meta">标准化质量问题</div></div></div></div>
-            <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">问题字段</div><div class="oa-kpi-value">@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">涉及字段数量</div></div></div></div>
+        <div class="oa-kpi-grid is-4 oa-issue-kpis">
+            <div class="col-12 col-sm-6 col-xl-3"><div class="oa-kpi-card"><div class="card-body"><div class="oa-kpi-label">当前问题项</div><div class="oa-kpi-value">@_selectedIssues.Count</div><div class="oa-kpi-meta">标准化质量问题</div></div></div></div>
+            <div class="col-12 col-sm-6 col-xl-3"><div class="oa-kpi-card"><div class="card-body"><div class="oa-kpi-label">问题字段</div><div class="oa-kpi-value">@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">涉及字段数量</div></div></div></div>
             <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@_selectedIssues.Sum(x => x.Count)</div><div class="oa-kpi-meta">当前作业累计</div></div></div></div>
             <div class="col-12 col-sm-6 col-xl-3"><div class="card oa-analysis-kpi h-100"><div class="card-body"><div class="oa-kpi-label">质量分</div><div class="oa-kpi-value">@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</div><div class="oa-kpi-meta">当前分析结果</div></div></div></div>
         </div>
