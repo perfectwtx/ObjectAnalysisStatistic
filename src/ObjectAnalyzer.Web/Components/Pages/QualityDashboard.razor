@@ -74,9 +74,9 @@
             <div class="card oa-analysis-card">
                 <div class="card-body">
                     <div class="oa-card-heading"><div><h2>质量门禁</h2><span>查看本次分析记录的门禁执行结果</span></div>
-                        @if (_gateResults.Count == 0) { <span class="badge bg-secondary">历史记录未保存门禁结果</span> }
-                        else if (_gateResults.Any(x => x.Triggered)) { <span class="badge bg-danger">未通过</span> }
-                        else { <span class="badge bg-success">全部通过</span> }
+                        @if (_gateResults.Count == 0) { <span class="oa-badge is-neutral">历史记录未保存门禁结果</span> }
+                        else if (_gateResults.Any(x => x.Triggered)) { <span class="oa-badge is-danger">未通过</span> }
+                        else { <span class="oa-badge is-success">全部通过</span> }
                     </div>
                     @if (_gateResults.Count == 0)
                     {
