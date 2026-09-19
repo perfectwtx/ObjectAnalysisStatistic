@@ -105,6 +105,10 @@
 .oa-score { font-variant-numeric: tabular-nums; }
 .oa-issue-count { display: inline-flex; min-width: 2rem; justify-content: center; padding: .2rem .45rem; border-radius: 999px; color: var(--oa-text-1); background: var(--oa-surface-3); font-weight: 700; font-variant-numeric: tabular-nums; }
 .oa-empty-state { padding: 4rem 1.5rem; text-align: center; border: 1px dashed var(--oa-border-strong); border-radius: var(--oa-radius-lg); background: var(--oa-surface-2); }
+.oa-loading-state { display:flex; align-items:center; justify-content:center; flex-direction:column; min-height:180px; }
+.oa-loading-state .oa-empty-icon { animation: oa-state-pulse 1.35s ease-in-out infinite; }
+@keyframes oa-state-pulse { 0%,100% { opacity:.45; transform:scale(.96); } 50% { opacity:1; transform:scale(1); } }
+
 .oa-empty-icon { width: 52px; height: 52px; margin: 0 auto 1rem; display: grid; place-items: center; border-radius: 50%; color: var(--oa-accent); background: var(--oa-accent-soft); font-size: 1.4rem; }
 .oa-empty-state h2 { margin-bottom: .45rem; }
 .oa-empty-state p { margin: 0; color: var(--oa-text-2); }
