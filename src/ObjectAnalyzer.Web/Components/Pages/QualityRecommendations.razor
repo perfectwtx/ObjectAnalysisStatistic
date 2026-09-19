@@ -36,8 +36,8 @@
     }
     else
     {
-        <div class="oa-recommendation-kpis" aria-label="质量建议概览">
-            <div class="oa-analysis-kpi"><span>待治理问题</span><strong>@_recommendations.Count</strong><small>需要关注的质量问题</small></div>
+        <div class="oa-kpi-grid is-3 oa-recommendation-kpis" aria-label="质量建议概览">
+            <div class="oa-kpi-card"><span>待治理问题</span><strong>@_recommendations.Count</strong><small>需要关注的质量问题</small></div>
             <div class="oa-analysis-kpi"><span>涉及字段</span><strong>@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong><small>存在质量风险的字段</small></div>
             <div class="oa-analysis-kpi"><span>违规次数</span><strong>@_recommendations.Sum(x => x.Count)</strong><small>所有问题累计影响次数</small></div>
         </div>
