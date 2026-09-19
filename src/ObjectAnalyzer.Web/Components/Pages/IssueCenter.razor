@@ -76,7 +76,7 @@
                         <tbody>
                         @foreach (var issue in _selectedIssues)
                         {
-                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="badge text-bg-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@issue.Message</td></tr>
+                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@issue.Message</td></tr>
                         }
                         </tbody>
                     </table>
