@@ -1868,3 +1868,15 @@
 @media(max-width:1000px){.oa-alert-page .oa-rule-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.oa-alert-page .oa-rule-head{align-items:flex-start}.oa-alert-page .oa-rule-actions{width:100%}.oa-alert-page .oa-rule-actions .btn{flex:1}.oa-alert-page .oa-rule-editor-grid{grid-template-columns:1fr}.oa-alert-page .oa-rule-editor-wide{grid-column:auto}}
 @media(max-width:520px){.oa-alert-page .oa-rule-actions{flex-direction:column}.oa-alert-page .oa-rule-actions .btn{width:100%}}
+
+/* Issue center workspace refinement */
+.oa-issues-page .oa-issue-selector-card{margin-bottom:1rem}
+.oa-issues-page .oa-issue-selector-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.9fr);align-items:end;gap:1rem}
+.oa-issues-page .oa-issue-selector-grid .form-label{display:block;margin-bottom:.4rem;color:var(--oa-text-2);font-size:.74rem;font-weight:700}
+.oa-issues-page .oa-issue-selector-grid .form-select{min-height:42px;border-color:var(--oa-border-strong);border-radius:10px}
+.oa-issues-page .oa-issue-selector-card h2{margin:0 0 .25rem;font-size:.98rem;font-weight:780}
+.oa-issues-page .oa-issue-selector-card p{margin:0;color:var(--oa-text-3);font-size:.72rem;line-height:1.5}
+.oa-issues-page .oa-issue-table-card .oa-panel-header{padding:.9rem 1.15rem}
+.oa-issues-page .oa-issue-table-card .oa-panel-header>div{min-width:0}
+.oa-issues-page .oa-issue-table-card .oa-panel-kicker{display:block;margin-bottom:.15rem}
+@media(max-width:720px){.oa-issues-page .oa-issue-selector-grid{grid-template-columns:1fr}}
