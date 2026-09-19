@@ -498,15 +498,6 @@ a, .btn-link {
     flex-shrink: 0;
 }
 
-.side-brand h1 {
-    font-size: 1.12rem;
-    font-weight: 750;
-    letter-spacing: -0.02em;
-    color: var(--oa-text-1);
-    margin: 0;
-    line-height: 1.2;
-}
-
 .brand-sub {
     margin: 0;
     font-size: 0.74rem;
