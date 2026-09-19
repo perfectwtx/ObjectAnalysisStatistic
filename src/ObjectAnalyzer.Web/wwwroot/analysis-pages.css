@@ -1898,3 +1898,12 @@
 .oa-baselines-page .oa-baseline-error{margin-top:1rem;padding:.75rem .85rem;border:1px solid color-mix(in srgb,var(--oa-danger) 30%,transparent);border-radius:9px;background:var(--oa-danger-soft);color:var(--oa-danger);font-size:.74rem;line-height:1.5}
 @media(max-width:900px){.oa-baselines-page .oa-baseline-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oa-baselines-page .oa-baseline-editor-grid>div:first-child{grid-column:1/-1}}
 @media(max-width:520px){.oa-baselines-page .oa-baseline-editor-grid{grid-template-columns:1fr}.oa-baselines-page .oa-baseline-editor-grid>div:first-child{grid-column:auto}}
+
+/* Jobs dashboard refinement */
+.oa-jobs-page .oa-kpi-grid{margin-bottom:1rem}
+.oa-jobs-page .oa-kpi-card{min-height:116px}
+.oa-jobs-page .oa-jobs-table td:first-child{white-space:nowrap}
+.oa-jobs-page .oa-jobs-table td small{display:block;margin-top:.15rem;color:var(--oa-text-3);font-size:.68rem}
+.oa-jobs-page .oa-jobs-table .oa-score{font-variant-numeric:tabular-nums}
+@media(max-width:720px){.oa-jobs-page .oa-kpi-grid.is-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.oa-jobs-page .oa-kpi-grid.is-4{grid-template-columns:1fr}}
