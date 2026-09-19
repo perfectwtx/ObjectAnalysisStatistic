@@ -30,7 +30,7 @@
     }
     else
     {
-        <div class="oa-kpi-grid">
+        <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card @( _diff.HasBreakingChanges ? "is-danger" : "is-success")"><span>破坏性变更</span><strong>@(_diff.HasBreakingChanges ? "是" : "否")</strong><small>需要重点检查下游契约</small></div>
             <div class="oa-kpi-card"><span>新增字段</span><strong>@_diff.AddedFields.Count</strong><small>基线中不存在</small></div>
             <div class="oa-kpi-card is-danger"><span>删除字段</span><strong>@_diff.RemovedFields.Count</strong><small>当前 Schema 中不存在</small></div>
