@@ -43,7 +43,7 @@
                 <div><div class="oa-panel-kicker">NODES</div><h2>血缘节点</h2></div>
                 <span class="oa-count-badge">@_lineage.Nodes.Count 节点</span>
             </div>
-            <div class="oa-panel-body oa-context-grid">
+            <div class="oa-panel-body oa-lineage-context">
                 <span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong>
             </div>
             <div class="oa-table-wrap oa-lineage-table-wrap">
@@ -54,7 +54,7 @@
                     {
                         <tr>
                             <td class="oa-lineage-path"><span class="oa-lineage-indent" style="width:@(Math.Max(0, node.Depth - 1) * 20)px"></span>@if (node.Depth > 1) { <span class="text-muted">└─ </span> }<code>@node.Path</code></td>
-                            <td><span class="badge @NodeBadge(node.Kind)">@NodeLabel(node.Kind)</span></td>
+                            <td><span class="oa-badge @NodeBadge(node.Kind)">@NodeLabel(node.Kind)</span></td>
                             <td>@node.Depth</td><td>@node.OccurrenceCount.ToString("N0")</td>
                             <td class="oa-lineage-targets">@(node.TargetFields.Count == 0 ? "-" : string.Join(", ", node.TargetFields))</td>
                         </tr>
@@ -80,7 +80,7 @@
                     <tbody>
                     @foreach (var edge in _lineage.Edges.OrderBy(x => x.ParentPath, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.ChildPath, StringComparer.OrdinalIgnoreCase))
                     {
-                        <tr><td><code>@edge.ParentPath</code></td><td><span class="badge bg-light text-dark border">@EdgeLabel(edge.Kind)</span></td><td><code>@edge.ChildPath</code></td></tr>
+                        <tr><td><code>@edge.ParentPath</code></td><td><span class="oa-badge is-neutral">@EdgeLabel(edge.Kind)</span></td><td><code>@edge.ChildPath</code></td></tr>
                     }
                     </tbody>
                 </table></div>
@@ -112,6 +112,6 @@
     }
 
     private static string NodeLabel(string kind) => kind switch { "Object" => "对象", "Collection" => "对象集合", "Field" => "字段", _ => kind };
-    private static string NodeBadge(string kind) => kind switch { "Collection" => "bg-info text-dark", "Field" => "bg-secondary", _ => "bg-primary" };
+    private static string NodeBadge(string kind) => kind switch { "Collection" => "is-info", "Field" => "is-neutral", _ => "is-accent" };
     private static string EdgeLabel(string kind) => kind switch { "Contains" => "包含对象", "ContainsCollection" => "包含集合", "ContainsField" => "包含字段", _ => kind };
 }
