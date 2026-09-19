@@ -93,7 +93,7 @@
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
                 @foreach (var change in _diff.ChangedFields)
                 {
-                    <tr><td><code>@change.Path</code></td><td><span class="badge @(change.Breaking ? "bg-danger" : "bg-secondary")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="text-muted">无详细变更</span>}else{<ul class="mb-0 ps-3 oa-change-list">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
+                    <tr><td><code>@change.Path</code></td><td><span class="oa-badge @(change.Breaking ? "is-danger" : "is-neutral")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="text-muted">无详细变更</span>}else{<ul class="mb-0 ps-3 oa-change-list">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
                 }
                 </tbody></table></div>
             </div>
