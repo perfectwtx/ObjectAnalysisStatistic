@@ -611,6 +611,13 @@
             }
 
             @* 工具栏 *@
+            <div class="field-table-context">
+                <div>
+                    <span class="field-table-kicker">FIELD DATASET</span>
+                    <span class="field-table-count">@State.GetPageFields().Count() visible fields</span>
+                </div>
+                <span class="field-table-hint">Search, sort and inspect field-level signals</span>
+            </div>
             <div class="toolbar">
                 <input type="text" placeholder="@Loc["SearchPlaceholder"]"
                        value="@State.SearchText"
