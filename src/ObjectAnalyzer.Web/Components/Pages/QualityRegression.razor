@@ -8,16 +8,16 @@
 
 <div class="oa-analysis-page oa-regression-page">
     <div class="oa-analysis-header">
-        <div>
+        <div class="oa-regression-title">
             <div class="oa-eyebrow">Quality Regression</div>
             <h1>质量回归</h1>
-            <p>自动比较最近两次成功分析，定位质量下降的字段和新增违规。</p>
+            <p>对比最近两次成功分析，把质量下降、字段退化和新增违规收敛到可执行的回归清单。</p>
         </div>
     </div>
 
     @if (_loading)
     {
-        <div class="oa-panel oa-empty-state">
+        <div class="oa-panel oa-empty-state oa-regression-state">
             <div class="oa-empty-icon">…</div>
             <strong>正在加载历史分析数据</strong>
             <span>正在准备最近两次成功分析的比较结果。</span>
@@ -25,15 +25,15 @@
     }
     else if (_jobs.Count < 2)
     {
-        <div class="oa-panel oa-empty-state">
+        <div class="oa-panel oa-empty-state oa-regression-state">
             <div class="oa-empty-icon">2</div>
             <strong>暂时无法进行回归检测</strong>
-            <span>至少需要两次成功分析，才能进行质量回归检测。</span>
+            <span>至少需要两次成功分析，才能建立质量变化基线。</span>
         </div>
     }
     else if (_report is null)
     {
-        <div class="oa-panel oa-empty-state">
+        <div class="oa-panel oa-empty-state oa-regression-state">
             <div class="oa-empty-icon">!</div>
             <strong>没有可比较的结果快照</strong>
             <span>最近两次分析缺少可解析的结果数据。</span>
@@ -41,102 +41,155 @@
     }
     else
     {
-        <section class="oa-kpi-grid is-4">
-            <div class="oa-kpi-card">
+        <section class="oa-context-grid oa-regression-context">
+            <div>
+                <span>比较基线</span>
+                <strong>@_jobs[1].SourceName</strong>
+                <small>@_jobs[1].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+            </div>
+            <div>
+                <span>当前快照</span>
+                <strong>@_jobs[0].SourceName</strong>
+                <small>@_jobs[0].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+            </div>
+            <div>
+                <span>对象规模</span>
+                <strong>@_report.PreviousObjectCount.ToString("N0") → @_report.CurrentObjectCount.ToString("N0")</strong>
+                <small>基线 → 当前</small>
+            </div>
+            <div>
+                <span>问题规模</span>
+                <strong>@_jobs[1].IssueCount.ToString("N0") → @_jobs[0].IssueCount.ToString("N0")</strong>
+                <small>标准化问题项</small>
+            </div>
+        </section>
+
+        <section class="oa-kpi-grid is-4 oa-regression-kpis">
+            <div class="oa-kpi-card @(_report.ScoreDelta < 0 ? "is-danger" : _report.ScoreDelta > 0 ? "is-success" : "is-info")">
                 <span>质量分变化</span>
                 <strong class="@ScoreClass(_report.ScoreDelta)">@FormatDelta(_report.ScoreDelta)</strong>
                 <small>当前质量分相对基线</small>
             </div>
-            <div class="oa-kpi-card">
+            <div class="oa-kpi-card @(_report.IssueDelta > 0 ? "is-danger" : _report.IssueDelta < 0 ? "is-success" : "is-info")">
                 <span>问题数变化</span>
-                <strong class="@DeltaClass(-_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong>
+                <strong class="@DeltaClass(_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong>
                 <small>标准化问题项变化</small>
             </div>
-            <div class="oa-kpi-card">
+            <div class="oa-kpi-card @(_report.FieldRegressions.Count > 0 ? "is-warning" : "is-success")">
                 <span>回归字段</span>
                 <strong>@_report.FieldRegressions.Count(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)</strong>
                 <small>发生质量下降的字段</small>
             </div>
-            <div class="oa-kpi-card">
-                <span>新增/增加违规</span>
+            <div class="oa-kpi-card @(_report.ViolationRegressions.Count > 0 ? "is-danger" : "is-success")">
+                <span>新增 / 增加违规</span>
                 <strong>@_report.ViolationRegressions.Count</strong>
                 <small>需要进一步关注的违规</small>
             </div>
         </section>
 
-        <section class="oa-panel mb-4">
+        <section class="oa-panel oa-regression-summary">
             <div class="oa-panel-header">
-                <div><div class="oa-panel-kicker">COMPARISON</div><h2>回归结论</h2></div>
-                <span class="badge @StatusClass(_report.Status)">@StatusText(_report.Status)</span>
+                <div>
+                    <div class="oa-panel-kicker">REGRESSION SIGNAL</div>
+                    <h2>回归结论</h2>
+                    <p>当前快照与最近一次成功分析的差异摘要。</p>
+                </div>
+                <span class="oa-badge @StatusClass(_report.Status)">@StatusText(_report.Status)</span>
             </div>
             <div class="oa-panel-body">
-                <div class="oa-comparison-grid">
-                    <div class="oa-comparison-item">
-                        <span>基线</span>
-                        <strong>@_jobs[1].SourceName</strong>
-                        <small>@_jobs[1].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") · 质量分 @FormatScore(_jobs[1].QualityScore)</small>
+                <div class="oa-regression-verdict">
+                    <div class="oa-regression-verdict-main">
+                        <span>质量分</span>
+                        <strong>@FormatScore(_jobs[0].QualityScore)</strong>
+                        <small>基线 @FormatScore(_jobs[1].QualityScore)</small>
                     </div>
-                    <div class="oa-comparison-item">
-                        <span>当前</span>
-                        <strong>@_jobs[0].SourceName</strong>
-                        <small>@_jobs[0].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") · 质量分 @FormatScore(_jobs[0].QualityScore)</small>
+                    <div class="oa-regression-verdict-divider"></div>
+                    <div class="oa-regression-signal-list">
+                        <div><span>字段质量变化</span><strong>@_report.FieldRegressions.Count 项</strong></div>
+                        <div><span>违规回归</span><strong>@_report.ViolationRegressions.Count 项</strong></div>
+                        <div><span>问题变化</span><strong class="@DeltaClass(_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong></div>
                     </div>
-                </div>
-                <div class="oa-regression-stats">
-                    <div><span>对象数</span><strong>@_report.PreviousObjectCount.ToString("N0") → @_report.CurrentObjectCount.ToString("N0")</strong></div>
-                    <div><span>问题数</span><strong>@_jobs[1].IssueCount.ToString("N0") → @_jobs[0].IssueCount.ToString("N0")</strong></div>
                 </div>
             </div>
         </section>
 
         @if (_report.FieldRegressions.Count > 0)
         {
-            <section class="oa-panel mb-4">
+            <section class="oa-panel oa-regression-panel">
                 <div class="oa-panel-header">
-                    <div><div class="oa-panel-kicker">FIELD QUALITY</div><h2>字段质量变化</h2></div>
+                    <div>
+                        <div class="oa-panel-kicker">FIELD QUALITY</div>
+                        <h2>字段质量变化</h2>
+                        <p>优先查看覆盖率、空值率和唯一率出现明显退化的字段。</p>
+                    </div>
                     <span class="oa-count-badge">@_report.FieldRegressions.Count 项</span>
                 </div>
                 <div class="oa-table-wrap">
-                    <table class="table table-hover mb-0 oa-analysis-table oa-regression-table">
-                        <thead><tr><th>字段</th><th>状态</th><th>覆盖率变化</th><th>空值率变化</th><th>唯一率变化</th><th>原因</th></tr></thead>
+                    <table class="oa-regression-table">
+                        <thead>
+                            <tr><th>字段</th><th>状态</th><th>覆盖率</th><th>空值率</th><th>唯一率</th><th>回归原因</th></tr>
+                        </thead>
                         <tbody>
                         @foreach (var item in _report.FieldRegressions)
                         {
                             <tr>
                                 <td><code>@item.FieldName</code></td>
-                                <td><span class="badge @StatusClass(item.Status)">@StatusText(item.Status)</span></td>
-                                <td>@FormatDelta(item.CoverageDelta * 100)</td>
-                                <td>@FormatDelta(item.NullRateDelta * 100)</td>
-                                <td>@(item.UniquenessDelta.HasValue ? FormatDelta(item.UniquenessDelta.Value * 100) : "-")</td>
-                                <td>@string.Join("；", item.Reasons)</td>
+                                <td><span class="oa-badge @StatusClass(item.Status)">@StatusText(item.Status)</span></td>
+                                <td class="oa-number-value">@FormatDelta(item.CoverageDelta * 100)</td>
+                                <td class="oa-number-value">@FormatDelta(item.NullRateDelta * 100)</td>
+                                <td class="oa-number-value">@(item.UniquenessDelta.HasValue ? FormatDelta(item.UniquenessDelta.Value * 100) : "-")</td>
+                                <td class="oa-regression-reasons">@string.Join("；", item.Reasons)</td>
                             </tr>
                         }
                         </tbody>
                     </table>
                 </div>
+                <div class="oa-analysis-note">变化值均以百分点表示。正负方向需结合指标语义理解，例如空值率上升通常代表质量退化。</div>
+            </section>
+        }
+        else
+        {
+            <section class="oa-panel oa-regression-panel">
+                <div class="oa-panel-header">
+                    <div>
+                        <div class="oa-panel-kicker">FIELD QUALITY</div>
+                        <h2>字段质量变化</h2>
+                    </div>
+                    <span class="oa-badge is-success">稳定</span>
+                </div>
+                <div class="oa-success-state oa-regression-success">
+                    <div class="oa-success-icon">✓</div>
+                    <div><h3>未发现字段质量回归</h3><p>最近两次成功分析的字段质量没有触发回归项。</p></div>
+                </div>
             </section>
         }
 
-        <section class="oa-panel">
+        <section class="oa-panel oa-regression-panel">
             <div class="oa-panel-header">
-                <div><div class="oa-panel-kicker">VIOLATION REGRESSION</div><h2>质量违规回归</h2></div>
+                <div>
+                    <div class="oa-panel-kicker">VIOLATION REGRESSION</div>
+                    <h2>质量违规回归</h2>
+                    <p>新增或数量增加的违规项会在这里集中呈现。</p>
+                </div>
                 <span class="oa-count-badge">@_report.ViolationRegressions.Count 项</span>
             </div>
             @if (_report.ViolationRegressions.Count > 0)
             {
                 <div class="oa-table-wrap">
-                    <table class="table table-hover mb-0 oa-analysis-table oa-regression-table">
-                        <thead><tr><th>字段</th><th>检查类型</th><th>基线</th><th>当前</th><th>增加</th><th>说明</th></tr></thead>
+                    <table class="oa-regression-table oa-violation-table">
+                        <thead>
+                            <tr><th>字段</th><th>检查类型</th><th>基线</th><th>当前</th><th>增加</th><th>变化</th></tr>
+                        </thead>
                         <tbody>
                         @foreach (var item in _report.ViolationRegressions)
                         {
                             <tr>
                                 <td><code>@(string.IsNullOrWhiteSpace(item.FieldName) ? "数据集" : item.FieldName)</code></td>
                                 <td>@item.Check</td>
-                                <td>@item.PreviousCount</td>
-                                <td>@item.CurrentCount</td>
-                                <td><span class="text-danger">+@item.Delta</span></td>
-                                <td>@(item.IsNew ? "新出现" : "违规增加")</td>
+                                <td class="oa-number-value">@item.PreviousCount</td>
+                                <td class="oa-number-value">@item.CurrentCount</td>
+                                <td><span class="oa-delta-danger">+@item.Delta</span></td>
+                                <td><span class="oa-badge @(item.IsNew ? "is-danger" : "is-warning")">@(item.IsNew ? "新出现" : "违规增加")</span></td>
                             </tr>
                         }
                         </tbody>
@@ -145,7 +198,7 @@
             }
             else
             {
-                <div class="oa-success-state">
+                <div class="oa-success-state oa-regression-success">
                     <div class="oa-success-icon">✓</div>
                     <div><h3>未发现质量违规增加</h3><p>当前结果没有发现新增或增加的质量违规。</p></div>
                 </div>
