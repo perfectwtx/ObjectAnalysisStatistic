@@ -1907,3 +1907,16 @@
 .oa-jobs-page .oa-jobs-table .oa-score{font-variant-numeric:tabular-nums}
 @media(max-width:720px){.oa-jobs-page .oa-kpi-grid.is-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.oa-jobs-page .oa-kpi-grid.is-4{grid-template-columns:1fr}}
+
+/* Responsibility workspace refinement */
+.oa-responsibility-page .oa-job-selector-card{margin-bottom:1rem}
+.oa-responsibility-page .oa-job-selector-card .form-label{display:block;margin-bottom:.4rem;font-size:.74rem;font-weight:700;color:var(--oa-text-2)}
+.oa-responsibility-page .oa-job-selector-card .form-select{min-height:42px;border-radius:10px;border-color:var(--oa-border-strong)}
+.oa-responsibility-page .oa-remediation-editor-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1.4fr;gap:.85rem}
+.oa-responsibility-page .oa-remediation-editor-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.7rem;font-weight:700}
+.oa-responsibility-page .oa-remediation-editor-grid .form-control,.oa-responsibility-page .oa-remediation-editor-grid .form-select{min-height:38px;border-radius:8px}
+.oa-responsibility-page .oa-feedback{margin-top:1rem;padding:.7rem .85rem;border-radius:9px;font-size:.74rem}
+.oa-responsibility-page .oa-feedback-success{border:1px solid color-mix(in srgb,var(--oa-success) 30%,transparent);background:var(--oa-success-soft);color:var(--oa-success)}
+.oa-responsibility-page .oa-feedback-danger{border:1px solid color-mix(in srgb,var(--oa-danger) 30%,transparent);background:var(--oa-danger-soft);color:var(--oa-danger)}
+@media(max-width:900px){.oa-responsibility-page .oa-remediation-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.oa-responsibility-page .oa-remediation-editor-grid{grid-template-columns:1fr}}
