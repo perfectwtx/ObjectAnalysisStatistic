@@ -119,7 +119,7 @@
 .oa-job-selector .form-label { margin-bottom: .4rem; }
 .oa-issue-table-card { overflow: hidden; }
 .oa-success-state { min-height: 220px; padding: 2rem; display: flex; align-items: center; justify-content: center; gap: 1rem; text-align: left; }
-.oa-success-icon { width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center; border-radius: 50%; color: #166534; background: #dcfce7; font-weight: 800; }
+.oa-success-icon { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 50%; color: var(--oa-success); background: var(--oa-success-soft); font-weight: 800; }
 .oa-success-state h3 { margin: 0 0 .35rem; font-size: 1.05rem; }
 .oa-success-state p { margin: 0; color: var(--oa-text-2); font-size: .82rem; }
 .oa-source-note { display: flex; gap: .55rem; align-items: flex-start; color: var(--oa-text-3); font-size: .74rem; line-height: 1.5; }
