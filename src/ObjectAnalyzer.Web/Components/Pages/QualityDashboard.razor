@@ -88,7 +88,7 @@
                             @foreach (var gate in _gateResults)
                             {
                                 <div class="col-12 col-md-6 col-xl-3"><div class="oa-gate-card h-100">
-                                    <div class="oa-gate-heading"><strong>@gate.Name</strong>@if (gate.Triggered) { <span class="badge bg-danger">❌ 未通过</span> } else { <span class="badge bg-success">✓ 通过</span> }</div>
+                                    <div class="oa-gate-heading"><strong>@gate.Name</strong>@if (gate.Triggered) { <span class="oa-badge is-danger">❌ 未通过</span> } else { <span class="oa-badge is-success">✓ 通过</span> }</div>
                                     <div class="oa-gate-meta">ExitCode: @gate.ExitCode</div>
                                     @if (gate.Triggered) { <div class="oa-gate-error">@gate.FailureMessage</div> }
                                 </div></div>
@@ -118,7 +118,7 @@
                     @if (_topIssues.Count == 0) { <div class="oa-analysis-empty oa-analysis-empty-compact"><strong>✓ 当前没有质量违规</strong><span>最近一次分析未发现标准化质量问题。</span></div> }
                     else
                     {
-                        <div class="oa-issue-list">@foreach (var issue in _topIssues) { <div class="oa-issue-row"><div class="oa-issue-content"><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><span>@QualityCheckTypes.Label(issue.Check)</span></div><span class="badge bg-danger">@issue.Count</span></div>}</div>
+                        <div class="oa-issue-list">@foreach (var issue in _topIssues) { <div class="oa-issue-row"><div class="oa-issue-content"><strong>@(string.IsNullOrWhiteSpace(issue.FieldName) ? "数据集" : issue.FieldName)</strong><span>@QualityCheckTypes.Label(issue.Check)</span></div><span class="oa-badge is-danger">@issue.Count</span></div>}</div>
                     }
                 </div></div></div>
             </div>
@@ -188,6 +188,6 @@
     private static string GetProgressWidth(double value) => $"{Math.Clamp(value, 0d, 100d):F0}%";
     private static string FormatScore(double? score) => score.HasValue ? score.Value.ToString("F1") : "-";
     private static string GetScoreText(double? score) => !score.HasValue ? "未计算" : score >= 90 ? "优秀" : score >= 70 ? "需要关注" : "质量风险";
-    private static string ScoreBadge(double score) => score >= 90 ? "bg-success" : score >= 70 ? "bg-warning text-dark" : "bg-danger";
+    private static string ScoreBadge(double score) => score >= 90 ? "is-success" : score >= 70 ? "is-warning" : "is-danger";
     private sealed record QualityMetric(string Name, double Value);
 }
