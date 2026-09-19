@@ -67,7 +67,7 @@
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
                 @foreach (var field in _diff.RemovedFields)
                 {
-                    <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="badge bg-danger">破坏性</span></td></tr>
+                    <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="oa-badge is-danger">破坏性</span></td></tr>
                 }
                 </tbody></table></div>
             </div>
@@ -80,7 +80,7 @@
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
                 @foreach (var field in _diff.AddedFields)
                 {
-                    <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="badge bg-success">非破坏性</span></td></tr>
+                    <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="oa-badge is-success">非破坏性</span></td></tr>
                 }
                 </tbody></table></div>
             </div>
