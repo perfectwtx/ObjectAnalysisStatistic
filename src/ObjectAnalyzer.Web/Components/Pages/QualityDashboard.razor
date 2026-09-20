@@ -237,7 +237,11 @@
     private string FieldRelationshipsUrl => _job is null ? "/quality/relationships" : $"/quality/relationships?jobId={_job.Id}";
     private string ObjectRelationshipsUrl => _job is null ? "/quality/object-relationships" : $"/quality/object-relationships?jobId={_job.Id}";
 
-    private string IssueUrl(QualityIssue issue) => string.IsNullOrWhiteSpace(issue.FieldName)\n        ? $"/issues?jobId={issue.JobId}"\n        : $"/issues?jobId={issue.JobId}&field={Uri.EscapeDataString(issue.FieldName)}&check={Uri.EscapeDataString(issue.Check)}";\n\n    private string GetSchemaStatusIcon() => _result?.SchemaDiff switch { null => "-", { HasBreakingChanges: true } => "⚠", _ => "✓" };
+    private string IssueUrl(QualityIssue issue) => string.IsNullOrWhiteSpace(issue.FieldName)
+        ? $"/issues?jobId={issue.JobId}"
+        : $"/issues?jobId={issue.JobId}&field={Uri.EscapeDataString(issue.FieldName)}&check={Uri.EscapeDataString(issue.Check)}";
+
+    private string GetSchemaStatusIcon() => _result?.SchemaDiff switch { null => "-", { HasBreakingChanges: true } => "⚠", _ => "✓" };
     private string GetSchemaStatusText() => _result?.SchemaDiff switch { null => "未产生 Schema Diff", { HasBreakingChanges: true } => "存在破坏性变更", _ => "无破坏性变更" };
     private static string GetProgressWidth(double value) => $"{Math.Clamp(value, 0d, 100d):F0}%";
     private static string GetMetricState(double value) => value >= 90 ? "良好" : value >= 70 ? "关注" : "风险";
