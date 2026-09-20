@@ -153,7 +153,7 @@
 
     private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job.Id}";
     private string SchemaImpactUrl => _job is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_job!.Id}";
-    private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
+    private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job!.Id}";
 
     private IReadOnlyList<ImpactedNode> FilteredNodes => (_impact?.Nodes ?? new List<ImpactedNode>())
         .Where(x => string.IsNullOrWhiteSpace(LevelFilter) || string.Equals(x.Level.ToString(), LevelFilter, StringComparison.OrdinalIgnoreCase))
