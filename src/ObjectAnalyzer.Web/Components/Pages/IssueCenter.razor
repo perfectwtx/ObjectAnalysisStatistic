@@ -3,6 +3,7 @@
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityIssueQuery QualityIssueQuery
+@inject IQualityIssueResponsibilityStore ResponsibilityStore
 
 <PageTitle>Issue Center</PageTitle>
 
@@ -81,11 +82,11 @@
             {
                 <div class="oa-table-wrap oa-data-table oa-issue-table-wrap">
                     <table class="table table-hover align-middle mb-0">
-                        <thead><tr><th>字段</th><th>检查类型</th><th>次数</th><th>问题说明</th><th class="oa-action-column"></th></tr></thead>
+                        <thead><tr><th>字段</th><th>检查类型</th><th>次数</th><th>状态</th><th>责任人</th><th>问题说明</th><th class="oa-action-column"></th></tr></thead>
                         <tbody>
                         @foreach (var issue in FilteredIssues)
                         {
-                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@issue.Message</td><td class="oa-action-column"><a class="btn btn-sm btn-outline-primary" href="@IssueDetailUrl(issue)">查看详情</a></td></tr>
+                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@GetStatusText(issue)</td><td>@GetOwner(issue)</td><td>@issue.Message</td><td class="oa-action-column"><a class="btn btn-sm btn-outline-primary" href="@IssueDetailUrl(issue)">查看详情</a></td></tr>
                         }
                         </tbody>
                     </table>
@@ -100,6 +101,7 @@
 @code {
     private readonly List<AnalysisJob> _jobs = new();
     private List<QualityIssue> _selectedIssues = new();
+    private Dictionary<string, QualityIssueResponsibility> _responsibilities = new(StringComparer.OrdinalIgnoreCase);
     private AnalysisJob? _selectedJob;
     private bool _loading;
     [SupplyParameterFromQuery(Name = "field")]
@@ -140,5 +142,31 @@
     private async Task LoadIssuesAsync(AnalysisJob? job)
     {
         _selectedIssues = job is null ? new List<QualityIssue>() : (await QualityIssueQuery.GetByJobAsync(job.Id)).ToList();
+        _responsibilities = new Dictionary<string, QualityIssueResponsibility>(StringComparer.OrdinalIgnoreCase);
+        if (job is null)
+            return;
+
+        foreach (var responsibility in await ResponsibilityStore.GetByJobAsync(job.Id))
+            _responsibilities[IssueKey(responsibility.FieldName, responsibility.Check)] = responsibility;
     }
+
+    private string GetStatusText(QualityIssue issue)
+    {
+        if (!_responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility))
+            return "待处理";
+        return responsibility.Status switch
+        {
+            "InProgress" => "处理中",
+            "Resolved" => "已解决",
+            "Ignored" => "已忽略",
+            _ => "待处理"
+        };
+    }
+
+    private string GetOwner(QualityIssue issue) =>
+        _responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility) && !string.IsNullOrWhiteSpace(responsibility.Owner)
+            ? responsibility.Owner!
+            : "未指定";
+
+    private static string IssueKey(string fieldName, string check) => $"{fieldName}\\u001f{check}";
 }
