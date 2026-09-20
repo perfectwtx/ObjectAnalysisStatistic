@@ -90,7 +90,7 @@
         _jobs.AddRange(jobs
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
-            .ToList();
+            .ToList());
         _job = _jobs.FirstOrDefault();
 
         if (_job is not null)
