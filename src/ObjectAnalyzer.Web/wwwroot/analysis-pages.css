@@ -2137,3 +2137,12 @@
 .oa-impact-analysis-page .oa-impact-reason{max-width:520px}
 @media(max-width:1000px){.oa-impact-analysis-page .oa-impact-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.oa-impact-analysis-page .oa-impact-filter-grid{grid-template-columns:1fr}.oa-impact-analysis-page .oa-header-actions{flex-wrap:wrap}}
+
+/* Quality Regression workbench filters */
+.oa-regression-page .oa-analysis-header{display:flex;justify-content:space-between;gap:1rem}
+.oa-regression-page .oa-header-actions{display:flex;gap:.6rem;align-items:center}
+.oa-regression-page .oa-regression-filter-card{margin-bottom:1rem}
+.oa-regression-page .oa-regression-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
+.oa-regression-page .oa-regression-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+@media(max-width:900px){.oa-regression-page .oa-regression-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.oa-regression-page .oa-regression-filter-grid{grid-template-columns:1fr}.oa-regression-page .oa-analysis-header{flex-direction:column}}
