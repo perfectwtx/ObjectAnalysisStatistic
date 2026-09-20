@@ -86,7 +86,7 @@
                         <tbody>
                         @foreach (var issue in FilteredIssues)
                         {
-                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@GetStatusText(issue)</td><td>@GetOwner(issue)</td><td>@issue.Message</td><td class="oa-action-column"><a class="btn btn-sm btn-outline-primary" href="@IssueDetailUrl(issue)">查看详情</a></td></tr>
+                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td><span class="oa-issue-status @GetStatusClass(issue)">@GetStatusText(issue)</span></td><td>@GetOwner(issue)</td><td>@issue.Message</td><td class="oa-action-column"><a class="btn btn-sm btn-outline-primary" href="@IssueDetailUrl(issue)">查看详情</a></td></tr>
                         }
                         </tbody>
                     </table>
@@ -162,6 +162,19 @@
             _ => "待处理"
         };
     }
+
+    private string GetStatusClass(QualityIssue issue) =>
+    {
+        if (!_responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility))
+            return "is-open";
+        return responsibility.Status switch
+        {
+            "InProgress" => "is-progress",
+            "Resolved" => "is-resolved",
+            "Ignored" => "is-ignored",
+            _ => "is-open"
+        };
+    };
 
     private string GetOwner(QualityIssue issue) =>
         _responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility) && !string.IsNullOrWhiteSpace(responsibility.Owner)
