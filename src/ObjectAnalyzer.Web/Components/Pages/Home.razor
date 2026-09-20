@@ -133,8 +133,8 @@
                 }
             </div>
 
-            <div class="side-group">
-                <div class="side-group-title"><span class="group-index">02</span>@Loc["SideOptionsTitle"]</div>
+            <details class="side-group console-options-group">
+                <summary class="side-group-title console-group-summary"><span class="group-index">02</span><span>@Loc["SideOptionsTitle"]</span><span class="console-group-state">Advanced</span></summary>
             <div class="config-fields" style="pointer-events:@(State.IsLoading ? "none" : "auto");opacity:@(State.IsLoading ? 0.6 : 1)">
             <div class="options-grid">
                 <div class="side-subgroup-title">@Loc["GroupParsing"]</div>
@@ -230,7 +230,7 @@
                     <input type="text" value="@State.Operator" @oninput="OnOperatorChange" placeholder="@Loc["OptOperatorPlaceholder"]" />
                 </label>
             </div>
-            </div>
+            </details>
 
             <div class="side-group">
                 <div class="side-group-title"><span class="group-index">03</span>@Loc["SideRulesTitle"]</div>
@@ -506,6 +506,28 @@
                     <span class="signal-item"><i class="signal-dot is-success"></i>Results available</span>
                 </div>
             </div>
+            <div class="signal-summary">
+                <div class="signal-metric">
+                    <span class="signal-metric-label">QUALITY ISSUES</span>
+                    <strong>@State.Result.QualityViolations.Count</strong>
+                    <small>rule violations</small>
+                </div>
+                <div class="signal-metric">
+                    <span class="signal-metric-label">NULL SIGNAL</span>
+                    <strong>@State.Result.FieldStatistics.Count(f => f.NullCount > 0)</strong>
+                    <small>fields with nulls</small>
+                </div>
+                <div class="signal-metric">
+                    <span class="signal-metric-label">OUTLIERS</span>
+                    <strong>@State.Result.FieldStatistics.Count(f => f.OutlierCount is long c && c > 0)</strong>
+                    <small>fields with outliers</small>
+                </div>
+                <div class="signal-metric">
+                    <span class="signal-metric-label">DUPLICATES</span>
+                    <strong>@State.Result.TotalDuplicateGroups</strong>
+                    <small>duplicate groups</small>
+                </div>
+            </div>
             <div class="result-section-heading">
                 <span class="result-section-kicker">OVERVIEW</span>
                 <span class="result-section-note">Dataset-level metrics</span>
@@ -564,7 +586,18 @@
                 var selectedFields = allFields.Where(IsPreviewColumnSelected).ToList();
                 var previewRows = State.Preview.Take(PreviewRowCount);
                 <div class="preview-section">
-                    <h3>@Loc["DataPreview"] <span class="preview-note">@Loc.Get("PreviewNote", PreviewRowCount, selectedFields.Count)</span></h3>
+                    <div class="preview-heading">
+                        <div>
+                            <span class="preview-kicker">DATA PREVIEW</span>
+                            <h3>@Loc["DataPreview"]</h3>
+                        </div>
+                        <span class="preview-note">@Loc.Get("PreviewNote", PreviewRowCount, selectedFields.Count)</span>
+                    </div>
+                    <div class="preview-context">
+                        <span><strong>@selectedFields.Count</strong> columns selected</span>
+                        <span><strong>@previewRows.Count()</strong> rows shown</span>
+                        <span class="preview-context-hint">Choose columns to focus the sample</span>
+                    </div>
                     <div class="preview-col-select">
                         <span class="preview-col-label">@Loc["PreviewColumns"]</span>
                         <button class="minibtn" @onclick="SelectAllPreviewColumns">@Loc["SelectAll"]</button>
