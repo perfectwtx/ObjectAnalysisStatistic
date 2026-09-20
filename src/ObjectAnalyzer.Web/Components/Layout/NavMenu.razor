@@ -1,102 +1,201 @@
-<aside class="oa-sidebar @(_mobileMenuOpen ? "is-open" : "")" aria-label="主导航">
-    <div class="oa-sidebar__brand">
-        <a class="oa-sidebar__brand-link" href="/" @onclick="CloseMobileMenu" aria-label="ObjectAnalyzer 首页">
-            <span class="oa-sidebar__logo">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6h4.2v12H4Zm6 0V9h4.2v9H10Zm6 0V4h4v14h-4Z"/></svg>
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<header class="oa-top-nav" aria-label="主导航">
+    <div class="oa-top-nav__inner">
+        <a class="oa-top-nav__brand" href="/" aria-label="ObjectAnalyzer 首页">
+            <span class="oa-top-nav__mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M4 19V5M4 19h16M7 15l3.5-5 2.8 2.4L18 7"
+                          stroke="currentColor" stroke-width="1.8"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
             </span>
-            <span class="oa-sidebar__brand-copy">
-                <strong>ObjectAnalyzer</strong>
-                <small>Data Intelligence</small>
+            <span class="oa-top-nav__brand-copy">
+                <strong>Object Analyzer</strong>
+                <small>Quality</small>
             </span>
         </a>
-        <button class="oa-sidebar__mobile-close" type="button" aria-label="关闭导航菜单" @onclick="CloseMobileMenu">×</button>
-    </div>
 
-    <div class="oa-sidebar__scroll">
-        <div class="oa-sidebar__section">
-            <div class="oa-sidebar__section-label">Workspace</div>
-            <NavLink class="oa-sidebar__link" href="/" Match="NavLinkMatch.All" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">⌂</span><span>分析工作台</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/jobs" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">◫</span><span>分析任务</span>
-            </NavLink>
-        </div>
+        <nav class="oa-top-nav__tabs" aria-label="一级导航">
+            <div class="oa-top-nav__tabset">
+                <a href="/" class="oa-top-nav__tab @(Section == "analysis" ? "is-active" : "")">分析</a>
+                <a href="/quality" class="oa-top-nav__tab @(Section == "quality" ? "is-active" : "")">质量</a>
+                <a href="/quality/data-lineage" class="oa-top-nav__tab @(Section == "insights" ? "is-active" : "")">洞察</a>
+            </div>
+        </nav>
 
-        <div class="oa-sidebar__section">
-            <div class="oa-sidebar__section-label">Data Quality</div>
-            <NavLink class="oa-sidebar__link" href="/quality" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">◈</span><span>质量总览</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/trend" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">⌁</span><span>质量趋势</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/fields" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">▦</span><span>字段质量</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/recommendations" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">✦</span><span>修复建议</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/regression" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">↗</span><span>质量回归</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/baselines" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">⊙</span><span>质量基线</span>
-            </NavLink>
-        </div>
-
-        <div class="oa-sidebar__section">
-            <div class="oa-sidebar__section-label">Relationships</div>
-            <NavLink class="oa-sidebar__link" href="/quality/data-lineage" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">⌘</span><span>数据血缘</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/relationships" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">⌬</span><span>字段关系</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/object-relationships" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">◎</span><span>对象关系</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/schema-impact" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">◇</span><span>Schema 影响</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/quality/impact-analysis" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">↯</span><span>影响分析</span>
-            </NavLink>
-        </div>
-
-        <div class="oa-sidebar__section">
-            <div class="oa-sidebar__section-label">Governance</div>
-            <NavLink class="oa-sidebar__link" href="/issues" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">!</span><span>问题中心</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/issues/responsibility" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">◉</span><span>责任治理</span>
-            </NavLink>
-            <NavLink class="oa-sidebar__link" href="/alert-rules" @onclick="CloseMobileMenu">
-                <span class="oa-sidebar__icon">△</span><span>告警规则</span>
-            </NavLink>
+        <div class="oa-top-nav__actions">
+            <div class="oa-top-nav__status" title="本地分析引擎已就绪">
+                <span class="oa-top-nav__status-dot"></span>
+                <span class="d-none d-xl-inline">Ready</span>
+            </div>
+            <button class="oa-top-nav__theme" type="button"
+                    aria-label="@(_darkTheme ? "切换浅色主题" : "切换深色主题")"
+                    title="@(_darkTheme ? "浅色主题" : "深色主题")"
+                    @onclick="ToggleTheme">
+                @if (_darkTheme)
+                {
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7" />
+                        <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"
+                              stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                    </svg>
+                }
+                else
+                {
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
+                              stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                }
+            </button>
         </div>
     </div>
 
-    <div class="oa-sidebar__footer">
-        <div class="oa-sidebar__status"><span></span><div><strong>Analyzer Ready</strong><small>Local analysis engine</small></div></div>
-    </div>
-
-    <button class="oa-sidebar__mobile-trigger" type="button" aria-label="打开导航菜单" aria-expanded="@_mobileMenuOpen" @onclick="ToggleMobileMenu">
-        <span></span><span></span><span></span>
-    </button>
-
-    @if (_mobileMenuOpen)
+    @if (SubNav.Count > 0)
     {
-        <div class="oa-sidebar__mobile-backdrop" @onclick="CloseMobileMenu"></div>
+        <div class="oa-top-nav__subnav">
+            <div class="oa-top-nav__subnav-inner">
+                @foreach (var item in SubNav)
+                {
+                    <a href="@item.Url" class="oa-top-nav__subitem @(IsSubActive(item.Url) ? "is-active" : "")">
+                        @item.Label
+                    </a>
+                }
+            </div>
+        </div>
     }
-</aside>
-
+</header>
 
 @code {
-    private bool _mobileMenuOpen;
+    private bool _darkTheme = true;
+    private string _path = "/";
 
-    private void ToggleMobileMenu() => _mobileMenuOpen = !_mobileMenuOpen;
+    private string Section => GetSection(_path);
 
-    private void CloseMobileMenu() => _mobileMenuOpen = false;
+    private IReadOnlyList<NavItem> SubNav => GetSubNav(Section);
+
+    protected override void OnInitialized()
+    {
+        _path = GetPath();
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _darkTheme = await JS.InvokeAsync<bool>("objectAnalyzer.isDarkTheme");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (JSException)
+        {
+            _darkTheme = true;
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        _darkTheme = !_darkTheme;
+        await JS.InvokeVoidAsync("objectAnalyzer.setTheme", _darkTheme ? "dark" : "light");
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _path = GetPath();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetPath()
+    {
+        if (Uri.TryCreate(Navigation.Uri, UriKind.Absolute, out var uri))
+        {
+            return string.IsNullOrWhiteSpace(uri.AbsolutePath) ? "/" : uri.AbsolutePath;
+        }
+
+        return "/";
+    }
+
+    private bool IsSubActive(string url)
+    {
+        return _path == url || (_path.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetSection(string path)
+    {
+        if (IsInsightPath(path))
+        {
+            return "insights";
+        }
+
+        if (path == "/" || path.StartsWith("/jobs", StringComparison.OrdinalIgnoreCase))
+        {
+            return "analysis";
+        }
+
+        return "quality";
+    }
+
+    private static bool IsInsightPath(string path)
+    {
+        string[] insightPaths =
+        [
+            "/quality/data-lineage",
+            "/quality/relationships",
+            "/quality/object-relationships",
+            "/quality/schema-impact",
+            "/quality/impact-analysis",
+            "/quality/recommendations"
+        ];
+
+        return insightPaths.Any(x => path.Equals(x, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith(x + "/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyList<NavItem> GetSubNav(string section)
+    {
+        return section switch
+        {
+            "analysis" =>
+            [
+                new("/", "分析工作台", true),
+                new("/jobs", "分析作业")
+            ],
+            "quality" =>
+            [
+                new("/quality", "健康", true),
+                new("/quality/trend", "趋势"),
+                new("/quality/fields", "字段"),
+                new("/issues", "问题"),
+                new("/quality/baselines", "基线"),
+                new("/alert-rules", "告警"),
+                new("/quality/regression", "回归"),
+                new("/issues/responsibility", "责任")
+            ],
+            _ =>
+            [
+                new("/quality/relationships", "字段关系"),
+                new("/quality/object-relationships", "对象关系"),
+                new("/quality/data-lineage", "血缘"),
+                new("/quality/schema-impact", "Schema"),
+                new("/quality/impact-analysis", "影响"),
+                new("/quality/recommendations", "建议")
+            ]
+        };
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private sealed record NavItem(string Url, string Label, bool Exact = false);
 }
