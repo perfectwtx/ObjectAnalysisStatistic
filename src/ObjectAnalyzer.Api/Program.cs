@@ -59,6 +59,9 @@ api.MapAnalysisHistoryApi();
 api.MapQualityApi();
 api.MapIssueApi();
 api.MapAlertRuleApi();
+api.MapWebhookDeliveryApi();
+api.MapCapabilitiesApi();
+api.MapExportApi();
 
 app.Run();
 

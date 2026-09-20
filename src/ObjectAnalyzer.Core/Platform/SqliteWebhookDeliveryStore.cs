@@ -80,6 +80,43 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         return result;
     }
 
+    public async Task<WebhookDelivery?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, rule_id, job_id, event_type, webhook_url, payload_json, status,
+                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error
+            FROM webhook_deliveries
+            WHERE id = $id;
+            """;
+        command.Parameters.AddWithValue("$id", id.ToString());
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? Read(reader) : null;
+    }
+
+    public async Task<bool> RetryAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE webhook_deliveries
+            SET status = $status,
+                attempt_count = 0,
+                next_attempt_at_utc = $nextAttemptAtUtc,
+                sent_at_utc = NULL,
+                last_error = NULL
+            WHERE id = $id AND status = $failed;
+            """;
+        command.Parameters.AddWithValue("$status", (int)WebhookDeliveryStatus.Pending);
+        command.Parameters.AddWithValue("$failed", (int)WebhookDeliveryStatus.Failed);
+        command.Parameters.AddWithValue("$nextAttemptAtUtc", DateTime.UtcNow.ToString("O"));
+        command.Parameters.AddWithValue("$id", id.ToString());
+        return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
+    }
+
     public async Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
