@@ -207,6 +207,8 @@
     private void ToggleField(string field) => _selectedField = _selectedField == field ? null : field;
     private int GetViolationCount(string field) => (int)_violations.Where(x => string.Equals(x.Field, field, StringComparison.Ordinal)).Sum(x => x.Count);
     private List<FieldViolation> GetViolations(string field) => _violations.Where(x => string.Equals(x.Field, field, StringComparison.Ordinal)).ToList();
+    private string IssueFieldUrl(string fieldName) => _selectedJobId.HasValue ? $"/issues?jobId={_selectedJobId.Value}&field={Uri.EscapeDataString(fieldName)}" : $"/issues?field={Uri.EscapeDataString(fieldName)}";
+
     private static string FormatRange(FieldStatistic field) => field.MinNumber.HasValue && field.MaxNumber.HasValue ? $"{field.MinNumber:G6} ~ {field.MaxNumber:G6}" : "-";
 }
 
