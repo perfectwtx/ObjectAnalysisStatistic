@@ -16,7 +16,9 @@
             <p>沿当前数据血缘查看 Schema 变更可能影响的父对象、子节点与关联对象。</p>
         </div>
         <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="@SchemaImpactUrl">Schema 影响</a>
             <a class="btn btn-outline-secondary" href="/quality/data-lineage">查看数据血缘</a>
+            <a class="btn btn-outline-secondary" href="@RegressionUrl">质量回归</a>
             @if (_job is not null)
             {
                 <a class="btn btn-outline-primary" href="@($"/jobs/{_job.Id}")">当前作业</a>
@@ -141,6 +143,9 @@
     private string? LevelFilter;
     private string? TypeFilter;
     private string? PathFilter;
+
+    private string SchemaImpactUrl => _job is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_job.Id}";
+    private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
 
     private IReadOnlyList<ImpactedNode> FilteredNodes => _impact?.Nodes
         .Where(x => string.IsNullOrWhiteSpace(LevelFilter) || string.Equals(x.Level.ToString(), LevelFilter, StringComparison.OrdinalIgnoreCase))
