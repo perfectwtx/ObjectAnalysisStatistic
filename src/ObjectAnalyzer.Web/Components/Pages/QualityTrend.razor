@@ -33,10 +33,10 @@
         var delta = FilteredSnapshots.Count >= 2 ? latest.Metrics.OverallScore - FilteredSnapshots[1].Metrics.OverallScore : 0;
 
         <section class="oa-dashboard-section">
-            <div class="oa-dashboard-panel oa-trend-filter-card"><div class="oa-panel-body"><div class="oa-trend-filter-grid"><div><label class="form-label">数据源</label><select class="form-select" @onchange="OnSourceChanged"><option value="">全部数据源</option>@foreach (var source in Sources){<option value="@source" selected="@(string.Equals(source, SourceFilter, StringComparison.OrdinalIgnoreCase))">@source</option>}</select></div><div><label class="form-label">历史窗口</label><select class="form-select" @onchange="OnWindowChanged"><option value="30">最近 30 次</option><option value="60">最近 60 次</option><option value="100">最近 100 次</option></select></div></div><div class="oa-trend-filter-hint">当前显示 @FilteredSnapshots.Count 次快照 · 点击问题数可进入对应分析作业</div></div></div>
+            <div class="oa-dashboard-panel oa-trend-filter-card"><div class="oa-panel-body"><div class="oa-trend-filter-grid"><div><label class="form-label">数据源</label><select class="form-select" @onchange="OnSourceChanged"><option value="">全部数据源</option>@foreach (var source in Sources){<option value="@source" selected="@(string.Equals(source, SourceFilter, StringComparison.OrdinalIgnoreCase))">@source</option>}</select></div><div><label class="form-label">历史窗口</label><select class="form-select" @onchange="OnWindowChanged"><option value="30" selected="@(WindowSize == 30)">最近 30 次</option><option value="60" selected="@(WindowSize == 60)">最近 60 次</option><option value="100" selected="@(WindowSize == 100)">最近 100 次</option></select></div></div><div class="oa-trend-filter-hint">当前显示 @FilteredSnapshots.Count 次快照 · 点击问题数可进入对应分析作业</div></div></div>
             <div class="oa-section-heading"><div><span class="oa-section-kicker">Overview</span><h2>趋势概览</h2><span>当前历史窗口的核心指标</span></div></div>
             <div class="oa-kpi-grid is-4">
-                <div class="oa-kpi-card is-info"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@FilteredSnapshots.Count</div><div class="oa-kpi-meta">最近 100 次质量快照</div></div>
+                <div class="oa-kpi-card is-info"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@FilteredSnapshots.Count</div><div class="oa-kpi-meta">当前历史窗口</div></div>
                 <div class="oa-kpi-card is-accent"><div class="oa-kpi-label">最新质量分</div><div class="oa-kpi-value">@FormatScore(latest.Metrics.OverallScore)</div><div class="oa-kpi-meta">@latest.SourceName</div></div>
                 <div class="oa-kpi-card"><div class="oa-kpi-label">平均质量分</div><div class="oa-kpi-value">@FormatScore(average)</div><div class="oa-kpi-meta">当前历史窗口平均值</div></div>
                 <div class="oa-kpi-card @(delta < 0 ? "is-danger" : "is-success")"><div class="oa-kpi-label">较上次变化</div><div class="oa-kpi-value">@(FilteredSnapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div><div class="oa-kpi-meta">@(FilteredSnapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div></div>
@@ -71,7 +71,7 @@
                 </div>
                 <div class="oa-table-wrap">
                     <table class="oa-data-table oa-trend-snapshot-table">
-                        <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题数</th><th>对象数</th><th>完整性</th><th>有效性</th><th>唯一性</th></tr></thead>
+                        <thead><tr><th>时间</th><th>数据源</th><th>质量分</th><th>问题数</th><th>对象数</th><th>完整性</th><th>有效性</th><th>唯一性</th><th>一致性</th><th>异常控制</th></tr></thead>
                         <tbody>
                         @foreach (var snapshot in FilteredSnapshots)
                         {
@@ -104,7 +104,7 @@
                         <div class="oa-dimension-list">
                             <div><span>完整性</span><strong>@latest.Metrics.Completeness.ToString("F1")</strong></div>
                             <div><span>有效性</span><strong>@latest.Metrics.Validity.ToString("F1")</strong></div>
-                            <div><span>唯一性</span><strong>@latest.Metrics.Uniqueness.ToString("F1")</strong></div>
+                            <div><span>唯一性</span><strong>@latest.Metrics.Uniqueness.ToString("F1")</strong></div>\n                            <div><span>一致性</span><strong>@latest.Metrics.Consistency.ToString("F1")</strong></div>\n                            <div><span>异常控制</span><strong>@latest.Metrics.AnomalyControl.ToString("F1")</strong></div>
                         </div>
                     </div>
                 }
@@ -116,7 +116,7 @@
 
             <article class="oa-dashboard-panel">
                 <div class="oa-panel-header"><div><span class="oa-panel-kicker">Method</span><h2>趋势说明</h2><p>数据口径</p></div></div>
-                <div class="oa-dashboard-note oa-trend-method"><strong>标准化质量快照</strong><span>走势使用最近 30 次快照，完整表格保留当前 100 次历史窗口，便于结合问题数与质量维度进行对照。</span></div>
+                <div class="oa-dashboard-note oa-trend-method"><strong>标准化质量快照</strong><span>走势使用最近 30 次快照，历史窗口可切换为 30 / 60 / 100 次；表格同时展示完整性、有效性、唯一性、一致性和异常控制五个核心质量维度。</span></div>
             </article>
         </section>
     }
