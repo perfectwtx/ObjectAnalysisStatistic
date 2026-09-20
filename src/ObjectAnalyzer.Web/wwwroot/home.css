@@ -2102,3 +2102,6 @@
     background:var(--oa-danger-soft);
     color:var(--oa-danger);
 }
+
+.app-shell .signal-filter-divider{width:1px;height:18px;margin:0 .15rem;background:var(--oa-border-strong)}
+@media(max-width:760px){.app-shell .signal-filter-divider{display:none}}
