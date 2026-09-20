@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
 using ObjectAnalyzer.Abstractions;
@@ -92,6 +93,11 @@ public partial class MainWindow : Window
             StatusTextBlock.Text = exitCode == 0
                 ? "分析完成"
                 : $"分析结束，退出码 {exitCode}";
+
+            if (exitCode == 0 && File.Exists(_reportPath))
+            {
+                LoadResult(_reportPath);
+            }
             AnalysisProgress.Value = 100;
             OpenReportButton.IsEnabled = exitCode == 0 && File.Exists(_reportPath);
         }
@@ -104,6 +110,35 @@ public partial class MainWindow : Window
         {
             AnalysisServices.Use(null);
             SetBusy(false);
+        }
+    }
+
+    private void LoadResult(string reportPath)
+    {
+        try
+        {
+            var json = File.ReadAllText(reportPath);
+            var result = JsonSerializer.Deserialize<AnalysisResult>(json);
+            if (result is null)
+                return;
+
+            TotalObjectsText.Text = result.TotalObjects.ToString("N0");
+            FieldCountText.Text = result.FieldStatistics.Count.ToString("N0");
+            DuplicateGroupsText.Text = result.TotalDuplicateGroups.ToString("N0");
+            QualityIssuesText.Text = result.QualityViolations.Count.ToString("N0");
+
+            FieldGrid.ItemsSource = result.FieldStatistics
+                .OrderBy(x => x.FieldName, StringComparer.OrdinalIgnoreCase)
+                .Select(x => new DesktopFieldRow(x))
+                .ToList();
+
+            IssueList.ItemsSource = result.QualityViolations
+                .Select(x => new DesktopIssueRow(x))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            OutputTextBox.AppendText($"报告读取失败: {ex.Message}{Environment.NewLine}");
         }
     }
 
@@ -178,5 +213,42 @@ internal sealed class DesktopProgressReporter : IProgressReporter
 
         if (maxObjects is null || maxObjects <= 0)
             _report(_lastValue > 0 ? 100 : 0);
+    }
+}
+
+
+internal sealed class DesktopFieldRow
+{
+    public string FieldName { get; }
+    public string PrimaryType { get; }
+    public string CoverageText { get; }
+    public long Count { get; }
+    public long NullCount { get; }
+    public long? DistinctCount { get; }
+
+    public DesktopFieldRow(FieldStatistic source)
+    {
+        FieldName = source.FieldName;
+        PrimaryType = source.PrimaryType;
+        CoverageText = $"{source.Coverage:P1}";
+        Count = source.Count;
+        NullCount = source.NullCount;
+        DistinctCount = source.DistinctCount;
+    }
+}
+
+internal sealed class DesktopIssueRow
+{
+    public string FieldName { get; }
+    public string Check { get; }
+    public long Count { get; }
+    public string Message { get; }
+
+    public DesktopIssueRow(FieldViolation source)
+    {
+        FieldName = source.FieldName;
+        Check = source.Check;
+        Count = source.Count;
+        Message = source.Message;
     }
 }
