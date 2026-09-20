@@ -2246,3 +2246,5 @@
 @media(max-width:640px){.oa-webhook-page .oa-webhook-filter-grid{grid-template-columns:1fr}.oa-webhook-page .oa-webhook-table-wrap{overflow-x:auto}.oa-webhook-page .oa-webhook-table-wrap table{min-width:900px}}
 
 .oa-job-detail .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+
+.oa-jobs-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
