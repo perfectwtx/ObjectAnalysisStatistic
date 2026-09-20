@@ -152,7 +152,7 @@
                     </div>
                     <div class="oa-regression-verdict-divider"></div>
                     <div class="oa-regression-signal-list">
-                        <div><span>字段质量变化</span><strong>@_report.FieldRegressions.Count(x => MatchesFieldFilter(x)) 项</strong></div>
+                        <div><span>字段质量变化</span><strong>@_report!.FieldRegressions.Count(x => MatchesFieldFilter(x)) 项</strong></div>
                         <div><span>违规回归</span><strong>@_report.ViolationRegressions.Count(x => MatchesViolationFilter(x)) 项</strong></div>
                         <div><span>问题变化</span><strong class="@DeltaClass(_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong></div>
                     </div>
