@@ -2107,3 +2107,12 @@
 .oa-issues-page .oa-filter-context{flex-wrap:wrap}
 @media(max-width:1000px){.oa-issues-page .oa-issue-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.oa-issues-page .oa-issue-filter-grid{grid-template-columns:1fr}}
+
+/* Job Center filters */
+.oa-jobs-page .oa-job-filter-card{margin-bottom:1rem}
+.oa-jobs-page .oa-job-filter-grid{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,.7fr) auto;gap:1rem;align-items:end}
+.oa-jobs-page .oa-job-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-jobs-page .oa-job-filter-summary{display:flex;gap:.45rem;align-items:center;min-height:40px;color:var(--oa-text-2)}
+.oa-jobs-page .oa-job-filter-summary strong{font-size:1.15rem;color:var(--oa-text)}
+.oa-jobs-page .oa-issue-link{text-decoration:none}
+@media(max-width:760px){.oa-jobs-page .oa-job-filter-grid{grid-template-columns:1fr}}
