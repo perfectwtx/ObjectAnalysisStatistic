@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="utf-8" />
@@ -13,10 +13,11 @@
     <link rel="stylesheet" href="system-pages.css" />
     <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="nav-menu.css" />
+    <link rel="stylesheet" href="reference-ui.css" />
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
     <script>
-        // 在首次绘制前套用已保存的主题，避免闪烁（与 interop.js setTheme 保持一致）。默认深色仪表盘风格。
+        // 在首次绘制前套用已保存的主题，默认采用 reference UI 的深色工作台风格。
         (function () {
             try {
                 var theme = localStorage.getItem('oa-theme') || 'dark';
