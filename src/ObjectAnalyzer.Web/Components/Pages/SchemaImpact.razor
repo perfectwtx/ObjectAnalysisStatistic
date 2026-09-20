@@ -186,7 +186,7 @@
     private string? ImpactFilter;
     private string? FieldFilter;
 
-    private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job.Id}";
+    private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job!.Id}";
     private string ImpactUrl => _job is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_job.Id}";
     private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
 
