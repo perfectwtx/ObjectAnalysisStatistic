@@ -1,4 +1,5 @@
 @page "/issues/responsibility"
+@using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityIssueQuery QualityIssueQuery
@@ -233,6 +234,15 @@
     private string? _message;
     private string? _error;
 
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "field")]
+    public string? FieldFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "check")]
+    public string? CheckFilter { get; set; }
+
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
@@ -246,7 +256,7 @@
             _jobs.AddRange((await HistoryStore.GetRecentAsync(100))
                 .Where(x => x.Status == AnalysisJobStatus.Succeeded)
                 .OrderByDescending(x => x.StartedAtUtc));
-            _selectedJob = _jobs.FirstOrDefault();
+            _selectedJob = JobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == JobId.Value) : _jobs.FirstOrDefault();
             await LoadIssuesAsync(_selectedJob);
         }
         finally
@@ -271,8 +281,14 @@
         if (job is null)
             return;
 
+        var fieldFilter = FieldFilter;
+        var checkFilter = CheckFilter;
+            return;
+
         var responsibilities = await ResponsibilityStore.GetByJobAsync(job.Id);
-        foreach (var issue in _issues)
+        foreach (var issue in _issues.Where(x =>
+            (string.IsNullOrWhiteSpace(fieldFilter) || string.Equals(x.FieldName, fieldFilter, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(checkFilter) || string.Equals(x.Check, checkFilter, StringComparison.OrdinalIgnoreCase))))
         {
             var responsibility = responsibilities.FirstOrDefault(x =>
                 string.Equals(x.FieldName, issue.FieldName, StringComparison.OrdinalIgnoreCase) &&
