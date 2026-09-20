@@ -13,6 +13,10 @@
             <h1>质量回归</h1>
             <p>对比最近两次成功分析，把质量下降、字段退化和新增违规收敛到可执行的回归清单。</p>
         </div>
+        <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+            <a class="btn btn-outline-secondary" href="/quality/issues">质量问题</a>
+        </div>
     </div>
 
     @if (_loading)
@@ -41,6 +45,46 @@
     }
     else
     {
+        <section class="oa-panel oa-regression-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-regression-filter-grid">
+                    <div>
+                        <label class="form-label">当前快照</label>
+                        <select class="form-select" @onchange="OnCurrentJobChanged">
+                            @foreach (var job in _jobs)
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _currentJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">比较基线</label>
+                        <select class="form-select" @onchange="OnPreviousJobChanged">
+                            @foreach (var job in _jobs.Where(x => x.Id != _currentJob?.Id))
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _previousJob?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">字段状态</label>
+                        <select class="form-select" @onchange="OnFieldStatusChanged">
+                            <option value="">全部状态</option>
+                            <option value="Severe" selected="@(FieldStatusFilter == "Severe")">严重回归</option>
+                            <option value="Regressed" selected="@(FieldStatusFilter == "Regressed")">发生回归</option>
+                            <option value="Improved" selected="@(FieldStatusFilter == "Improved")">质量改善</option>
+                            <option value="Added" selected="@(FieldStatusFilter == "Added")">新增字段</option>
+                            <option value="Removed" selected="@(FieldStatusFilter == "Removed")">字段消失</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">字段搜索</label>
+                        <input class="form-control" value="@FieldFilter" @oninput="OnFieldChanged" placeholder="搜索字段名称" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="oa-context-grid oa-regression-context">
             <div>
                 <span>比较基线</span>
@@ -77,7 +121,7 @@
             </div>
             <div class="oa-kpi-card @(_report.FieldRegressions.Count > 0 ? "is-warning" : "is-success")">
                 <span>回归字段</span>
-                <strong>@_report.FieldRegressions.Count(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)</strong>
+                <strong>@FilteredFieldRegressions.Count(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)</strong>
                 <small>发生质量下降的字段</small>
             </div>
             <div class="oa-kpi-card @(_report.ViolationRegressions.Count > 0 ? "is-danger" : "is-success")">
@@ -105,8 +149,8 @@
                     </div>
                     <div class="oa-regression-verdict-divider"></div>
                     <div class="oa-regression-signal-list">
-                        <div><span>字段质量变化</span><strong>@_report.FieldRegressions.Count 项</strong></div>
-                        <div><span>违规回归</span><strong>@_report.ViolationRegressions.Count 项</strong></div>
+                        <div><span>字段质量变化</span><strong>@FilteredFieldRegressions.Count 项</strong></div>
+                        <div><span>违规回归</span><strong>@FilteredViolationRegressions.Count 项</strong></div>
                         <div><span>问题变化</span><strong class="@DeltaClass(_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong></div>
                     </div>
                 </div>
@@ -130,7 +174,7 @@
                             <tr><th>字段</th><th>状态</th><th>覆盖率</th><th>空值率</th><th>唯一率</th><th>回归原因</th></tr>
                         </thead>
                         <tbody>
-                        @foreach (var item in _report.FieldRegressions)
+                        @foreach (var item in FilteredFieldRegressions)
                         {
                             <tr>
                                 <td><code>@item.FieldName</code></td>
@@ -173,7 +217,7 @@
                 </div>
                 <span class="oa-count-badge">@_report.ViolationRegressions.Count 项</span>
             </div>
-            @if (_report.ViolationRegressions.Count > 0)
+            @if (FilteredViolationRegressions.Count > 0)
             {
                 <div class="oa-table-wrap">
                     <table class="oa-regression-table oa-violation-table">
@@ -181,7 +225,7 @@
                             <tr><th>字段</th><th>检查类型</th><th>基线</th><th>当前</th><th>增加</th><th>变化</th></tr>
                         </thead>
                         <tbody>
-                        @foreach (var item in _report.ViolationRegressions)
+                        @foreach (var item in FilteredViolationRegressions)
                         {
                             <tr>
                                 <td><code>@(string.IsNullOrWhiteSpace(item.FieldName) ? "数据集" : item.FieldName)</code></td>
@@ -210,7 +254,20 @@
 @code {
     private bool _loading = true;
     private List<AnalysisJob> _jobs = new();
+    private AnalysisJob? _currentJob;
+    private AnalysisJob? _previousJob;
     private QualityRegressionReport? _report;
+    private string? FieldStatusFilter;
+    private string? FieldFilter;
+
+    private IReadOnlyList<dynamic> FilteredFieldRegressions => _report?.FieldRegressions
+        .Where(x => string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(x.Status.ToString(), FieldStatusFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? new List<dynamic>();
+
+    private IReadOnlyList<dynamic> FilteredViolationRegressions => _report?.ViolationRegressions
+        .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? new List<dynamic>();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -218,18 +275,59 @@
     {
         _loading = true;
         await HistoryStore.InitializeAsync();
-        _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded).OrderByDescending(x => x.StartedAtUtc).ToList();
-        if (_jobs.Count >= 2 && !string.IsNullOrWhiteSpace(_jobs[0].ResultJson) && !string.IsNullOrWhiteSpace(_jobs[1].ResultJson))
-        {
-            try
-            {
-                var current = JsonSerializer.Deserialize<AnalysisResult>(_jobs[0].ResultJson!);
-                var previous = JsonSerializer.Deserialize<AnalysisResult>(_jobs[1].ResultJson!);
-                if (current is not null && previous is not null) _report = QualityRegressionAnalyzer.Analyze(previous, current);
-            }
-            catch (JsonException) { _report = null; }
-        }
+        _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).ToList();
+        _currentJob = _jobs.FirstOrDefault();
+        _previousJob = _jobs.Skip(1).FirstOrDefault();
+        RebuildReport();
         _loading = false;
+    }
+
+    private void RebuildReport()
+    {
+        _report = null;
+        if (_currentJob is null || _previousJob is null)
+            return;
+
+        try
+        {
+            var current = JsonSerializer.Deserialize<AnalysisResult>(_currentJob.ResultJson!);
+            var previous = JsonSerializer.Deserialize<AnalysisResult>(_previousJob.ResultJson!);
+            if (current is not null && previous is not null)
+                _report = QualityRegressionAnalyzer.Analyze(previous, current);
+        }
+        catch (JsonException)
+        {
+            _report = null;
+        }
+    }
+
+    private async Task OnCurrentJobChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id)) return;
+        _currentJob = _jobs.FirstOrDefault(x => x.Id == id);
+        if (_currentJob?.Id == _previousJob?.Id) _previousJob = _jobs.FirstOrDefault(x => x.Id != id);
+        RebuildReport();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPreviousJobChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id)) return;
+        _previousJob = _jobs.FirstOrDefault(x => x.Id == id);
+        RebuildReport();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnFieldStatusChanged(ChangeEventArgs args)
+    {
+        FieldStatusFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnFieldChanged(ChangeEventArgs args)
+    {
+        FieldFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
     }
 
     private static string FormatScore(double? value) => value.HasValue ? value.Value.ToString("F1") : "-";
