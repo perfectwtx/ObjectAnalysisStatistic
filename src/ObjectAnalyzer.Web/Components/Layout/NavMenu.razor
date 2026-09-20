@@ -143,15 +143,13 @@
         _searchOpen = true;
     }
 
-    private void HandleSearchFocusOut(FocusEventArgs _)
+    private async Task HandleSearchFocusOut(FocusEventArgs _)
     {
-        _ = Task.Delay(100).ContinueWith(async _ =>
+        await Task.Delay(100);
+        await InvokeAsync(() =>
         {
-            await InvokeAsync(() =>
-            {
-                _searchOpen = false;
-                StateHasChanged();
-            });
+            _searchOpen = false;
+            StateHasChanged();
         });
     }
 
