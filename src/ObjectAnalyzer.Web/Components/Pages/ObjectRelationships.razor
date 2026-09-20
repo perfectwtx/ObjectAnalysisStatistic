@@ -68,7 +68,7 @@
             else
             {
             <div class="oa-panel-header"><div><div class="oa-panel-kicker">NESTED RELATIONSHIPS</div><h2>嵌套关系</h2></div><span class="oa-count-badge">@FilteredRelationships.Count 个</span></div>
-            <div class="oa-panel-body oa-object-context"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong></div>
+            <div class="oa-panel-body oa-object-context"><span>数据源</span><strong title="@_job!.SourceName">@_job!.SourceName</strong></div>
             <div class="oa-table-wrap oa-object-table-wrap">
                 <table class="table table-hover align-middle mb-0 oa-analysis-table">
                     <thead><tr><th>路径</th><th>类型</th><th>出现次数</th><th>目标字段数</th><th>目标字段</th></tr></thead>
