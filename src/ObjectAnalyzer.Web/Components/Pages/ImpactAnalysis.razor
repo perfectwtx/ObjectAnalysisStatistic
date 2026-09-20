@@ -34,10 +34,6 @@
     {
         <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再查看影响范围。</span></div>
     }
-    else if (_impact is null)
-    {
-        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>分析结果无法解析</strong><span>请检查最近一次成功作业的结果数据。</span></div>
-    }
     else
     {
         <section class="oa-panel oa-impact-filter-card">
@@ -80,6 +76,16 @@
             </div>
         </section>
 
+        @if (_impact is null)
+        {
+            <div class="oa-panel oa-empty-state">
+                <div class="oa-empty-icon">!</div>
+                <strong>分析结果无法解析</strong>
+                <span>当前分析任务没有可用的影响分析结果。可以切换上方分析任务继续查看。</span>
+            </div>
+        }
+        else
+        {
         <div class="oa-kpi-grid is-3">
             <div class="oa-kpi-card"><span>最高影响级别</span><strong class="@GetLevelClass(_impact.HighestLevel)">@GetLevelText(_impact.HighestLevel)</strong><small>当前 Schema 影响范围</small></div>
             <div class="oa-kpi-card is-danger"><span>直接破坏性变更</span><strong>@_impact.BreakingChangeCount</strong><small>来自 Schema Diff 的直接影响</small></div>
@@ -128,6 +134,7 @@
                     </table>
                 </div>
             </div>
+        }
         }
     }
 </div>
