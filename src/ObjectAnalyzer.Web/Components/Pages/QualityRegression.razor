@@ -279,7 +279,7 @@
 
     private IReadOnlyList<QualityViolationRegression> FilteredViolations => (_report?.ViolationRegressions ?? new List<QualityViolationRegression>())
         .Where(MatchesViolationFilter)
-        .ToList() ?? Array.Empty<QualityViolationRegression>();
+        .ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
