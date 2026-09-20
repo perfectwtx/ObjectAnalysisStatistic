@@ -289,9 +289,16 @@
         await HistoryStore.InitializeAsync();
         _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).ToList();
         _currentJob = JobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == JobId.Value) : _jobs.FirstOrDefault();
-        _previousJob = _jobs.FirstOrDefault(x => x.Id != _currentJob?.Id);
+        _previousJob = FindBaselineJob(_currentJob);
         RebuildReport();
         _loading = false;
+    }
+
+    private AnalysisJob? FindBaselineJob(AnalysisJob? current)
+    {
+        if (current is null) return null;
+        return _jobs.Where(x => x.Id != current.Id && x.StartedAtUtc < current.StartedAtUtc).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault()
+            ?? _jobs.FirstOrDefault(x => x.Id != current.Id);
     }
 
     private void RebuildReport()
@@ -317,7 +324,7 @@
     {
         if (!Guid.TryParse(args.Value?.ToString(), out var id)) return;
         _currentJob = _jobs.FirstOrDefault(x => x.Id == id);
-        if (_currentJob?.Id == _previousJob?.Id) _previousJob = _jobs.FirstOrDefault(x => x.Id != id);
+        if (_currentJob?.Id == _previousJob?.Id) _previousJob = FindBaselineJob(_currentJob);
         RebuildReport();
         await InvokeAsync(StateHasChanged);
     }
