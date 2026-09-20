@@ -22,6 +22,10 @@ public static class QualityEndpoints
         quality.MapGet("/schema-impact/{jobId:guid}", GetSchemaImpact).WithSummary("获取指定作业的 Schema 影响");
         quality.MapGet("/recommendations", GetRecommendations).WithSummary("获取最近一次分析的质量修复建议");
         quality.MapGet("/regression", GetRegression).WithSummary("比较最近两次成功分析并返回质量回归");
+
+        // 与 React 前端 API 客户端兼容的快照别名。
+        quality.MapGet("/snapshots", GetTrend).WithSummary("获取质量快照");
+        quality.MapGet("/snapshots/{jobId:guid}/fields", GetFields).WithSummary("获取指定快照的字段质量");
         return routes;
     }
 
@@ -32,6 +36,13 @@ public static class QualityEndpoints
         analysis.MapGet("/jobs/{jobId:guid}", GetJob).WithSummary("获取分析作业详情");
         analysis.MapGet("/jobs/{jobId:guid}/result", GetJobResult).WithSummary("获取分析作业结果");
         analysis.MapGet("/jobs/{jobId:guid}/overview", GetJobOverview).WithSummary("获取分析作业完整详情");
+
+        // 前端平台 API 的简化路径别名，保留 /analysis/jobs 作为规范路径。
+        routes.MapGet("/jobs", GetJobs).WithTags("分析历史").WithSummary("获取分析作业历史");
+        routes.MapGet("/jobs/{jobId:guid}", GetJob).WithTags("分析历史").WithSummary("获取分析作业详情");
+        routes.MapGet("/jobs/{jobId:guid}/result", GetJobResult).WithTags("分析历史").WithSummary("获取分析作业结果");
+        routes.MapGet("/jobs/{jobId:guid}/fields", GetFields).WithTags("数据质量").WithSummary("获取指定作业的字段质量");
+        routes.MapGet("/jobs/{jobId:guid}/schema-impact", GetSchemaImpact).WithTags("数据质量").WithSummary("获取指定作业的 Schema 影响");
         return routes;
     }
 
