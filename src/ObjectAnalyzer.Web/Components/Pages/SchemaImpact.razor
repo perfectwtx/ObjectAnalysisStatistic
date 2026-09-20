@@ -13,7 +13,14 @@
             <h1>Schema 影响分析</h1>
             <p>对比最近一次分析与基线 Schema，快速定位新增、删除及字段变更。</p>
         </div>
-        <a class="btn btn-outline-secondary oa-header-action" href="/quality/impact-analysis">影响传播</a>
+        <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/quality/data-lineage">数据血缘</a>
+            <a class="btn btn-outline-secondary" href="/quality/impact-analysis">影响传播</a>
+            @if (_job is not null)
+            {
+                <a class="btn btn-outline-primary" href="@($"/jobs/{_job.Id}")">当前作业</a>
+            }
+        </div>
     </div>
 
     @if (_loading)
@@ -30,17 +37,54 @@
     }
     else
     {
+        <section class="oa-panel oa-schema-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-schema-filter-grid">
+                    <div>
+                        <label class="form-label">分析任务</label>
+                        <select class="form-select" @onchange="OnJobChanged">
+                            @foreach (var job in _jobs)
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _job?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">变更类型</label>
+                        <select class="form-select" @onchange="OnChangeTypeChanged">
+                            <option value="">全部类型</option>
+                            <option value="Added" selected="@(ChangeTypeFilter == "Added")">新增字段</option>
+                            <option value="Removed" selected="@(ChangeTypeFilter == "Removed")">删除字段</option>
+                            <option value="Changed" selected="@(ChangeTypeFilter == "Changed")">字段变更</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">影响级别</label>
+                        <select class="form-select" @onchange="OnImpactChanged">
+                            <option value="">全部级别</option>
+                            <option value="Breaking" selected="@(ImpactFilter == "Breaking")">破坏性</option>
+                            <option value="Normal" selected="@(ImpactFilter == "Normal")">普通</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">字段搜索</label>
+                        <input class="form-control" value="@FieldFilter" @oninput="OnFieldChanged" placeholder="搜索字段路径" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card @( _diff.HasBreakingChanges ? "is-danger" : "is-success")"><span>破坏性变更</span><strong>@(_diff.HasBreakingChanges ? "是" : "否")</strong><small>需要重点检查下游契约</small></div>
-            <div class="oa-kpi-card"><span>新增字段</span><strong>@_diff.AddedFields.Count</strong><small>基线中不存在</small></div>
-            <div class="oa-kpi-card is-danger"><span>删除字段</span><strong>@_diff.RemovedFields.Count</strong><small>当前 Schema 中不存在</small></div>
-            <div class="oa-kpi-card"><span>变更字段</span><strong>@_diff.ChangedFields.Count</strong><small>存在属性变化</small></div>
+            <div class="oa-kpi-card"><span>新增字段</span><strong>@FilteredAdded.Count</strong><small>基线中不存在</small></div>
+            <div class="oa-kpi-card is-danger"><span>删除字段</span><strong>@FilteredRemoved.Count</strong><small>当前 Schema 中不存在</small></div>
+            <div class="oa-kpi-card"><span>变更字段</span><strong>@FilteredChanged.Count</strong><small>存在属性变化</small></div>
         </div>
 
         <div class="oa-panel mb-4">
             <div class="oa-panel-header">
                 <div><div class="oa-panel-kicker">CONTEXT</div><h2>分析上下文</h2></div>
-                <span class="oa-count-badge">@(_diff.AddedFields.Count + _diff.RemovedFields.Count + _diff.ChangedFields.Count) 项变化</span>
+                <span class="oa-count-badge">@(FilteredAdded.Count + FilteredRemoved.Count + FilteredChanged.Count) 项变化</span>
             </div>
             <div class="oa-panel-body">
                 <div class="oa-context-grid">
@@ -60,12 +104,12 @@
             </div>
         </div>
 
-        @if (_diff.RemovedFields.Count > 0)
+        @if (FilteredRemoved.Count > 0)
         {
             <div class="oa-panel mb-4">
                 <div class="oa-panel-header"><div><div class="oa-panel-kicker">REMOVED</div><h2>删除字段</h2></div><span class="oa-count-pill">@_diff.RemovedFields.Count</span></div>
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
-                @foreach (var field in _diff.RemovedFields)
+                @foreach (var field in FilteredRemoved)
                 {
                     <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="oa-badge is-danger">破坏性</span></td></tr>
                 }
@@ -73,12 +117,12 @@
             </div>
         }
 
-        @if (_diff.AddedFields.Count > 0)
+        @if (FilteredAdded.Count > 0)
         {
             <div class="oa-panel mb-4">
                 <div class="oa-panel-header"><div><div class="oa-panel-kicker">ADDED</div><h2>新增字段</h2></div><span class="oa-count-pill">@_diff.AddedFields.Count</span></div>
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
-                @foreach (var field in _diff.AddedFields)
+                @foreach (var field in FilteredAdded)
                 {
                     <tr><td><code>@field.Path</code></td><td>@GetTypeName(field)</td><td><span class="oa-badge is-success">非破坏性</span></td></tr>
                 }
@@ -86,12 +130,12 @@
             </div>
         }
 
-        @if (_diff.ChangedFields.Count > 0)
+        @if (FilteredChanged.Count > 0)
         {
             <div class="oa-panel mb-4">
                 <div class="oa-panel-header"><div><div class="oa-panel-kicker">CHANGED</div><h2>字段变更</h2></div><span class="oa-count-pill">@_diff.ChangedFields.Count</span></div>
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
-                @foreach (var change in _diff.ChangedFields)
+                @foreach (var change in FilteredChanged)
                 {
                     <tr><td><code>@change.Path</code></td><td><span class="oa-badge @(change.Breaking ? "is-danger" : "is-neutral")">@(change.Breaking ? "破坏性" : "普通")</span></td><td>@if (change.Changes.Count == 0){<span class="oa-muted">无详细变更</span>}else{<ul class="mb-0 ps-3 oa-change-list">@foreach (var item in change.Changes){<li>@item.Property：@item.Description</li>}</ul>}</td></tr>
                 }
@@ -99,7 +143,7 @@
             </div>
         }
 
-        @if (_diff.AddedFields.Count == 0 && _diff.RemovedFields.Count == 0 && _diff.ChangedFields.Count == 0)
+        @if (FilteredAdded.Count == 0 && FilteredRemoved.Count == 0 && FilteredChanged.Count == 0)
         {
             <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">✓</div><strong>Schema 与基线完全一致</strong><span>本次分析没有发现字段层面的 Schema 变化。</span></div>
         }
@@ -107,15 +151,36 @@
 </div>
 
 @code {
+    private readonly List<AnalysisJob> _jobs = new();
     private bool _loading = true;
     private AnalysisJob? _job;
     private SchemaDiff? _diff;
+    private string? ChangeTypeFilter;
+    private string? ImpactFilter;
+    private string? FieldFilter;
+
+    private IReadOnlyList<SchemaSnapshotField> FilteredAdded => FilterFields(_diff?.AddedFields);
+    private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => FilterFields(_diff?.RemovedFields);
+    private IReadOnlyList<SchemaChangedField> FilteredChanged => (_diff?.ChangedFields ?? Array.Empty<SchemaChangedField>())
+        .Where(x => MatchesField(x.Path))
+        .Where(x => string.IsNullOrWhiteSpace(ImpactFilter) || (ImpactFilter == "Breaking" ? x.Breaking : !x.Breaking))
+        .ToList();
+
+    private IReadOnlyList<SchemaSnapshotField> FilterFields(IReadOnlyList<SchemaSnapshotField>? fields)
+        => (fields ?? Array.Empty<SchemaSnapshotField>())
+            .Where(x => MatchesField(x.Path))
+            .Where(x => string.IsNullOrWhiteSpace(ImpactFilter) || ImpactFilter == "Breaking")
+            .ToList();
+
+    private bool MatchesField(string path)
+        => string.IsNullOrWhiteSpace(FieldFilter) || path.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
-        _job = jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
+        _jobs.AddRange(jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc));
+        _job = _jobs.FirstOrDefault();
 
         if (_job is not null)
         {
@@ -131,6 +196,47 @@
         }
 
         _loading = false;
+    }
+
+    private void RebuildDiff()
+    {
+        _diff = null;
+        if (_job is null) return;
+        try
+        {
+            var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+            _diff = result?.SchemaDiff;
+        }
+        catch (JsonException)
+        {
+            _diff = null;
+        }
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id)) return;
+        _job = _jobs.FirstOrDefault(x => x.Id == id);
+        RebuildDiff();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnChangeTypeChanged(ChangeEventArgs args)
+    {
+        ChangeTypeFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnImpactChanged(ChangeEventArgs args)
+    {
+        ImpactFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnFieldChanged(ChangeEventArgs args)
+    {
+        FieldFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
     }
 
     private static string GetTypeName(SchemaSnapshotField field)
