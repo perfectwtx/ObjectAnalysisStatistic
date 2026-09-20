@@ -33,12 +33,33 @@
     {
         <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再返回这里查看 Schema 变化。</span></div>
     }
-    else if (_diff is null)
-    {
-        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂无 Schema Diff</strong><span>请先配置基线 Schema 并执行一次分析。</span></div>
-    }
     else
     {
+        @if (_diff is null)
+        {
+            <section class="oa-panel oa-schema-filter-card">
+                <div class="oa-panel-body">
+                    <div class="oa-schema-filter-grid">
+                        <div>
+                            <label class="form-label">分析任务</label>
+                            <select class="form-select" @onchange="OnJobChanged">
+                                @foreach (var job in _jobs)
+                                {
+                                    <option value="@job.Id" selected="@(job.Id == _job?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <div class="oa-panel oa-empty-state">
+                <div class="oa-empty-icon">∅</div>
+                <strong>暂无 Schema Diff</strong>
+                <span>当前分析没有可用的 Schema 基线差异。可以切换上方分析任务继续查看。</span>
+            </div>
+        }
+        else
+        {
         <section class="oa-panel oa-schema-filter-card">
             <div class="oa-panel-body">
                 <div class="oa-schema-filter-grid">
@@ -148,6 +169,7 @@
         @if (FilteredAdded.Count == 0 && FilteredRemoved.Count == 0 && FilteredChanged.Count == 0)
         {
             <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">✓</div><strong>Schema 与基线完全一致</strong><span>本次分析没有发现字段层面的 Schema 变化。</span></div>
+        }
         }
     }
 </div>
