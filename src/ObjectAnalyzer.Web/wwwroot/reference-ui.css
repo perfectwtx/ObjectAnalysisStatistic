@@ -1411,3 +1411,105 @@ body:has(.app-shell) .oa-global-content {
         display: none;
     }
 }
+
+
+/* Bootstrap detail controls, brought in line with the reference dashboard. */
+.page main .progress,
+.oa-analysis-page .progress {
+    height: 6px !important;
+    overflow: hidden;
+    border-radius: 999px !important;
+    background: var(--oa-ref-muted) !important;
+    box-shadow: none !important;
+}
+
+.page main .progress-bar,
+.oa-analysis-page .progress-bar {
+    border-radius: 999px !important;
+    background: var(--oa-ref-accent) !important;
+    transition: width .2s ease;
+}
+
+.page main .form-control:focus,
+.page main .form-select:focus,
+.oa-analysis-page .form-control:focus,
+.oa-analysis-page .form-select:focus,
+.oa-page .form-control:focus,
+.oa-page .form-select:focus {
+    border-color: var(--oa-ref-border-strong) !important;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--oa-ref-accent) 10%, transparent) !important;
+}
+
+.oa-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.oa-header-actions .btn {
+    min-width: max-content;
+}
+
+.oa-section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 28px 0 12px;
+}
+
+.oa-section-heading p {
+    margin: 6px 0 0;
+    color: var(--oa-ref-muted-fg);
+    font-size: .74rem;
+    line-height: 1.55;
+}
+
+.oa-section-heading .oa-count-pill,
+.oa-panel-header .oa-count-pill,
+.oa-panel-header .oa-count-badge {
+    flex: 0 0 auto;
+}
+
+.oa-state-message {
+    border-radius: var(--oa-ref-radius-sm);
+    background: var(--oa-ref-muted);
+    color: var(--oa-ref-fg);
+}
+
+.oa-date {
+    display: block;
+    font-variant-numeric: tabular-nums;
+}
+
+.oa-analysis-table small,
+.oa-jobs-table small {
+    display: block;
+    margin-top: 3px;
+    color: var(--oa-ref-muted-fg);
+    font-size: .64rem;
+}
+
+@media (max-width: 760px) {
+    .oa-analysis-header,
+    .oa-page-header {
+        gap: 16px !important;
+    }
+
+    .oa-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .oa-header-actions .btn {
+        flex: 0 0 auto;
+    }
+
+    .oa-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+}
