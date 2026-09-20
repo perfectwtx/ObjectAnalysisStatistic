@@ -2219,3 +2219,12 @@
 .oa-baselines-page .oa-baseline-evaluation.is-pass{background:var(--oa-success-bg);color:var(--oa-success)}
 .oa-baselines-page .oa-baseline-evaluation.is-fail{background:var(--oa-danger-bg);color:var(--oa-danger)}
 @media(max-width:700px){.oa-baselines-page .oa-baseline-summary{grid-template-columns:1fr}.oa-baselines-page .oa-baseline-table-wrap{overflow-x:auto}.oa-baselines-page .oa-baseline-table{min-width:900px}}
+
+/* Alert Rules workbench */
+.oa-alert-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.oa-alert-page .oa-alert-filter-card{margin-bottom:1rem}
+.oa-alert-page .oa-alert-filter-grid{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(260px,1fr);gap:1rem}
+.oa-alert-page .oa-alert-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-alert-page .oa-alert-filter-grid .form-select{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
+.oa-alert-page .oa-alert-filter-hint{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--oa-border);color:var(--oa-text-2);font-size:.78rem}
+@media(max-width:640px){.oa-alert-page .oa-alert-filter-grid{grid-template-columns:1fr}}
