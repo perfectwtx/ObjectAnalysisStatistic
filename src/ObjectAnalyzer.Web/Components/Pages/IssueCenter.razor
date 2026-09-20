@@ -134,6 +134,9 @@
         }
     }
 
+    private string IssueDetailUrl(QualityIssue issue) =>
+        $"/issues/detail?jobId={issue.JobId}&field={Uri.EscapeDataString(issue.FieldName)}&check={Uri.EscapeDataString(issue.Check)}";
+
     private async Task LoadIssuesAsync(AnalysisJob? job)
     {
         _selectedIssues = job is null ? new List<QualityIssue>() : (await QualityIssueQuery.GetByJobAsync(job.Id)).ToList();
