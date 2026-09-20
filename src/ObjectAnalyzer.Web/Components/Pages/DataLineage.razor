@@ -132,7 +132,7 @@
     private string? KindFilter;
     private string? PathFilter;
 
-    private IReadOnlyList<LineageModel.Node> FilteredNodes => _lineage?.Nodes
+    private IReadOnlyList<DataLineageNode> FilteredNodes => _lineage?.Nodes
         .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
         .ToList() ?? Array.Empty<LineageModel.Node>();
