@@ -1989,3 +1989,85 @@
 .oa-issues-page .oa-filter-context strong{color:var(--oa-text-1);font-family:var(--oa-font-mono)}
 .oa-issues-page .oa-filter-context a{color:var(--oa-accent);font-weight:700;text-decoration:none}
 .oa-issues-page .oa-filter-context a:hover{text-decoration:underline}
+
+
+/* Issue drill-down */
+.oa-issue-detail-context {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+    border: 1px solid var(--oa-border, #e5e7eb);
+    border-radius: 14px;
+    background: var(--oa-border, #e5e7eb);
+}
+.oa-issue-detail-context > div {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    padding: 1rem 1.1rem;
+    background: var(--oa-surface, #fff);
+}
+.oa-issue-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.oa-issue-detail-message {
+    margin: 0 0 1rem;
+    line-height: 1.7;
+}
+.oa-detail-facts {
+    display: grid;
+    gap: .75rem;
+}
+.oa-detail-facts > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: .65rem;
+    border-bottom: 1px solid var(--oa-border, #eef0f3);
+}
+.oa-detail-facts span {
+    color: var(--oa-muted, #6b7280);
+}
+.oa-detail-comment {
+    margin-top: 1rem;
+    padding: .75rem .9rem;
+    border-radius: 10px;
+    background: var(--oa-surface-muted, #f6f7f9);
+    line-height: 1.6;
+}
+.oa-issue-detail-next {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--oa-border, #e5e7eb);
+    border-radius: 14px;
+    background: var(--oa-surface, #fff);
+}
+.oa-issue-detail-next p {
+    margin: .35rem 0 0;
+    color: var(--oa-muted, #6b7280);
+}
+@media (max-width: 900px) {
+    .oa-issue-detail-context,
+    .oa-issue-detail-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .oa-issue-detail-context,
+    .oa-issue-detail-grid {
+        grid-template-columns: 1fr;
+    }
+    .oa-issue-detail-next {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
