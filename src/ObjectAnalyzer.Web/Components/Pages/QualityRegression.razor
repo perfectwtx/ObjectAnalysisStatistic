@@ -110,18 +110,7 @@
                 <small>标准化问题项</small>
             </div>
         </section>
-        }
-        else
-        {
-            <section class="oa-panel oa-empty-state oa-regression-state">
-                <div class="oa-empty-icon">1</div>
-                <strong>当前快照没有可用基线</strong>
-                <span>请选择一个更晚的分析作为当前快照，或手动选择比较基线。</span>
-            </section>
-        }
 
-        @if (_previousJob is not null)
-        {
         <section class="oa-kpi-grid is-4 oa-regression-kpis">
             <div class="oa-kpi-card @(_report.ScoreDelta < 0 ? "is-danger" : _report.ScoreDelta > 0 ? "is-success" : "is-info")">
                 <span>质量分变化</span>
@@ -145,10 +134,6 @@
             </div>
         </section>
 
-        </section>
-        }
-        @if (_previousJob is not null)
-        {
         <section class="oa-panel oa-regression-summary">
             <div class="oa-panel-header">
                 <div>
