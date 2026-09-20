@@ -2257,3 +2257,7 @@
 .oa-field-relationships-page .oa-correlation-filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(240px,1fr) minmax(180px,.7fr);gap:1rem}
 @media(max-width:820px){.oa-object-relationships-page .oa-object-filter-grid,.oa-field-relationships-page .oa-correlation-filter-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.oa-object-relationships-page .oa-header-actions,.oa-field-relationships-page .oa-header-actions{flex-wrap:wrap}.oa-object-relationships-page .oa-object-table-wrap{overflow-x:auto}}
+
+/* Quality Trend drill-down */
+.oa-quality-trend-page .oa-trend-issue-link{font-weight:700;text-decoration:none;color:var(--oa-link)}
+.oa-quality-trend-page .oa-trend-issue-link:hover{text-decoration:underline}
