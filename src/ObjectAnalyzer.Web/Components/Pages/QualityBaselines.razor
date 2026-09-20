@@ -1,5 +1,7 @@
 @page "/quality/baselines"
+@using System.Text.Json
 @using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
 @inject IQualityBaselineStore BaselineStore
 
 <PageTitle>质量基线</PageTitle>
@@ -11,7 +13,7 @@
             <h1>质量基线</h1>
             <p>按数据源设置最低质量要求，分析完成后会自动记录本次基线评估结果。</p>
         </div>
-        <button class="btn btn-primary oa-header-action" @onclick="CreateAsync">新增基线</button>
+        <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/quality">质量总览</a><a class="btn btn-outline-secondary" href="/quality/trend">质量趋势</a><a class="btn btn-outline-secondary" href="/jobs">作业中心</a><button class="btn btn-primary oa-header-action" @onclick="CreateAsync">新增基线</button></div>
     </div>
 
     @if (_loading)
@@ -36,10 +38,11 @@
     {
         <div class="oa-panel oa-baseline-list-panel">
             <div class="oa-panel-body">
+                <div class="oa-baseline-summary"><div><span>已配置</span><strong>@FilteredBaselines.Count</strong></div><div><span>最近通过</span><strong>@FilteredBaselines.Count(x => GetLatestEvaluation(x.SourceName)?.Passed == true)</strong></div><div><span>最近未通过</span><strong>@FilteredBaselines.Count(x => GetLatestEvaluation(x.SourceName)?.Passed == false)</strong></div></div>
                 <div class="oa-panel-header oa-baseline-panel-header">
                     <div>
                         <h2>已配置基线</h2>
-                        <span>@_baselines.Count 个数据源</span>
+                        <span>@FilteredBaselines.Count 个数据源</span>
                     </div>
                 </div>
                 <div class="oa-baseline-table-wrap">
@@ -53,11 +56,12 @@
                                 <th>唯一性</th>
                                 <th>一致性</th>
                                 <th>异常控制</th>
+                                <th>最近评估</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                        @foreach (var baseline in _baselines)
+                        @foreach (var baseline in FilteredBaselines)
                         {
                             <tr>
                                 <td class="oa-baseline-source"><strong>@baseline.SourceName</strong></td>
@@ -67,6 +71,7 @@
                                 <td class="oa-baseline-score">@Format(baseline.MinimumUniqueness)</td>
                                 <td class="oa-baseline-score">@Format(baseline.MinimumConsistency)</td>
                                 <td class="oa-baseline-score">@Format(baseline.MinimumAnomalyControl)</td>
+                                <td>@RenderEvaluation(baseline.SourceName)</td>
                                 <td class="oa-baseline-actions">
                                     <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Edit(baseline)">编辑</button>
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(baseline.SourceName)">删除</button>
@@ -139,6 +144,9 @@
 
 @code {
     private readonly List<QualityBaseline> _baselines = new();
+    private readonly Dictionary<string, QualityBaselineEvaluation> _latestEvaluations = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<QualityBaseline> FilteredBaselines => _baselines;
+    private IReadOnlyList<AnalysisJob> _recentJobs = Array.Empty<AnalysisJob>();
     private QualityBaselineEditor? _editing;
     private bool _isNew;
     private bool _loading;
@@ -153,6 +161,18 @@
         {
             _baselines.Clear();
             _baselines.AddRange(await BaselineStore.GetAllAsync());
+            _latestEvaluations.Clear();
+            _recentJobs = await HistoryStore.GetRecentAsync(100);
+            foreach (var job in _recentJobs)
+            {
+                if (string.IsNullOrWhiteSpace(job.QualityBaselineEvaluationJson) || _latestEvaluations.ContainsKey(job.SourceName)) continue;
+                try
+                {
+                    var evaluation = JsonSerializer.Deserialize<QualityBaselineEvaluation>(job.QualityBaselineEvaluationJson);
+                    if (evaluation is not null) _latestEvaluations[job.SourceName] = evaluation;
+                }
+                catch (JsonException) { }
+            }
         }
         finally
         {
@@ -206,6 +226,22 @@
             Cancel();
         await LoadAsync();
     }
+
+    private QualityBaselineEvaluation? GetLatestEvaluation(string sourceName) => _latestEvaluations.TryGetValue(sourceName, out var evaluation) ? evaluation : null;
+
+    private RenderFragment RenderEvaluation(string sourceName) => builder =>
+    {
+        var evaluation = GetLatestEvaluation(sourceName);
+        if (evaluation is null)
+        {
+            builder.AddContent(0, "尚无评估");
+            return;
+        }
+        builder.OpenElement(1, "span");
+        builder.AddAttribute(2, "class", $"oa-baseline-evaluation {(evaluation.Passed ? "is-pass" : "is-fail")}");
+        builder.AddContent(3, evaluation.Passed ? "通过" : $"未通过 · {evaluation.Failures.Count} 项");
+        builder.CloseElement();
+    };
 
     private static string Format(double? value) => value.HasValue ? $"{value.Value:F1}" : "不限制";
 
