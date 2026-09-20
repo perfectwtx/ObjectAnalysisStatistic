@@ -1,3 +1,4 @@
+@using Microsoft.AspNetCore.Components
 @page "/quality/relationships"
 @using System.Text.Json
 @using ObjectAnalyzer.Analysis
@@ -118,6 +119,8 @@
     private List<AnalysisJob> _jobs = new();
     private AnalysisJob? _job;
     private FieldCorrelationMatrix? _matrix;
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
     private Guid? SelectedJobId;
     private string? DirectionFilter;
     private string? FieldFilter;
@@ -144,7 +147,9 @@
             .OrderByDescending(x => x.StartedAtUtc)
             .ToList();
 
-        if (SelectedJobId is null || !_jobs.Any(x => x.Id == SelectedJobId.Value))
+        if (JobId.HasValue && _jobs.Any(x => x.Id == JobId.Value))
+            SelectedJobId = JobId.Value;
+        else if (SelectedJobId is null || !_jobs.Any(x => x.Id == SelectedJobId.Value))
             SelectedJobId = _jobs.FirstOrDefault()?.Id;
 
         await LoadSelectedJobAsync();
