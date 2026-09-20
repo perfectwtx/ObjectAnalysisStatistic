@@ -25,8 +25,6 @@
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">…</div><strong>正在加载最近一次分析结果</strong><span>正在准备对象关系数据。</span></div> }
     else if (_job is null)
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再返回这里查看对象关系。</span></div> }
-    else if (_relationships.Count == 0)
-    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂未发现嵌套对象关系</strong><span>最近一次分析可能只包含扁平字段，或没有可识别的对象/集合结构。</span></div> }
     else
     {
         <section class="oa-panel oa-object-filter-card">
