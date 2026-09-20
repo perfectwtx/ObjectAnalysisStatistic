@@ -170,40 +170,6 @@ public static class QualityBaselineEndpoints
             MinConsistency: baseline.MinimumConsistency,
             MinAnomalyControl: baseline.MinimumAnomalyControl);
 
-    public sealed record QualityBaselineRequest(
-        string? SourceName = null,
-        double? MinimumOverallScore = 90,
-        double? MinimumCompleteness = 90,
-        double? MinimumValidity = 90,
-        double? MinimumUniqueness = 90,
-        double? MinimumConsistency = 90,
-        double? MinimumAnomalyControl = 90,
-        string? Name = null,
-        double? MinOverallScore = null,
-        double? MinCompleteness = null,
-        double? MinValidity = null,
-        double? MinUniqueness = null,
-        double? MinConsistency = null,
-        double? MinAnomalyControl = null)
-    {
-        public string EffectiveSourceName => !string.IsNullOrWhiteSpace(SourceName)
-            ? SourceName!
-            : Name ?? string.Empty;
-
-        public QualityBaseline ToModel(string sourceName)
-            => new(
-                sourceName,
-                Normalize(MinOverallScore ?? MinimumOverallScore),
-                Normalize(MinCompleteness ?? MinimumCompleteness),
-                Normalize(MinValidity ?? MinimumValidity),
-                Normalize(MinUniqueness ?? MinimumUniqueness),
-                Normalize(MinConsistency ?? MinimumConsistency),
-                Normalize(MinAnomalyControl ?? MinimumAnomalyControl));
-
-        private static double? Normalize(double? value)
-            => value is >= 0 and <= 1 ? value * 100 : value;
-    }
-
     public sealed record QualityBaselineResponse(
         string Id,
         string Name,
