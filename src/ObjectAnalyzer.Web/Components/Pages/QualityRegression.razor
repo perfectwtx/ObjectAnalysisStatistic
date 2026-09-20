@@ -271,7 +271,7 @@
 
     private IReadOnlyList<QualityFieldRegression> FilteredFields => (_report?.FieldRegressions ?? new List<QualityFieldRegression>())
         .Where(MatchesFieldFilter)
-        .ToList() ?? Array.Empty<QualityFieldRegression>();
+        .ToList();
 
     private IReadOnlyList<QualityFieldRegression> FilteredRegressedFields => FilteredFields
         .Where(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)
