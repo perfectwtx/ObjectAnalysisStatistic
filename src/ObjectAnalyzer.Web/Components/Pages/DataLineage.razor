@@ -86,7 +86,7 @@
                 <span class="oa-count-badge">@FilteredNodes.Count 节点</span>
             </div>
             <div class="oa-panel-body oa-lineage-context">
-                <span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong>
+                <span>数据源</span><strong title="@_job!.SourceName">@_job!.SourceName</strong>
             </div>
             <div class="oa-table-wrap oa-lineage-table-wrap">
                 <table class="table table-hover align-middle mb-0 oa-analysis-table">
@@ -142,7 +142,7 @@
     private string? KindFilter;
     private string? PathFilter;
 
-    private IReadOnlyList<DataLineageNode> FilteredNodes => _lineage?.Nodes
+    private IReadOnlyList<DataLineageNode> FilteredNodes => (_lineage?.Nodes ?? new List<DataLineageNode>())
         .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
         .ToList() ?? Array.Empty<DataLineageNode>();
