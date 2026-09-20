@@ -327,7 +327,7 @@
     private string GetOwnerLabel(string? owner) =>
         string.Equals(owner, "unassigned", StringComparison.OrdinalIgnoreCase) ? "未指定" : owner ?? string.Empty;
 
-    private string GetStatusClass(QualityIssue issue) =>
+    private string GetStatusClass(QualityIssue issue)
     {
         if (!_responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility))
             return "is-open";
@@ -338,7 +338,7 @@
             "Ignored" => "is-ignored",
             _ => "is-open"
         };
-    };
+    }
 
     private void SetFilter(string name, string? value)
     {
