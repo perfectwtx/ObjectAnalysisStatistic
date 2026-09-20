@@ -9,7 +9,10 @@
 <div class="oa-analysis-page oa-object-relationships-page">
     <div class="oa-analysis-header">
         <div><div class="oa-eyebrow">OBJECT RELATIONSHIPS</div><h1>对象关系分析</h1><p>查看最近一次成功分析发现的嵌套对象与对象集合关系。</p></div>
-        <a class="btn btn-outline-secondary oa-header-action" href="/jobs">作业中心</a>
+        <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+            <a class="btn btn-outline-primary" href="/quality/data-lineage">数据血缘</a>
+        </div>
     </div>
 
     @if (_loading)
@@ -20,18 +23,46 @@
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂未发现嵌套对象关系</strong><span>最近一次分析可能只包含扁平字段，或没有可识别的对象/集合结构。</span></div> }
     else
     {
+        <section class="oa-panel oa-object-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-object-filter-grid">
+                    <div>
+                        <label class="form-label">分析任务</label>
+                        <select class="form-select" @onchange="OnJobChanged">
+                            @foreach (var job in _jobs)
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _job?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">关系类型</label>
+                        <select class="form-select" @onchange="OnKindChanged">
+                            <option value="">全部类型</option>
+                            <option value="Object" selected="@(KindFilter == "Object")">对象</option>
+                            <option value="Collection" selected="@(KindFilter == "Collection")">对象集合</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">路径搜索</label>
+                        <input class="form-control" value="@PathFilter" @oninput="OnPathChanged" placeholder="搜索关系路径" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <div class="oa-kpi-grid is-3">
-            <div class="oa-kpi-card"><span>关系数量</span><strong>@_relationships.Count</strong><small>发现的嵌套关系总数</small></div>
+            <div class="oa-kpi-card"><span>关系数量</span><strong>@FilteredRelationships.Count</strong><small>当前筛选 / @_relationships.Count 总关系</small></div>
             <div class="oa-kpi-card"><span>对象关系</span><strong>@_relationships.Count(x => x.Kind == "Object")</strong><small>嵌套对象节点</small></div>
             <div class="oa-kpi-card"><span>集合关系</span><strong>@_relationships.Count(x => x.Kind == "Collection")</strong><small>对象集合节点</small></div>
         </div>
         <div class="oa-panel">
-            <div class="oa-panel-header"><div><div class="oa-panel-kicker">NESTED RELATIONSHIPS</div><h2>嵌套关系</h2></div><span class="oa-count-badge">@_relationships.Count 个</span></div>
+            <div class="oa-panel-header"><div><div class="oa-panel-kicker">NESTED RELATIONSHIPS</div><h2>嵌套关系</h2></div><span class="oa-count-badge">@FilteredRelationships.Count 个</span></div>
             <div class="oa-panel-body oa-object-context"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong></div>
             <div class="oa-table-wrap oa-object-table-wrap">
                 <table class="table table-hover align-middle mb-0 oa-analysis-table">
                     <thead><tr><th>路径</th><th>类型</th><th>出现次数</th><th>目标字段数</th><th>目标字段</th></tr></thead>
-                    <tbody>@foreach (var relationship in _relationships){<tr><td class="oa-object-path"><code>@relationship.Path</code></td><td><span class="oa-badge @(relationship.Kind == "Collection" ? "is-info" : "is-accent")">@(relationship.Kind == "Collection" ? "对象集合" : "对象")</span></td><td>@relationship.OccurrenceCount.ToString("N0")</td><td>@relationship.TargetFieldCount</td><td class="oa-object-targets">@(relationship.TargetFields.Count == 0 ? "-" : string.Join(", ", relationship.TargetFields))</td></tr>}</tbody>
+                    <tbody>@foreach (var relationship in FilteredRelationships){<tr><td class="oa-object-path"><code>@relationship.Path</code></td><td><span class="oa-badge @(relationship.Kind == "Collection" ? "is-info" : "is-accent")">@(relationship.Kind == "Collection" ? "对象集合" : "对象")</span></td><td>@relationship.OccurrenceCount.ToString("N0")</td><td>@relationship.TargetFieldCount</td><td class="oa-object-targets">@(relationship.TargetFields.Count == 0 ? "-" : string.Join(", ", relationship.TargetFields))</td></tr>}</tbody>
                 </table>
             </div>
         </div>
@@ -42,16 +73,25 @@
 @code {
     private bool _loading = true;
     private AnalysisJob? _job;
+    private readonly List<AnalysisJob> _jobs = new();
     private List<ObjectRelationship> _relationships = new();
+    private string? KindFilter;
+    private string? PathFilter;
+
+    private IReadOnlyList<ObjectRelationship> FilteredRelationships => _relationships
+        .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
-        _job = jobs
+        _jobs.AddRange(jobs
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
-            .FirstOrDefault();
+            .ToList();
+        _job = _jobs.FirstOrDefault();
 
         if (_job is not null)
         {
@@ -70,5 +110,46 @@
         }
 
         _loading = false;
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id))
+            return;
+        _job = _jobs.FirstOrDefault(x => x.Id == id);
+        LoadRelationships();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnKindChanged(ChangeEventArgs args)
+    {
+        KindFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPathChanged(ChangeEventArgs args)
+    {
+        PathFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadRelationships()
+    {
+        _relationships.Clear();
+        if (_job is null)
+            return;
+
+        try
+        {
+            var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+            _relationships = result?.ObjectRelationships?
+                .OrderByDescending(x => x.OccurrenceCount)
+                .ThenBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<ObjectRelationship>();
+        }
+        catch (JsonException)
+        {
+            _relationships.Clear();
+        }
     }
 }
