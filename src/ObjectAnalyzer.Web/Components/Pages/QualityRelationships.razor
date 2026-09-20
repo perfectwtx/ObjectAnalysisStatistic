@@ -11,12 +11,12 @@
     <div class="oa-analysis-header">
         <div><div class="oa-eyebrow">FIELD RELATIONSHIPS</div><h1>字段关系分析</h1><p>基于最近一次成功分析结果，查看字段之间的统计相关性与强相关关系。</p></div>
         <div class="oa-header-actions">
-            <a class="btn btn-outline-secondary" href="/quality/data-lineage">数据血缘</a>
+            <a class="btn btn-outline-secondary" href="@DataLineageUrl">数据血缘</a>
             @if (_job is not null)
             { <a class="btn btn-outline-secondary" href="@($"/jobs/{_job.Id}")">当前作业</a> }
             <div class="oa-header-actions">
             <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
-            <a class="btn btn-outline-primary" href="/quality/object-relationships">对象关系</a>
+            <a class="btn btn-outline-primary" href="@ObjectRelationshipsUrl">对象关系</a>
             <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
         </div>
         </div>
@@ -124,6 +124,9 @@
     private Guid? SelectedJobId;
     private string? DirectionFilter;
     private string? FieldFilter;
+
+    private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job.Id}";
+    private string ObjectRelationshipsUrl => _job is null ? "/quality/object-relationships" : $"/quality/object-relationships?jobId={_job.Id}";
 
     private IReadOnlyList<string> FilteredFields =>
         (_matrix?.Fields ?? new List<string>())
