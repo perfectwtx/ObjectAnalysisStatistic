@@ -522,11 +522,11 @@
                     <strong>@State.Result.FieldStatistics.Count(f => GetFieldSignalCount(f) == 0)</strong>
                     <small>fields with no signals</small>
                 </button>
-                <div class="signal-metric signal-metric-static">
+                <button type="button" class="signal-metric signal-filter-card @(_signalFilter == "rule" ? "is-active is-danger" : "")" @onclick='() => SetSignalFilter("rule")'>
                     <span class="signal-metric-label">QUALITY ISSUES</span>
                     <strong>@State.Result.QualityViolations.Count</strong>
                     <small>rule violations</small>
-                </div>
+                </button>
             </div>
             </div>
             <div class="result-section-heading">
@@ -650,7 +650,7 @@
                     <span class="field-table-kicker">FIELD DATASET</span>
                     <span class="field-table-count">@State.GetFilteredSortedFields().Count() visible fields</span>
                 </div>
-                <span class="field-table-hint">Search, sort and inspect field-level signals</span>
+                <span class="field-table-hint">Search, sort and inspect field-level signals · @(_signalFilter == "all" ? "All signals" : _signalFilter)</span>
             </div>
             <div class="signal-filter-bar">
                 <span class="signal-filter-label">FIELD SIGNAL</span>
@@ -658,6 +658,7 @@
                 <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "critical" ? "is-active" : "")" @onclick='() => SetSignalFilter("critical")'>Critical</button>
                 <button type="button" class="signal-filter-chip is-warning @(_signalFilter == "warning" ? "is-active" : "")" @onclick='() => SetSignalFilter("warning")'>Warning</button>
                 <button type="button" class="signal-filter-chip is-success @(_signalFilter == "clean" ? "is-active" : "")" @onclick='() => SetSignalFilter("clean")'>Clean</button>
+                <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "rule" ? "is-active" : "")" @onclick='() => SetSignalFilter("rule")'>Rule</button>
             </div>
             <div class="toolbar">
                 <input type="text" placeholder="@Loc["SearchPlaceholder"]"
