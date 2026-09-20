@@ -2228,3 +2228,19 @@
 .oa-alert-page .oa-alert-filter-grid .form-select{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
 .oa-alert-page .oa-alert-filter-hint{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--oa-border);color:var(--oa-text-2);font-size:.78rem}
 @media(max-width:640px){.oa-alert-page .oa-alert-filter-grid{grid-template-columns:1fr}}
+
+/* Webhook Delivery workbench */
+.oa-webhook-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.oa-webhook-page .oa-webhook-filter-card{margin-bottom:1rem}
+.oa-webhook-page .oa-webhook-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}
+.oa-webhook-page .oa-webhook-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-webhook-page .oa-webhook-filter-grid .form-select{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
+.oa-webhook-page .oa-webhook-filter-hint{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--oa-border);color:var(--oa-text-2);font-size:.78rem}
+.oa-webhook-page .oa-webhook-status{display:inline-flex;padding:.25rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;white-space:nowrap}
+.oa-webhook-page .oa-webhook-status.is-success{background:var(--oa-success-bg);color:var(--oa-success)}
+.oa-webhook-page .oa-webhook-status.is-fail{background:var(--oa-danger-bg);color:var(--oa-danger)}
+.oa-webhook-page .oa-webhook-status.is-processing{background:var(--oa-warning-bg);color:var(--oa-warning)}
+.oa-webhook-page .oa-webhook-status.is-pending{background:var(--oa-surface-2);color:var(--oa-text-2)}
+.oa-webhook-page .oa-webhook-error{display:block;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--oa-text-2)}
+@media(max-width:1000px){.oa-webhook-page .oa-webhook-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.oa-webhook-page .oa-webhook-filter-grid{grid-template-columns:1fr}.oa-webhook-page .oa-webhook-table-wrap{overflow-x:auto}.oa-webhook-page .oa-webhook-table-wrap table{min-width:900px}}
