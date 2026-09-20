@@ -19,7 +19,7 @@
                     <h1>数据质量总览</h1>
                     <p>把最近一次成功分析拆成质量评分、质量维度、门禁与风险摘要，快速定位需要处理的区域。</p>
                 </div>
-                <button class="btn btn-outline-secondary oa-dashboard-refresh" @onclick="LoadAsync">刷新数据</button>
+                <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/quality/fields">字段质量</a><a class="btn btn-outline-secondary" href="/quality/trend">质量趋势</a><a class="btn btn-outline-secondary" href="/issues">问题中心</a><button class="btn btn-outline-secondary oa-dashboard-refresh" @onclick="LoadAsync">刷新数据</button></div>
             </div>
         </div>
     </header>
@@ -44,7 +44,7 @@
     {
         <section class="oa-dashboard-context">
             <div class="oa-context-grid">
-                <div><span>当前数据源</span><strong>@_recentSnapshots.FirstOrDefault()?.SourceName</strong></div>
+                <div><span>当前数据源</span><strong>@_job.SourceName</strong></div>
                 <div><span>分析时间</span><strong>@((_job.CompletedAtUtc ?? _job.StartedAtUtc).ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</strong></div>
                 <div><span>分析对象</span><strong>@_job.TotalObjects.ToString("N0")</strong></div>
                 <div><span>字段</span><strong>@_job.FieldCount.ToString("N0")</strong></div>
@@ -173,7 +173,7 @@
             <article class="oa-dashboard-panel">
                 <div class="oa-panel-header">
                     <div><span class="oa-panel-kicker">Relationships</span><h2>字段关系</h2><p>相关性矩阵与强相关字段对</p></div>
-                    <a class="btn btn-sm btn-outline-secondary" href="/quality/relationships">查看详情</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="/quality/relationships">字段关系</a><a class="btn btn-sm btn-outline-secondary" href="/quality/object-relationships">对象关系</a>
                 </div>
                 @if (_result.CorrelationMatrix is null)
                 {
