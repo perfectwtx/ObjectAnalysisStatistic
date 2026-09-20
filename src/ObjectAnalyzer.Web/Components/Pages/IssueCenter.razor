@@ -81,11 +81,11 @@
             {
                 <div class="oa-table-wrap oa-data-table oa-issue-table-wrap">
                     <table class="table table-hover align-middle mb-0">
-                        <thead><tr><th>字段</th><th>检查类型</th><th>次数</th><th>问题说明</th></tr></thead>
+                        <thead><tr><th>字段</th><th>检查类型</th><th>次数</th><th>问题说明</th><th class="oa-action-column"></th></tr></thead>
                         <tbody>
                         @foreach (var issue in FilteredIssues)
                         {
-                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@issue.Message</td></tr>
+                            <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@issue.Message</td><td class="oa-action-column"><a class="btn btn-sm btn-outline-primary" href="@IssueDetailUrl(issue)">查看详情</a></td></tr>
                         }
                         </tbody>
                     </table>
