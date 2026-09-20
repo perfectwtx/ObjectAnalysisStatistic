@@ -92,7 +92,7 @@
     private string? PathFilter;
 
     private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job!.Id}";
-    private string ImpactAnalysisUrl => _job is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_job.Id}";
+    private string ImpactAnalysisUrl => _job is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_job!.Id}";
 
     private IReadOnlyList<ObjectRelationship> FilteredRelationships => _relationships
         .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
