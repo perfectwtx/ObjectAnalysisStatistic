@@ -2199,3 +2199,12 @@
 .oa-field-detail-page .oa-field-table-toolbar{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
 .oa-field-detail-page .oa-field-table-toolbar .btn{margin-left:auto}
 @media(max-width:760px){.oa-field-detail-page .oa-field-filter-grid{grid-template-columns:1fr}.oa-field-detail-page .oa-field-table-toolbar .btn{margin-left:0}}
+
+/* Quality Trend workbench filters */
+.oa-quality-trend-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.oa-quality-trend-page .oa-trend-filter-card{margin-bottom:1rem}
+.oa-quality-trend-page .oa-trend-filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(180px,.65fr);gap:1rem}
+.oa-quality-trend-page .oa-trend-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-quality-trend-page .oa-trend-filter-grid .form-select{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
+.oa-quality-trend-page .oa-trend-filter-hint{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--oa-border);color:var(--oa-text-2);font-size:.78rem}
+@media(max-width:640px){.oa-quality-trend-page .oa-trend-filter-grid{grid-template-columns:1fr}}
