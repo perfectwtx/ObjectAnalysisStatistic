@@ -231,6 +231,7 @@ public sealed class AnalysisState : IDisposable
             "critical" => fields.Where(f => GetFieldSignalCount(f) >= 2),
             "warning" => fields.Where(f => GetFieldSignalCount(f) == 1),
             "clean" => fields.Where(f => GetFieldSignalCount(f) == 0),
+            "rule" => fields.Where(f => f.EnumViolations.Count > 0 || f.RangeViolationCount > 0),
             _ => fields
         };
 
