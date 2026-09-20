@@ -2096,3 +2096,9 @@
 .app-shell .signal-filter-chip.is-warning.is-active{border-color:color-mix(in srgb,var(--oa-warning) 30%,transparent);background:var(--oa-warning-soft);color:var(--oa-warning)}
 .app-shell .signal-filter-chip.is-success.is-active{border-color:color-mix(in srgb,var(--oa-success) 30%,transparent);background:var(--oa-success-soft);color:var(--oa-success)}
 @media(max-width:760px){.app-shell .signal-filter-bar{overflow-x:auto;padding-bottom:.2rem}}
+
+.app-shell .signal-filter-chip.is-danger.is-active{
+    border-color:color-mix(in srgb,var(--oa-danger) 30%,transparent);
+    background:var(--oa-danger-soft);
+    color:var(--oa-danger);
+}
