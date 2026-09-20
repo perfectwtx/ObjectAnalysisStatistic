@@ -147,8 +147,8 @@
                 <div class="oa-regression-verdict">
                     <div class="oa-regression-verdict-main">
                         <span>质量分</span>
-                        <strong>@FormatScore(_jobs[0].QualityScore)</strong>
-                        <small>基线 @FormatScore(_jobs[1].QualityScore)</small>
+                        <strong>@FormatScore(_currentJob.QualityScore)</strong>
+                        <small>基线 @FormatScore(_previousJob.QualityScore)</small>
                     </div>
                     <div class="oa-regression-verdict-divider"></div>
                     <div class="oa-regression-signal-list">
@@ -301,7 +301,7 @@
             ?? _jobs.FirstOrDefault(x => x.Id != current.Id);
     }
 
-    private void RebuildReport()
+    private AnalysisJob? GetPreviousJob(AnalysisJob? current)\n    {\n        if (current is null) return null;\n        return _jobs.Where(x => x.Id != current.Id && x.StartedAtUtc < current.StartedAtUtc).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();\n    }\n\n    private void RebuildReport()
     {
         _report = null;
         if (_currentJob is null || _previousJob is null)
