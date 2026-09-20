@@ -2105,3 +2105,56 @@
 
 .app-shell .signal-filter-divider{width:1px;height:18px;margin:0 .15rem;background:var(--oa-border-strong)}
 @media(max-width:760px){.app-shell .signal-filter-divider{display:none}}
+
+
+.app-shell .field-detail-issues{
+    margin-top:.7rem;
+    padding-top:.7rem;
+    border-top:1px solid var(--oa-border);
+}
+.app-shell .field-detail-issue-list{
+    display:grid;
+    gap:.15rem;
+    margin-top:.4rem;
+}
+.app-shell .field-detail-issue-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.75rem;
+    padding:.3rem 0;
+    color:var(--oa-text-2);
+    font-size:.65rem;
+}
+.app-shell .field-detail-issue-row strong{
+    color:var(--oa-text-1);
+    font-family:var(--oa-font-mono);
+}
+.app-shell .field-detail-issue-row > span{
+    display:flex;
+    align-items:center;
+    gap:.4rem;
+}
+.app-shell .field-detail-issue-dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--oa-text-3);
+}
+.app-shell .field-detail-issue-dot.is-warning{background:var(--oa-warning)}
+.app-shell .field-detail-issue-dot.is-danger{background:var(--oa-danger)}
+.app-shell .field-detail-issue-empty{
+    color:var(--oa-text-3);
+    font-size:.62rem;
+}
+.app-shell .field-detail-issues-link{
+    display:inline-flex;
+    align-items:center;
+    gap:.3rem;
+    margin-top:.45rem;
+    color:var(--oa-accent);
+    font-size:.62rem;
+    font-weight:750;
+    text-decoration:none;
+}
+.app-shell .field-detail-issues-link:hover{text-decoration:underline}
