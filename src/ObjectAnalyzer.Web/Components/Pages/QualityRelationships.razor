@@ -19,15 +19,13 @@
                 <a class="btn btn-outline-secondary" href="@($"/jobs/{_job.Id}")">当前作业</a>
             }
             <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
-        </div>        </div>
+        </div>
     </div>
 
     @if (_loading)
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">…</div><strong>正在加载最近一次分析结果</strong><span>正在准备字段相关性数据。</span></div> }
     else if (_job is null)
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再返回这里查看字段关系。</span></div> }
-    else if (_matrix is null)
-    { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂无字段相关性结果</strong><span>最近一次分析没有生成字段关系数据，请在分析配置中启用字段关系分析后重新执行。</span></div> }
     else
     {
         <div class="oa-panel oa-relationship-filter-card">
@@ -58,6 +56,16 @@
             </div>
         </div>
 
+        @if (_matrix is null)
+        {
+            <div class="oa-panel oa-empty-state">
+                <div class="oa-empty-icon">∅</div>
+                <strong>暂无字段相关性结果</strong>
+                <span>当前分析没有生成字段关系数据。可以切换上方分析任务继续查看。</span>
+            </div>
+        }
+        else
+        {
         <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card"><span>参与字段</span><strong>@FilteredFields.Count</strong><small>纳入相关性计算的字段</small></div>
             <div class="oa-kpi-card"><span>样本数</span><strong>@_matrix.Samples</strong><small>本次相关性分析样本</small></div>
@@ -83,6 +91,7 @@
             </div>
             <div class="oa-analysis-note">Pearson 越接近 1 表示强正相关，越接近 -1 表示强负相关，接近 0 表示线性相关性较弱。强相关字段对默认要求绝对相关系数至少 0.7 且样本数至少 30。</div>
         </div>
+        }
     }
 </div>
 
