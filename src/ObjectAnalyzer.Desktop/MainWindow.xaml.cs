@@ -246,7 +246,7 @@ internal sealed class DesktopIssueRow
 
     public DesktopIssueRow(FieldViolation source)
     {
-        FieldName = source.FieldName;
+        FieldName = source.Field;
         Check = source.Check;
         Count = source.Count;
         Message = source.Message;
