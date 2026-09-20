@@ -45,7 +45,7 @@ public static class QualityBaselineEndpoints
         CancellationToken cancellationToken)
     {
         var items = await store.GetAllAsync(cancellationToken);
-        return TypedResults.Ok<IReadOnlyList<QualityBaselineResponse>>(items.Select(ToResponse).ToList());
+        return TypedResults.Ok<IReadOnlyList<QualityBaselineResponse>>(items.Select(x => ToResponse(x)).ToList());
     }
 
     private static async Task<Results<Ok<QualityBaselineResponse>, NotFound<ErrorResponse>>> Get(
