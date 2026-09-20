@@ -14,7 +14,13 @@
             <h1>数据血缘</h1>
             <p>查看最近一次成功分析生成的对象、集合与字段层级血缘。</p>
         </div>
-        <a class="btn btn-outline-secondary oa-header-action" href="/jobs">作业中心</a>
+        <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+            @if (_job is not null)
+            {
+                <a class="btn btn-outline-primary" href="@($"/jobs/{_job.Id}")">当前作业</a>
+            }
+        </div>
     </div>
 
     @if (_loading)
@@ -31,8 +37,37 @@
     }
     else
     {
+        <section class="oa-panel oa-lineage-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-lineage-filter-grid">
+                    <div>
+                        <label class="form-label">分析任务</label>
+                        <select class="form-select" @onchange="OnJobChanged">
+                            @foreach (var job in _jobs)
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _job?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">节点类型</label>
+                        <select class="form-select" @onchange="OnKindChanged">
+                            <option value="">全部节点</option>
+                            <option value="Object" selected="@(KindFilter == "Object")">对象</option>
+                            <option value="Collection" selected="@(KindFilter == "Collection")">对象集合</option>
+                            <option value="Field" selected="@(KindFilter == "Field")">字段</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">路径搜索</label>
+                        <input class="form-control" value="@PathFilter" @oninput="OnPathChanged" placeholder="例如 customer.address" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <div class="oa-kpi-grid is-4">
-            <div class="oa-kpi-card"><span>节点数量</span><strong>@_lineage.Nodes.Count</strong><small>对象、集合与字段节点</small></div>
+            <div class="oa-kpi-card"><span>节点数量</span><strong>@FilteredNodes.Count</strong><small>当前筛选节点 / @_lineage.Nodes.Count 总节点</small></div>
             <div class="oa-kpi-card"><span>层级节点</span><strong>@_lineage.Nodes.Count(x => x.Kind != "Field")</strong><small>非字段结构节点</small></div>
             <div class="oa-kpi-card"><span>血缘边</span><strong>@_lineage.Edges.Count</strong><small>父子层级关系</small></div>
             <div class="oa-kpi-card"><span>最深层级</span><strong>@_lineage.Nodes.Max(x => x.Depth)</strong><small>当前结果最大嵌套深度</small></div>
@@ -41,7 +76,7 @@
         <div class="oa-panel mb-4">
             <div class="oa-panel-header">
                 <div><div class="oa-panel-kicker">NODES</div><h2>血缘节点</h2></div>
-                <span class="oa-count-badge">@_lineage.Nodes.Count 节点</span>
+                <span class="oa-count-badge">@FilteredNodes.Count 节点</span>
             </div>
             <div class="oa-panel-body oa-lineage-context">
                 <span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong>
@@ -50,7 +85,7 @@
                 <table class="table table-hover align-middle mb-0 oa-analysis-table">
                     <thead><tr><th>路径</th><th>类型</th><th>深度</th><th>出现次数</th><th>目标字段</th></tr></thead>
                     <tbody>
-                    @foreach (var node in _lineage.Nodes.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase))
+                    @foreach (var node in FilteredNodes.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase))
                     {
                         <tr>
                             <td class="oa-lineage-path"><span class="oa-lineage-indent" style="width:@(Math.Max(0, node.Depth - 1) * 20)px"></span>@if (node.Depth > 1) { <span class="oa-lineage-branch">└─</span> }<code>@node.Path</code></td>
@@ -90,15 +125,24 @@
 </div>
 
 @code {
+    private readonly List<AnalysisJob> _jobs = new();
     private bool _loading = true;
     private AnalysisJob? _job;
     private LineageModel? _lineage;
+    private string? KindFilter;
+    private string? PathFilter;
+
+    private IReadOnlyList<LineageModel.Node> FilteredNodes => _lineage?.Nodes
+        .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? Array.Empty<LineageModel.Node>();
 
     protected override async Task OnInitializedAsync()
     {
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
-        _job = jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
+        _jobs.AddRange(jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc));
+        _job = _jobs.FirstOrDefault();
         if (_job is not null)
         {
             try
@@ -109,6 +153,41 @@
             catch (JsonException) { _lineage = null; }
         }
         _loading = false;
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id))
+            return;
+
+        _job = _jobs.FirstOrDefault(x => x.Id == id);
+        _lineage = null;
+        if (_job is not null)
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+                _lineage = DataLineageBuilder.Build(result?.ObjectRelationships ?? new List<ObjectRelationship>());
+            }
+            catch (JsonException)
+            {
+                _lineage = null;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnKindChanged(ChangeEventArgs args)
+    {
+        KindFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPathChanged(ChangeEventArgs args)
+    {
+        PathFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
     }
 
     private static string NodeLabel(string kind) => kind switch { "Object" => "对象", "Collection" => "对象集合", "Field" => "字段", _ => kind };
