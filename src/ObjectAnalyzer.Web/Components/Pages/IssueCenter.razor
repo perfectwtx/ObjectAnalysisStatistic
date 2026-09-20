@@ -8,11 +8,14 @@
 <PageTitle>Issue Center</PageTitle>
 
 <div class="oa-analysis-page oa-issues-page">
-    @if (!string.IsNullOrWhiteSpace(FieldFilter))
+    @if (HasActiveFilters)
     {
         <div class="oa-filter-context">
-            <span>字段筛选</span>
-            <strong>@FieldFilter</strong>
+            <span>筛选条件</span>
+            @if (!string.IsNullOrWhiteSpace(FieldFilter)) { <strong>字段: @FieldFilter</strong> }
+            @if (!string.IsNullOrWhiteSpace(CheckFilter)) { <strong>检查: @GetCheckLabel(CheckFilter)</strong> }
+            @if (!string.IsNullOrWhiteSpace(StatusFilter)) { <strong>状态: @GetStatusLabel(StatusFilter)</strong> }
+            @if (!string.IsNullOrWhiteSpace(OwnerFilter)) { <strong>责任人: @GetOwnerLabel(OwnerFilter)</strong> }
             <a href="/issues">清除筛选</a>
         </div>
     }
@@ -66,6 +69,54 @@
             </div>
         </div>
 
+        <div class="oa-panel oa-issue-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-issue-filter-grid">
+                    <div>
+                        <label class="form-label">字段</label>
+                        <select class="form-select" @onchange="OnFieldFilterChanged">
+                            <option value="">全部字段</option>
+                            @foreach (var field in FilterFields)
+                            {
+                                <option value="@field" selected="@(string.Equals(field, FieldFilter, StringComparison.OrdinalIgnoreCase))">@field</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">检查类型</label>
+                        <select class="form-select" @onchange="OnCheckFilterChanged">
+                            <option value="">全部检查</option>
+                            @foreach (var check in FilterChecks)
+                            {
+                                <option value="@check" selected="@(string.Equals(check, CheckFilter, StringComparison.OrdinalIgnoreCase))">@GetCheckLabel(check)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">状态</label>
+                        <select class="form-select" @onchange="OnStatusFilterChanged">
+                            <option value="">全部状态</option>
+                            <option value="Open" selected="@(string.Equals(StatusFilter, "Open", StringComparison.OrdinalIgnoreCase))">待处理</option>
+                            <option value="InProgress" selected="@(string.Equals(StatusFilter, "InProgress", StringComparison.OrdinalIgnoreCase))">处理中</option>
+                            <option value="Resolved" selected="@(string.Equals(StatusFilter, "Resolved", StringComparison.OrdinalIgnoreCase))">已解决</option>
+                            <option value="Ignored" selected="@(string.Equals(StatusFilter, "Ignored", StringComparison.OrdinalIgnoreCase))">已忽略</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">责任人</label>
+                        <select class="form-select" @onchange="OnOwnerFilterChanged">
+                            <option value="">全部责任人</option>
+                            <option value="unassigned" selected="@(string.Equals(OwnerFilter, "unassigned", StringComparison.OrdinalIgnoreCase))">未指定</option>
+                            @foreach (var owner in FilterOwners)
+                            {
+                                <option value="@owner" selected="@(string.Equals(owner, OwnerFilter, StringComparison.OrdinalIgnoreCase))">@owner</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="oa-panel oa-issue-table-card">
             <div class="oa-panel-header">
                 <div><span class="oa-panel-kicker">Issue Inventory</span><h2>质量问题列表</h2></div>
@@ -107,10 +158,44 @@
     [SupplyParameterFromQuery(Name = "field")]
     public string? FieldFilter { get; set; }
 
-    private IReadOnlyList<QualityIssue> FilteredIssues =>
-        string.IsNullOrWhiteSpace(FieldFilter)
-            ? _selectedIssues
-            : _selectedIssues.Where(x => string.Equals(x.FieldName, FieldFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+    [SupplyParameterFromQuery(Name = "check")]
+    public string? CheckFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? StatusFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "owner")]
+    public string? OwnerFilter { get; set; }
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(FieldFilter) ||
+        !string.IsNullOrWhiteSpace(CheckFilter) ||
+        !string.IsNullOrWhiteSpace(StatusFilter) ||
+        !string.IsNullOrWhiteSpace(OwnerFilter);
+
+    private IReadOnlyList<string> FilterFields => _selectedIssues
+        .Select(x => x.FieldName)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private IReadOnlyList<string> FilterChecks => _selectedIssues
+        .Select(x => x.Check)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private IReadOnlyList<string> FilterOwners => _selectedIssues
+        .Select(GetOwner)
+        .Where(x => x != "未指定")
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private IReadOnlyList<QualityIssue> FilteredIssues => _selectedIssues
+        .Where(MatchesFilters)
+        .ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -150,6 +235,59 @@
             _responsibilities[IssueKey(responsibility.FieldName, responsibility.Check)] = responsibility;
     }
 
+    private bool MatchesFilters(QualityIssue issue)
+    {
+        if (!string.IsNullOrWhiteSpace(FieldFilter) &&
+            !string.Equals(issue.FieldName, FieldFilter, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(CheckFilter) &&
+            !string.Equals(issue.Check, CheckFilter, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(StatusFilter) &&
+            !string.Equals(GetStatusKey(issue), NormalizeStatusFilter(StatusFilter), StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(OwnerFilter))
+        {
+            var owner = GetOwner(issue);
+            if (string.Equals(OwnerFilter, "unassigned", StringComparison.OrdinalIgnoreCase))
+            {
+                if (owner != "未指定") return false;
+            }
+            else if (!string.Equals(owner, OwnerFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static string NormalizeStatusFilter(string value) => value switch
+    {
+        "待处理" => "Open",
+        "处理中" => "InProgress",
+        "已解决" => "Resolved",
+        "已忽略" => "Ignored",
+        _ => value
+    };
+
+    private string GetStatusKey(QualityIssue issue)
+    {
+        if (!_responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility))
+            return "Open";
+
+        return responsibility.Status switch
+        {
+            "InProgress" => "InProgress",
+            "Resolved" => "Resolved",
+            "Ignored" => "Ignored",
+            _ => "Open"
+        };
+    }
+
     private string GetStatusText(QualityIssue issue)
     {
         if (!_responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility))
@@ -163,6 +301,32 @@
         };
     }
 
+    private string GetStatusLabel(string? value) => NormalizeStatusFilter(value ?? string.Empty) switch
+    {
+        "InProgress" => "处理中",
+        "Resolved" => "已解决",
+        "Ignored" => "已忽略",
+        _ => "待处理"
+    };
+
+    private string GetCheckLabel(string? check) => check switch
+    {
+        "enum" => "枚举违规",
+        "range" => "数值越界",
+        "pattern" => "模式不匹配",
+        "required" => "必填缺失",
+        "unique" => "唯一性冲突",
+        "nullRate" => "null 率超限",
+        "rowCount" => "行数不足",
+        "duplicateRate" => "重复率超限",
+        "duplicateGroups" => "重复对象组",
+        "outlierRatio" => "异常值超限",
+        _ => check ?? string.Empty
+    };
+
+    private string GetOwnerLabel(string? owner) =>
+        string.Equals(owner, "unassigned", StringComparison.OrdinalIgnoreCase) ? "未指定" : owner ?? string.Empty;
+
     private string GetStatusClass(QualityIssue issue) =>
     {
         if (!_responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility))
@@ -175,6 +339,41 @@
             _ => "is-open"
         };
     };
+
+    private void SetFilter(string name, string? value)
+    {
+        switch (name)
+        {
+            case "field": FieldFilter = value; break;
+            case "check": CheckFilter = value; break;
+            case "status": StatusFilter = value; break;
+            case "owner": OwnerFilter = value; break;
+        }
+    }
+
+    private async Task OnFieldFilterChanged(ChangeEventArgs args)
+    {
+        SetFilter("field", args.Value?.ToString());
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCheckFilterChanged(ChangeEventArgs args)
+    {
+        SetFilter("check", args.Value?.ToString());
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnStatusFilterChanged(ChangeEventArgs args)
+    {
+        SetFilter("status", args.Value?.ToString());
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnOwnerFilterChanged(ChangeEventArgs args)
+    {
+        SetFilter("owner", args.Value?.ToString());
+        await InvokeAsync(StateHasChanged);
+    }
 
     private string GetOwner(QualityIssue issue) =>
         _responsibilities.TryGetValue(IssueKey(issue.FieldName, issue.Check), out var responsibility) && !string.IsNullOrWhiteSpace(responsibility.Owner)
