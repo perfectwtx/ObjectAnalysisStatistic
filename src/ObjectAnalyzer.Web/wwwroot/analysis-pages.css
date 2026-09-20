@@ -1970,3 +1970,22 @@
  .oa-object-relationships-page .oa-object-context{align-items:flex-start;flex-direction:column;gap:.2rem}
  .oa-object-relationships-page .oa-object-targets,.oa-impact-analysis-page .oa-impact-reason{max-width:240px}
 }
+
+
+.oa-issues-page .oa-filter-context{
+    display:flex;
+    align-items:center;
+    gap:.55rem;
+    width:max-content;
+    max-width:100%;
+    margin:-.35rem 0 1rem;
+    padding:.45rem .7rem;
+    border:1px solid var(--oa-accent-border);
+    border-radius:8px;
+    background:var(--oa-accent-soft);
+    color:var(--oa-text-2);
+    font-size:.72rem;
+}
+.oa-issues-page .oa-filter-context strong{color:var(--oa-text-1);font-family:var(--oa-font-mono)}
+.oa-issues-page .oa-filter-context a{color:var(--oa-accent);font-weight:700;text-decoration:none}
+.oa-issues-page .oa-filter-context a:hover{text-decoration:underline}
