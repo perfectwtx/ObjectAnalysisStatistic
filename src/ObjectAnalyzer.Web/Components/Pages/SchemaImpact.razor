@@ -104,7 +104,7 @@
             </div>
         </div>
 
-        @if (FilteredRemoved.Count > 0)
+        @if (FilteredRemoved.Count > 0 && (string.IsNullOrWhiteSpace(ChangeTypeFilter) || ChangeTypeFilter == "Removed"))
         {
             <div class="oa-panel mb-4">
                 <div class="oa-panel-header"><div><div class="oa-panel-kicker">REMOVED</div><h2>删除字段</h2></div><span class="oa-count-pill">@_diff.RemovedFields.Count</span></div>
@@ -117,7 +117,7 @@
             </div>
         }
 
-        @if (FilteredAdded.Count > 0)
+        @if (FilteredAdded.Count > 0 && (string.IsNullOrWhiteSpace(ChangeTypeFilter) || ChangeTypeFilter == "Added"))
         {
             <div class="oa-panel mb-4">
                 <div class="oa-panel-header"><div><div class="oa-panel-kicker">ADDED</div><h2>新增字段</h2></div><span class="oa-count-pill">@_diff.AddedFields.Count</span></div>
@@ -130,7 +130,7 @@
             </div>
         }
 
-        @if (FilteredChanged.Count > 0)
+        @if (FilteredChanged.Count > 0 && (string.IsNullOrWhiteSpace(ChangeTypeFilter) || ChangeTypeFilter == "Changed"))
         {
             <div class="oa-panel mb-4">
                 <div class="oa-panel-header"><div><div class="oa-panel-kicker">CHANGED</div><h2>字段变更</h2></div><span class="oa-count-pill">@_diff.ChangedFields.Count</span></div>
@@ -169,7 +169,7 @@
     private IReadOnlyList<SchemaSnapshotField> FilterFields(IReadOnlyList<SchemaSnapshotField>? fields)
         => (fields ?? Array.Empty<SchemaSnapshotField>())
             .Where(x => MatchesField(x.Path))
-            .Where(x => string.IsNullOrWhiteSpace(ImpactFilter) || ImpactFilter == "Breaking")
+            .Where(_ => string.IsNullOrWhiteSpace(ImpactFilter) || ImpactFilter == "Breaking" || ImpactFilter == "Normal")
             .ToList();
 
     private bool MatchesField(string path)
