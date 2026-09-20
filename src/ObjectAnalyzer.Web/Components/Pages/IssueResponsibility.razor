@@ -283,7 +283,6 @@
 
         var fieldFilter = FieldFilter;
         var checkFilter = CheckFilter;
-            return;
 
         var responsibilities = await ResponsibilityStore.GetByJobAsync(job.Id);
         foreach (var issue in _issues.Where(x =>
