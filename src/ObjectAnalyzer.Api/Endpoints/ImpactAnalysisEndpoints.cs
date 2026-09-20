@@ -12,7 +12,7 @@ public static class ImpactAnalysisEndpoints
     {
         Map("/analysis/jobs/{jobId:guid}/impact");
         Map("/jobs/{jobId:guid}/impact");
-        Map("/analyze/async/{jobId:guid/impact");
+        Map("/analyze/async/{jobId:guid}/impact");
         return app;
 
         void Map(string pattern)
