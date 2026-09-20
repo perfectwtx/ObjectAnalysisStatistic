@@ -2208,3 +2208,14 @@
 .oa-quality-trend-page .oa-trend-filter-grid .form-select{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
 .oa-quality-trend-page .oa-trend-filter-hint{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--oa-border);color:var(--oa-text-2);font-size:.78rem}
 @media(max-width:640px){.oa-quality-trend-page .oa-trend-filter-grid{grid-template-columns:1fr}}
+
+/* Quality Baselines workbench */
+.oa-baselines-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.oa-baselines-page .oa-baseline-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;margin-bottom:1rem}
+.oa-baselines-page .oa-baseline-summary>div{padding:.8rem 1rem;border:1px solid var(--oa-border);border-radius:10px;background:var(--oa-surface-2);display:flex;justify-content:space-between;align-items:center}
+.oa-baselines-page .oa-baseline-summary span{color:var(--oa-text-2);font-size:.78rem}
+.oa-baselines-page .oa-baseline-summary strong{font-size:1.15rem}
+.oa-baselines-page .oa-baseline-evaluation{display:inline-flex;align-items:center;padding:.25rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;white-space:nowrap}
+.oa-baselines-page .oa-baseline-evaluation.is-pass{background:var(--oa-success-bg);color:var(--oa-success)}
+.oa-baselines-page .oa-baseline-evaluation.is-fail{background:var(--oa-danger-bg);color:var(--oa-danger)}
+@media(max-width:700px){.oa-baselines-page .oa-baseline-summary{grid-template-columns:1fr}.oa-baselines-page .oa-baseline-table-wrap{overflow-x:auto}.oa-baselines-page .oa-baseline-table{min-width:900px}}
