@@ -91,12 +91,12 @@
         <section class="oa-context-grid oa-regression-context">
             <div>
                 <span>比较基线</span>
-                <strong>@_previousJob.SourceName</strong>
-                <small>@_previousJob.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                <strong>@_previousJob!.SourceName</strong>
+                <small>@_previousJob!.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
             </div>
             <div>
                 <span>当前快照</span>
-                <strong>@_currentJob.SourceName</strong>
+                <strong>@_currentJob!.SourceName</strong>
                 <small>@_currentJob.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
             </div>
             <div>
@@ -115,7 +115,7 @@
             <div class="oa-kpi-card @(_report.ScoreDelta < 0 ? "is-danger" : _report.ScoreDelta > 0 ? "is-success" : "is-info")">
                 <span>质量分变化</span>
                 <strong class="@ScoreClass(_report.ScoreDelta)">@FormatDelta(_report.ScoreDelta)</strong>
-                <small>@_currentJob.SourceName 相对 @_previousJob.SourceName</small>
+                <small>@_currentJob!.SourceName 相对 @_previousJob!.SourceName</small>
             </div>
             <div class="oa-kpi-card @(_report.IssueDelta > 0 ? "is-danger" : _report.IssueDelta < 0 ? "is-success" : "is-info")">
                 <span>问题数变化</span>
@@ -269,7 +269,7 @@
     private string SchemaImpactUrl => _currentJob is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_currentJob.Id}";
     private string ImpactAnalysisUrl => _currentJob is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_currentJob.Id}";
 
-    private IReadOnlyList<QualityFieldRegression> FilteredFields => _report?.FieldRegressions
+    private IReadOnlyList<QualityFieldRegression> FilteredFields => (_report?.FieldRegressions ?? new List<QualityFieldRegression>())
         .Where(MatchesFieldFilter)
         .ToList() ?? Array.Empty<QualityFieldRegression>();
 
@@ -277,7 +277,7 @@
         .Where(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)
         .ToList();
 
-    private IReadOnlyList<QualityViolationRegression> FilteredViolations => _report?.ViolationRegressions
+    private IReadOnlyList<QualityViolationRegression> FilteredViolations => (_report?.ViolationRegressions ?? new List<QualityViolationRegression>())
         .Where(MatchesViolationFilter)
         .ToList() ?? Array.Empty<QualityViolationRegression>();
 
