@@ -131,6 +131,8 @@ public sealed class AnalysisExecutionCoordinatorTests
         public Task EnqueueAsync(WebhookDelivery delivery, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<IReadOnlyList<WebhookDelivery>> GetRecentAsync(int limit = 100, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<WebhookDelivery>>([]);
+        public Task<WebhookDelivery?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<WebhookDelivery?>(null);
+        public Task<bool> RetryAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default) => Task.FromResult<WebhookDelivery?>(null);
         public Task MarkProcessingAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task MarkSucceededAsync(Guid id, DateTime sentAtUtc, CancellationToken cancellationToken = default) => Task.CompletedTask;
