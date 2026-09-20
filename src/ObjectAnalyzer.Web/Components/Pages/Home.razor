@@ -905,6 +905,40 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            <div class="field-detail-issues">
+                                                <div class="field-detail-card-title">ISSUES</div>
+                                                <div class="field-detail-issue-list">
+                                                    @if (field.NullCount > 0)
+                                                    {
+                                                        <div class="field-detail-issue-row">
+                                                            <span><span class="field-detail-issue-dot is-warning"></span>Missing values</span>
+                                                            <strong>@field.NullCount.ToString("N0")</strong>
+                                                        </div>
+                                                    }
+                                                    @if (field.EnumViolations.Count > 0)
+                                                    {
+                                                        <div class="field-detail-issue-row">
+                                                            <span><span class="field-detail-issue-dot is-danger"></span>Enum violation</span>
+                                                            <strong>@field.EnumViolations.Count.ToString("N0")</strong>
+                                                        </div>
+                                                    }
+                                                    @if (field.RangeViolationCount > 0)
+                                                    {
+                                                        <div class="field-detail-issue-row">
+                                                            <span><span class="field-detail-issue-dot is-danger"></span>Range violation</span>
+                                                            <strong>@field.RangeViolationCount.ToString("N0")</strong>
+                                                        </div>
+                                                    }
+                                                    @if (field.NullCount == 0 && field.EnumViolations.Count == 0 && field.RangeViolationCount == 0)
+                                                    {
+                                                        <div class="field-detail-issue-empty">No active issues detected for this field.</div>
+                                                    }
+                                                </div>
+                                                @if (field.EnumViolations.Count > 0 || field.RangeViolationCount > 0)
+                                                {
+                                                    <a class="field-detail-issues-link" href="@($"/issues?field={Uri.EscapeDataString(field.FieldName)}")">View all issues <span aria-hidden="true">→</span></a>
+                                                }
+                                            </div>
                                             @if (field.TypeCounts.Count > 0 || field.EnumViolations.Count > 0 || !string.IsNullOrWhiteSpace(field.OutlierBounds))
                                             {
                                                 <div class="field-detail-evidence">
