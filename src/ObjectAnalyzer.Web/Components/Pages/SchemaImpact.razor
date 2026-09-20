@@ -15,7 +15,7 @@
             <p>对比最近一次分析与基线 Schema，快速定位新增、删除及字段变更。</p>
         </div>
         <div class="oa-header-actions">
-            <a class="btn btn-outline-secondary" href="/quality/data-lineage">数据血缘</a>
+            <a class="btn btn-outline-secondary" href="@DataLineageUrl">数据血缘</a>
             <a class="btn btn-outline-secondary" href="@ImpactUrl">影响传播</a>
             <a class="btn btn-outline-secondary" href="@RegressionUrl">质量回归</a>
             @if (_job is not null)
@@ -109,7 +109,7 @@
         @if (FilteredRemoved.Count > 0 && (string.IsNullOrWhiteSpace(ChangeTypeFilter) || ChangeTypeFilter == "Removed"))
         {
             <div class="oa-panel mb-4">
-                <div class="oa-panel-header"><div><div class="oa-panel-kicker">REMOVED</div><h2>删除字段</h2></div><span class="oa-count-pill">@_diff.RemovedFields.Count</span></div>
+                <div class="oa-panel-header"><div><div class="oa-panel-kicker">REMOVED</div><h2>删除字段</h2></div><span class="oa-count-pill">@FilteredRemoved.Count</span></div>
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
                 @foreach (var field in FilteredRemoved)
                 {
@@ -122,7 +122,7 @@
         @if (FilteredAdded.Count > 0 && (string.IsNullOrWhiteSpace(ChangeTypeFilter) || ChangeTypeFilter == "Added"))
         {
             <div class="oa-panel mb-4">
-                <div class="oa-panel-header"><div><div class="oa-panel-kicker">ADDED</div><h2>新增字段</h2></div><span class="oa-count-pill">@_diff.AddedFields.Count</span></div>
+                <div class="oa-panel-header"><div><div class="oa-panel-kicker">ADDED</div><h2>新增字段</h2></div><span class="oa-count-pill">@FilteredAdded.Count</span></div>
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>类型</th><th>影响</th></tr></thead><tbody>
                 @foreach (var field in FilteredAdded)
                 {
@@ -135,7 +135,7 @@
         @if (FilteredChanged.Count > 0 && (string.IsNullOrWhiteSpace(ChangeTypeFilter) || ChangeTypeFilter == "Changed"))
         {
             <div class="oa-panel mb-4">
-                <div class="oa-panel-header"><div><div class="oa-panel-kicker">CHANGED</div><h2>字段变更</h2></div><span class="oa-count-pill">@_diff.ChangedFields.Count</span></div>
+                <div class="oa-panel-header"><div><div class="oa-panel-kicker">CHANGED</div><h2>字段变更</h2></div><span class="oa-count-pill">@FilteredChanged.Count</span></div>
                 <div class="oa-table-wrap"><table class="table align-middle mb-0 oa-analysis-table"><thead><tr><th>字段</th><th>级别</th><th>变更项</th></tr></thead><tbody>
                 @foreach (var change in FilteredChanged)
                 {
@@ -164,11 +164,12 @@
     private string? ImpactFilter;
     private string? FieldFilter;
 
+    private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job.Id}";
     private string ImpactUrl => _job is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_job.Id}";
     private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
 
-    private IReadOnlyList<SchemaSnapshotField> FilteredAdded => string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.AddedFields);
-    private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.RemovedFields);
+    private IReadOnlyList<SchemaSnapshotField> FilteredAdded => string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) || string.Equals(ImpactFilter, "Breaking", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.AddedFields);
+    private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) || string.Equals(ImpactFilter, "Normal", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.RemovedFields);
     private IReadOnlyList<SchemaChangedField> FilteredChanged => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaChangedField>() : (_diff?.ChangedFields ?? Array.Empty<SchemaChangedField>() )
         .Where(x => MatchesField(x.Path))
         .Where(x => string.IsNullOrWhiteSpace(ImpactFilter) || (ImpactFilter == "Breaking" ? x.Breaking : !x.Breaking))
@@ -177,7 +178,6 @@
     private IReadOnlyList<SchemaSnapshotField> FilterFields(IReadOnlyList<SchemaSnapshotField>? fields)
         => (fields ?? Array.Empty<SchemaSnapshotField>())
             .Where(x => MatchesField(x.Path))
-            .Where(_ => string.IsNullOrWhiteSpace(ImpactFilter) || ImpactFilter == "Breaking" || ImpactFilter == "Normal")
             .ToList();
 
     private bool MatchesField(string path)
