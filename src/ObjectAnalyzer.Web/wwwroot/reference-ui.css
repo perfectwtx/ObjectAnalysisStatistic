@@ -1355,3 +1355,59 @@ body:has(.app-shell) .oa-global-content {
         width: min(300px, calc(100vw - 24px));
     }
 }
+
+
+/* Neutralize legacy hard-coded accent rules that sit outside the token system. */
+.app-shell .p3-header h2,
+.app-shell .p3-card h2,
+.app-shell .deep-section h2 {
+    color: var(--oa-ref-fg) !important;
+}
+
+.app-shell .p3-section,
+.app-shell .deep-section {
+    border-top-color: var(--oa-ref-border) !important;
+}
+
+.app-shell .brand-icon,
+.app-shell .app-brand-icon {
+    background: var(--oa-ref-accent) !important;
+    color: var(--oa-ref-accent-fg) !important;
+}
+
+.oa-job-detail .oa-job-hero {
+    background: var(--oa-ref-card) !important;
+    border: 0 !important;
+    box-shadow: var(--oa-ref-shadow) !important;
+}
+
+.oa-job-detail .oa-job-kicker,
+.oa-job-detail .oa-job-status {
+    color: var(--oa-ref-muted-fg) !important;
+}
+
+.oa-job-detail .oa-job-meta {
+    color: var(--oa-ref-muted-fg) !important;
+}
+
+.oa-job-detail .oa-job-section,
+.oa-job-detail .oa-job-panel {
+    border: 0 !important;
+    border-radius: var(--oa-ref-radius) !important;
+    background: var(--oa-ref-card) !important;
+    box-shadow: var(--oa-ref-shadow) !important;
+}
+
+.oa-job-detail .oa-job-section + .oa-job-section {
+    margin-top: 8px !important;
+}
+
+@media (max-width: 760px) {
+    .oa-top-nav__actions {
+        gap: 4px;
+    }
+
+    .oa-top-nav__status {
+        display: none;
+    }
+}
