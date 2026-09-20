@@ -25,8 +25,36 @@
     { <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂无字段相关性结果</strong><span>最近一次分析没有生成字段关系数据，请在分析配置中启用字段关系分析后重新执行。</span></div> }
     else
     {
+        <div class="oa-panel oa-relationship-filter-card">
+            <div class="oa-panel-header"><div><div class="oa-panel-kicker">RELATIONSHIP FILTERS</div><h2>分析范围</h2></div><span class="oa-count-badge">@FilteredFields.Count 字段</span></div>
+            <div class="oa-panel-body">
+                <div class="oa-relationship-filter-grid">
+                    <div>
+                        <label class="form-label">分析任务</label>
+                        <select class="form-select" value="@SelectedJobId" @onchange="OnJobChanged">
+                            @foreach (var job in _jobs)
+                            { <option value="@job.Id">@FormatJob(job)</option> }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">关系方向</label>
+                        <select class="form-select" value="@DirectionFilter" @onchange="OnDirectionChanged">
+                            <option value="">全部</option>
+                            <option value="Positive">正相关</option>
+                            <option value="Negative">负相关</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">字段搜索</label>
+                        <input class="form-control" value="@FieldFilter" @oninput="OnFieldChanged" placeholder="搜索字段名..." />
+                    </div>
+                </div>
+                <div class="oa-filter-hint mt-3"><span>强相关对</span><strong>@FilteredStrongPairs.Count</strong><span>对</span></div>
+            </div>
+        </div>
+
         <div class="oa-kpi-grid is-4">
-            <div class="oa-kpi-card"><span>参与字段</span><strong>@_matrix.Fields.Count</strong><small>纳入相关性计算的字段</small></div>
+            <div class="oa-kpi-card"><span>参与字段</span><strong>@FilteredFields.Count</strong><small>纳入相关性计算的字段</small></div>
             <div class="oa-kpi-card"><span>样本数</span><strong>@_matrix.Samples</strong><small>本次相关性分析样本</small></div>
             <div class="oa-kpi-card"><span>强相关关系</span><strong>@FilteredStrongPairs.Count</strong><small>当前筛选后的强相关关系</small></div>
             <div class="oa-kpi-card"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong><small>最近一次成功分析</small></div>
@@ -43,7 +71,7 @@
         </div>
 
         <div class="oa-panel">
-            <div class="oa-panel-header"><div><div class="oa-panel-kicker">CORRELATION MATRIX</div><h2>相关性矩阵</h2></div><span class="oa-count-badge">@_matrix.Fields.Count 字段</span></div>
+            <div class="oa-panel-header"><div><div class="oa-panel-kicker">CORRELATION MATRIX</div><h2>相关性矩阵</h2></div><span class="oa-count-badge">@FilteredFields.Count 字段</span></div>
             <div class="oa-matrix-wrap oa-correlation-matrix">
                 @if (FilteredFields.Count == 0){<div class="oa-empty-state"><span>没有可展示的字段。</span></div>}
                 else{<div class="oa-matrix-scroll"><table class="table table-sm table-bordered mb-0 align-middle text-center"><thead><tr><th>字段</th>@foreach (var field in FilteredFields){<th class="text-nowrap">@field</th>}</tr></thead><tbody>@for (var i = 0; i < FilteredFields.Count; i++){var row=i;<tr><th class="text-nowrap">@FilteredFields[row]</th>@for (var j=0;j<FilteredFields.Count;j++){<td>@FormatCoefficient(_matrix.Pearson, GetFieldIndex(FilteredFields[row]), GetFieldIndex(FilteredFields[j]))</td>}</tr>}</tbody></table></div>}
