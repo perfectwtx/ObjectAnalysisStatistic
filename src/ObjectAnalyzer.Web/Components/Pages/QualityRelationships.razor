@@ -9,7 +9,12 @@
 <div class="oa-analysis-page oa-field-relationships-page">
     <div class="oa-analysis-header">
         <div><div class="oa-eyebrow">FIELD RELATIONSHIPS</div><h1>字段关系分析</h1><p>基于最近一次成功分析结果，查看字段之间的统计相关性与强相关关系。</p></div>
-        <button class="btn btn-outline-secondary oa-header-action" @onclick="LoadAsync">刷新</button>
+        <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/quality/data-lineage">数据血缘</a>
+            @if (_job is not null)
+            { <a class="btn btn-outline-secondary" href="@($"/jobs/{_job.Id}")">当前作业</a> }
+            <button class="btn btn-outline-secondary oa-header-action" @onclick="LoadAsync">刷新</button>
+        </div>
     </div>
 
     @if (_loading)
@@ -23,25 +28,25 @@
         <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card"><span>参与字段</span><strong>@_matrix.Fields.Count</strong><small>纳入相关性计算的字段</small></div>
             <div class="oa-kpi-card"><span>样本数</span><strong>@_matrix.Samples</strong><small>本次相关性分析样本</small></div>
-            <div class="oa-kpi-card"><span>强相关关系</span><strong>@_matrix.StrongPairs.Count</strong><small>达到当前强相关阈值</small></div>
+            <div class="oa-kpi-card"><span>强相关关系</span><strong>@FilteredStrongPairs.Count</strong><small>当前筛选后的强相关关系</small></div>
             <div class="oa-kpi-card"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong><small>最近一次成功分析</small></div>
         </div>
 
         <div class="oa-panel mb-4">
-            <div class="oa-panel-header"><div><div class="oa-panel-kicker">STRONG PAIRS</div><h2>强相关字段对</h2></div><span class="oa-count-badge">@_matrix.StrongPairs.Count 对</span></div>
+            <div class="oa-panel-header"><div><div class="oa-panel-kicker">STRONG PAIRS</div><h2>强相关字段对</h2></div><span class="oa-count-badge">@FilteredStrongPairs.Count 对</span></div>
             <div class="oa-panel-body p-0">
-                @if (_matrix.StrongPairs.Count == 0)
+                @if (FilteredStrongPairs.Count == 0)
                 { <div class="oa-empty-state"><div class="oa-empty-icon">✓</div><strong>没有强相关字段对</strong><span>当前没有达到强相关阈值的字段组合。</span></div> }
                 else
-                { <div class="oa-table-wrap"><table class="table table-hover align-middle mb-0 oa-analysis-table"><thead><tr><th>字段 A</th><th>字段 B</th><th>Pearson</th><th>Spearman</th><th>样本数</th><th>关系</th></tr></thead><tbody>@foreach (var pair in _matrix.StrongPairs.OrderByDescending(x => Math.Abs(x.Pearson ?? 0d))){<tr><td class="oa-correlation-field"><strong>@pair.FieldA</strong></td><td class="oa-correlation-field"><strong>@pair.FieldB</strong></td><td class="oa-coefficient">@(pair.Pearson?.ToString("0.000") ?? "-")</td><td class="oa-coefficient">@(pair.Spearman?.ToString("0.000") ?? "-")</td><td>@pair.Samples</td><td><span class="oa-badge @((pair.Pearson ?? 0) < 0 ? "is-warning" : "is-accent")">@((pair.Pearson ?? 0) < 0 ? "负相关" : "正相关")</span></td></tr>}</tbody></table></div> }
+                { <div class="oa-table-wrap"><table class="table table-hover align-middle mb-0 oa-analysis-table"><thead><tr><th>字段 A</th><th>字段 B</th><th>Pearson</th><th>Spearman</th><th>样本数</th><th>关系</th></tr></thead><tbody>@foreach (var pair in FilteredStrongPairs.OrderByDescending(x => Math.Abs(x.Pearson ?? 0d))){<tr><td class="oa-correlation-field"><strong>@pair.FieldA</strong></td><td class="oa-correlation-field"><strong>@pair.FieldB</strong></td><td class="oa-coefficient">@(pair.Pearson?.ToString("0.000") ?? "-")</td><td class="oa-coefficient">@(pair.Spearman?.ToString("0.000") ?? "-")</td><td>@pair.Samples</td><td><span class="oa-badge @((pair.Pearson ?? 0) < 0 ? "is-warning" : "is-accent")">@((pair.Pearson ?? 0) < 0 ? "负相关" : "正相关")</span></td></tr>}</tbody></table></div> }
             </div>
         </div>
 
         <div class="oa-panel">
             <div class="oa-panel-header"><div><div class="oa-panel-kicker">CORRELATION MATRIX</div><h2>相关性矩阵</h2></div><span class="oa-count-badge">@_matrix.Fields.Count 字段</span></div>
             <div class="oa-matrix-wrap oa-correlation-matrix">
-                @if (_matrix.Fields.Count == 0){<div class="oa-empty-state"><span>没有可展示的字段。</span></div>}
-                else{<div class="oa-matrix-scroll"><table class="table table-sm table-bordered mb-0 align-middle text-center"><thead><tr><th>字段</th>@foreach (var field in _matrix.Fields){<th class="text-nowrap">@field</th>}</tr></thead><tbody>@for (var i = 0; i < _matrix.Fields.Count; i++){var row=i;<tr><th class="text-nowrap">@_matrix.Fields[row]</th>@for (var j=0;j<_matrix.Fields.Count;j++){<td>@FormatCoefficient(_matrix.Pearson,row,j)</td>}</tr>}</tbody></table></div>}
+                @if (FilteredFields.Count == 0){<div class="oa-empty-state"><span>没有可展示的字段。</span></div>}
+                else{<div class="oa-matrix-scroll"><table class="table table-sm table-bordered mb-0 align-middle text-center"><thead><tr><th>字段</th>@foreach (var field in FilteredFields){<th class="text-nowrap">@field</th>}</tr></thead><tbody>@for (var i = 0; i < FilteredFields.Count; i++){var row=i;<tr><th class="text-nowrap">@FilteredFields[row]</th>@for (var j=0;j<FilteredFields.Count;j++){<td>@FormatCoefficient(_matrix.Pearson, GetFieldIndex(FilteredFields[row]), GetFieldIndex(FilteredFields[j]))</td>}</tr>}</tbody></table></div>}
             </div>
             <div class="oa-analysis-note">Pearson 越接近 1 表示强正相关，越接近 -1 表示强负相关，接近 0 表示线性相关性较弱。强相关字段对默认要求绝对相关系数至少 0.7 且样本数至少 30。</div>
         </div>
@@ -50,8 +55,22 @@
 
 @code {
     private bool _loading = true;
+    private List<AnalysisJob> _jobs = new();
     private AnalysisJob? _job;
     private FieldCorrelationMatrix? _matrix;
+    private Guid? SelectedJobId;
+    private string? DirectionFilter;
+    private string? FieldFilter;
+
+    private IReadOnlyList<string> FilteredFields =>
+        (_matrix?.Fields ?? new List<string>())
+            .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private IReadOnlyList<StrongCorrelationPair> FilteredStrongPairs =>
+        (_matrix?.StrongPairs ?? new List<StrongCorrelationPair>())
+            .Where(MatchesPair)
+            .ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -60,27 +79,70 @@
         _loading = true;
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
-        _job = jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
+        _jobs = jobs
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
+            .OrderByDescending(x => x.StartedAtUtc)
+            .ToList();
 
-        if (_job is not null)
+        if (SelectedJobId is null || !_jobs.Any(x => x.Id == SelectedJobId.Value))
+            SelectedJobId = _jobs.FirstOrDefault()?.Id;
+
+        await LoadSelectedJobAsync();
+        _loading = false;
+    }
+
+    private async Task LoadSelectedJobAsync()
+    {
+        _job = SelectedJobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == SelectedJobId.Value) : null;
+        _matrix = null;
+
+        if (_job is null)
+            return;
+
+        try
         {
-            try
-            {
-                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
-                _matrix = result?.CorrelationMatrix;
-            }
-            catch (JsonException)
-            {
-                _matrix = null;
-            }
+            var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+            _matrix = result?.CorrelationMatrix;
         }
-        else
+        catch (JsonException)
         {
             _matrix = null;
         }
 
-        _loading = false;
+        await Task.CompletedTask;
     }
+
+    private async Task OnJobChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            SelectedJobId = id;
+            await LoadSelectedJobAsync();
+        }
+    }
+
+    private void OnDirectionChanged(ChangeEventArgs e) => DirectionFilter = e.Value?.ToString();
+
+    private void OnFieldChanged(ChangeEventArgs e) => FieldFilter = e.Value?.ToString();
+
+    private bool MatchesPair(StrongCorrelationPair pair)
+    {
+        if (!string.IsNullOrWhiteSpace(FieldFilter)
+            && !pair.FieldA.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase)
+            && !pair.FieldB.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var coefficient = pair.Pearson ?? 0d;
+        return string.IsNullOrWhiteSpace(DirectionFilter)
+            || (DirectionFilter == "Positive" && coefficient >= 0)
+            || (DirectionFilter == "Negative" && coefficient < 0);
+    }
+
+    private string FormatJob(AnalysisJob job) =>
+        $"{job.StartedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm} · {job.SourceName}";
+
+    private int GetFieldIndex(string field) =>
+        _matrix?.Fields.FindIndex(x => string.Equals(x, field, StringComparison.Ordinal)) ?? -1;
 
     private static string FormatCoefficient(IReadOnlyList<List<double?>> matrix, int row, int column)
     {
