@@ -16,7 +16,8 @@
         </div>
         <div class="oa-header-actions">
             <a class="btn btn-outline-secondary" href="/quality/data-lineage">数据血缘</a>
-            <a class="btn btn-outline-secondary" href="/quality/impact-analysis">影响传播</a>
+            <a class="btn btn-outline-secondary" href="@ImpactUrl">影响传播</a>
+            <a class="btn btn-outline-secondary" href="@RegressionUrl">质量回归</a>
             @if (_job is not null)
             {
                 <a class="btn btn-outline-primary" href="@($"/jobs/{_job.Id}")">当前作业</a>
@@ -162,6 +163,9 @@
     private string? ChangeTypeFilter;
     private string? ImpactFilter;
     private string? FieldFilter;
+
+    private string ImpactUrl => _job is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_job.Id}";
+    private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
 
     private IReadOnlyList<SchemaSnapshotField> FilteredAdded => string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.AddedFields);
     private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.RemovedFields);
