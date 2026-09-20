@@ -18,6 +18,15 @@ public static class HealthEndpoints
         .WithSummary("健康检查")
         .WithDescription("返回服务状态与核心分析库版本号。");
 
+        routes.MapGet("/ready", () =>
+        {
+            var version = typeof(AnalysisResult).Assembly.GetName().Version?.ToString();
+            return TypedResults.Ok(new HealthResponse("ready", version));
+        })
+        .WithTags("系统")
+        .WithSummary("就绪检查")
+        .WithDescription("服务进程已完成基础组件初始化时返回 ready。");
+
         return routes;
     }
 }
