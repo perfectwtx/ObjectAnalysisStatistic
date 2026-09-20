@@ -301,4 +301,5 @@
     }
 
     private sealed record NavItem(string Url, string Label, bool Exact = false);
+    private sealed record SearchItem(string Url, string Label, string Hint);
 }
