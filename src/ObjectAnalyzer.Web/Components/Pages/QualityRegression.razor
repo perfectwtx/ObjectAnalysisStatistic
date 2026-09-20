@@ -48,6 +48,16 @@
     }
     else
     {
+        @if (_currentJob is null || _previousJob is null || _report is null)
+        {
+            <div class="oa-panel oa-empty-state oa-regression-state">
+                <div class="oa-empty-icon">!</div>
+                <strong>没有可比较的结果快照</strong>
+                <span>当前选择缺少有效的分析基线或结果数据。</span>
+            </div>
+        }
+        else
+        {
         <section class="oa-panel oa-regression-filter-card">
             <div class="oa-panel-body">
                 <div class="oa-regression-filter-grid">
@@ -251,6 +261,7 @@
                 </div>
             }
         </section>
+        }
     }
 </div>
 
