@@ -1,5 +1,6 @@
 @page "/quality/schema-impact"
 @using System.Text.Json
+@using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Platform
 @using ObjectAnalyzer.Analysis
 @inject IAnalysisHistoryStore HistoryStore
@@ -155,13 +156,16 @@
     private bool _loading = true;
     private AnalysisJob? _job;
     private SchemaDiff? _diff;
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
+
     private string? ChangeTypeFilter;
     private string? ImpactFilter;
     private string? FieldFilter;
 
-    private IReadOnlyList<SchemaSnapshotField> FilteredAdded => FilterFields(_diff?.AddedFields);
-    private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => FilterFields(_diff?.RemovedFields);
-    private IReadOnlyList<SchemaChangedField> FilteredChanged => (_diff?.ChangedFields ?? Array.Empty<SchemaChangedField>())
+    private IReadOnlyList<SchemaSnapshotField> FilteredAdded => string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.AddedFields);
+    private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.RemovedFields);
+    private IReadOnlyList<SchemaChangedField> FilteredChanged => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaChangedField>() : (_diff?.ChangedFields ?? Array.Empty<SchemaChangedField>() )
         .Where(x => MatchesField(x.Path))
         .Where(x => string.IsNullOrWhiteSpace(ImpactFilter) || (ImpactFilter == "Breaking" ? x.Breaking : !x.Breaking))
         .ToList();
@@ -180,7 +184,7 @@
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
         _jobs.AddRange(jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc));
-        _job = _jobs.FirstOrDefault();
+        _job = JobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == JobId.Value) : _jobs.FirstOrDefault();
 
         if (_job is not null)
         {
