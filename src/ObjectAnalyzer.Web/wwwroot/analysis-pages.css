@@ -2244,3 +2244,5 @@
 .oa-webhook-page .oa-webhook-error{display:block;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--oa-text-2)}
 @media(max-width:1000px){.oa-webhook-page .oa-webhook-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.oa-webhook-page .oa-webhook-filter-grid{grid-template-columns:1fr}.oa-webhook-page .oa-webhook-table-wrap{overflow-x:auto}.oa-webhook-page .oa-webhook-table-wrap table{min-width:900px}}
+
+.oa-job-detail .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
