@@ -693,7 +693,12 @@
                             var rowState = signalCount >= 2 ? "is-critical" : signalCount == 1 ? "has-signal" : "is-clean";
                             <tr class="field-row @rowState">
                                 <td class="field-name">
-                                    <div class="field-name-main"><code>@field.FieldName</code></div>
+                                    <div class="field-name-main">
+                                        <button type="button" class="field-expand-button" @onclick="() => ToggleFieldDetails(field.FieldName)" aria-label="Toggle field details">
+                                            <span class="field-expand-icon @(_expandedFieldName == field.FieldName ? "is-open" : "")">›</span>
+                                            <code>@field.FieldName</code>
+                                        </button>
+                                    </div>
                                     <div class="field-signal-line">
                                         @if (signalCount > 0)
                                         {
@@ -834,6 +839,101 @@
                                     }
                                 </td>
                             </tr>
+                            @if (_expandedFieldName == field.FieldName)
+                            {
+                                var coverage = FieldCoverageMath.Compute(field, State.Result.TotalObjects);
+                                <tr class="field-detail-row">
+                                    <td colspan="9">
+                                        <div class="field-detail-panel">
+                                            <div class="field-detail-header">
+                                                <div>
+                                                    <span class="field-detail-kicker">FIELD INSPECTOR</span>
+                                                    <strong>@field.FieldName</strong>
+                                                </div>
+                                                <button type="button" class="field-detail-close" @onclick="() => ToggleFieldDetails(field.FieldName)">Close</button>
+                                            </div>
+                                            <div class="field-detail-grid">
+                                                <div class="field-detail-stat"><span>RECORDS</span><strong>@field.Count.ToString("N0")</strong></div>
+                                                <div class="field-detail-stat"><span>NON-NULL</span><strong>@coverage.NonNullCount.ToString("N0")</strong></div>
+                                                <div class="field-detail-stat"><span>NULL</span><strong>@field.NullCount.ToString("N0")</strong></div>
+                                                <div class="field-detail-stat"><span>UNIQUE</span><strong>@field.ValueCounts.Count.ToString("N0")</strong></div>
+                                            </div>
+                                            <div class="field-detail-columns">
+                                                <div class="field-detail-card">
+                                                    <span class="field-detail-card-title">PROFILE</span>
+                                                    <div class="field-detail-list">
+                                                        <div><span>Semantic</span><strong>@(field.SemanticType ?? "—")</strong></div>
+                                                        <div><span>Primary type</span><strong>@(field.PrimaryType ?? "—")</strong></div>
+                                                        <div><span>Default</span><code>@(field.DefaultValueRepresentation ?? "—")</code></div>
+                                                        <div><span>Coverage</span><strong>@FormatPercent(field.Coverage)</strong></div>
+                                                    </div>
+                                                </div>
+                                                <div class="field-detail-card">
+                                                    <span class="field-detail-card-title">QUALITY SIGNALS</span>
+                                                    <div class="field-detail-signal-list">
+                                                        @if (field.NullCount > 0)
+                                                        {
+                                                            <span class="field-detail-signal is-warning">Null @field.NullCount.ToString("N0")</span>
+                                                        }
+                                                        @if (field.OutlierCount is long detailOutliers && detailOutliers > 0)
+                                                        {
+                                                            <span class="field-detail-signal is-danger">Outliers @detailOutliers.ToString("N0")</span>
+                                                        }
+                                                        @if (field.EnumViolations.Count > 0)
+                                                        {
+                                                            <span class="field-detail-signal is-danger">Enum violations @field.EnumViolations.Count</span>
+                                                        }
+                                                        @if (field.RangeViolationCount > 0)
+                                                        {
+                                                            <span class="field-detail-signal is-danger">Range violations @field.RangeViolationCount</span>
+                                                        }
+                                                        @if (field.NullCount == 0 && (field.OutlierCount is not long positiveOutliers || positiveOutliers == 0) && field.EnumViolations.Count == 0 && field.RangeViolationCount == 0)
+                                                        {
+                                                            <span class="field-detail-signal is-success">No active quality signals</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            @if (field.TypeCounts.Count > 0 || field.EnumViolations.Count > 0 || !string.IsNullOrWhiteSpace(field.OutlierBounds))
+                                            {
+                                                <div class="field-detail-evidence">
+                                                    @if (field.TypeCounts.Count > 0)
+                                                    {
+                                                        <div>
+                                                            <span class="field-detail-card-title">TYPE DISTRIBUTION</span>
+                                                            <div class="field-detail-tags">
+                                                                @foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value))
+                                                                {
+                                                                    <span>@type.Key <strong>@type.Value</strong></span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(field.OutlierBounds))
+                                                    {
+                                                        <div>
+                                                            <span class="field-detail-card-title">OUTLIER RANGE</span>
+                                                            <code>@field.OutlierBounds</code>
+                                                        </div>
+                                                    }
+                                                    @if (field.EnumViolations.Count > 0)
+                                                    {
+                                                        <div>
+                                                            <span class="field-detail-card-title">RULE VIOLATIONS</span>
+                                                            <div class="field-detail-tags is-danger">
+                                                                @foreach (var violation in field.EnumViolations)
+                                                                {
+                                                                    <span>@violation</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
                         }
                     </tbody>
                 </table>
@@ -1382,6 +1482,12 @@
 
 @code {
     private string _activeTab = "fields";
+    private string? _expandedFieldName;
+
+    private void ToggleFieldDetails(string fieldName)
+    {
+        _expandedFieldName = string.Equals(_expandedFieldName, fieldName, StringComparison.Ordinal) ? null : fieldName;
+    }
 
     /// <summary>规则字段说明里的最小示例（MarkupString 渲染，避免 Razor 转义正则中的 @）。</summary>
     private const string RulesExampleJson = """
