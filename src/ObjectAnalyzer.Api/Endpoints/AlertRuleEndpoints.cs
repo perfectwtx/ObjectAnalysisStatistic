@@ -215,7 +215,7 @@ public static class AlertRuleEndpoints
                         rule.DistributionDriftAbove = Threshold;
                         break;
                     default:
-                        throw new ArgumentException($"不支持的告警条件：{Condition}", nameof(Condition));
+                        throw new ArgumentException($"不支持的告警条件：{Condition}");
                 }
             }
 
