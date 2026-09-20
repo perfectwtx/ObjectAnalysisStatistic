@@ -11,7 +11,7 @@
             <h1>分析作业中心</h1>
             <p>查看历史分析作业及其质量结果。</p>
         </div>
-        <button class="btn btn-outline-secondary" @onclick="LoadAsync"><span aria-hidden="true">↻</span> 刷新</button>
+        <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/quality">质量总览</a><a class="btn btn-outline-secondary" href="/issues">问题中心</a><a class="btn btn-outline-secondary" href="/quality/webhooks">Webhook 投递</a><button class="btn btn-outline-secondary" @onclick="LoadAsync"><span aria-hidden="true">↻</span> 刷新</button></div>
     </div>
 
     @if (_loading)
@@ -40,12 +40,12 @@
             </div>
             <div class="oa-kpi-card">
                 <span>已完成</span>
-                <strong>@_jobs.Count(x => x.Status == AnalysisJobStatus.Succeeded)</strong>
+                <strong>@FilteredJobs.Count(x => x.Status == AnalysisJobStatus.Succeeded)</strong>
                 <small>成功分析作业</small>
             </div>
             <div class="oa-kpi-card">
                 <span>质量问题</span>
-                <strong>@_jobs.Sum(x => x.IssueCount)</strong>
+                <strong>@FilteredJobs.Sum(x => x.IssueCount)</strong>
                 <small>累计标准化问题</small>
             </div>
             <div class="oa-kpi-card">
@@ -90,7 +90,7 @@
                     <div class="oa-panel-kicker">RECENT RUNS</div>
                     <h2>最近分析</h2>
                 </div>
-                <span class="oa-count-badge">@_jobs.Count 条</span>
+                <span class="oa-count-badge">@FilteredJobs.Count 条</span>
             </div>
             <div class="oa-table-wrap">
                 <table class="table table-hover align-middle mb-0 oa-analysis-table oa-jobs-table">
@@ -105,7 +105,7 @@
                         <tr>
                             <td><span class="oa-date">@job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</span><small>@job.StartedAtUtc.ToLocalTime().ToString("HH:mm:ss")</small></td>
                             <td><strong>@job.SourceName</strong><small>@job.SourceType</small></td>
-                            <td><span class="oa-status-badge oa-status-@job.Status.ToString().ToLowerInvariant()">@job.Status</span></td>
+                            <td><span class="oa-status-badge oa-status-@job.Status.ToString().ToLowerInvariant()">@GetStatusLabel(job.Status)</span></td>
                             <td>@job.TotalObjects.ToString("N0")</td>
                             <td>@job.FieldCount.ToString("N0")</td>
                             <td><strong class="oa-score">@(job.QualityScore?.ToString("F2") ?? "-")</strong></td>
@@ -143,6 +143,15 @@
         await HistoryStore.InitializeAsync();
         await LoadAsync();
     }
+
+    private static string GetStatusLabel(AnalysisJobStatus status) => status switch
+    {
+        AnalysisJobStatus.Succeeded => "已完成",
+        AnalysisJobStatus.Failed => "失败",
+        AnalysisJobStatus.Running => "运行中",
+        AnalysisJobStatus.Pending => "等待中",
+        _ => status.ToString()
+    };
 
     private async Task OnSourceChanged(ChangeEventArgs args)
     {
