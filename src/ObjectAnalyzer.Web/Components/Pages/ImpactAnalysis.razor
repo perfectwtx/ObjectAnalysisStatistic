@@ -159,7 +159,7 @@
         .Where(x => string.IsNullOrWhiteSpace(LevelFilter) || string.Equals(x.Level.ToString(), LevelFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(TypeFilter) || string.Equals(x.Type.ToString(), TypeFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
-        .ToList() ?? Array.Empty<ImpactedNode>();
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
