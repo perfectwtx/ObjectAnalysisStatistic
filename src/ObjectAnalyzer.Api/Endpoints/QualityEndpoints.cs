@@ -26,6 +26,8 @@ public static class QualityEndpoints
         // 与 React 前端 API 客户端兼容的快照别名。
         quality.MapGet("/snapshots", GetTrend).WithSummary("获取质量快照");
         quality.MapGet("/snapshots/{jobId:guid}/fields", GetFields).WithSummary("获取指定快照的字段质量");
+        routes.MapGet("/quality-snapshots", GetTrend).WithTags("数据质量").WithSummary("获取质量快照");
+        routes.MapGet("/analysis/quality/snapshots", GetTrend).WithTags("数据质量").WithSummary("获取质量快照");
         return routes;
     }
 
@@ -42,6 +44,9 @@ public static class QualityEndpoints
         routes.MapGet("/jobs/{jobId:guid}", GetJob).WithTags("分析历史").WithSummary("获取分析作业详情");
         routes.MapGet("/jobs/{jobId:guid}/result", GetJobResult).WithTags("分析历史").WithSummary("获取分析作业结果");
         routes.MapGet("/jobs/{jobId:guid}/fields", GetFields).WithTags("数据质量").WithSummary("获取指定作业的字段质量");
+        routes.MapGet("/analyze/jobs", GetJobs).WithTags("分析历史").WithSummary("获取分析作业历史");
+        routes.MapGet("/analyze/jobs/{jobId:guid}", GetJob).WithTags("分析历史").WithSummary("获取分析作业详情");
+        routes.MapGet("/analyze/jobs/{jobId:guid}/result", GetJobResult).WithTags("分析历史").WithSummary("获取分析作业结果");
         routes.MapGet("/jobs/{jobId:guid}/schema-impact", GetSchemaImpact).WithTags("数据质量").WithSummary("获取指定作业的 Schema 影响");
         return routes;
     }
