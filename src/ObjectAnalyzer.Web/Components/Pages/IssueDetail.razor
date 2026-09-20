@@ -1,0 +1,235 @@
+@page "/issues/detail"
+@using Microsoft.AspNetCore.Components
+@using ObjectAnalyzer.Platform
+@inject IAnalysisHistoryStore HistoryStore
+@inject IQualityIssueQuery QualityIssueQuery
+@inject IQualityIssueResponsibilityStore ResponsibilityStore
+@inject IQualityIssueRemediationStore RemediationStore
+
+<PageTitle>质量问题详情</PageTitle>
+
+<div class="oa-analysis-page oa-issue-detail-page">
+    <div class="oa-analysis-header">
+        <div>
+            <div class="oa-eyebrow">ISSUE DETAIL</div>
+            <h1>质量问题详情</h1>
+            <p>从问题现象继续追踪责任、整改记录与重新分析后的验证状态。</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="@BackUrl">返回问题中心</a>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="oa-empty-state oa-loading-state">
+            <div class="oa-empty-icon">◌</div>
+            <strong>正在加载问题详情</strong>
+            <span>正在读取分析结果、责任分配与整改记录。</span>
+        </div>
+    }
+    else if (_issue is null)
+    {
+        <div class="oa-empty-state">
+            <strong>未找到质量问题</strong>
+            <span>该问题可能已经不属于当前分析任务，或链接参数不完整。</span>
+            <a href="/issues">返回问题中心</a>
+        </div>
+    }
+    else
+    {
+        <div class="oa-issue-detail-context">
+            <div>
+                <span class="oa-panel-kicker">FIELD</span>
+                <strong>@_issue.FieldName</strong>
+            </div>
+            <div>
+                <span class="oa-panel-kicker">CHECK</span>
+                <span class="oa-badge is-warning">@_issue.Check</span>
+            </div>
+            <div>
+                <span class="oa-panel-kicker">VIOLATIONS</span>
+                <strong>@_issue.Count</strong>
+            </div>
+            <div>
+                <span class="oa-panel-kicker">ANALYSIS RUN</span>
+                <strong>@(_selectedJob?.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</strong>
+            </div>
+        </div>
+
+        <div class="oa-issue-detail-grid">
+            <section class="oa-panel">
+                <div class="oa-panel-header">
+                    <div>
+                        <div class="oa-panel-kicker">ISSUE SIGNAL</div>
+                        <h2>问题说明</h2>
+                    </div>
+                </div>
+                <div class="oa-panel-body">
+                    <p class="oa-issue-detail-message">@_issue.Message</p>
+                    <div class="oa-detail-facts">
+                        <div><span>字段</span><strong>@_issue.FieldName</strong></div>
+                        <div><span>检查类型</span><strong>@_issue.Check</strong></div>
+                        <div><span>违规次数</span><strong>@_issue.Count</strong></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="oa-panel">
+                <div class="oa-panel-header">
+                    <div>
+                        <div class="oa-panel-kicker">OWNERSHIP</div>
+                        <h2>责任与状态</h2>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" href="@ResponsibilityUrl">管理整改</a>
+                </div>
+                <div class="oa-panel-body">
+                    <div class="oa-detail-facts">
+                        <div><span>责任人</span><strong>@(_responsibility?.Owner ?? "未指定")</strong></div>
+                        <div><span>处理状态</span><strong>@GetStatusText(_responsibility?.Status)</strong></div>
+                        <div><span>更新时间</span><strong>@FormatDateTime(_responsibility?.UpdatedAtUtc)</strong></div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_responsibility?.Comment))
+                    {
+                        <div class="oa-detail-comment">@_responsibility.Comment</div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <section class="oa-panel">
+            <div class="oa-panel-header">
+                <div>
+                    <div class="oa-panel-kicker">REMEDIATION</div>
+                    <h2>整改记录</h2>
+                </div>
+                <span class="oa-count-badge">@_remediations.Count 条</span>
+            </div>
+            @if (_remediations.Count == 0)
+            {
+                <div class="oa-inline-empty">暂无整改记录。先指定责任人与整改措施，再通过下一次分析自动验证。</div>
+            }
+            else
+            {
+                <div class="oa-table-wrap">
+                    <table class="table oa-analysis-table align-middle mb-0">
+                        <thead>
+                            <tr><th>整改措施</th><th>状态</th><th>截止日期</th><th>完成时间</th><th>备注</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var remediation in _remediations)
+                        {
+                            <tr>
+                                <td><strong>@remediation.Action</strong></td>
+                                <td>@GetRemediationStatusText(remediation.Status)</td>
+                                <td>@FormatDate(remediation.DueAtUtc)</td>
+                                <td>@FormatDateTime(remediation.CompletedAtUtc)</td>
+                                <td>@(string.IsNullOrWhiteSpace(remediation.Comment) ? "-" : remediation.Comment)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <div class="oa-issue-detail-next">
+            <div>
+                <span class="oa-panel-kicker">CLOSED LOOP</span>
+                <strong>重新分析后自动验证整改是否生效</strong>
+                <p>当下一次同数据源分析中该检查不再产生问题，系统会自动完成整改并将责任状态更新为“已解决”。</p>
+            </div>
+            <a class="btn btn-primary" href="@ResponsibilityUrl">进入整改管理 →</a>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "field")]
+    public string? FieldFilter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "check")]
+    public string? CheckFilter { get; set; }
+
+    private AnalysisJob? _selectedJob;
+    private QualityIssue? _issue;
+    private QualityIssueResponsibility? _responsibility;
+    private IReadOnlyList<QualityIssueRemediation> _remediations = Array.Empty<QualityIssueRemediation>();
+    private bool _loading;
+
+    private string BackUrl => string.IsNullOrWhiteSpace(FieldFilter)
+        ? "/issues"
+        : $"/issues?field={Uri.EscapeDataString(FieldFilter)}";
+
+    private string ResponsibilityUrl =>
+        $"/issues/responsibility?jobId={_selectedJob?.Id}&field={Uri.EscapeDataString(_issue?.FieldName ?? string.Empty)}&check={Uri.EscapeDataString(_issue?.Check ?? string.Empty)}";
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _selectedJob = null;
+            _issue = null;
+            _responsibility = null;
+            _remediations = Array.Empty<QualityIssueRemediation>();
+
+            var jobs = (await HistoryStore.GetRecentAsync(100))
+                .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+                .OrderByDescending(x => x.StartedAtUtc)
+                .ToList();
+
+            _selectedJob = JobId.HasValue
+                ? jobs.FirstOrDefault(x => x.Id == JobId.Value)
+                : jobs.FirstOrDefault();
+
+            if (_selectedJob is null || string.IsNullOrWhiteSpace(FieldFilter) || string.IsNullOrWhiteSpace(CheckFilter))
+                return;
+
+            var issues = await QualityIssueQuery.GetByJobAsync(_selectedJob.Id);
+            _issue = issues.FirstOrDefault(x =>
+                string.Equals(x.FieldName, FieldFilter, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.Check, CheckFilter, StringComparison.OrdinalIgnoreCase));
+
+            if (_issue is null)
+                return;
+
+            _responsibility = await ResponsibilityStore.GetAsync(
+                _issue.JobId,
+                _issue.FieldName,
+                _issue.Check);
+
+            _remediations = await RemediationStore.GetByIssueAsync(
+                _issue.JobId,
+                _issue.FieldName,
+                _issue.Check);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string GetStatusText(string? status) => status switch
+    {
+        "Open" => "待处理",
+        "InProgress" => "处理中",
+        "Resolved" => "已解决",
+        "Ignored" => "已忽略",
+        _ => string.IsNullOrWhiteSpace(status) ? "未指定" : status
+    };
+
+    private static string GetRemediationStatusText(string status) => status switch
+    {
+        "Planned" => "计划中",
+        "InProgress" => "处理中",
+        "Completed" => "已完成",
+        _ => status
+    };
+
+    private static string FormatDate(DateTime? value) => value?.ToLocalTime().ToString("yyyy-MM-dd") ?? "-";
+    private static string FormatDateTime(DateTime? value) => value?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-";
+}
