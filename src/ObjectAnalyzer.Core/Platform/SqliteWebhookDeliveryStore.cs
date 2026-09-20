@@ -61,6 +61,25 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<WebhookDelivery>> GetRecentAsync(int limit = 100, CancellationToken cancellationToken = default)
+    {
+        limit = Math.Clamp(limit, 1, 500);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT id, rule_id, job_id, event_type, webhook_url, payload_json, status,
+                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error
+            FROM webhook_deliveries
+            ORDER BY created_at_utc DESC
+            LIMIT {limit};
+            """;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var result = new List<WebhookDelivery>();
+        while (await reader.ReadAsync(cancellationToken)) result.Add(Read(reader));
+        return result;
+    }
+
     public async Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
