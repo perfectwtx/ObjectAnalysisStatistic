@@ -2248,3 +2248,12 @@
 .oa-job-detail .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
 
 .oa-jobs-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+
+/* Object and field relationships workbench filters */
+.oa-object-relationships-page .oa-header-actions,.oa-field-relationships-page .oa-header-actions{display:flex;gap:.6rem;align-items:center}
+.oa-object-relationships-page .oa-object-filter-card,.oa-field-relationships-page .oa-correlation-filter-card{margin-bottom:1rem}
+.oa-object-relationships-page .oa-object-filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(180px,.7fr) minmax(240px,1fr);gap:1rem}
+.oa-object-relationships-page .oa-object-filter-grid .form-label,.oa-field-relationships-page .oa-correlation-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-field-relationships-page .oa-correlation-filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(240px,1fr) minmax(180px,.7fr);gap:1rem}
+@media(max-width:820px){.oa-object-relationships-page .oa-object-filter-grid,.oa-field-relationships-page .oa-correlation-filter-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.oa-object-relationships-page .oa-header-actions,.oa-field-relationships-page .oa-header-actions{flex-wrap:wrap}.oa-object-relationships-page .oa-object-table-wrap{overflow-x:auto}}
