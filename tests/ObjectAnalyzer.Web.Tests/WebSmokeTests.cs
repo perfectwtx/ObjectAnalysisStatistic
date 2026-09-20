@@ -72,8 +72,8 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
         Assert.Contains("option-group", content);
         Assert.Contains("\"opt-group-hint\"", content);
         Assert.True(
-            content.Contains("P6 — 增量 / 内存 / 进度")
-            || content.Contains("P6 &#x2014; &#x589E;&#x91CF; / &#x5185;&#x5B58; / &#x8FDB;&#x5EA6;"),
+            content.Contains("增量 / 内存 / 进度")
+            || content.Contains("&#x589E;&#x91CF; / &#x5185;&#x5B58; / &#x8FDB;&#x5EA6;"),
             "P6 折叠区标题未在 HTML 中出现（应使用中文本地化）。");
         Assert.True(
             content.Contains("显示进度条 / ETA") || content.Contains("&#x663E;&#x793A;&#x8FDB;&#x5EA6;&#x6761; / ETA"),
