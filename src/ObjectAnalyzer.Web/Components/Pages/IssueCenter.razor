@@ -1,4 +1,5 @@
 @page "/issues"
+@using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityIssueQuery QualityIssueQuery
@@ -6,6 +7,14 @@
 <PageTitle>Issue Center</PageTitle>
 
 <div class="oa-analysis-page oa-issues-page">
+    @if (!string.IsNullOrWhiteSpace(_fieldFilter))
+    {
+        <div class="oa-filter-context">
+            <span>字段筛选</span>
+            <strong>@_fieldFilter</strong>
+            <a href="/issues">清除筛选</a>
+        </div>
+    }
     <div class="oa-analysis-header">
         <div>
             <div class="oa-eyebrow">QUALITY MONITORING</div>
@@ -29,9 +38,9 @@
     else
     {
         <div class="oa-kpi-grid is-4 oa-issue-kpis">
-            <div class="oa-kpi-card"><div class="oa-kpi-label">当前问题项</div><div class="oa-kpi-value">@_selectedIssues.Count</div><div class="oa-kpi-meta">标准化质量问题</div></div>
-            <div class="oa-kpi-card"><div class="oa-kpi-label">问题字段</div><div class="oa-kpi-value">@_selectedIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">涉及字段数量</div></div>
-            <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@_selectedIssues.Sum(x => x.Count)</div><div class="oa-kpi-meta">当前作业累计</div></div>
+            <div class="oa-kpi-card"><div class="oa-kpi-label">当前问题项</div><div class="oa-kpi-value">@FilteredIssues.Count</div><div class="oa-kpi-meta">标准化质量问题</div></div>
+            <div class="oa-kpi-card"><div class="oa-kpi-label">问题字段</div><div class="oa-kpi-value">@FilteredIssues.Select(x => x.FieldName).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">涉及字段数量</div></div>
+            <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@FilteredIssues.Sum(x => x.Count)</div><div class="oa-kpi-meta">当前筛选范围累计</div></div>
             <div class="oa-kpi-card is-info"><div class="oa-kpi-label">质量分</div><div class="oa-kpi-value">@(_selectedJob?.QualityScore?.ToString("F2") ?? "-")</div><div class="oa-kpi-meta">当前分析结果</div></div>
         </div>
 
@@ -59,12 +68,12 @@
         <div class="oa-panel oa-issue-table-card">
             <div class="oa-panel-header">
                 <div><span class="oa-panel-kicker">Issue Inventory</span><h2>质量问题列表</h2></div>
-                <span class="oa-count-pill">@_selectedIssues.Count</span>
+                <span class="oa-count-pill">@FilteredIssues.Count</span>
             </div>
-            @if (_selectedIssues.Count == 0)
+            @if (FilteredIssues.Count == 0)
             {
                 <div class="oa-empty-state">
-                    <strong>本次分析没有标准化质量违规</strong>
+                    <strong>当前筛选条件下没有标准化质量违规</strong>
                     <span>当前数据质量检查没有发现需要记录的问题。</span>
                 </div>
             }
@@ -74,7 +83,7 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead><tr><th>字段</th><th>检查类型</th><th>次数</th><th>问题说明</th></tr></thead>
                         <tbody>
-                        @foreach (var issue in _selectedIssues)
+                        @foreach (var issue in FilteredIssues)
                         {
                             <tr><td><strong>@issue.FieldName</strong></td><td><span class="oa-badge is-warning">@issue.Check</span></td><td><span class="oa-issue-count">@issue.Count</span></td><td>@issue.Message</td></tr>
                         }
@@ -93,6 +102,13 @@
     private List<QualityIssue> _selectedIssues = new();
     private AnalysisJob? _selectedJob;
     private bool _loading;
+    [SupplyParameterFromQuery(Name = "field")]
+    private string? _fieldFilter { get; set; }
+
+    private IReadOnlyList<QualityIssue> FilteredIssues =>
+        string.IsNullOrWhiteSpace(_fieldFilter)
+            ? _selectedIssues
+            : _selectedIssues.Where(x => string.Equals(x.FieldName, _fieldFilter, StringComparison.OrdinalIgnoreCase)).ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
