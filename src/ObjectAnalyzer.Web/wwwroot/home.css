@@ -1635,3 +1635,174 @@
         gap:.2rem;
     }
 }
+
+/* Console collapse: keep the primary action visible while advanced options stay available. */
+.app-shell .console-options-group{
+    padding:0;
+    overflow:hidden;
+}
+.app-shell .console-options-group > summary{
+    list-style:none;
+    cursor:pointer;
+    padding:.8rem 0;
+    margin:0;
+}
+.app-shell .console-options-group > summary::-webkit-details-marker{
+    display:none;
+}
+.app-shell .console-group-summary{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+}
+.app-shell .console-group-summary::after{
+    content:"⌄";
+    margin-left:auto;
+    color:var(--oa-text-3);
+    font-size:.78rem;
+    transition:transform .15s ease;
+}
+.app-shell .console-options-group[open] > .console-group-summary::after{
+    transform:rotate(180deg);
+}
+.app-shell .console-group-state{
+    margin-left:auto;
+    padding:.2rem .45rem;
+    border:1px solid var(--oa-border);
+    border-radius:999px;
+    color:var(--oa-text-3);
+    background:var(--oa-surface-2);
+    font-size:.55rem;
+    font-weight:700;
+    letter-spacing:.04em;
+}
+.app-shell .console-options-group[open] .console-group-state{
+    color:var(--oa-accent-strong);
+    border-color:var(--oa-accent-border);
+    background:var(--oa-accent-soft);
+}
+.app-shell .console-options-group > .config-fields{
+    padding-top:.1rem;
+}
+
+/* Signals are actionable summary, not only status decoration. */
+.app-shell .signal-summary{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:.65rem;
+    margin:0 0 1.05rem;
+}
+.app-shell .signal-metric{
+    min-width:0;
+    padding:.7rem .8rem;
+    border:1px solid var(--oa-border);
+    border-radius:10px;
+    background:var(--oa-surface);
+}
+.app-shell .signal-metric-label{
+    display:block;
+    color:var(--oa-text-3);
+    font-size:.55rem;
+    font-weight:850;
+    letter-spacing:.1em;
+}
+.app-shell .signal-metric strong{
+    display:block;
+    margin-top:.22rem;
+    color:var(--oa-text-1);
+    font-family:var(--oa-font-mono);
+    font-size:1.1rem;
+    line-height:1.1;
+}
+.app-shell .signal-metric small{
+    display:block;
+    margin-top:.2rem;
+    color:var(--oa-text-3);
+    font-size:.58rem;
+}
+.app-shell .signal-metric:first-child strong{
+    color:var(--oa-danger);
+}
+.app-shell .signal-metric:nth-child(2) strong{
+    color:var(--oa-warning);
+}
+.app-shell .signal-metric:nth-child(3) strong{
+    color:var(--oa-info);
+}
+
+/* Data preview follows the same context-bar language as field intelligence. */
+.app-shell .preview-heading{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:1rem;
+    margin-bottom:.65rem;
+}
+.app-shell .preview-heading > div{
+    display:flex;
+    align-items:baseline;
+    gap:.6rem;
+    min-width:0;
+}
+.app-shell .preview-kicker{
+    color:var(--oa-text-3);
+    font-size:.58rem;
+    font-weight:850;
+    letter-spacing:.11em;
+}
+.app-shell .preview-heading h3{
+    margin:0;
+    color:var(--oa-text-1);
+    font-size:.94rem;
+    font-weight:760;
+}
+.app-shell .preview-heading .preview-note{
+    color:var(--oa-text-3);
+    font-size:.62rem;
+}
+.app-shell .preview-context{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:.45rem .9rem;
+    margin-bottom:.65rem;
+    padding:.55rem .65rem;
+    border:1px solid var(--oa-border);
+    border-radius:8px;
+    background:var(--oa-surface-2);
+    color:var(--oa-text-3);
+    font-size:.6rem;
+}
+.app-shell .preview-context strong{
+    color:var(--oa-text-1);
+    font-family:var(--oa-font-mono);
+    font-weight:750;
+}
+.app-shell .preview-context-hint{
+    margin-left:auto;
+    color:var(--oa-text-3);
+}
+@media (max-width:760px){
+    .app-shell .signal-summary{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    .app-shell .preview-heading{
+        align-items:flex-start;
+        flex-direction:column;
+        gap:.25rem;
+    }
+    .app-shell .preview-heading > div{
+        align-items:flex-start;
+        flex-direction:column;
+        gap:.15rem;
+    }
+    .app-shell .preview-context-hint{
+        margin-left:0;
+        width:100%;
+    }
+}
+@media (max-width:480px){
+    .app-shell .signal-summary{
+        grid-template-columns:1fr;
+    }
+}
