@@ -12,6 +12,7 @@ public static class DataLineageEndpoints
     {
         Map("/analysis/jobs/{jobId:guid}/lineage");
         Map("/jobs/{jobId:guid}/lineage");
+        Map("/analyze/async/{jobId:guid/lineage");
         return app;
 
         void Map(string pattern)
