@@ -58,7 +58,7 @@
             <div class="oa-section-heading"><div><span class="oa-section-kicker">Risk Overview</span><h2>治理信号</h2><span>按问题规模与优先级快速识别治理重点</span></div></div>
             <div class="oa-kpi-grid is-3">
                 <div class="oa-kpi-card is-danger"><div class="oa-kpi-label">待治理问题</div><div class="oa-kpi-value">@FilteredRecommendations.Count</div><div class="oa-kpi-meta">需要关注的质量问题</div></div>
-                <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">涉及字段</div><div class="oa-kpi-value">@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">存在质量风险的字段</div></div>
+                <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">涉及字段</div><div class="oa-kpi-value">@FilteredRecommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">存在质量风险的字段</div></div>
                 <div class="oa-kpi-card is-info"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@FilteredRecommendations.Sum(x => x.Count)</div><div class="oa-kpi-meta">所有问题累计影响次数</div></div>
             </div>
         </section>
@@ -70,6 +70,10 @@
                     <span class="oa-badge is-neutral">@FilteredRecommendations.Count 条建议</span>
                 </div>
                 <div class="oa-recommendation-list">
+                    @if (FilteredRecommendations.Count == 0)
+                    {
+                        <div class="oa-empty-state"><div class="oa-empty-icon">∅</div><strong>当前筛选条件下没有治理建议</strong><span>可以调整优先级、问题类型或字段搜索条件。</span></div>
+                    }
                     @foreach (var (item, index) in FilteredRecommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count).Select((item, index) => (item, index + 1)))
                     {
                         <article class="oa-recommendation-item">
