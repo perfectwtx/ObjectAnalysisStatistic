@@ -82,7 +82,7 @@
                                 <td><strong>@(normalized is null ? field.Coverage.ToString("P1") : normalized.Coverage.ToString("P1"))</strong></td>
                                 <td>@(normalized is null ? "-" : normalized.NullRate.ToString("P1"))</td>
                                 <td>@(normalized?.Uniqueness is double uniqueness ? uniqueness.ToString("P1") : field.DistinctCount?.ToString() ?? "-")</td>
-                                <td>@if (violationCount > 0){<span class="oa-badge is-danger">@violationCount</span>}else{<span class="oa-badge is-success">正常</span>}</td>
+                                <td>@if (violationCount > 0){<a class="oa-field-issue-count oa-badge is-danger" href="@IssueFieldUrl(field.FieldName)" @onclick:stopPropagation="true">@violationCount</a>}else{<span class="oa-badge is-success">正常</span>}</td>
                             </tr>
                             @if (_selectedField == field.FieldName)
                             {
