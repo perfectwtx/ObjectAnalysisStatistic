@@ -3,7 +3,8 @@
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityIssueQuery QualityIssueQuery
-@inject IQualityIssueResponsibilityStore ResponsibilityStore\n@using Microsoft.AspNetCore.Components
+@inject IQualityIssueResponsibilityStore ResponsibilityStore
+@using Microsoft.AspNetCore.Components
 
 <PageTitle>Issue Center</PageTitle>
 
@@ -12,7 +13,8 @@
     {
         <div class="oa-filter-context">
             <span>筛选条件</span>
-            @if (JobId.HasValue) { <strong>任务: @JobId</strong> }\n            @if (!string.IsNullOrWhiteSpace(FieldFilter)) { <strong>字段: @FieldFilter</strong> }
+            @if (JobId.HasValue) { <strong>任务: @JobId</strong> }
+            @if (!string.IsNullOrWhiteSpace(FieldFilter)) { <strong>字段: @FieldFilter</strong> }
             @if (!string.IsNullOrWhiteSpace(CheckFilter)) { <strong>检查: @GetCheckLabel(CheckFilter)</strong> }
             @if (!string.IsNullOrWhiteSpace(StatusFilter)) { <strong>状态: @GetStatusLabel(StatusFilter)</strong> }
             @if (!string.IsNullOrWhiteSpace(OwnerFilter)) { <strong>责任人: @GetOwnerLabel(OwnerFilter)</strong> }
@@ -155,7 +157,10 @@
     private Dictionary<string, QualityIssueResponsibility> _responsibilities = new(StringComparer.OrdinalIgnoreCase);
     private AnalysisJob? _selectedJob;
     private bool _loading;
-    [SupplyParameterFromQuery(Name = "jobId")]\n    public Guid? JobId { get; set; }\n\n    [SupplyParameterFromQuery(Name = "field")]
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "field")]
     public string? FieldFilter { get; set; }
 
     [SupplyParameterFromQuery(Name = "check")]
@@ -168,7 +173,8 @@
     public string? OwnerFilter { get; set; }
 
     private bool HasActiveFilters =>
-        JobId.HasValue ||\n        !string.IsNullOrWhiteSpace(FieldFilter) ||
+        JobId.HasValue ||
+        !string.IsNullOrWhiteSpace(FieldFilter) ||
         !string.IsNullOrWhiteSpace(CheckFilter) ||
         !string.IsNullOrWhiteSpace(StatusFilter) ||
         !string.IsNullOrWhiteSpace(OwnerFilter);
