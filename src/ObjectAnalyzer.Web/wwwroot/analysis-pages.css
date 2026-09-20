@@ -2097,3 +2097,13 @@
     .oa-issue-status.is-resolved { color: #75d6a0; }
     .oa-issue-status.is-ignored { color: #adb5bd; }
 }
+
+
+/* Issue Center unified filters */
+.oa-issues-page .oa-issue-filter-card{margin-bottom:1rem}
+.oa-issues-page .oa-issue-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.85rem}
+.oa-issues-page .oa-issue-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-issues-page .oa-issue-filter-grid .form-select{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
+.oa-issues-page .oa-filter-context{flex-wrap:wrap}
+@media(max-width:1000px){.oa-issues-page .oa-issue-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.oa-issues-page .oa-issue-filter-grid{grid-template-columns:1fr}}
