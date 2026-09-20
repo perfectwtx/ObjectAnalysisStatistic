@@ -28,9 +28,9 @@
     }
     else
     {
-        var latest = _snapshots[0];
-        var average = _snapshots.Average(x => x.Metrics.OverallScore);
-        var delta = _snapshots.Count >= 2 ? latest.Metrics.OverallScore - _snapshots[1].Metrics.OverallScore : 0;
+        var latest = FilteredSnapshots[0];
+        var average = FilteredSnapshots.Average(x => x.Metrics.OverallScore);
+        var delta = FilteredSnapshots.Count >= 2 ? latest.Metrics.OverallScore - FilteredSnapshots[1].Metrics.OverallScore : 0;
 
         <section class="oa-dashboard-section">
             <div class="oa-dashboard-panel oa-trend-filter-card"><div class="oa-panel-body"><div class="oa-trend-filter-grid"><div><label class="form-label">数据源</label><select class="form-select" @onchange="OnSourceChanged"><option value="">全部数据源</option>@foreach (var source in Sources){<option value="@source" selected="@(string.Equals(source, SourceFilter, StringComparison.OrdinalIgnoreCase))">@source</option>}</select></div><div><label class="form-label">历史窗口</label><select class="form-select" @onchange="OnWindowChanged"><option value="30">最近 30 次</option><option value="60">最近 60 次</option><option value="100">最近 100 次</option></select></div></div><div class="oa-trend-filter-hint">当前显示 @FilteredSnapshots.Count 次快照</div></div></div>
@@ -39,7 +39,7 @@
                 <div class="oa-kpi-card is-info"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@FilteredSnapshots.Count</div><div class="oa-kpi-meta">最近 100 次质量快照</div></div>
                 <div class="oa-kpi-card is-accent"><div class="oa-kpi-label">最新质量分</div><div class="oa-kpi-value">@FormatScore(latest.Metrics.OverallScore)</div><div class="oa-kpi-meta">@latest.SourceName</div></div>
                 <div class="oa-kpi-card"><div class="oa-kpi-label">平均质量分</div><div class="oa-kpi-value">@FormatScore(average)</div><div class="oa-kpi-meta">当前历史窗口平均值</div></div>
-                <div class="oa-kpi-card @(delta < 0 ? "is-danger" : "is-success")"><div class="oa-kpi-label">较上次变化</div><div class="oa-kpi-value">@(_snapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div><div class="oa-kpi-meta">@(_snapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div></div>
+                <div class="oa-kpi-card @(delta < 0 ? "is-danger" : "is-success")"><div class="oa-kpi-label">较上次变化</div><div class="oa-kpi-value">@(FilteredSnapshots.Count >= 2 ? $"{(delta >= 0 ? "+" : "")}{delta:F1}" : "-")</div><div class="oa-kpi-meta">@(FilteredSnapshots.Count >= 2 ? "相邻快照" : "需要更多数据")</div></div>
             </div>
         </section>
 
@@ -95,9 +95,9 @@
         <section class="oa-dashboard-section oa-trend-insight-grid">
             <article class="oa-dashboard-panel">
                 <div class="oa-panel-header"><div><span class="oa-panel-kicker">Comparison</span><h2>最近质量变化</h2><p>对比最近两次质量快照</p></div></div>
-                @if (_snapshots.Count >= 2)
+                @if (FilteredSnapshots.Count >= 2)
                 {
-                    var previous = _snapshots[1];
+                    var previous = FilteredSnapshots[1];
                     <div class="oa-trend-insight">
                         <div class="oa-trend-score"><span>整体质量分</span><strong>@FormatScore(latest.Metrics.OverallScore)</strong><b class="@(delta < 0 ? "is-down" : "is-up")">@(delta >= 0 ? "+" : "")@delta.ToString("F1")</b></div>
                         <div class="oa-trend-compare">上一快照：@FormatScore(previous.Metrics.OverallScore)</div>
