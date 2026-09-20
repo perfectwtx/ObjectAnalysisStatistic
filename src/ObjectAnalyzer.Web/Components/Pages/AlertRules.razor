@@ -11,7 +11,7 @@
             <h1>质量告警规则</h1>
             <p>配置质量分、完整性、质量回归、严重问题和 Schema 变更告警。</p>
         </div>
-        <button class="btn btn-primary oa-header-action" @onclick="CreateRuleAsync">新增规则</button>
+        <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/quality">质量总览</a><a class="btn btn-outline-secondary" href="/quality/baselines">质量基线</a><a class="btn btn-outline-secondary" href="/issues">问题中心</a><button class="btn btn-primary oa-header-action" @onclick="CreateRuleAsync">新增规则</button></div>
     </div>
 
     @if (_loading)
@@ -34,13 +34,14 @@
     }
     else
     {
+        <div class="oa-panel oa-alert-filter-card"><div class="oa-panel-body"><div class="oa-alert-filter-grid"><div><label class="form-label">规则状态</label><select class="form-select" @onchange="OnEnabledChanged"><option value="">全部</option><option value="true">已启用</option><option value="false">已停用</option></select></div><div><label class="form-label">触发类型</label><select class="form-select" @onchange="OnTypeChanged"><option value="">全部</option><option value="score">质量分</option><option value="regression">质量回归</option><option value="quality">完整性/漂移</option><option value="issue">严重问题</option><option value="schema">Schema 变更</option><option value="webhook">Webhook</option></select></div></div><div class="oa-alert-filter-hint">当前显示 @FilteredRules.Count 条规则</div></div></div>
         <div class="oa-kpi-grid is-3 oa-alert-kpis">
-            <div class="oa-kpi-card is-info"><span>规则总数</span><strong>@_rules.Count</strong><small>当前已配置告警规则</small></div>
-            <div class="oa-kpi-card is-success"><span>已启用</span><strong>@_rules.Count(x => x.Enabled)</strong><small>正在参与质量监控</small></div>
-            <div class="oa-kpi-card"><span>Webhook</span><strong>@_rules.Count(x => !string.IsNullOrWhiteSpace(x.WebhookUrl))</strong><small>配置了通知出口</small></div>
+            <div class="oa-kpi-card is-info"><span>规则总数</span><strong>@FilteredRules.Count</strong><small>当前已配置告警规则</small></div>
+            <div class="oa-kpi-card is-success"><span>已启用</span><strong>@FilteredRules.Count(x => x.Enabled)</strong><small>正在参与质量监控</small></div>
+            <div class="oa-kpi-card"><span>Webhook</span><strong>@FilteredRules.Count(x => !string.IsNullOrWhiteSpace(x.WebhookUrl))</strong><small>配置了通知出口</small></div>
         </div>
         <div class="oa-rule-list">
-            @foreach (var rule in _rules)
+            @foreach (var rule in FilteredRules)
             {
                 <div class="oa-panel oa-rule-card"><div class="oa-panel-body">
                         <div class="oa-rule-head">
@@ -167,6 +168,29 @@
     private readonly List<AlertRule> _rules = new();
     private bool _loading;
     private AlertRule? _editing;
+    private string? EnabledFilter;
+    private string? TypeFilter;
+
+    private IReadOnlyList<AlertRule> FilteredRules => _rules.Where(MatchesFilter).ToList();
+
+    private bool MatchesFilter(AlertRule rule)
+    {
+        if (!string.IsNullOrWhiteSpace(EnabledFilter) && bool.TryParse(EnabledFilter, out var enabled) && rule.Enabled != enabled) return false;
+        if (string.IsNullOrWhiteSpace(TypeFilter)) return true;
+        return TypeFilter switch
+        {
+            "score" => rule.QualityScoreBelow.HasValue,
+            "regression" => rule.QualityRegressionBelow.HasValue,
+            "quality" => rule.CompletenessBelow.HasValue || rule.DistributionDriftAbove.HasValue,
+            "issue" => rule.CriticalIssue,
+            "schema" => rule.BreakingSchemaChange,
+            "webhook" => !string.IsNullOrWhiteSpace(rule.WebhookUrl),
+            _ => true
+        };
+    }
+
+    private Task OnEnabledChanged(ChangeEventArgs args) { EnabledFilter = args.Value?.ToString(); return InvokeAsync(StateHasChanged); }
+    private Task OnTypeChanged(ChangeEventArgs args) { TypeFilter = args.Value?.ToString(); return InvokeAsync(StateHasChanged); }
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
