@@ -19,7 +19,7 @@
                     <h1>数据质量总览</h1>
                     <p>把最近一次成功分析拆成质量评分、质量维度、门禁与风险摘要，快速定位需要处理的区域。</p>
                 </div>
-                <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/quality/fields">字段质量</a><a class="btn btn-outline-secondary" href="/quality/trend">质量趋势</a><a class="btn btn-outline-secondary" href="/issues">问题中心</a><button class="btn btn-outline-secondary oa-dashboard-refresh" @onclick="LoadAsync">刷新数据</button></div>
+                <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="@FieldsUrl">字段质量</a><a class="btn btn-outline-secondary" href="@TrendUrl">质量趋势</a><a class="btn btn-outline-secondary" href="@IssuesUrl">问题中心</a><button class="btn btn-outline-secondary oa-dashboard-refresh" @onclick="LoadAsync">刷新数据</button></div>
             </div>
         </div>
     </header>
@@ -111,7 +111,7 @@
             <article class="oa-dashboard-panel oa-trend-panel">
                 <div class="oa-panel-header">
                     <div><span class="oa-panel-kicker">History</span><h2>最近质量趋势</h2><p>最近 8 次质量快照</p></div>
-                    <a class="btn btn-sm btn-outline-secondary" href="/quality/trend">查看趋势</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="@TrendUrl">查看趋势</a>
                 </div>
                 @if (_recentSnapshots.Count == 0)
                 {
@@ -158,7 +158,7 @@
             <article class="oa-dashboard-panel">
                 <div class="oa-panel-header">
                     <div><span class="oa-panel-kicker">Schema</span><h2>Schema 影响</h2><p>最近一次分析检测到的结构变化</p></div>
-                    <a class="btn btn-sm btn-outline-secondary" href="/quality/schema-impact">查看详情</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="@SchemaImpactUrl">查看详情</a>
                 </div>
                 @if (_result.SchemaDiff is null)
                 {
@@ -173,7 +173,7 @@
             <article class="oa-dashboard-panel">
                 <div class="oa-panel-header">
                     <div><span class="oa-panel-kicker">Relationships</span><h2>字段关系</h2><p>相关性矩阵与强相关字段对</p></div>
-                    <a class="btn btn-sm btn-outline-secondary" href="/quality/relationships">字段关系</a><a class="btn btn-sm btn-outline-secondary" href="/quality/object-relationships">对象关系</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="@FieldRelationshipsUrl">字段关系</a><a class="btn btn-sm btn-outline-secondary" href="@ObjectRelationshipsUrl">对象关系</a>
                 </div>
                 @if (_result.CorrelationMatrix is null)
                 {
@@ -229,6 +229,13 @@
         else { _qualityMetrics.Clear(); _topIssues.Clear(); }
         _loading = false;
     }
+
+    private string FieldsUrl => _job is null ? "/quality/fields" : $"/quality/fields?jobId={_job.Id}";
+    private string TrendUrl => _job is null ? "/quality/trend" : $"/quality/trend?jobId={_job.Id}";
+    private string IssuesUrl => _job is null ? "/issues" : $"/issues?jobId={_job.Id}";
+    private string SchemaImpactUrl => _job is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_job.Id}";
+    private string FieldRelationshipsUrl => _job is null ? "/quality/relationships" : $"/quality/relationships?jobId={_job.Id}";
+    private string ObjectRelationshipsUrl => _job is null ? "/quality/object-relationships" : $"/quality/object-relationships?jobId={_job.Id}";
 
     private string IssueUrl(QualityIssue issue) => string.IsNullOrWhiteSpace(issue.FieldName)\n        ? $"/issues?jobId={issue.JobId}"\n        : $"/issues?jobId={issue.JobId}&field={Uri.EscapeDataString(issue.FieldName)}&check={Uri.EscapeDataString(issue.Check)}";\n\n    private string GetSchemaStatusIcon() => _result?.SchemaDiff switch { null => "-", { HasBreakingChanges: true } => "⚠", _ => "✓" };
     private string GetSchemaStatusText() => _result?.SchemaDiff switch { null => "未产生 Schema Diff", { HasBreakingChanges: true } => "存在破坏性变更", _ => "无破坏性变更" };
