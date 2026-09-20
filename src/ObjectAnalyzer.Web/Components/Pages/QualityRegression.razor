@@ -88,13 +88,13 @@
         <section class="oa-context-grid oa-regression-context">
             <div>
                 <span>比较基线</span>
-                <strong>@_jobs[1].SourceName</strong>
-                <small>@_jobs[1].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                <strong>@_previousJob.SourceName</strong>
+                <small>@_previousJob.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
             </div>
             <div>
                 <span>当前快照</span>
-                <strong>@_jobs[0].SourceName</strong>
-                <small>@_jobs[0].StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+                <strong>@_currentJob.SourceName</strong>
+                <small>@_currentJob.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
             </div>
             <div>
                 <span>对象规模</span>
@@ -103,7 +103,7 @@
             </div>
             <div>
                 <span>问题规模</span>
-                <strong>@_jobs[1].IssueCount.ToString("N0") → @_jobs[0].IssueCount.ToString("N0")</strong>
+                <strong>@_previousJob.IssueCount.ToString("N0") → @_currentJob.IssueCount.ToString("N0")</strong>
                 <small>标准化问题项</small>
             </div>
         </section>
@@ -112,7 +112,7 @@
             <div class="oa-kpi-card @(_report.ScoreDelta < 0 ? "is-danger" : _report.ScoreDelta > 0 ? "is-success" : "is-info")">
                 <span>质量分变化</span>
                 <strong class="@ScoreClass(_report.ScoreDelta)">@FormatDelta(_report.ScoreDelta)</strong>
-                <small>当前质量分相对基线</small>
+                <small>@_currentJob.SourceName 相对 @_previousJob.SourceName</small>
             </div>
             <div class="oa-kpi-card @(_report.IssueDelta > 0 ? "is-danger" : _report.IssueDelta < 0 ? "is-success" : "is-info")">
                 <span>问题数变化</span>
@@ -121,12 +121,12 @@
             </div>
             <div class="oa-kpi-card @(_report.FieldRegressions.Count > 0 ? "is-warning" : "is-success")">
                 <span>回归字段</span>
-                <strong>@_report.FieldRegressions.Count(x => (string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(x.Status.ToString(), FieldStatusFilter, StringComparison.OrdinalIgnoreCase)) && (string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase)) && (x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe))</strong>
+                <strong>@FilteredRegressedFields.Count</strong>
                 <small>发生质量下降的字段</small>
             </div>
             <div class="oa-kpi-card @(_report.ViolationRegressions.Count > 0 ? "is-danger" : "is-success")">
                 <span>新增 / 增加违规</span>
-                <strong>@_report.ViolationRegressions.Count</strong>
+                <strong>@FilteredViolations.Count</strong>
                 <small>需要进一步关注的违规</small>
             </div>
         </section>
@@ -157,7 +157,7 @@
             </div>
         </section>
 
-        @if (_report.FieldRegressions.Count > 0)
+        @if (FilteredFields.Count > 0)
         {
             <section class="oa-panel oa-regression-panel">
                 <div class="oa-panel-header">
@@ -166,7 +166,7 @@
                         <h2>字段质量变化</h2>
                         <p>优先查看覆盖率、空值率和唯一率出现明显退化的字段。</p>
                     </div>
-                    <span class="oa-count-badge">@_report.FieldRegressions.Count 项</span>
+                    <span class="oa-count-badge">@FilteredFields.Count 项</span>
                 </div>
                 <div class="oa-table-wrap">
                     <table class="oa-regression-table">
@@ -174,7 +174,7 @@
                             <tr><th>字段</th><th>状态</th><th>覆盖率</th><th>空值率</th><th>唯一率</th><th>回归原因</th></tr>
                         </thead>
                         <tbody>
-                        @foreach (var item in _report.FieldRegressions.Where(MatchesFieldFilter))
+                        @foreach (var item in FilteredFields)
                         {
                             <tr>
                                 <td><code>@item.FieldName</code></td>
@@ -215,9 +215,9 @@
                     <h2>质量违规回归</h2>
                     <p>新增或数量增加的违规项会在这里集中呈现。</p>
                 </div>
-                <span class="oa-count-badge">@_report.ViolationRegressions.Count 项</span>
+                <span class="oa-count-badge">@FilteredViolations.Count 项</span>
             </div>
-            @if (_report.ViolationRegressions.Any(MatchesViolationFilter))
+            @if (FilteredViolations.Count > 0)
             {
                 <div class="oa-table-wrap">
                     <table class="oa-regression-table oa-violation-table">
@@ -225,7 +225,7 @@
                             <tr><th>字段</th><th>检查类型</th><th>基线</th><th>当前</th><th>增加</th><th>变化</th></tr>
                         </thead>
                         <tbody>
-                        @foreach (var item in _report.ViolationRegressions.Where(MatchesViolationFilter))
+                        @foreach (var item in FilteredViolations)
                         {
                             <tr>
                                 <td><code>@(string.IsNullOrWhiteSpace(item.FieldName) ? "数据集" : item.FieldName)</code></td>
@@ -259,6 +259,18 @@
     private QualityRegressionReport? _report;
     private string? FieldStatusFilter;
     private string? FieldFilter;
+
+    private IReadOnlyList<QualityFieldRegression> FilteredFields => _report?.FieldRegressions
+        .Where(MatchesFieldFilter)
+        .ToList() ?? Array.Empty<QualityFieldRegression>();
+
+    private IReadOnlyList<QualityFieldRegression> FilteredRegressedFields => FilteredFields
+        .Where(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)
+        .ToList();
+
+    private IReadOnlyList<QualityViolationRegression> FilteredViolations => _report?.ViolationRegressions
+        .Where(MatchesViolationFilter)
+        .ToList() ?? Array.Empty<QualityViolationRegression>();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -321,19 +333,12 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private bool MatchesFieldFilter<T>(T item) where T : notnull
-    {
-        var field = item.GetType().GetProperty("FieldName")?.GetValue(item)?.ToString();
-        var status = item.GetType().GetProperty("Status")?.GetValue(item)?.ToString();
-        return (string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(status, FieldStatusFilter, StringComparison.OrdinalIgnoreCase))
-            && (string.IsNullOrWhiteSpace(FieldFilter) || (field?.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase) ?? false));
-    }
+    private bool MatchesFieldFilter(QualityFieldRegression item)
+        => (string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(item.Status.ToString(), FieldStatusFilter, StringComparison.OrdinalIgnoreCase))
+            && (string.IsNullOrWhiteSpace(FieldFilter) || item.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase));
 
-    private bool MatchesViolationFilter<T>(T item) where T : notnull
-    {
-        var field = item.GetType().GetProperty("FieldName")?.GetValue(item)?.ToString();
-        return string.IsNullOrWhiteSpace(FieldFilter) || (field?.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase) ?? false);
-    }
+    private bool MatchesViolationFilter(QualityViolationRegression item)
+        => string.IsNullOrWhiteSpace(FieldFilter) || item.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase);
 
     private static string FormatScore(double? value) => value.HasValue ? value.Value.ToString("F1") : "-";
     private static string FormatDelta(double value) => $"{(value >= 0 ? "+" : "")}{value:F1}";
