@@ -507,26 +507,27 @@
                 </div>
             </div>
             <div class="signal-summary">
-                <div class="signal-metric">
+                <button type="button" class="signal-metric signal-filter-card @(_signalFilter == "critical" ? "is-active is-danger" : "")" @onclick='() => SetSignalFilter("critical")'>
+                    <span class="signal-metric-label">CRITICAL</span>
+                    <strong>@State.Result.FieldStatistics.Count(f => GetFieldSignalCount(f) >= 2)</strong>
+                    <small>fields with 2+ signals</small>
+                </button>
+                <button type="button" class="signal-metric signal-filter-card @(_signalFilter == "warning" ? "is-active is-warning" : "")" @onclick='() => SetSignalFilter("warning")'>
+                    <span class="signal-metric-label">WARNING</span>
+                    <strong>@State.Result.FieldStatistics.Count(f => GetFieldSignalCount(f) == 1)</strong>
+                    <small>fields with 1 signal</small>
+                </button>
+                <button type="button" class="signal-metric signal-filter-card @(_signalFilter == "clean" ? "is-active is-success" : "")" @onclick='() => SetSignalFilter("clean")'>
+                    <span class="signal-metric-label">CLEAN</span>
+                    <strong>@State.Result.FieldStatistics.Count(f => GetFieldSignalCount(f) == 0)</strong>
+                    <small>fields with no signals</small>
+                </button>
+                <div class="signal-metric signal-metric-static">
                     <span class="signal-metric-label">QUALITY ISSUES</span>
                     <strong>@State.Result.QualityViolations.Count</strong>
                     <small>rule violations</small>
                 </div>
-                <div class="signal-metric">
-                    <span class="signal-metric-label">NULL SIGNAL</span>
-                    <strong>@State.Result.FieldStatistics.Count(f => f.NullCount > 0)</strong>
-                    <small>fields with nulls</small>
-                </div>
-                <div class="signal-metric">
-                    <span class="signal-metric-label">OUTLIERS</span>
-                    <strong>@State.Result.FieldStatistics.Count(f => f.OutlierCount is long c && c > 0)</strong>
-                    <small>fields with outliers</small>
-                </div>
-                <div class="signal-metric">
-                    <span class="signal-metric-label">DUPLICATES</span>
-                    <strong>@State.Result.TotalDuplicateGroups</strong>
-                    <small>duplicate groups</small>
-                </div>
+            </div>
             </div>
             <div class="result-section-heading">
                 <span class="result-section-kicker">OVERVIEW</span>
@@ -647,9 +648,16 @@
             <div class="field-table-context">
                 <div>
                     <span class="field-table-kicker">FIELD DATASET</span>
-                    <span class="field-table-count">@State.GetPageFields().Count() visible fields</span>
+                    <span class="field-table-count">@State.GetFilteredSortedFields().Count() visible fields</span>
                 </div>
                 <span class="field-table-hint">Search, sort and inspect field-level signals</span>
+            </div>
+            <div class="signal-filter-bar">
+                <span class="signal-filter-label">FIELD SIGNAL</span>
+                <button type="button" class="signal-filter-chip @(_signalFilter == "all" ? "is-active" : "")" @onclick='() => SetSignalFilter("all")'>All</button>
+                <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "critical" ? "is-active" : "")" @onclick='() => SetSignalFilter("critical")'>Critical</button>
+                <button type="button" class="signal-filter-chip is-warning @(_signalFilter == "warning" ? "is-active" : "")" @onclick='() => SetSignalFilter("warning")'>Warning</button>
+                <button type="button" class="signal-filter-chip is-success @(_signalFilter == "clean" ? "is-active" : "")" @onclick='() => SetSignalFilter("clean")'>Clean</button>
             </div>
             <div class="toolbar">
                 <input type="text" placeholder="@Loc["SearchPlaceholder"]"
@@ -686,10 +694,7 @@
                     <tbody>
                         @foreach (var field in State.GetPageFields())
                         {
-                            var signalCount = (field.NullCount > 0 ? 1 : 0)
-                                + (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0)
-                                + (field.EnumViolations.Count > 0 ? 1 : 0)
-                                + (field.RangeViolationCount > 0 ? 1 : 0);
+                            var signalCount = GetFieldSignalCount(field);
                             var rowState = signalCount >= 2 ? "is-critical" : signalCount == 1 ? "has-signal" : "is-clean";
                             <tr class="field-row @rowState">
                                 <td class="field-name">
@@ -1483,6 +1488,18 @@
 @code {
     private string _activeTab = "fields";
     private string? _expandedFieldName;
+    private string _signalFilter = "all";
+
+    private void SetSignalFilter(string filter)
+    {
+        _signalFilter = filter;
+        State.SignalFilter = filter;
+        State.PageIndex = 0;
+        _expandedFieldName = null;
+    }
+
+    private static int GetFieldSignalCount(global::ObjectAnalyzer.Analysis.FieldStatistic field) =>
+        (field.NullCount > 0 ? 1 : 0) + (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0) + (field.EnumViolations.Count > 0 ? 1 : 0) + (field.RangeViolationCount > 0 ? 1 : 0);
 
     private void ToggleFieldDetails(string fieldName)
     {
