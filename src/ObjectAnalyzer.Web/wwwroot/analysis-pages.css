@@ -2128,3 +2128,12 @@
 .oa-data-lineage-page .oa-lineage-targets{max-width:420px}
 @media(max-width:820px){.oa-data-lineage-page .oa-lineage-filter-grid{grid-template-columns:1fr}.oa-data-lineage-page .oa-header-actions{flex-wrap:wrap}}
 @media(max-width:640px){.oa-data-lineage-page .oa-lineage-table-wrap{overflow-x:auto}.oa-data-lineage-page .oa-lineage-path{min-width:280px}}
+
+/* Impact Analysis workbench filters */
+.oa-impact-analysis-page .oa-header-actions{display:flex;gap:.6rem;align-items:center}
+.oa-impact-analysis-page .oa-impact-filter-card{margin-bottom:1rem}
+.oa-impact-analysis-page .oa-impact-filter-grid{display:grid;grid-template-columns:minmax(220px,1fr) minmax(160px,.65fr) minmax(180px,.8fr) minmax(220px,1fr);gap:1rem}
+.oa-impact-analysis-page .oa-impact-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-impact-analysis-page .oa-impact-reason{max-width:520px}
+@media(max-width:1000px){.oa-impact-analysis-page .oa-impact-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.oa-impact-analysis-page .oa-impact-filter-grid{grid-template-columns:1fr}.oa-impact-analysis-page .oa-header-actions{flex-wrap:wrap}}
