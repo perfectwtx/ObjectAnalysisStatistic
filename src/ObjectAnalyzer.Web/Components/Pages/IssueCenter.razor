@@ -7,11 +7,11 @@
 <PageTitle>Issue Center</PageTitle>
 
 <div class="oa-analysis-page oa-issues-page">
-    @if (!string.IsNullOrWhiteSpace(_fieldFilter))
+    @if (!string.IsNullOrWhiteSpace(FieldFilter))
     {
         <div class="oa-filter-context">
             <span>字段筛选</span>
-            <strong>@_fieldFilter</strong>
+            <strong>@FieldFilter</strong>
             <a href="/issues">清除筛选</a>
         </div>
     }
@@ -103,12 +103,12 @@
     private AnalysisJob? _selectedJob;
     private bool _loading;
     [SupplyParameterFromQuery(Name = "field")]
-    private string? _fieldFilter { get; set; }
+    public string? FieldFilter { get; set; }
 
     private IReadOnlyList<QualityIssue> FilteredIssues =>
-        string.IsNullOrWhiteSpace(_fieldFilter)
+        string.IsNullOrWhiteSpace(FieldFilter)
             ? _selectedIssues
-            : _selectedIssues.Where(x => string.Equals(x.FieldName, _fieldFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+            : _selectedIssues.Where(x => string.Equals(x.FieldName, FieldFilter, StringComparison.OrdinalIgnoreCase)).ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
