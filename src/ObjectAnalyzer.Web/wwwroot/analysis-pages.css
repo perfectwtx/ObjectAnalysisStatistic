@@ -2071,3 +2071,29 @@
         flex-direction: column;
     }
 }
+
+
+/* Issue Center status badges */
+.oa-issue-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.oa-issue-status.is-open { border-color: rgba(108, 117, 125, .28); background: rgba(108, 117, 125, .08); color: #5f6368; }
+.oa-issue-status.is-progress { border-color: rgba(255, 193, 7, .35); background: rgba(255, 193, 7, .12); color: #8a6200; }
+.oa-issue-status.is-resolved { border-color: rgba(25, 135, 84, .3); background: rgba(25, 135, 84, .1); color: #146c43; }
+.oa-issue-status.is-ignored { border-color: rgba(108, 117, 125, .28); background: rgba(108, 117, 125, .08); color: #6c757d; }
+
+@media (prefers-color-scheme: dark) {
+    .oa-issue-status.is-open { color: #adb5bd; }
+    .oa-issue-status.is-progress { color: #ffd866; }
+    .oa-issue-status.is-resolved { color: #75d6a0; }
+    .oa-issue-status.is-ignored { color: #adb5bd; }
+}
