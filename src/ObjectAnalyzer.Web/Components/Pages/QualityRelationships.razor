@@ -13,7 +13,11 @@
             <a class="btn btn-outline-secondary" href="/quality/data-lineage">数据血缘</a>
             @if (_job is not null)
             { <a class="btn btn-outline-secondary" href="@($"/jobs/{_job.Id}")">当前作业</a> }
-            <button class="btn btn-outline-secondary oa-header-action" @onclick="LoadAsync">刷新</button>
+            <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+            <a class="btn btn-outline-primary" href="/quality/object-relationships">对象关系</a>
+            <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
+        </div>
         </div>
     </div>
 
@@ -52,6 +56,34 @@
                 <div class="oa-filter-hint mt-3"><span>强相关对</span><strong>@FilteredStrongPairs.Count</strong><span>对</span></div>
             </div>
         </div>
+
+        <section class="oa-panel oa-correlation-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-correlation-filter-grid">
+                    <div>
+                        <label class="form-label">分析任务</label>
+                        <select class="form-select" @onchange="OnJobChanged">
+                            @foreach (var job in _jobs)
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _job?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">字段搜索</label>
+                        <input class="form-control" value="@FieldFilter" @oninput="OnFieldChanged" placeholder="搜索字段名称" />
+                    </div>
+                    <div>
+                        <label class="form-label">关系方向</label>
+                        <select class="form-select" @onchange="OnDirectionChanged">
+                            <option value="">全部关系</option>
+                            <option value="positive" selected="@(DirectionFilter == "positive")">正相关</option>
+                            <option value="negative" selected="@(DirectionFilter == "negative")">负相关</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card"><span>参与字段</span><strong>@FilteredFields.Count</strong><small>纳入相关性计算的字段</small></div>
