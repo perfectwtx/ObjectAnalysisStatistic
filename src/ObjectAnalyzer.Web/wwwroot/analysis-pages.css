@@ -2190,3 +2190,12 @@
 .oa-recommendations-page .oa-recommendation-filter-card .oa-panel-body{padding-top:1rem}
 @media(max-width:1000px){.oa-recommendations-page .oa-recommendation-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.oa-recommendations-page .oa-recommendation-filter-grid{grid-template-columns:1fr}.oa-recommendations-page .oa-header-actions{flex-wrap:wrap}}
+
+/* Field Quality workbench filters */
+.oa-field-detail-page .oa-field-selector-body{display:block}
+.oa-field-detail-page .oa-field-filter-grid{display:grid;grid-template-columns:minmax(240px,1.15fr) minmax(220px,1fr) minmax(160px,.65fr);gap:1rem}
+.oa-field-detail-page .oa-field-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-field-detail-page .oa-field-filter-grid .form-select,.oa-field-detail-page .oa-field-filter-grid .form-control{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
+.oa-field-detail-page .oa-field-table-toolbar{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+.oa-field-detail-page .oa-field-table-toolbar .btn{margin-left:auto}
+@media(max-width:760px){.oa-field-detail-page .oa-field-filter-grid{grid-template-columns:1fr}.oa-field-detail-page .oa-field-table-toolbar .btn{margin-left:0}}
