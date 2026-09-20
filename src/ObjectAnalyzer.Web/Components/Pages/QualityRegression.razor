@@ -1,5 +1,6 @@
 @page "/quality/regression"
 @using System.Text.Json
+@using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
@@ -15,6 +16,8 @@
         </div>
         <div class="oa-header-actions">
             <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
+            <a class="btn btn-outline-secondary" href="@SchemaImpactUrl">Schema 影响</a>
+            <a class="btn btn-outline-secondary" href="@ImpactAnalysisUrl">影响传播</a>
             <a class="btn btn-outline-secondary" href="/quality/issues">质量问题</a>
         </div>
     </div>
@@ -258,7 +261,13 @@
     private AnalysisJob? _previousJob;
     private QualityRegressionReport? _report;
     private string? FieldStatusFilter;
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
+
     private string? FieldFilter;
+
+    private string SchemaImpactUrl => _currentJob is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_currentJob.Id}";
+    private string ImpactAnalysisUrl => _currentJob is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_currentJob.Id}";
 
     private IReadOnlyList<QualityFieldRegression> FilteredFields => _report?.FieldRegressions
         .Where(MatchesFieldFilter)
@@ -279,8 +288,8 @@
         _loading = true;
         await HistoryStore.InitializeAsync();
         _jobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).ToList();
-        _currentJob = _jobs.FirstOrDefault();
-        _previousJob = _jobs.Skip(1).FirstOrDefault();
+        _currentJob = JobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == JobId.Value) : _jobs.FirstOrDefault();
+        _previousJob = _jobs.FirstOrDefault(x => x.Id != _currentJob?.Id);
         RebuildReport();
         _loading = false;
     }
