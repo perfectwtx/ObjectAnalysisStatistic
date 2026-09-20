@@ -28,6 +28,35 @@
         </nav>
 
         <div class="oa-top-nav__actions">
+            <div class="oa-top-nav__search" @onfocusin="OpenSearch" @onfocusout="HandleSearchFocusOut">
+                <span class="oa-top-nav__search-icon" aria-hidden="true">⌕</span>
+                <input @bind="_searchQuery"
+                       @bind:event="oninput"
+                       @onkeydown="OnSearchKeyDown"
+                       placeholder="搜索页面"
+                       aria-label="搜索页面"
+                       autocomplete="off" />
+                @if (_searchOpen)
+                {
+                    <div class="oa-top-nav__search-results" role="listbox">
+                        @foreach (var item in SearchResults)
+                        {
+                            <button type="button"
+                                    role="option"
+                                    class="oa-top-nav__search-item"
+                                    @onclick="() => NavigateTo(item.Url)">
+                                <span>@item.Label</span>
+                                <small>@item.Hint</small>
+                            </button>
+                        }
+                        @if (SearchResults.Count == 0)
+                        {
+                            <div class="oa-top-nav__search-empty">没有匹配页面</div>
+                        }
+                    </div>
+                }
+            </div>
+
             <div class="oa-top-nav__status" title="本地分析引擎已就绪">
                 <span class="oa-top-nav__status-dot"></span>
                 <span class="d-none d-xl-inline">Ready</span>
@@ -61,7 +90,7 @@
             <div class="oa-top-nav__subnav-inner">
                 @foreach (var item in SubNav)
                 {
-                    <a href="@item.Url" class="oa-top-nav__subitem @(IsSubActive(item.Url) ? "is-active" : "")">
+                    <a href="@item.Url" class="oa-top-nav__subitem @(IsSubActive(item.Url, item.Exact) ? "is-active" : "")">
                         @item.Label
                     </a>
                 }
@@ -73,8 +102,78 @@
 @code {
     private bool _darkTheme = true;
     private string _path = "/";
+    private string _searchQuery = string.Empty;
+    private bool _searchOpen;
 
     private string Section => GetSection(_path);
+
+    private IReadOnlyList<SearchItem> SearchResults =>
+        string.IsNullOrWhiteSpace(_searchQuery)
+            ? SearchItems.Take(6).ToList()
+            : SearchItems
+                .Where(x => x.Label.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
+                    || x.Hint.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
+                    || x.Url.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+                .Take(8)
+                .ToList();
+
+    private static readonly IReadOnlyList<SearchItem> SearchItems =
+    [
+        new("/", "分析工作台", "上传或粘贴数据"),
+        new("/jobs", "分析作业", "历史分析记录"),
+        new("/quality", "质量健康", "质量总览"),
+        new("/quality/trend", "质量趋势", "质量分随时间变化"),
+        new("/quality/fields", "字段质量", "字段级质量详情"),
+        new("/issues", "问题中心", "质量问题与处理状态"),
+        new("/quality/baselines", "质量基线", "基线快照"),
+        new("/alert-rules", "告警规则", "质量规则与阈值"),
+        new("/quality/regression", "质量回归", "两次分析结果对比"),
+        new("/issues/responsibility", "责任治理", "问题责任归属"),
+        new("/quality/webhooks", "Webhook 投递", "外部事件投递记录"),
+        new("/quality/relationships", "字段关系", "字段相关性"),
+        new("/quality/object-relationships", "对象关系", "嵌套对象关系"),
+        new("/quality/data-lineage", "数据血缘", "对象与字段层级血缘"),
+        new("/quality/schema-impact", "Schema 影响", "Schema 变更分析"),
+        new("/quality/impact-analysis", "影响分析", "变更传播范围"),
+        new("/quality/recommendations", "修复建议", "优先处理建议")
+    ];
+
+    private void OpenSearch(FocusEventArgs _)
+    {
+        _searchOpen = true;
+    }
+
+    private void HandleSearchFocusOut(FocusEventArgs _)
+    {
+        _ = Task.Delay(100).ContinueWith(async _ =>
+        {
+            await InvokeAsync(() =>
+            {
+                _searchOpen = false;
+                StateHasChanged();
+            });
+        });
+    }
+
+    private void OnSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && SearchResults.Count > 0)
+        {
+            NavigateTo(SearchResults[0].Url);
+        }
+        else if (args.Key == "Escape")
+        {
+            _searchOpen = false;
+        }
+    }
+
+    private void NavigateTo(string url)
+    {
+        _searchOpen = false;
+        _searchQuery = string.Empty;
+        Navigation.NavigateTo(url);
+    }
+
 
     private IReadOnlyList<NavItem> SubNav => GetSubNav(Section);
 
@@ -124,9 +223,12 @@
         return "/";
     }
 
-    private bool IsSubActive(string url)
+    private bool IsSubActive(string url, bool exact = false)
     {
-        return _path == url || (_path.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase));
+        return exact
+            ? _path.Equals(url, StringComparison.OrdinalIgnoreCase)
+            : _path.Equals(url, StringComparison.OrdinalIgnoreCase)
+                || _path.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetSection(string path)
