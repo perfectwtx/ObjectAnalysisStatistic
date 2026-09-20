@@ -21,6 +21,7 @@ public sealed class AnalysisState : IDisposable
     public string SortField { get; set; } = "Count";
     public bool SortAscending { get; set; }
     public string SearchText { get; set; } = "";
+    public string SignalFilter { get; set; } = "all";
     public bool IsLoading { get; set; }
     public string? ErrorMessage { get; set; }
 
@@ -225,6 +226,14 @@ public sealed class AnalysisState : IDisposable
                 f.FieldName.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
         }
 
+        fields = SignalFilter switch
+        {
+            "critical" => fields.Where(f => GetFieldSignalCount(f) >= 2),
+            "warning" => fields.Where(f => GetFieldSignalCount(f) == 1),
+            "clean" => fields.Where(f => GetFieldSignalCount(f) == 0),
+            _ => fields
+        };
+
         // 排序
         fields = SortField switch
         {
@@ -247,6 +256,12 @@ public sealed class AnalysisState : IDisposable
 
         return fields.ToList();
     }
+
+    private static int GetFieldSignalCount(FieldStatistic field) =>
+        (field.NullCount > 0 ? 1 : 0) +
+        (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0) +
+        (field.EnumViolations.Count > 0 ? 1 : 0) +
+        (field.RangeViolationCount > 0 ? 1 : 0);
 
     /// <summary>当前页的字段（先过滤排序，再分页切片）。</summary>
     public List<FieldStatistic> GetPageFields()
