@@ -2292,3 +2292,10 @@
 /* Quality Trend drill-down */
 .oa-quality-trend-page .oa-trend-issue-link{font-weight:700;text-decoration:none;color:var(--oa-link)}
 .oa-quality-trend-page .oa-trend-issue-link:hover{text-decoration:underline}
+
+/* Quality overview navigation and drill-down */
+.oa-quality-dashboard-page .oa-header-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.oa-quality-dashboard-page .oa-dashboard-issue-count{text-decoration:none;cursor:pointer}
+.oa-quality-dashboard-page .oa-issue-content strong{font-family:var(--oa-font-mono)}
+.oa-quality-dashboard-page .oa-dashboard-context{margin-bottom:1.35rem}
+@media(max-width:640px){.oa-quality-dashboard-page .oa-header-actions{width:100%}.oa-quality-dashboard-page .oa-header-actions .btn{flex:1 1 auto}}
