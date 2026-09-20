@@ -2080,3 +2080,19 @@
         gap:.15rem;
     }
 }
+
+.app-shell .signal-filter-card{width:100%;border:1px solid var(--oa-border);text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease}
+.app-shell .signal-filter-card:hover{border-color:var(--oa-border-strong);box-shadow:var(--oa-shadow-sm)}
+.app-shell .signal-filter-card.is-active{border-color:var(--oa-accent-border);background:var(--oa-accent-soft);box-shadow:inset 0 0 0 1px var(--oa-accent-border)}
+.app-shell .signal-filter-card.is-active.is-danger{border-color:color-mix(in srgb,var(--oa-danger) 35%,transparent);background:var(--oa-danger-soft)}
+.app-shell .signal-filter-card.is-active.is-warning{border-color:color-mix(in srgb,var(--oa-warning) 35%,transparent);background:var(--oa-warning-soft)}
+.app-shell .signal-filter-card.is-active.is-success{border-color:color-mix(in srgb,var(--oa-success) 35%,transparent);background:var(--oa-success-soft)}
+.app-shell .signal-metric-static{cursor:default}
+.app-shell .signal-filter-bar{display:flex;align-items:center;gap:.4rem;margin:0 0 .65rem}
+.app-shell .signal-filter-label{margin-right:.2rem;color:var(--oa-text-3);font-size:.58rem;font-weight:850;letter-spacing:.08em}
+.app-shell .signal-filter-chip{padding:.28rem .55rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface);color:var(--oa-text-2);font-size:.6rem;font-weight:750;cursor:pointer}
+.app-shell .signal-filter-chip.is-active{border-color:var(--oa-accent-border);background:var(--oa-accent-soft);color:var(--oa-accent-strong)}
+.app-shell .signal-filter-chip.is-danger.is-active{border-color:color-mix(in srgb,var(--oa-danger) 30%,transparent);background:var(--oa-danger-soft);color:var(--oa-danger)}
+.app-shell .signal-filter-chip.is-warning.is-active{border-color:color-mix(in srgb,var(--oa-warning) 30%,transparent);background:var(--oa-warning-soft);color:var(--oa-warning)}
+.app-shell .signal-filter-chip.is-success.is-active{border-color:color-mix(in srgb,var(--oa-success) 30%,transparent);background:var(--oa-success-soft);color:var(--oa-success)}
+@media(max-width:760px){.app-shell .signal-filter-bar{overflow-x:auto;padding-bottom:.2rem}}
