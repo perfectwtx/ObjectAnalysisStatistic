@@ -12,7 +12,11 @@
             <div class="oa-eyebrow">Quality Governance / Recommendations</div>
             <div class="oa-recommendation-title-row">
                 <div><h1>质量修复建议</h1><p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p></div>
-                <button class="btn btn-outline-secondary oa-recommendation-refresh" @onclick="LoadAsync">刷新数据</button>
+                <div class="oa-header-actions">
+                    <a class="btn btn-outline-secondary" href="/issues">问题中心</a>
+                    <a class="btn btn-outline-secondary" href="/quality">质量总览</a>
+                    <button class="btn btn-outline-secondary oa-recommendation-refresh" @onclick="LoadAsync">刷新数据</button>
+                </div>
             </div>
         </div>
     </header>
@@ -28,20 +32,34 @@
     else
     {
         <section class="oa-dashboard-section">
+            <article class="oa-dashboard-panel oa-recommendation-filter-card">
+                <div class="oa-panel-header"><div><span class="oa-panel-kicker">RECOMMENDATION FILTERS</span><h2>筛选建议</h2></div><span class="oa-badge is-neutral">@FilteredRecommendations.Count 条</span></div>
+                <div class="oa-panel-body">
+                    <div class="oa-recommendation-filter-grid">
+                        <div><label class="form-label">分析任务</label><select class="form-select" value="@SelectedJobId" @onchange="OnJobChanged">@foreach (var job in _jobs){<option value="@job.Id">@FormatJob(job)</option>}</select></div>
+                        <div><label class="form-label">优先级</label><select class="form-select" value="@PriorityFilter" @onchange="OnPriorityChanged"><option value="">全部</option><option value="3">高</option><option value="2">中</option><option value="1">低</option></select></div>
+                        <div><label class="form-label">问题类型</label><select class="form-select" value="@CheckFilter" @onchange="OnCheckChanged"><option value="">全部</option>@foreach(var check in _recommendations.Select(x=>x.Check).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x=>x)){<option value="@check">@QualityCheckTypes.Label(check)</option>}</select></div>
+                        <div><label class="form-label">字段搜索</label><input class="form-control" value="@FieldFilter" @oninput="OnFieldChanged" placeholder="搜索字段名..." /></div>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="oa-dashboard-section">
             <div class="oa-context-grid oa-recommendation-context">
                 <div><span>当前数据源</span><strong>@_sourceName</strong></div>
                 <div><span>分析时间</span><strong>@_jobTime</strong></div>
-                <div><span>待治理问题</span><strong>@_recommendations.Count</strong></div>
-                <div><span>涉及字段</span><strong>@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong></div>
+                <div><span>待治理问题</span><strong>@FilteredRecommendations.Count</strong></div>
+                <div><span>涉及字段</span><strong>@FilteredRecommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</strong></div>
             </div>
         </section>
 
         <section class="oa-dashboard-section">
             <div class="oa-section-heading"><div><span class="oa-section-kicker">Risk Overview</span><h2>治理信号</h2><span>按问题规模与优先级快速识别治理重点</span></div></div>
             <div class="oa-kpi-grid is-3">
-                <div class="oa-kpi-card is-danger"><div class="oa-kpi-label">待治理问题</div><div class="oa-kpi-value">@_recommendations.Count</div><div class="oa-kpi-meta">需要关注的质量问题</div></div>
+                <div class="oa-kpi-card is-danger"><div class="oa-kpi-label">待治理问题</div><div class="oa-kpi-value">@FilteredRecommendations.Count</div><div class="oa-kpi-meta">需要关注的质量问题</div></div>
                 <div class="oa-kpi-card is-warning"><div class="oa-kpi-label">涉及字段</div><div class="oa-kpi-value">@_recommendations.Select(x => x.Field).Distinct(StringComparer.OrdinalIgnoreCase).Count()</div><div class="oa-kpi-meta">存在质量风险的字段</div></div>
-                <div class="oa-kpi-card is-info"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@_recommendations.Sum(x => x.Count)</div><div class="oa-kpi-meta">所有问题累计影响次数</div></div>
+                <div class="oa-kpi-card is-info"><div class="oa-kpi-label">违规次数</div><div class="oa-kpi-value">@FilteredRecommendations.Sum(x => x.Count)</div><div class="oa-kpi-meta">所有问题累计影响次数</div></div>
             </div>
         </section>
 
@@ -49,10 +67,10 @@
             <article class="oa-dashboard-panel oa-recommendations-panel">
                 <div class="oa-panel-header">
                     <div><span class="oa-panel-kicker">Action Plan</span><h2>治理建议</h2><p>建议按照优先级处理，不会自动修改源数据。</p></div>
-                    <span class="oa-badge is-neutral">@_recommendations.Count 条建议</span>
+                    <span class="oa-badge is-neutral">@FilteredRecommendations.Count 条建议</span>
                 </div>
                 <div class="oa-recommendation-list">
-                    @foreach (var (item, index) in _recommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count).Select((item, index) => (item, index + 1)))
+                    @foreach (var (item, index) in FilteredRecommendations.OrderByDescending(x => x.Priority).ThenByDescending(x => x.Count).Select((item, index) => (item, index + 1)))
                     {
                         <article class="oa-recommendation-item">
                             <div class="oa-recommendation-item-head">
@@ -77,6 +95,17 @@
 @code {
     private bool _loading = true;
     private readonly List<Recommendation> _recommendations = new();
+    private List<AnalysisJob> _jobs = new();
+    private Guid? SelectedJobId;
+    private string? PriorityFilter;
+    private string? CheckFilter;
+    private string? FieldFilter;
+
+    private IReadOnlyList<Recommendation> FilteredRecommendations => _recommendations
+        .Where(x => string.IsNullOrWhiteSpace(PriorityFilter) || x.Priority.ToString() == PriorityFilter)
+        .Where(x => string.IsNullOrWhiteSpace(CheckFilter) || string.Equals(x.Check, CheckFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.Field.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList();
     private string _sourceName = "";
     private string _jobTime = "";
 
@@ -87,11 +116,15 @@
         _loading = true;
         _recommendations.Clear();
         await HistoryStore.InitializeAsync();
-        var job = (await HistoryStore.GetRecentAsync(100))
+        _jobs = (await HistoryStore.GetRecentAsync(100))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
-            .FirstOrDefault();
+            .ToList();
 
+        if (SelectedJobId is null || !_jobs.Any(x => x.Id == SelectedJobId.Value))
+            SelectedJobId = _jobs.FirstOrDefault()?.Id;
+
+        var job = _jobs.FirstOrDefault(x => x.Id == SelectedJobId); 
         if (job is not null)
         {
             _sourceName = job.SourceName;
@@ -114,6 +147,21 @@
         }
         _loading = false;
     }
+
+    private async Task OnJobChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            SelectedJobId = id;
+            await LoadAsync();
+        }
+    }
+
+    private void OnPriorityChanged(ChangeEventArgs e) => PriorityFilter = e.Value?.ToString();
+    private void OnCheckChanged(ChangeEventArgs e) => CheckFilter = e.Value?.ToString();
+    private void OnFieldChanged(ChangeEventArgs e) => FieldFilter = e.Value?.ToString();
+
+    private string FormatJob(AnalysisJob job) => $"{job.StartedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm} · {job.SourceName}";
 
     private static Recommendation BuildRecommendation(string field, string check, long count, string message)
     {
