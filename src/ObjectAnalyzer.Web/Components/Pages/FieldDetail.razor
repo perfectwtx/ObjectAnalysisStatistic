@@ -44,17 +44,21 @@
             <div class="oa-dashboard-panel oa-field-selector-panel">
                 <div class="oa-panel-header">
                     <div><span class="oa-panel-kicker">Analysis Snapshot</span><h2>分析任务</h2><p>切换历史成功任务，查看对应字段质量快照。</p></div>
-                    <span class="oa-badge is-neutral">@_fields.Count 个字段</span>
+                    <span class="oa-badge is-neutral">@FilteredFields.Count / @_fields.Count 个字段</span>
                 </div>
                 <div class="oa-field-selector-body">
-                    <label class="form-label">分析任务</label>
+                    <div class="oa-field-filter-grid">
+                        <div><label class="form-label">分析任务</label>
                     <select class="form-select" value="@_selectedJobId" @onchange="OnJobChanged">
                         @foreach (var job in _jobs)
                         {
                             <option value="@job.Id">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
                         }
-                    </select>
-                    <div class="oa-field-selector-hint">质量指标来自标准化字段快照 · 点击字段名展开详细画像</div>
+                    </select></div>
+                        <div><label class="form-label">字段搜索</label><input class="form-control" value="@FieldFilter" @oninput="OnFieldFilterChanged" placeholder="搜索字段名称" /></div>
+                        <div><label class="form-label">问题状态</label><select class="form-select" @onchange="OnIssueFilterChanged"><option value="">全部字段</option><option value="Issue" selected="@(IssueFilter == "Issue")">仅有问题</option><option value="Normal" selected="@(IssueFilter == "Normal")">仅正常</option></select></div>
+                    </div>
+                    <div class="oa-field-selector-hint">质量指标来自标准化字段快照 · 当前显示 @FilteredFields.Count 个字段 · 点击字段名展开详细画像</div>
                 </div>
             </div>
         </section>
@@ -62,12 +66,12 @@
         <section class="oa-dashboard-section">
             <div class="oa-section-heading"><div><span class="oa-section-kicker">Field Profile</span><h2>字段画像</h2><span>按质量信号快速识别需要关注的字段</span></div></div>
             <div class="oa-dashboard-panel oa-field-table-card">
-                <div class="oa-field-table-toolbar"><span>@_fields.Count 个字段</span><span>@_violations.Count(x => x.Count > 0) 个质量问题</span><span>点击字段名查看详情</span></div>
+                <div class="oa-field-table-toolbar"><span>@FilteredFields.Count 个字段</span><span>@FilteredFields.Count(x => GetViolationCount(x.FieldName) > 0) 个问题字段</span><span>点击字段名查看详情</span><a class="btn btn-sm btn-outline-secondary" href="@IssuesUrl">问题中心</a></div>
                 <div class="oa-table-wrap">
                     <table class="oa-data-table oa-field-table">
                         <thead><tr><th>字段</th><th>主类型</th><th>语义类型</th><th>覆盖率</th><th>Null率</th><th>唯一性</th><th>问题</th></tr></thead>
                         <tbody>
-                        @foreach (var field in _fields)
+                        @foreach (var field in FilteredFields)
                         {
                             var normalized = _normalizedFields.FirstOrDefault(x => string.Equals(x.FieldName, field.FieldName, StringComparison.Ordinal));
                             var violationCount = GetViolationCount(field.FieldName);
@@ -112,6 +116,19 @@
     private List<FieldQualitySnapshot> _normalizedFields = new();
     private Guid _selectedJobId;
     private string? _selectedField;
+    private string? FieldFilter;
+    private string? IssueFilter;
+
+    private IReadOnlyList<FieldStatistic> FilteredFields => _fields
+        .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(IssueFilter)
+            || (IssueFilter == "Issue" && GetViolationCount(x.FieldName) > 0)
+            || (IssueFilter == "Normal" && GetViolationCount(x.FieldName) == 0))
+        .ToList();
+
+    private string IssuesUrl => _selectedJobId == Guid.Empty
+        ? "/issues"
+        : $"/issues?jobId={_selectedJobId}";
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -160,6 +177,22 @@
             Count = x.Count,
             Message = x.Message
         }).ToList();
+    }
+
+    private async Task OnFieldFilterChanged(ChangeEventArgs args)
+    {
+        FieldFilter = args.Value?.ToString();
+        if (_selectedField is not null && !FilteredFields.Any(x => string.Equals(x.FieldName, _selectedField, StringComparison.Ordinal)))
+            _selectedField = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnIssueFilterChanged(ChangeEventArgs args)
+    {
+        IssueFilter = args.Value?.ToString();
+        if (_selectedField is not null && !FilteredFields.Any(x => string.Equals(x.FieldName, _selectedField, StringComparison.Ordinal)))
+            _selectedField = null;
+        await InvokeAsync(StateHasChanged);
     }
 
     private void ToggleField(string field) => _selectedField = _selectedField == field ? null : field;
