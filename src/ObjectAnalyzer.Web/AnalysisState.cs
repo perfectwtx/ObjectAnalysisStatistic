@@ -233,9 +233,8 @@ public sealed class AnalysisState : IDisposable
             "clean" => fields.Where(f => GetFieldSignalCount(f) == 0),
             "null" => fields.Where(f => f.NullCount > 0),
             "outlier" => fields.Where(f => f.OutlierCount is long c && c > 0),
-            "rule" => fields.Where(f => f.EnumViolations.Count > 0),
-            "range" => fields.Where(f => f.RangeViolationCount > 0),
             "rule" => fields.Where(f => f.EnumViolations.Count > 0 || f.RangeViolationCount > 0),
+            "range" => fields.Where(f => f.RangeViolationCount > 0),
             _ => fields
         };
 
