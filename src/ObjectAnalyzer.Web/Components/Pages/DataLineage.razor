@@ -138,7 +138,7 @@
     private IReadOnlyList<DataLineageNode> FilteredNodes => _lineage?.Nodes
         .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
-        .ToList() ?? Array.Empty<LineageModel.Node>();
+        .ToList() ?? Array.Empty<DataLineageNode>();
 
     protected override async Task OnInitializedAsync()
     {
