@@ -658,6 +658,11 @@
                 <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "critical" ? "is-active" : "")" @onclick='() => SetSignalFilter("critical")'>Critical</button>
                 <button type="button" class="signal-filter-chip is-warning @(_signalFilter == "warning" ? "is-active" : "")" @onclick='() => SetSignalFilter("warning")'>Warning</button>
                 <button type="button" class="signal-filter-chip is-success @(_signalFilter == "clean" ? "is-active" : "")" @onclick='() => SetSignalFilter("clean")'>Clean</button>
+                <span class="signal-filter-divider"></span>
+                <button type="button" class="signal-filter-chip @(_signalFilter == "null" ? "is-active" : "")" @onclick='() => SetSignalFilter("null")'>Null</button>
+                <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "outlier" ? "is-active" : "")" @onclick='() => SetSignalFilter("outlier")'>Outlier</button>
+                <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "rule" ? "is-active" : "")" @onclick='() => SetSignalFilter("rule")'>Rule</button>
+                <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "range" ? "is-active" : "")" @onclick='() => SetSignalFilter("range")'>Range</button>
                 <button type="button" class="signal-filter-chip is-danger @(_signalFilter == "rule" ? "is-active" : "")" @onclick='() => SetSignalFilter("rule")'>Rule</button>
             </div>
             <div class="toolbar">
