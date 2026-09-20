@@ -1,0 +1,65 @@
+@page "/quality/webhooks"
+@using ObjectAnalyzer.Platform
+@inject IWebhookDeliveryStore DeliveryStore
+@inject IAlertRuleStore RuleStore
+@inject IAnalysisHistoryStore HistoryStore
+
+<PageTitle>Webhook 投递中心</PageTitle>
+
+<div class="oa-analysis-page oa-webhook-page">
+    <div class="oa-analysis-header">
+        <div><div class="oa-eyebrow">Governance</div><h1>Webhook 投递中心</h1><p>查看质量告警通知的排队、投递、失败与重试状态。</p></div>
+        <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/alert-rules">告警规则</a><a class="btn btn-outline-secondary" href="/quality">质量总览</a><button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button></div>
+    </div>
+    @if (_loading)
+    {
+        <div class="oa-panel oa-empty-state"><div class="oa-empty-content"><div class="oa-empty-icon">◌</div><strong>正在加载投递记录</strong><span>正在读取 Webhook Outbox。</span></div></div>
+    }
+    else
+    {
+        <div class="oa-kpi-grid is-4 oa-webhook-kpis">
+            <div class="oa-kpi-card is-info"><span>记录总数</span><strong>@FilteredDeliveries.Count</strong><small>当前筛选范围</small></div>
+            <div class="oa-kpi-card is-success"><span>已成功</span><strong>@FilteredDeliveries.Count(x => x.Status == WebhookDeliveryStatus.Succeeded)</strong><small>成功投递</small></div>
+            <div class="oa-kpi-card is-danger"><span>失败</span><strong>@FilteredDeliveries.Count(x => x.Status == WebhookDeliveryStatus.Failed)</strong><small>达到最大重试或永久失败</small></div>
+            <div class="oa-kpi-card"><span>重试次数</span><strong>@FilteredDeliveries.Sum(x => x.AttemptCount)</strong><small>累计投递尝试</small></div>
+        </div>
+        <div class="oa-panel oa-webhook-filter-card"><div class="oa-panel-body"><div class="oa-webhook-filter-grid">
+            <div><label class="form-label">状态</label><select class="form-select" @onchange="OnStatusChanged"><option value="">全部</option>@foreach(var status in Enum.GetValues<WebhookDeliveryStatus>()){<option value="@status">@GetStatusLabel(status)</option>}</select></div>
+            <div><label class="form-label">事件类型</label><select class="form-select" @onchange="OnEventChanged"><option value="">全部</option>@foreach(var type in EventTypes){<option value="@type">@type</option>}</select></div>
+            <div><label class="form-label">告警规则</label><select class="form-select" @onchange="OnRuleChanged"><option value="">全部</option>@foreach(var rule in _rules){<option value="@rule.Id">@rule.Name</option>}</select></div>
+            <div><label class="form-label">作业 / 数据源</label><select class="form-select" @onchange="OnJobChanged"><option value="">全部</option>@foreach(var job in _jobs){<option value="@job.Id">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("MM-dd HH:mm")</option>}</select></div>
+        </div><div class="oa-webhook-filter-hint">当前显示 @FilteredDeliveries.Count 条投递记录</div></div></div>
+        <div class="oa-panel"><div class="oa-panel-header"><div><div class="oa-eyebrow">Delivery History</div><h2>投递记录</h2></div><span class="oa-badge is-neutral">@FilteredDeliveries.Count 条</span></div>
+            <div class="oa-panel-body oa-table-wrap oa-webhook-table-wrap">
+                @if (FilteredDeliveries.Count == 0) { <div class="oa-empty-content"><strong>当前筛选条件下没有投递记录</strong><span>告警触发后，Webhook 会先进入 Outbox，再由后台 Worker 投递。</span></div> }
+                else { <table class="table align-middle mb-0"><thead><tr><th>时间</th><th>事件</th><th>状态</th><th>作业</th><th>尝试</th><th>发送时间</th><th>错误</th></tr></thead><tbody>
+                    @foreach(var item in FilteredDeliveries){<tr><td>@item.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td><td><strong>@item.EventType</strong></td><td><span class="oa-webhook-status @GetStatusClass(item.Status)">@GetStatusLabel(item.Status)</span></td><td><a href="@($"/jobs/{item.JobId}")">@GetJobLabel(item.JobId)</a></td><td>@item.AttemptCount</td><td>@(item.SentAtUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td><td><span class="oa-webhook-error">@(string.IsNullOrWhiteSpace(item.LastError) ? "-" : item.LastError)</span></td></tr>}
+                </tbody></table> }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<WebhookDelivery> _deliveries = new();
+    private readonly List<AlertRule> _rules = new();
+    private readonly List<AnalysisJob> _jobs = new();
+    private bool _loading;
+    private string? StatusFilter;
+    private string? EventFilter;
+    private Guid? RuleFilter;
+    private Guid? JobFilter;
+    private IReadOnlyList<string> EventTypes => _deliveries.Select(x => x.EventType).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+    private IReadOnlyList<WebhookDelivery> FilteredDeliveries => _deliveries.Where(MatchesFilter).ToList();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private async Task LoadAsync(){_loading=true;try{_deliveries.Clear();_deliveries.AddRange(await DeliveryStore.GetRecentAsync(200));_rules.Clear();_rules.AddRange(await RuleStore.GetAllAsync());_jobs.Clear();_jobs.AddRange(await HistoryStore.GetRecentAsync(100));}finally{_loading=false;}}
+    private bool MatchesFilter(WebhookDelivery x) => (string.IsNullOrWhiteSpace(StatusFilter)||string.Equals(x.Status.ToString(),StatusFilter,StringComparison.OrdinalIgnoreCase)) && (string.IsNullOrWhiteSpace(EventFilter)||string.Equals(x.EventType,EventFilter,StringComparison.OrdinalIgnoreCase)) && (!RuleFilter.HasValue||x.RuleId==RuleFilter) && (!JobFilter.HasValue||x.JobId==JobFilter);
+    private Task OnStatusChanged(ChangeEventArgs a){StatusFilter=a.Value?.ToString();return InvokeAsync(StateHasChanged);}
+    private Task OnEventChanged(ChangeEventArgs a){EventFilter=a.Value?.ToString();return InvokeAsync(StateHasChanged);}
+    private Task OnRuleChanged(ChangeEventArgs a){RuleFilter=Guid.TryParse(a.Value?.ToString(),out var id)?id:null;return InvokeAsync(StateHasChanged);}
+    private Task OnJobChanged(ChangeEventArgs a){JobFilter=Guid.TryParse(a.Value?.ToString(),out var id)?id:null;return InvokeAsync(StateHasChanged);}
+    private string GetJobLabel(Guid id)=>_jobs.FirstOrDefault(x=>x.Id==id) is { } job?$"{job.SourceName} · {job.Id.ToString()[..8]}":id.ToString()[..8];
+    private static string GetStatusLabel(WebhookDeliveryStatus s)=>s switch{WebhookDeliveryStatus.Pending=>"待发送",WebhookDeliveryStatus.Processing=>"处理中",WebhookDeliveryStatus.Succeeded=>"已成功",WebhookDeliveryStatus.Failed=>"已失败",_=>s.ToString()};
+    private static string GetStatusClass(WebhookDeliveryStatus s)=>s switch{WebhookDeliveryStatus.Succeeded=>"is-success",WebhookDeliveryStatus.Failed=>"is-fail",WebhookDeliveryStatus.Processing=>"is-processing",_=>"is-pending"};
+}
