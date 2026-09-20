@@ -12,8 +12,8 @@
         <div><div class="oa-eyebrow">OBJECT RELATIONSHIPS</div><h1>对象关系分析</h1><p>查看最近一次成功分析发现的嵌套对象与对象集合关系。</p></div>
         <div class="oa-header-actions">
             <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
-            <a class="btn btn-outline-primary" href="/quality/data-lineage">数据血缘</a>
-            <a class="btn btn-outline-primary" href="/quality/impact-analysis">影响分析</a>
+            <a class="btn btn-outline-primary" href="@DataLineageUrl">数据血缘</a>
+            <a class="btn btn-outline-primary" href="@ImpactAnalysisUrl">影响分析</a>
             @if (_job is not null)
             {
                 <a class="btn btn-outline-secondary" href="@($"/jobs/{_job.Id}")">当前作业</a>
@@ -92,6 +92,9 @@
     private List<ObjectRelationship> _relationships = new();
     private string? KindFilter;
     private string? PathFilter;
+
+    private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job.Id}";
+    private string ImpactAnalysisUrl => _job is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_job.Id}";
 
     private IReadOnlyList<ObjectRelationship> FilteredRelationships => _relationships
         .Where(x => string.IsNullOrWhiteSpace(KindFilter) || string.Equals(x.Kind, KindFilter, StringComparison.OrdinalIgnoreCase))
