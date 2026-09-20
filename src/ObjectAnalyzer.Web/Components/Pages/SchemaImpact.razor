@@ -192,7 +192,7 @@
 
     private IReadOnlyList<SchemaSnapshotField> FilteredAdded => string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) || string.Equals(ImpactFilter, "Breaking", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.AddedFields);
     private IReadOnlyList<SchemaSnapshotField> FilteredRemoved => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Changed", StringComparison.OrdinalIgnoreCase) || string.Equals(ImpactFilter, "Normal", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaSnapshotField>() : FilterFields(_diff?.RemovedFields);
-    private IReadOnlyList<SchemaChangedField> FilteredChanged => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaChangedField>() : (_diff?.ChangedFields ?? Array.Empty<SchemaChangedField>() )
+    private IReadOnlyList<SchemaFieldChange> FilteredChanged => string.Equals(ChangeTypeFilter, "Added", StringComparison.OrdinalIgnoreCase) || string.Equals(ChangeTypeFilter, "Removed", StringComparison.OrdinalIgnoreCase) ? Array.Empty<SchemaFieldChange>() : (_diff?.ChangedFields ?? Array.Empty<SchemaFieldChange>() )
         .Where(x => MatchesField(x.Path))
         .Where(x => string.IsNullOrWhiteSpace(ImpactFilter) || (ImpactFilter == "Breaking" ? x.Breaking : !x.Breaking))
         .ToList();
