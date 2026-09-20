@@ -98,8 +98,8 @@
             </div>
             <div class="oa-panel-body">
                 <div class="oa-context-grid is-compact">
-                    <div><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong></div>
-                    <div><span>分析时间</span><strong>@_job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</strong></div>
+                    <div><span>数据源</span><strong title="@_job!.SourceName">@_job!.SourceName</strong></div>
+                    <div><span>分析时间</span><strong>@_job!.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</strong></div>
                 </div>
                 <div class="oa-analysis-note">影响分析会把 Schema 变更沿当前数据血缘向父对象和子节点传播，并降低间接影响等级。</div>
             </div>
@@ -155,7 +155,7 @@
     private string SchemaImpactUrl => _job is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_job.Id}";
     private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
 
-    private IReadOnlyList<ImpactedNode> FilteredNodes => _impact?.Nodes
+    private IReadOnlyList<ImpactedNode> FilteredNodes => (_impact?.Nodes ?? new List<ImpactedNode>())
         .Where(x => string.IsNullOrWhiteSpace(LevelFilter) || string.Equals(x.Level.ToString(), LevelFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(TypeFilter) || string.Equals(x.Type.ToString(), TypeFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
