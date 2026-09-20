@@ -17,7 +17,7 @@
         </div>
         <div class="oa-header-actions">
             <a class="btn btn-outline-secondary" href="@SchemaImpactUrl">Schema 影响</a>
-            <a class="btn btn-outline-secondary" href="/quality/data-lineage">查看数据血缘</a>
+            <a class="btn btn-outline-secondary" href="@DataLineageUrl">查看数据血缘</a>
             <a class="btn btn-outline-secondary" href="@RegressionUrl">质量回归</a>
             @if (_job is not null)
             {
@@ -144,6 +144,7 @@
     private string? TypeFilter;
     private string? PathFilter;
 
+    private string DataLineageUrl => _job is null ? "/quality/data-lineage" : $"/quality/data-lineage?jobId={_job.Id}";
     private string SchemaImpactUrl => _job is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_job.Id}";
     private string RegressionUrl => _job is null ? "/quality/regression" : $"/quality/regression?jobId={_job.Id}";
 
