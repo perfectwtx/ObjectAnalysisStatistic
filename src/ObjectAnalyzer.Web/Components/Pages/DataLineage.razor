@@ -32,10 +32,6 @@
     {
         <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">!</div><strong>暂无成功的分析记录</strong><span>请先执行一次分析，再查看数据血缘。</span></div>
     }
-    else if (_lineage is null || _lineage.Nodes.Count == 0)
-    {
-        <div class="oa-panel oa-empty-state"><div class="oa-empty-icon">∅</div><strong>暂无可展示的数据血缘</strong><span>请先运行包含嵌套对象或对象集合的分析。</span></div>
-    }
     else
     {
         <section class="oa-panel oa-lineage-filter-card">
@@ -67,6 +63,16 @@
             </div>
         </section>
 
+        @if (_lineage is null || _lineage.Nodes.Count == 0)
+        {
+            <div class="oa-panel oa-empty-state">
+                <div class="oa-empty-icon">∅</div>
+                <strong>暂无可展示的数据血缘</strong>
+                <span>当前分析没有可识别的对象、集合或字段层级血缘。可以切换上方分析任务继续查看。</span>
+            </div>
+        }
+        else
+        {
         <div class="oa-kpi-grid is-4">
             <div class="oa-kpi-card"><span>节点数量</span><strong>@FilteredNodes.Count</strong><small>当前筛选节点 / @_lineage.Nodes.Count 总节点</small></div>
             <div class="oa-kpi-card"><span>层级节点</span><strong>@_lineage.Nodes.Count(x => x.Kind != "Field")</strong><small>非字段结构节点</small></div>
@@ -122,6 +128,7 @@
                 </table></div>
             }
         </div>
+        }
     }
 </div>
 
