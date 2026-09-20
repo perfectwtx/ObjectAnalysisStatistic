@@ -1,5 +1,6 @@
 @page "/quality/impact-analysis"
 @using System.Text.Json
+@using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @using ImpactModel = ObjectAnalyzer.Analysis.ImpactAnalysis
@@ -134,6 +135,9 @@
     private bool _loading = true;
     private AnalysisJob? _job;
     private ImpactModel? _impact;
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
+
     private string? LevelFilter;
     private string? TypeFilter;
     private string? PathFilter;
@@ -149,7 +153,7 @@
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
         _jobs.AddRange(jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc));
-        _job = _jobs.FirstOrDefault();
+        _job = JobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == JobId.Value) : _jobs.FirstOrDefault();
         if (_job is not null)
         {
             try
