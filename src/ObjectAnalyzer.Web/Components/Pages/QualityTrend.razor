@@ -33,7 +33,7 @@
         var delta = FilteredSnapshots.Count >= 2 ? latest.Metrics.OverallScore - FilteredSnapshots[1].Metrics.OverallScore : 0;
 
         <section class="oa-dashboard-section">
-            <div class="oa-dashboard-panel oa-trend-filter-card"><div class="oa-panel-body"><div class="oa-trend-filter-grid"><div><label class="form-label">数据源</label><select class="form-select" @onchange="OnSourceChanged"><option value="">全部数据源</option>@foreach (var source in Sources){<option value="@source" selected="@(string.Equals(source, SourceFilter, StringComparison.OrdinalIgnoreCase))">@source</option>}</select></div><div><label class="form-label">历史窗口</label><select class="form-select" @onchange="OnWindowChanged"><option value="30">最近 30 次</option><option value="60">最近 60 次</option><option value="100">最近 100 次</option></select></div></div><div class="oa-trend-filter-hint">当前显示 @FilteredSnapshots.Count 次快照</div></div></div>
+            <div class="oa-dashboard-panel oa-trend-filter-card"><div class="oa-panel-body"><div class="oa-trend-filter-grid"><div><label class="form-label">数据源</label><select class="form-select" @onchange="OnSourceChanged"><option value="">全部数据源</option>@foreach (var source in Sources){<option value="@source" selected="@(string.Equals(source, SourceFilter, StringComparison.OrdinalIgnoreCase))">@source</option>}</select></div><div><label class="form-label">历史窗口</label><select class="form-select" @onchange="OnWindowChanged"><option value="30">最近 30 次</option><option value="60">最近 60 次</option><option value="100">最近 100 次</option></select></div></div><div class="oa-trend-filter-hint">当前显示 @FilteredSnapshots.Count 次快照 · 点击问题数可进入对应分析作业</div></div></div>
             <div class="oa-section-heading"><div><span class="oa-section-kicker">Overview</span><h2>趋势概览</h2><span>当前历史窗口的核心指标</span></div></div>
             <div class="oa-kpi-grid is-4">
                 <div class="oa-kpi-card is-info"><div class="oa-kpi-label">分析次数</div><div class="oa-kpi-value">@FilteredSnapshots.Count</div><div class="oa-kpi-meta">最近 100 次质量快照</div></div>
@@ -46,11 +46,11 @@
         <section class="oa-dashboard-section">
             <article class="oa-dashboard-panel oa-trend-chart-panel">
                 <div class="oa-panel-header">
-                    <div><span class="oa-panel-kicker">History</span><h2>质量分走势</h2><p>按时间从早到晚展示最近 30 次快照</p></div>
-                    <span class="oa-badge is-neutral">窗口 @_snapshots.Count 次</span>
+                    <div><span class="oa-panel-kicker">History</span><h2>质量分走势</h2><p>按时间从早到晚展示当前筛选窗口内的快照</p></div>
+                    <span class="oa-badge is-neutral">窗口 @FilteredSnapshots.Count 次</span>
                 </div>
                 <div class="oa-trend-chart">
-                    @foreach (var snapshot in _snapshots.AsEnumerable().Reverse().Take(30))
+                    @foreach (var snapshot in FilteredSnapshots.AsEnumerable().Reverse().Take(30))
                     {
                         <div class="oa-trend-point" title="@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") · @snapshot.Metrics.OverallScore.ToString("F1")">
                             <div class="oa-trend-bar-track"><div class="oa-trend-bar" style="@($"height:{Math.Clamp(snapshot.Metrics.OverallScore, 0, 100):F0}%")"></div></div>
@@ -79,7 +79,7 @@
                                 <td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@snapshot.SourceName</td>
                                 <td><span class="oa-badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
-                                <td>@snapshot.IssueCount</td>
+                                <td><a class="oa-trend-issue-link" href="@($"/jobs/{snapshot.JobId}")">@snapshot.IssueCount</a></td>
                                 <td>@snapshot.TotalObjects.ToString("N0")</td>
                                 <td>@snapshot.Metrics.Completeness.ToString("F1")</td>
                                 <td>@snapshot.Metrics.Validity.ToString("F1")</td>
