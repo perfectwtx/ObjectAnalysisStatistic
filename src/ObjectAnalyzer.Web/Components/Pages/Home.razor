@@ -686,8 +686,25 @@
                     <tbody>
                         @foreach (var field in State.GetPageFields())
                         {
-                            <tr>
-                                <td class="field-name"><code>@field.FieldName</code></td>
+                            var signalCount = (field.NullCount > 0 ? 1 : 0)
+                                + (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0)
+                                + (field.EnumViolations.Count > 0 ? 1 : 0)
+                                + (field.RangeViolationCount > 0 ? 1 : 0);
+                            var rowState = signalCount >= 2 ? "is-critical" : signalCount == 1 ? "has-signal" : "is-clean";
+                            <tr class="field-row @rowState">
+                                <td class="field-name">
+                                    <div class="field-name-main"><code>@field.FieldName</code></div>
+                                    <div class="field-signal-line">
+                                        @if (signalCount > 0)
+                                        {
+                                            <span class="field-signal-count">@signalCount signal@(signalCount == 1 ? "" : "s")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="field-signal-clean">No active signals</span>
+                                        }
+                                    </div>
+                                </td>
                                 <td>
                                     @if (!string.IsNullOrEmpty(field.SemanticType))
                                     {
