@@ -63,7 +63,7 @@
   <data name="OptAuditLogPlaceholder" xml:space="preserve"><value>optional, server-local path e.g. C:\Logs\audit.ndjson</value></data>
   <data name="OptOperator" xml:space="preserve"><value>Operator</value></data>
   <data name="OptOperatorPlaceholder" xml:space="preserve"><value>e.g. [email protected] / ci-runner-12</value></data>
-  <data name="P6GroupTitle" xml:space="preserve"><value>P6 — Incremental / Memory / Progress</value></data>
+  <data name="P6GroupTitle" xml:space="preserve"><value>Incremental / Memory / Progress</value></data>
   <data name="P6GroupHint" xml:space="preserve"><value>Resilience and recovery for large files</value></data>
   <data name="OptShowProgress" xml:space="preserve"><value>Show progress bar / ETA</value></data>
   <data name="OptCsvInferNumbers" xml:space="preserve"><value>CSV numeric inference</value></data>
@@ -167,7 +167,7 @@
   <data name="Outliers" xml:space="preserve"><value>Outliers</value></data>
   <data name="OutlierCountFmt" xml:space="preserve"><value>{0} ({1:P1})</value></data>
   <data name="OutlierBoundsHint" xml:space="preserve"><value>range {0}</value></data>
-  <data name="P3InsightsTitle" xml:space="preserve"><value>P3 Advanced Insights</value></data>
+  <data name="P3InsightsTitle" xml:space="preserve"><value>Advanced Insights</value></data>
   <data name="P3InsightsHint" xml:space="preserve"><value>Date/time profiling, IQR outlier detection, schema evolution diff</value></data>
   <data name="TimeSeriesCard" xml:space="preserve"><value>Time series</value></data>
   <data name="OutliersCard" xml:space="preserve"><value>Outliers (IQR 1.5×)</value></data>
