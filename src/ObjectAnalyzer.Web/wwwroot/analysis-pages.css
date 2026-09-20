@@ -2161,3 +2161,11 @@
 .oa-regression-page .oa-regression-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
 @media(max-width:1000px){.oa-regression-page .oa-regression-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.oa-regression-page .oa-regression-filter-grid{grid-template-columns:1fr}}
+
+/* Schema Impact workbench filters */
+.oa-schema-impact-page .oa-header-actions{display:flex;gap:.6rem;align-items:center}
+.oa-schema-impact-page .oa-schema-filter-card{margin-bottom:1rem}
+.oa-schema-impact-page .oa-schema-filter-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(180px,.7fr) minmax(180px,.7fr) minmax(220px,1fr);gap:1rem}
+.oa-schema-impact-page .oa-schema-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+@media(max-width:1000px){.oa-schema-impact-page .oa-schema-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.oa-schema-impact-page .oa-schema-filter-grid{grid-template-columns:1fr}.oa-schema-impact-page .oa-header-actions{flex-wrap:wrap}}
