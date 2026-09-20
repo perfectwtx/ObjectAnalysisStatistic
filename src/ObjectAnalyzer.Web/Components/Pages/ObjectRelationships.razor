@@ -12,6 +12,11 @@
         <div class="oa-header-actions">
             <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
             <a class="btn btn-outline-primary" href="/quality/data-lineage">数据血缘</a>
+            <a class="btn btn-outline-primary" href="/quality/impact-analysis">影响分析</a>
+            @if (_job is not null)
+            {
+                <a class="btn btn-outline-secondary" href="@($"/jobs/{_job.Id}")">当前作业</a>
+            }
         </div>
     </div>
 
@@ -53,10 +58,16 @@
 
         <div class="oa-kpi-grid is-3">
             <div class="oa-kpi-card"><span>关系数量</span><strong>@FilteredRelationships.Count</strong><small>当前筛选 / @_relationships.Count 总关系</small></div>
-            <div class="oa-kpi-card"><span>对象关系</span><strong>@_relationships.Count(x => x.Kind == "Object")</strong><small>嵌套对象节点</small></div>
-            <div class="oa-kpi-card"><span>集合关系</span><strong>@_relationships.Count(x => x.Kind == "Collection")</strong><small>对象集合节点</small></div>
+            <div class="oa-kpi-card"><span>对象关系</span><strong>@FilteredRelationships.Count(x => x.Kind == "Object")</strong><small>当前筛选 / @_relationships.Count(x => x.Kind == "Object") 总对象关系</small></div>
+            <div class="oa-kpi-card"><span>集合关系</span><strong>@FilteredRelationships.Count(x => x.Kind == "Collection")</strong><small>当前筛选 / @_relationships.Count(x => x.Kind == "Collection") 总集合关系</small></div>
         </div>
         <div class="oa-panel">
+            @if (FilteredRelationships.Count == 0)
+            {
+                <div class="oa-empty-state oa-object-filter-empty"><div class="oa-empty-icon">∅</div><strong>当前筛选条件下没有对象关系</strong><span>请调整关系类型或路径搜索条件。</span></div>
+            }
+            else
+            {
             <div class="oa-panel-header"><div><div class="oa-panel-kicker">NESTED RELATIONSHIPS</div><h2>嵌套关系</h2></div><span class="oa-count-badge">@FilteredRelationships.Count 个</span></div>
             <div class="oa-panel-body oa-object-context"><span>数据源</span><strong title="@_job.SourceName">@_job.SourceName</strong></div>
             <div class="oa-table-wrap oa-object-table-wrap">
@@ -65,6 +76,7 @@
                     <tbody>@foreach (var relationship in FilteredRelationships){<tr><td class="oa-object-path"><code>@relationship.Path</code></td><td><span class="oa-badge @(relationship.Kind == "Collection" ? "is-info" : "is-accent")">@(relationship.Kind == "Collection" ? "对象集合" : "对象")</span></td><td>@relationship.OccurrenceCount.ToString("N0")</td><td>@relationship.TargetFieldCount</td><td class="oa-object-targets">@(relationship.TargetFields.Count == 0 ? "-" : string.Join(", ", relationship.TargetFields))</td></tr>}</tbody>
                 </table>
             </div>
+            }
         </div>
         <div class="oa-analysis-note"><strong>关系说明：</strong>路径使用点号表示嵌套层级，例如 <code>order.shipping.address</code>。对象集合会统计集合中可识别的对象元素，并汇总其目标字段。</div>
     }
