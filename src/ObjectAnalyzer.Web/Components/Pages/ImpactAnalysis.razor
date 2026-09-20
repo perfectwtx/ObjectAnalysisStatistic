@@ -14,7 +14,13 @@
             <h1>影响分析</h1>
             <p>沿当前数据血缘查看 Schema 变更可能影响的父对象、子节点与关联对象。</p>
         </div>
-        <a class="btn btn-outline-secondary oa-header-action" href="/quality/data-lineage">查看数据血缘</a>
+        <div class="oa-header-actions">
+            <a class="btn btn-outline-secondary" href="/quality/data-lineage">查看数据血缘</a>
+            @if (_job is not null)
+            {
+                <a class="btn btn-outline-primary" href="@($"/jobs/{_job.Id}")">当前作业</a>
+            }
+        </div>
     </div>
 
     @if (_loading)
@@ -31,10 +37,50 @@
     }
     else
     {
+        <section class="oa-panel oa-impact-filter-card">
+            <div class="oa-panel-body">
+                <div class="oa-impact-filter-grid">
+                    <div>
+                        <label class="form-label">分析任务</label>
+                        <select class="form-select" @onchange="OnJobChanged">
+                            @foreach (var job in _jobs)
+                            {
+                                <option value="@job.Id" selected="@(job.Id == _job?.Id)">@job.SourceName · @job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">影响级别</label>
+                        <select class="form-select" @onchange="OnLevelChanged">
+                            <option value="">全部级别</option>
+                            <option value="Critical" selected="@(LevelFilter == "Critical")">严重</option>
+                            <option value="High" selected="@(LevelFilter == "High")">高</option>
+                            <option value="Medium" selected="@(LevelFilter == "Medium")">中</option>
+                            <option value="Low" selected="@(LevelFilter == "Low")">低</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">节点类型</label>
+                        <select class="form-select" @onchange="OnTypeChanged">
+                            <option value="">全部类型</option>
+                            <option value="SchemaChange" selected="@(TypeFilter == "SchemaChange")">Schema 字段</option>
+                            <option value="ParentObject" selected="@(TypeFilter == "ParentObject")">父对象</option>
+                            <option value="ChildNode" selected="@(TypeFilter == "ChildNode")">子节点</option>
+                            <option value="RelatedObject" selected="@(TypeFilter == "RelatedObject")">关联对象</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">路径搜索</label>
+                        <input class="form-control" value="@PathFilter" @oninput="OnPathChanged" placeholder="搜索受影响路径" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <div class="oa-kpi-grid is-3">
             <div class="oa-kpi-card"><span>最高影响级别</span><strong class="@GetLevelClass(_impact.HighestLevel)">@GetLevelText(_impact.HighestLevel)</strong><small>当前 Schema 影响范围</small></div>
             <div class="oa-kpi-card is-danger"><span>直接破坏性变更</span><strong>@_impact.BreakingChangeCount</strong><small>来自 Schema Diff 的直接影响</small></div>
-            <div class="oa-kpi-card"><span>受影响节点</span><strong>@_impact.Nodes.Count</strong><small>沿数据血缘传播的节点</small></div>
+            <div class="oa-kpi-card"><span>受影响节点</span><strong>@FilteredNodes.Count</strong><small>当前筛选节点 / @_impact.Nodes.Count 总节点</small></div>
         </div>
 
         <div class="oa-panel mb-4">
@@ -59,13 +105,13 @@
             <div class="oa-panel">
                 <div class="oa-panel-header">
                     <div><div class="oa-panel-kicker">AFFECTED NODES</div><h2>受影响节点</h2></div>
-                    <span class="oa-count-badge">@_impact.Nodes.Count 个</span>
+                    <span class="oa-count-badge">@FilteredNodes.Count 个</span>
                 </div>
                 <div class="oa-table-wrap oa-impact-table-wrap">
                     <table class="table table-hover align-middle mb-0 oa-analysis-table">
                         <thead><tr><th>路径</th><th>类型</th><th>影响来源</th><th>级别</th><th>原因</th></tr></thead>
                         <tbody>
-                        @foreach (var node in _impact.Nodes)
+                        @foreach (var node in FilteredNodes)
                         {
                             <tr>
                                 <td class="oa-impact-path"><code>@node.Path</code></td>
@@ -84,15 +130,26 @@
 </div>
 
 @code {
+    private readonly List<AnalysisJob> _jobs = new();
     private bool _loading = true;
     private AnalysisJob? _job;
     private ImpactModel? _impact;
+    private string? LevelFilter;
+    private string? TypeFilter;
+    private string? PathFilter;
+
+    private IReadOnlyList<ImpactedNode> FilteredNodes => _impact?.Nodes
+        .Where(x => string.IsNullOrWhiteSpace(LevelFilter) || string.Equals(x.Level.ToString(), LevelFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(TypeFilter) || string.Equals(x.Type.ToString(), TypeFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList() ?? Array.Empty<ImpactedNode>();
 
     protected override async Task OnInitializedAsync()
     {
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
-        _job = jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc).FirstOrDefault();
+        _jobs.AddRange(jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc));
+        _job = _jobs.FirstOrDefault();
         if (_job is not null)
         {
             try
@@ -104,6 +161,48 @@
             catch (JsonException) { _impact = null; }
         }
         _loading = false;
+    }
+
+    private async Task OnJobChanged(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out var id))
+            return;
+
+        _job = _jobs.FirstOrDefault(x => x.Id == id);
+        _impact = null;
+        if (_job is not null)
+        {
+            try
+            {
+                var result = JsonSerializer.Deserialize<AnalysisResult>(_job.ResultJson!);
+                var lineage = DataLineageBuilder.Build(result?.ObjectRelationships ?? new List<ObjectRelationship>());
+                _impact = result is null ? null : ImpactAnalysisBuilder.Build(result.SchemaDiff, lineage);
+            }
+            catch (JsonException)
+            {
+                _impact = null;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnLevelChanged(ChangeEventArgs args)
+    {
+        LevelFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnTypeChanged(ChangeEventArgs args)
+    {
+        TypeFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnPathChanged(ChangeEventArgs args)
+    {
+        PathFilter = args.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
     }
 
     private static string GetLevelText(ImpactLevel level) => level switch { ImpactLevel.Critical => "严重", ImpactLevel.High => "高", ImpactLevel.Medium => "中", _ => "低" };
