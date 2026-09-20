@@ -2169,3 +2169,13 @@
 .oa-schema-impact-page .oa-schema-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
 @media(max-width:1000px){.oa-schema-impact-page .oa-schema-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.oa-schema-impact-page .oa-schema-filter-grid{grid-template-columns:1fr}.oa-schema-impact-page .oa-header-actions{flex-wrap:wrap}}
+
+
+/* Field Relationships workbench filters */
+.oa-field-relationships-page .oa-header-actions{display:flex;gap:.6rem;align-items:center}
+.oa-field-relationships-page .oa-relationship-filter-card{margin-bottom:1rem}
+.oa-field-relationships-page .oa-relationship-filter-grid{display:grid;grid-template-columns:minmax(240px,1.1fr) minmax(180px,.65fr) minmax(220px,1fr);gap:1rem}
+.oa-field-relationships-page .oa-relationship-filter-grid .form-label{display:block;margin-bottom:.35rem;color:var(--oa-text-2);font-size:.72rem;font-weight:700}
+.oa-field-relationships-page .oa-relationship-filter-grid .form-select,.oa-field-relationships-page .oa-relationship-filter-grid .form-control{min-height:40px;border-color:var(--oa-border-strong);border-radius:9px}
+.oa-field-relationships-page .oa-relationship-filter-card .oa-filter-hint{margin-top:.8rem;padding-top:.75rem;border-top:1px solid var(--oa-border)}
+@media(max-width:820px){.oa-field-relationships-page .oa-relationship-filter-grid{grid-template-columns:1fr}.oa-field-relationships-page .oa-header-actions{flex-wrap:wrap}}
