@@ -1806,3 +1806,51 @@
         grid-template-columns:1fr;
     }
 }
+
+/* Field intelligence: make each row communicate its analysis state at a glance. */
+.app-shell .field-table tbody .field-row{
+    transition:background-color .14s ease,box-shadow .14s ease;
+}
+.app-shell .field-table tbody .field-row.has-signal{
+    box-shadow:inset 2px 0 0 var(--oa-warning);
+}
+.app-shell .field-table tbody .field-row.is-critical{
+    box-shadow:inset 2px 0 0 var(--oa-danger);
+}
+.app-shell .field-table tbody .field-row.is-clean{
+    box-shadow:inset 2px 0 0 transparent;
+}
+.app-shell .field-table .field-name-main{
+    display:flex;
+    align-items:center;
+    min-width:0;
+}
+.app-shell .field-table .field-name-main code{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.app-shell .field-table .field-signal-line{
+    min-height:16px;
+    margin-top:.18rem;
+    color:var(--oa-text-3);
+    font-size:.58rem;
+}
+.app-shell .field-table .field-signal-count{
+    display:inline-flex;
+    align-items:center;
+    padding:.12rem .38rem;
+    border:1px solid color-mix(in srgb,var(--oa-warning) 28%,transparent);
+    border-radius:999px;
+    background:var(--oa-warning-soft);
+    color:var(--oa-warning);
+    font-weight:750;
+}
+.app-shell .field-table .is-critical .field-signal-count{
+    border-color:color-mix(in srgb,var(--oa-danger) 28%,transparent);
+    background:var(--oa-danger-soft);
+    color:var(--oa-danger);
+}
+.app-shell .field-table .field-signal-clean{
+    opacity:.72;
+}
