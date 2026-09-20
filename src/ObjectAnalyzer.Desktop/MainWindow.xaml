@@ -1,0 +1,90 @@
+<Window x:Class="ObjectAnalyzer.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Object Analyzer"
+        Width="1100"
+        Height="720"
+        MinWidth="900"
+        MinHeight="600"
+        Background="#F5F7FA"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,22">
+            <StackPanel>
+                <TextBlock Text="Object Analyzer" FontSize="30" FontWeight="SemiBold" Foreground="#182230"/>
+                <TextBlock Text="本地对象分析与数据质量检查" FontSize="14" Foreground="#667085" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="分析文件" FontWeight="SemiBold" Foreground="#344054"/>
+                    <TextBox x:Name="InputPathTextBox" Margin="0,8,12,0" Height="36" FontSize="14" VerticalContentAlignment="Center"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="选择文件" Click="SelectFile_Click" VerticalAlignment="Bottom" Height="36"/>
+                <Button Grid.Column="2" x:Name="AnalyzeButton" Content="开始分析" Click="Analyze_Click" VerticalAlignment="Bottom" Height="36" Background="#2563EB" Foreground="White"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,12,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="分析输出" FontSize="17" FontWeight="SemiBold" Foreground="#182230"/>
+                    <ProgressBar Grid.Row="1" x:Name="AnalysisProgress" Height="8" Margin="0,14,0,14" Minimum="0" Maximum="100"/>
+                    <TextBox Grid.Row="2" x:Name="OutputTextBox"
+                             IsReadOnly="True"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             BorderThickness="0"
+                             Background="#0F172A"
+                             Foreground="#E2E8F0"
+                             FontFamily="Cascadia Mono"
+                             FontSize="13"
+                             Padding="12"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="10" Padding="18">
+                <StackPanel>
+                    <TextBlock Text="分析结果" FontSize="17" FontWeight="SemiBold" Foreground="#182230"/>
+                    <TextBlock Text="当前版本先提供本地分析入口，完整质量、血缘、影响分析页面继续复用 Web/API 能力。" TextWrapping="Wrap" Foreground="#667085" Margin="0,10,0,18"/>
+                    <TextBlock Text="状态" FontWeight="SemiBold" Foreground="#344054"/>
+                    <TextBlock x:Name="StatusTextBlock" Text="等待选择文件" Foreground="#667085" Margin="0,6,0,18"/>
+                    <TextBlock Text="报告" FontWeight="SemiBold" Foreground="#344054"/>
+                    <TextBlock x:Name="ReportPathTextBlock" Text="分析完成后自动生成 JSON 报告" TextWrapping="Wrap" Foreground="#667085" Margin="0,6,0,18"/>
+                    <Button x:Name="OpenReportButton" Content="打开报告目录" Click="OpenReport_Click" IsEnabled="False"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="3" x:Name="FooterTextBlock"
+                   Text="Object Analyzer Desktop · .NET 10 · WPF"
+                   Foreground="#98A2B3"
+                   Margin="2,14,0,0"/>
+    </Grid>
+</Window>
