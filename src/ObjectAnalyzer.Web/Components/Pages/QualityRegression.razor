@@ -121,7 +121,7 @@
             </div>
             <div class="oa-kpi-card @(_report.FieldRegressions.Count > 0 ? "is-warning" : "is-success")">
                 <span>回归字段</span>
-                <strong>@FilteredFieldRegressions.Count(x => x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe)</strong>
+                <strong>@_report.FieldRegressions.Count(x => (string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(x.Status.ToString(), FieldStatusFilter, StringComparison.OrdinalIgnoreCase)) && (string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase)) && (x.Status == QualityRegressionStatus.Regressed || x.Status == QualityRegressionStatus.Severe))</strong>
                 <small>发生质量下降的字段</small>
             </div>
             <div class="oa-kpi-card @(_report.ViolationRegressions.Count > 0 ? "is-danger" : "is-success")">
@@ -149,8 +149,8 @@
                     </div>
                     <div class="oa-regression-verdict-divider"></div>
                     <div class="oa-regression-signal-list">
-                        <div><span>字段质量变化</span><strong>@FilteredFieldRegressions.Count 项</strong></div>
-                        <div><span>违规回归</span><strong>@FilteredViolationRegressions.Count 项</strong></div>
+                        <div><span>字段质量变化</span><strong>@_report.FieldRegressions.Count(x => MatchesFieldFilter(x)) 项</strong></div>
+                        <div><span>违规回归</span><strong>@_report.ViolationRegressions.Count(x => MatchesViolationFilter(x)) 项</strong></div>
                         <div><span>问题变化</span><strong class="@DeltaClass(_report.IssueDelta)">@FormatIntDelta(_report.IssueDelta)</strong></div>
                     </div>
                 </div>
@@ -174,7 +174,7 @@
                             <tr><th>字段</th><th>状态</th><th>覆盖率</th><th>空值率</th><th>唯一率</th><th>回归原因</th></tr>
                         </thead>
                         <tbody>
-                        @foreach (var item in FilteredFieldRegressions)
+                        @foreach (var item in _report.FieldRegressions.Where(MatchesFieldFilter))
                         {
                             <tr>
                                 <td><code>@item.FieldName</code></td>
@@ -217,7 +217,7 @@
                 </div>
                 <span class="oa-count-badge">@_report.ViolationRegressions.Count 项</span>
             </div>
-            @if (FilteredViolationRegressions.Count > 0)
+            @if (_report.ViolationRegressions.Any(MatchesViolationFilter))
             {
                 <div class="oa-table-wrap">
                     <table class="oa-regression-table oa-violation-table">
@@ -225,7 +225,7 @@
                             <tr><th>字段</th><th>检查类型</th><th>基线</th><th>当前</th><th>增加</th><th>变化</th></tr>
                         </thead>
                         <tbody>
-                        @foreach (var item in FilteredViolationRegressions)
+                        @foreach (var item in _report.ViolationRegressions.Where(MatchesViolationFilter))
                         {
                             <tr>
                                 <td><code>@(string.IsNullOrWhiteSpace(item.FieldName) ? "数据集" : item.FieldName)</code></td>
@@ -259,15 +259,6 @@
     private QualityRegressionReport? _report;
     private string? FieldStatusFilter;
     private string? FieldFilter;
-
-    private IReadOnlyList<dynamic> FilteredFieldRegressions => _report?.FieldRegressions
-        .Where(x => string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(x.Status.ToString(), FieldStatusFilter, StringComparison.OrdinalIgnoreCase))
-        .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
-        .ToList() ?? new List<dynamic>();
-
-    private IReadOnlyList<dynamic> FilteredViolationRegressions => _report?.ViolationRegressions
-        .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.FieldName.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
-        .ToList() ?? new List<dynamic>();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -328,6 +319,20 @@
     {
         FieldFilter = args.Value?.ToString();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private bool MatchesFieldFilter<T>(T item) where T : notnull
+    {
+        var field = item.GetType().GetProperty("FieldName")?.GetValue(item)?.ToString();
+        var status = item.GetType().GetProperty("Status")?.GetValue(item)?.ToString();
+        return (string.IsNullOrWhiteSpace(FieldStatusFilter) || string.Equals(status, FieldStatusFilter, StringComparison.OrdinalIgnoreCase))
+            && (string.IsNullOrWhiteSpace(FieldFilter) || (field?.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
+
+    private bool MatchesViolationFilter<T>(T item) where T : notnull
+    {
+        var field = item.GetType().GetProperty("FieldName")?.GetValue(item)?.ToString();
+        return string.IsNullOrWhiteSpace(FieldFilter) || (field?.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
     private static string FormatScore(double? value) => value.HasValue ? value.Value.ToString("F1") : "-";
