@@ -268,6 +268,71 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         return result;
     }
 
+    /// <inheritdoc />
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var idText = id.ToString("D");
+        await s_writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = connection.BeginTransaction();
+            try
+            {
+                // 级联清理：与作业相关的质量与运营表（表可能尚未创建时忽略）
+                foreach (var sql in new[]
+                {
+                    "DELETE FROM quality_issue_responsibilities WHERE job_id = $id",
+                    "DELETE FROM QualityIssueRemediations WHERE JobId = $id",
+                    "DELETE FROM quality_issues WHERE job_id = $id",
+                    "DELETE FROM field_quality_snapshots WHERE job_id = $id",
+                    "DELETE FROM quality_snapshots WHERE job_id = $id",
+                    "DELETE FROM webhook_deliveries WHERE job_id = $id",
+                    "DELETE FROM analysis_jobs WHERE id = $id",
+                })
+                {
+                    try
+                    {
+                        await using var cmd = connection.CreateCommand();
+                        cmd.Transaction = transaction;
+                        cmd.CommandText = sql;
+                        cmd.Parameters.AddWithValue("$id", idText);
+                        await cmd.ExecuteNonQueryAsync(cancellationToken);
+                    }
+                    catch (SqliteException ex) when (ex.SqliteErrorCode == 1 &&
+                        (ex.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // 可选表尚未初始化，跳过
+                    }
+                }
+
+                // 以 analysis_jobs 删除行数判断是否真正删到了作业
+                await using var check = connection.CreateCommand();
+                check.Transaction = transaction;
+                check.CommandText = "SELECT changes()";
+                // changes() is last statement; re-run delete on analysis_jobs and check
+                await using var delJob = connection.CreateCommand();
+                delJob.Transaction = transaction;
+                delJob.CommandText = "DELETE FROM analysis_jobs WHERE id = $id";
+                delJob.Parameters.AddWithValue("$id", idText);
+                var removed = await delJob.ExecuteNonQueryAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+                return removed > 0;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
+            }
+        }
+        finally
+        {
+            s_writeLock.Release();
+        }
+    }
+
     private static AnalysisJob ReadJob(SqliteDataReader reader)
     {
         return new AnalysisJob
