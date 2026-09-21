@@ -68,7 +68,13 @@ public sealed class LocalAnalysisService
 
                     try
                     {
-                        int exitCode = await Task.Run(() => AnalysisRunner.Run(options), token);
+                        int exitCode = await Task.Run(
+                            () => AnalysisRunner.Run(options, token),
+                            token);
+
+                        if (exitCode == 2 && token.IsCancellationRequested)
+                            throw new OperationCanceledException(token);
+
                         if (exitCode != 0)
                             throw new AnalysisExecutionException(exitCode);
 
