@@ -131,6 +131,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_viewModel.EnableFuzzyDedup && string.IsNullOrWhiteSpace(_viewModel.FuzzyDedupField))
+        {
+            MessageBox.Show(this, "启用模糊去重后，请填写目标字段，例如 name。", "无法开始分析",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         string reportPath = BuildReportPath(inputPath);
         _viewModel.SetRunning(reportPath);
         _viewModel.ClearOutput();
@@ -147,6 +154,7 @@ public partial class MainWindow : Window
                 message => Dispatcher.Invoke(() => _viewModel.AppendOutput(message)),
                 value => Dispatcher.Invoke(() => _viewModel.SetProgress(value)),
                 _platformService,
+                _viewModel.BuildAdvancedOptions(),
                 cancellation.Token);
 
             if (result.ExitCode == 0 && result.Result is not null)
