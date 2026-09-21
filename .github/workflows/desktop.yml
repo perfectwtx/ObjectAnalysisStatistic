@@ -1,0 +1,62 @@
+name: Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/ObjectAnalyzer.Desktop/**'
+      - 'src/ObjectAnalyzer.Core/**'
+      - '.github/workflows/desktop.yml'
+
+jobs:
+  publish-desktop:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ObjectAnalyzer.sln
+
+      - name: Publish Desktop
+        run: >
+          dotnet publish
+          src/ObjectAnalyzer.Desktop/ObjectAnalyzer.Desktop.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          --no-restore
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o artifacts/desktop/win-x64
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          $packageRoot = "artifacts/desktop/win-x64"
+          $zip = "artifacts/ObjectAnalyzer-Desktop-win-x64.zip"
+
+          if (Test-Path $zip) {
+            Remove-Item $zip -Force
+          }
+
+          Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
+
+      - name: Upload Desktop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ObjectAnalyzer-Desktop-win-x64
+          path: artifacts/ObjectAnalyzer-Desktop-win-x64.zip
+          if-no-files-found: error
