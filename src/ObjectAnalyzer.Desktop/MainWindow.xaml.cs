@@ -235,7 +235,7 @@ public partial class MainWindow : Window
     }
 
     private static string EscapeCsv(string value) =>
-        value.IndexOfAny([',', '"', '\\n', '\\r']) < 0
+        value.IndexOfAny([',', '"', '\n', '\r']) < 0
             ? value
             : "\"" + value.Replace("\"", "\"\"") + "\"";
 
