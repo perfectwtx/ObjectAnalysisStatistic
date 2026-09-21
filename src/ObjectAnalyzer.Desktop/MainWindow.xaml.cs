@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
+using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Desktop.ViewModels;
 using ObjectAnalyzer.Platform;
@@ -17,6 +18,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel = new();
     private readonly LocalAnalysisService _analysisService = new();
     private readonly DesktopPlatformService _platformService = new();
+    private CancellationTokenSource? _analysisCancellation;
 
     public MainWindow()
     {
@@ -72,6 +74,9 @@ public partial class MainWindow : Window
         OutputTextBox.Clear();
         BindCollections();
 
+        var cancellation = new CancellationTokenSource();
+        _analysisCancellation = cancellation;
+
         try
         {
             var result = await _analysisService.AnalyzeAsync(
@@ -87,7 +92,8 @@ public partial class MainWindow : Window
                     _viewModel.SetProgress(value);
                     AnalysisProgress.Value = _viewModel.Progress;
                 }),
-                _platformService);
+                _platformService,
+                cancellation.Token);
 
             if (result.ExitCode == 0 && result.Result is not null)
             {
@@ -112,9 +118,30 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (ReferenceEquals(_analysisCancellation, cancellation))
+                _analysisCancellation = null;
+            cancellation.Dispose();
+
             SetBusy(false);
             RefreshReportHistory();
+            try
+            {
+                await RefreshPlatformDataAsync();
+            }
+            catch
+            {
+                // 分析结果已经完成，历史刷新失败不阻断主流程。
+            }
         }
+    }
+
+    private void CancelAnalysis_Click(object sender, RoutedEventArgs e)
+    {
+        if (_analysisCancellation is null)
+            return;
+
+        _viewModel.SetStatus("正在取消分析...");
+        _analysisCancellation.Cancel();
     }
 
     private void LoadReport(string reportPath)
@@ -427,6 +454,7 @@ public partial class MainWindow : Window
     private void SetBusy(bool busy)
     {
         AnalyzeButton.IsEnabled = !busy;
+        CancelButton.IsEnabled = busy;
         InputPathTextBox.IsEnabled = !busy;
         FooterTextBlock.Text = busy
             ? "Object Analyzer Desktop · 正在执行本地分析"
