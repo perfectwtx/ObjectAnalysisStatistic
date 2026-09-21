@@ -56,6 +56,7 @@ api.MapQualityBaselineApi();
 api.MapDataLineageEndpoints();
 api.MapImpactAnalysisEndpoints();
 api.MapAnalysisHistoryApi();
+api.MapAnalysisJobDeleteApi();
 api.MapQualityApi();
 api.MapIssueApi();
 api.MapAlertRuleApi();
