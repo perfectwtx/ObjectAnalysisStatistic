@@ -28,9 +28,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore solution
-        run: dotnet restore ObjectAnalyzer.sln
-
       - name: Restore Desktop runtime assets
         run: >
           dotnet restore
