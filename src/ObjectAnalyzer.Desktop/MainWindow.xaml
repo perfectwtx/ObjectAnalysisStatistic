@@ -36,6 +36,7 @@
                              AllowDrop="True"
                              DragOver="InputPathTextBox_DragOver"
                              Drop="InputPathTextBox_Drop"/>
+                    <views:AnalysisOptionsView/> 
                     <Grid Margin="0,8,12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
