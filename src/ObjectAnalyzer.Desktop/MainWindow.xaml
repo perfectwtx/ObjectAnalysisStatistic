@@ -85,7 +85,7 @@
             <TabItem Header="血缘 / 影响 / 回归">
                 <Grid Margin="0,10,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,10">
-                        <Button Content="数据血缘" Click="ShowLineage_Click"/><Button Content="影响分析" Click="ShowImpact_Click"/><Button Content="Schema Impact" Click="ShowSchemaImpact_Click"/><Button Content="回归分析" Click="ShowRegression_Click"/>
+                        <Button Content="数据血缘" Click="ShowLineage_Click"/><Button Content="影响分析" Click="ShowImpact_Click"/><Button Content="Schema Impact" Click="ShowSchemaImpact_Click"/><Button Content="回归分析" Click="ShowRegression_Click"/><Button Content="质量基线" Click="ShowBaseline_Click"/>
                     </WrapPanel>
                     <TextBox Grid.Row="1" x:Name="InsightTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Background="White" BorderBrush="#D0D5DD" Padding="14" FontFamily="Cascadia Mono"/>
                 </Grid>
