@@ -231,7 +231,7 @@ public sealed class DesktopFieldRow
     {
         FieldName = source.FieldName;
         PrimaryType = source.PrimaryType;
-        CoverageText = $"{source.Coverage:P1}";
+        CoverageText = source.Coverage.ToString("P1", CultureInfo.InvariantCulture);
         Count = source.Count;
         NullCount = source.NullCount;
         DistinctCount = source.DistinctCount;
@@ -280,8 +280,8 @@ public sealed class DesktopReportRow
         Name = file.Name;
         TimeText = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         SizeText = file.Length < 1024 * 1024
-            ? $"{file.Length / 1024d:N1} KB"
-            : $"{file.Length / 1024d / 1024d:N1} MB";
+            ? $"{(file.Length / 1024d).ToString("N1", CultureInfo.InvariantCulture)} KB"
+            : $"{(file.Length / 1024d / 1024d).ToString("N1", CultureInfo.InvariantCulture)} MB";
     }
 }
 
@@ -302,12 +302,12 @@ public sealed class DesktopQualitySnapshotRow
     {
         SourceName = snapshot.SourceName;
         TimeText = snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        OverallText = $"{snapshot.Metrics.OverallScore:F2}";
-        CompletenessText = $"{snapshot.Metrics.Completeness:F2}";
-        ValidityText = $"{snapshot.Metrics.Validity:F2}";
-        UniquenessText = $"{snapshot.Metrics.Uniqueness:F2}";
-        ConsistencyText = $"{snapshot.Metrics.Consistency:F2}";
-        AnomalyControlText = $"{snapshot.Metrics.AnomalyControl:F2}";
+        OverallText = snapshot.Metrics.OverallScore.ToString("F2", CultureInfo.InvariantCulture);
+        CompletenessText = snapshot.Metrics.Completeness.ToString("F2", CultureInfo.InvariantCulture);
+        ValidityText = snapshot.Metrics.Validity.ToString("F2", CultureInfo.InvariantCulture);
+        UniquenessText = snapshot.Metrics.Uniqueness.ToString("F2", CultureInfo.InvariantCulture);
+        ConsistencyText = snapshot.Metrics.Consistency.ToString("F2", CultureInfo.InvariantCulture);
+        AnomalyControlText = snapshot.Metrics.AnomalyControl.ToString("F2", CultureInfo.InvariantCulture);
         TotalObjects = snapshot.TotalObjects;
         IssueCount = snapshot.IssueCount;
     }
