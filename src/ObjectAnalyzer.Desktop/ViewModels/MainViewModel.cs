@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.ViewModels;
@@ -27,6 +28,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _minimumUniqueness = "90";
     private string _minimumConsistency = "90";
     private string _minimumAnomalyControl = "90";
+    private bool _enableCorrelation;
+    private bool _enableStringPatterns;
+    private bool _enableUnicodeHygiene;
+    private bool _enableTimeSeries;
+    private bool _enableFuzzyDedup;
+    private string _fuzzyDedupField = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -56,6 +63,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string MinimumUniqueness { get => _minimumUniqueness; set => Set(ref _minimumUniqueness, value); }
     public string MinimumConsistency { get => _minimumConsistency; set => Set(ref _minimumConsistency, value); }
     public string MinimumAnomalyControl { get => _minimumAnomalyControl; set => Set(ref _minimumAnomalyControl, value); }
+
+    public bool EnableCorrelation { get => _enableCorrelation; set => Set(ref _enableCorrelation, value); }
+    public bool EnableStringPatterns { get => _enableStringPatterns; set => Set(ref _enableStringPatterns, value); }
+    public bool EnableUnicodeHygiene { get => _enableUnicodeHygiene; set => Set(ref _enableUnicodeHygiene, value); }
+    public bool EnableTimeSeries { get => _enableTimeSeries; set => Set(ref _enableTimeSeries, value); }
+    public bool EnableFuzzyDedup { get => _enableFuzzyDedup; set => Set(ref _enableFuzzyDedup, value); }
+    public string FuzzyDedupField { get => _fuzzyDedupField; set => Set(ref _fuzzyDedupField, value); }
+
+    public AdvancedAnalysisOptions BuildAdvancedOptions() => new()
+    {
+        EnableCorrelation = EnableCorrelation,
+        EnableStringPatterns = EnableStringPatterns,
+        EnableUnicodeHygiene = EnableUnicodeHygiene,
+        EnableTimeSeries = EnableTimeSeries,
+        FuzzyDedupField = EnableFuzzyDedup && !string.IsNullOrWhiteSpace(FuzzyDedupField)
+            ? FuzzyDedupField.Trim()
+            : null
+    };
 
     public ObservableCollection<DesktopFieldRow> Fields { get; } = new();
     public ObservableCollection<DesktopDuplicateRow> Duplicates { get; } = new();
