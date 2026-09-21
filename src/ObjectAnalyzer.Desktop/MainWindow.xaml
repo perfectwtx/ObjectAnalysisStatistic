@@ -96,10 +96,10 @@
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="质量基线" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="按数据源保存最低质量阈值，并可立即评估当前分析结果。" Foreground="#667085" Margin="0,5,0,10"/></StackPanel>
-                            <Grid Grid.Row="1">
+                            <Grid Grid.Row="1" Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Text="{Binding BaselineSourceName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,6" ToolTip="数据源名称"/>
-                                <TextBox Grid.Column="1" Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,6" ToolTip="OverallScore"/>
+                                <TextBox Grid.Column="1" Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,6" ToolTip="Overall"/>
                                 <TextBox Grid.Column="2" Text="{Binding MinimumCompleteness, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,6" ToolTip="Completeness"/>
                                 <TextBox Grid.Column="3" Text="{Binding MinimumValidity, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,6" ToolTip="Validity"/>
                                 <TextBox Grid.Column="4" Text="{Binding MinimumUniqueness, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,6" ToolTip="Uniqueness"/>
@@ -107,7 +107,7 @@
                                 <TextBox Grid.Column="6" Text="{Binding MinimumAnomalyControl, UpdateSourceTrigger=PropertyChanged}" ToolTip="AnomalyControl"/>
                             </Grid>
                             <WrapPanel Grid.Row="2" VerticalAlignment="Top">
-                                <TextBlock Text="数据源" Margin="0,7,5,0"/><TextBlock Text="Overall" Margin="0,7,5,0"/><TextBlock Text="完整性" Margin="0,7,5,0"/><TextBlock Text="有效性" Margin="0,7,5,0"/><TextBlock Text="唯一性" Margin="0,7,5,0"/><TextBlock Text="一致性" Margin="0,7,5,0"/><TextBlock Text="异常控制" Margin="0,7,12,0"/>
+                                <TextBlock Text="数据源 / Overall / 完整性 / 有效性 / 唯一性 / 一致性 / 异常控制" Foreground="#667085" Margin="0,7,12,0"/>
                                 <Button Content="读取基线" Click="LoadBaseline_Click"/><Button Content="保存基线" Click="SaveBaseline_Click"/><Button Content="删除基线" Click="DeleteBaseline_Click"/><Button Content="评估当前结果" Click="EvaluateBaseline_Click"/>
                             </WrapPanel>
                         </Grid>
@@ -139,20 +139,20 @@
             </TabItem>
 
             <TabItem Header="作业中心">
-                <Border Margin="0,10,0,0" Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="10" Padding="12">
-                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                        <WrapPanel Margin="0,0,0,10"><TextBlock Text="作业历史" FontSize="17" FontWeight="SemiBold" Margin="0,5,16,0"/><Button Content="刷新作业" Click="RefreshJobs_Click"/></WrapPanel>
-                        <DataGrid Grid.Row="1" x:Name="JobGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MouseDoubleClick="JobGrid_DoubleClick">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="开始时间" Binding="{Binding StartedText}" Width="150"/><DataGridTextColumn Header="数据源" Binding="{Binding SourceName}" Width="230"/>
-                                <DataGridTextColumn Header="类型" Binding="{Binding SourceType}" Width="80"/><DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="80"/>
-                                <DataGridTextColumn Header="对象数" Binding="{Binding TotalObjects}" Width="90"/><DataGridTextColumn Header="字段数" Binding="{Binding FieldCount}" Width="80"/>
-                                <DataGridTextColumn Header="质量分" Binding="{Binding QualityScoreText}" Width="80"/><DataGridTextColumn Header="问题数" Binding="{Binding IssueCount}" Width="80"/>
-                                <DataGridTextColumn Header="耗时" Binding="{Binding DurationText}" Width="100"/><DataGridTextColumn Header="错误" Binding="{Binding ErrorMessage}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Grid>
-                </Border>
+                <Grid Margin="0,10,0,0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,10"><TextBlock Text="作业历史" FontSize="17" FontWeight="SemiBold" Margin="0,5,16,0"/><Button Content="刷新作业" Click="RefreshJobs_Click"/></WrapPanel>
+                    <DataGrid Grid.Row="1" x:Name="JobGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" MouseDoubleClick="JobGrid_DoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="开始时间" Binding="{Binding StartedText}" Width="150"/><DataGridTextColumn Header="数据源" Binding="{Binding SourceName}" Width="230"/>
+                            <DataGridTextColumn Header="类型" Binding="{Binding SourceType}" Width="80"/><DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="80"/>
+                            <DataGridTextColumn Header="对象数" Binding="{Binding TotalObjects}" Width="90"/><DataGridTextColumn Header="字段数" Binding="{Binding FieldCount}" Width="80"/>
+                            <DataGridTextColumn Header="质量分" Binding="{Binding QualityScoreText}" Width="80"/><DataGridTextColumn Header="问题数" Binding="{Binding IssueCount}" Width="80"/>
+                            <DataGridTextColumn Header="耗时" Binding="{Binding DurationText}" Width="100"/><DataGridTextColumn Header="错误" Binding="{Binding ErrorMessage}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="2" x:Name="JobDetailsTextBlock" Text="双击作业查看详细信息。" Foreground="#667085" TextWrapping="Wrap" Margin="4,10,4,0"/>
+                </Grid>
             </TabItem>
 
             <TabItem Header="报告">
