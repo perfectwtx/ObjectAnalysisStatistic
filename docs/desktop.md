@@ -38,6 +38,8 @@ JSON 报告保留为独立文件，便于复制、归档和重新加载。
 
 推荐使用仓库中的 PowerShell 脚本：
 
+发布包中已经同时包含安装和卸载脚本。安装使用当前用户目录，不需要管理员权限。
+
 ```powershell
 ./scripts/publish-desktop.ps1
 ```
@@ -71,8 +73,34 @@ artifacts/
 ObjectAnalyzer-Desktop-win-x64
 ```
 
+## 安装与卸载
+
+解压 Windows ZIP 后，在包目录执行：
+
+```powershell
+./install-desktop.ps1
+```
+
+安装到：
+
+```text
+%LOCALAPPDATA%/Programs/ObjectAnalyzer
+```
+
+同时创建开始菜单快捷方式。
+
+卸载：
+
+```powershell
+./uninstall-desktop.ps1
+```
+
+当前安装流程只使用当前用户目录，不写入系统范围的 Program Files，也不要求管理员权限。
+
 ## 发布范围
 
-当前发布方式是 ZIP 绿色版，不写入系统安装器，也不修改注册表。
+当前发布方式是 ZIP + 用户级 PowerShell 安装脚本。它不依赖注册表安装机制。
+
+后续需要企业部署或标准“下一步 / 安装”体验时，可以在现有发布目录基础上增加 MSIX、WiX MSI 或其他 Windows 安装器，而不需要修改 Desktop 的分析逻辑。
 
 后续需要正式安装体验时，可以在这个发布目录基础上增加 MSIX、WiX MSI 或其他 Windows 安装器，而不需要修改 Desktop 的分析逻辑。
