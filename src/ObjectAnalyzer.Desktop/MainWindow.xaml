@@ -12,13 +12,14 @@
 
         <Border Grid.Row="1" Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
             <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="分析文件" FontWeight="SemiBold" Foreground="#344054"/>
                     <TextBox x:Name="InputPathTextBox" Text="{Binding InputPath, UpdateSourceTrigger=PropertyChanged}" Margin="0,7,12,0" Height="36" FontSize="14" VerticalContentAlignment="Center"/>
                 </StackPanel>
                 <Button Grid.Column="1" Content="选择文件" Click="SelectFile_Click" VerticalAlignment="Bottom" Height="36" Margin="0,0,8,0"/>
                 <Button Grid.Column="2" x:Name="AnalyzeButton" Content="开始分析" Click="Analyze_Click" VerticalAlignment="Bottom" Height="36" Padding="18,0" Background="#2563EB" Foreground="White"/>
+                <Button Grid.Column="3" x:Name="CancelButton" Content="取消分析" Click="CancelAnalysis_Click" VerticalAlignment="Bottom" Height="36" Margin="8,0,0,0" IsEnabled="False"/>
             </Grid>
         </Border>
 
