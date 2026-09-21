@@ -280,7 +280,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
             await using var transaction = connection.BeginTransaction();
             try
             {
-                // 级联清理：与作业相关的质量与运营表（表可能尚未创建时忽略）
+                // 先删关联表（表可能尚未创建时忽略）
                 foreach (var sql in new[]
                 {
                     "DELETE FROM quality_issue_responsibilities WHERE job_id = $id",
@@ -289,7 +289,6 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                     "DELETE FROM field_quality_snapshots WHERE job_id = $id",
                     "DELETE FROM quality_snapshots WHERE job_id = $id",
                     "DELETE FROM webhook_deliveries WHERE job_id = $id",
-                    "DELETE FROM analysis_jobs WHERE id = $id",
                 })
                 {
                     try
@@ -301,17 +300,12 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                         await cmd.ExecuteNonQueryAsync(cancellationToken);
                     }
                     catch (SqliteException ex) when (ex.SqliteErrorCode == 1 &&
-                        (ex.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase)))
+                        ex.Message.Contains("no such table", StringComparison.OrdinalIgnoreCase))
                     {
                         // 可选表尚未初始化，跳过
                     }
                 }
 
-                // 以 analysis_jobs 删除行数判断是否真正删到了作业
-                await using var check = connection.CreateCommand();
-                check.Transaction = transaction;
-                check.CommandText = "SELECT changes()";
-                // changes() is last statement; re-run delete on analysis_jobs and check
                 await using var delJob = connection.CreateCommand();
                 delJob.Transaction = transaction;
                 delJob.CommandText = "DELETE FROM analysis_jobs WHERE id = $id";
