@@ -61,11 +61,12 @@ public partial class WorkspaceView : UserControl
     private static void OpenDirectory(string path)
     {
         Directory.CreateDirectory(path);
-        Process.Start(new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
             FileName = "explorer.exe",
-            Arguments = $"\\"{path}\\"",
             UseShellExecute = true
-        });
+        };
+        startInfo.ArgumentList.Add(path);
+        Process.Start(startInfo);
     }
 }
