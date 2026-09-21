@@ -69,6 +69,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         IsBusy = true;
         Progress = 0;
         ReportPath = reportPath;
+        OnPropertyChanged(nameof(HasReport));
         SetStatus("正在分析...");
     }
 
