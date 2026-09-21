@@ -9,6 +9,11 @@ namespace ObjectAnalyzer.Desktop;
 
 public partial class MainWindow : Window
 {
+    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".json", ".jsonl", ".csv", ".xlsx", ".xls", ".xml", ".yaml", ".yml", ".gz", ".bz2", ".zip"
+    };
+
     private readonly MainViewModel _viewModel = new();
     private readonly DesktopPlatformService _platformService = new();
     private CancellationTokenSource? _analysisCancellation;
@@ -34,6 +39,7 @@ public partial class MainWindow : Window
         try
         {
             await RefreshPlatformDataAsync();
+            _viewModel.SetRecentFiles(RecentFilesService.Load());
             RefreshReportHistory();
             await LoadBaselineAsync();
         }
@@ -54,10 +60,66 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog(this) == true)
         {
-            _viewModel.InputPath = dialog.FileName;
-            _viewModel.SetStatus("已选择文件，等待开始分析");
+            SetInputFile(dialog.FileName, "已选择文件，等待开始分析");
         }
     }
+
+    private void InputPathTextBox_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void InputPathTextBox_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            return;
+
+        var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+        string? path = files?.FirstOrDefault(IsSupportedFile);
+        if (path is null)
+        {
+            MessageBox.Show(this, "拖入的文件格式不受支持。", "无法选择文件",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SetInputFile(path, "已通过拖拽选择文件，等待开始分析");
+    }
+
+    private void RecentFiles_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ComboBox comboBox
+            || comboBox.SelectedItem is not string path)
+            return;
+
+        comboBox.SelectedItem = null;
+        if (!File.Exists(path))
+        {
+            _viewModel.SetRecentFiles(_viewModel.RecentFiles.Where(File.Exists));
+            RecentFilesService.Save(_viewModel.RecentFiles);
+            _viewModel.SetStatus("最近文件已失效，请重新选择文件");
+            return;
+        }
+
+        SetInputFile(path, "已从最近文件载入，等待开始分析");
+    }
+
+    private void SetInputFile(string path, string status)
+    {
+        if (!IsSupportedFile(path))
+            return;
+
+        _viewModel.InputPath = Path.GetFullPath(path);
+        _viewModel.AddRecentFile(_viewModel.InputPath);
+        RecentFilesService.Save(_viewModel.RecentFiles);
+        _viewModel.SetStatus(status);
+    }
+
+    private static bool IsSupportedFile(string path) =>
+        File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path));
 
     private async void Analyze_Click(object sender, RoutedEventArgs e)
     {
@@ -89,6 +151,8 @@ public partial class MainWindow : Window
 
             if (result.ExitCode == 0 && result.Result is not null)
             {
+                _viewModel.AddRecentFile(inputPath);
+                RecentFilesService.Save(_viewModel.RecentFiles);
                 _viewModel.SetCompleted(result.Result);
                 await RefreshPlatformDataAsync();
                 await LoadBaselineAsync();
