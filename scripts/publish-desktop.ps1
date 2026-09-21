@@ -44,6 +44,9 @@ try {
         throw "dotnet publish failed with exit code $LASTEXITCODE"
     }
 
+    Copy-Item (Join-Path $repoRoot "scripts/install-desktop.ps1") $output -Force
+    Copy-Item (Join-Path $repoRoot "scripts/uninstall-desktop.ps1") $output -Force
+
     Compress-Archive -Path "$output/*" -DestinationPath $zip -CompressionLevel Optimal
 }
 finally {
