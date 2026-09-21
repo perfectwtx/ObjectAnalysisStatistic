@@ -19,7 +19,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalyzer.Core", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalyzer.Api", "src\ObjectAnalyzer.Api\ObjectAnalyzer.Api.csproj", "{4D98B9B3-8FC4-49A5-8F07-D3C4EA88116B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalyzer.Desktop", "src\\ObjectAnalyzer.Desktop\\ObjectAnalyzer.Desktop.csproj", "{7F3D8B9A-7C21-4B2F-9C4D-6F2D2A7C91E4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalyzer.Desktop", "src\ObjectAnalyzer.Desktop\ObjectAnalyzer.Desktop.csproj", "{7F3D8B9A-7C21-4B2F-9C4D-6F2D2A7C91E4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectAnalyzer.Api.Tests", "tests\ObjectAnalyzer.Api.Tests\ObjectAnalyzer.Api.Tests.csproj", "{1455D18D-DAC3-4875-BB9A-A3A59A236BD8}"
 EndProject
