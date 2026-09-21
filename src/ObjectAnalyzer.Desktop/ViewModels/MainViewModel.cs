@@ -63,6 +63,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<DesktopReportRow> Reports { get; } = new();
     public ObservableCollection<DesktopQualitySnapshotRow> QualityTrend { get; } = new();
     public ObservableCollection<DesktopJobRow> Jobs { get; } = new();
+    public ObservableCollection<string> RecentFiles { get; } = new();
 
     public void SetRunning(string reportPath)
     {
@@ -215,6 +216,32 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public void SetStatus(string value) => Status = value;
+
+    public void SetRecentFiles(IEnumerable<string> paths)
+    {
+        RecentFiles.Clear();
+        foreach (var path in paths.Take(10))
+            RecentFiles.Add(path);
+    }
+
+    public bool AddRecentFile(string path)
+    {
+        if (!File.Exists(path))
+            return false;
+
+        string normalized = Path.GetFullPath(path);
+        for (int index = RecentFiles.Count - 1; index >= 0; index--)
+        {
+            if (string.Equals(RecentFiles[index], normalized, StringComparison.OrdinalIgnoreCase))
+                RecentFiles.RemoveAt(index);
+        }
+
+        RecentFiles.Insert(0, normalized);
+        while (RecentFiles.Count > 10)
+            RecentFiles.RemoveAt(RecentFiles.Count - 1);
+
+        return true;
+    }
 
     private void RaiseResultStateChanged()
     {
