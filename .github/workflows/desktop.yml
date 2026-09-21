@@ -28,8 +28,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
+      - name: Restore solution
         run: dotnet restore ObjectAnalyzer.sln
+
+      - name: Restore Desktop runtime assets
+        run: >
+          dotnet restore
+          src/ObjectAnalyzer.Desktop/ObjectAnalyzer.Desktop.csproj
+          -r win-x64
+          --self-contained true
 
       - name: Publish Desktop
         run: >
