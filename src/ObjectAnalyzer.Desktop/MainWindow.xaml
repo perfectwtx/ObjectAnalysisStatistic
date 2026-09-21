@@ -31,7 +31,23 @@
                     <TextBox x:Name="InputPathTextBox"
                              Text="{Binding InputPath, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,7,12,0" Height="36" FontSize="14"
-                             VerticalContentAlignment="Center"/>
+                             VerticalContentAlignment="Center"
+                             AllowDrop="True"
+                             DragOver="InputPathTextBox_DragOver"
+                             Drop="InputPathTextBox_Drop"/>
+                    <Grid Margin="0,8,12,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="最近文件" Foreground="#667085" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  Margin="10,0,0,0"
+                                  ItemsSource="{Binding RecentFiles}"
+                                  SelectionChanged="RecentFiles_SelectionChanged"
+                                  MaxDropDownHeight="220"
+                                  ToolTip="选择最近分析过的文件"/>
+                    </Grid>
                 </StackPanel>
                 <Button Grid.Column="1" Content="选择文件" Click="SelectFile_Click"
                         VerticalAlignment="Bottom" Height="36" Margin="0,0,8,0"/>
