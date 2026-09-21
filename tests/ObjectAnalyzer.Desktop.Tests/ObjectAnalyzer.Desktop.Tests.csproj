@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="....srcObjectAnalyzer.DesktopObjectAnalyzer.Desktop.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Desktop/ObjectAnalyzer.Desktop.csproj" />
   </ItemGroup>
 
 </Project>
