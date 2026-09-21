@@ -14,9 +14,9 @@ public partial class WorkspaceView : UserControl
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ObjectAnalyzer");
 
-    private string DatabasePath => Path.Combine(DataDirectory, "object-analyzer.db");
+    private static string DatabasePath => Path.Combine(DataDirectory, "object-analyzer.db");
 
-    private string ReportsDirectory => Path.Combine(DataDirectory, "Reports");
+    private static string ReportsDirectory => Path.Combine(DataDirectory, "Reports");
 
     public WorkspaceView()
     {
