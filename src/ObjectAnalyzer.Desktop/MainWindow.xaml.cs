@@ -17,7 +17,6 @@ namespace ObjectAnalyzer.Desktop;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel = new();
-    private readonly LocalAnalysisService _analysisService = new();
     private readonly DesktopPlatformService _platformService = new();
     private CancellationTokenSource? _analysisCancellation;
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
@@ -81,7 +80,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var result = await _analysisService.AnalyzeAsync(
+            var result = await LocalAnalysisService.AnalyzeAsync(
                 inputPath,
                 reportPath,
                 message => Dispatcher.Invoke(() =>
