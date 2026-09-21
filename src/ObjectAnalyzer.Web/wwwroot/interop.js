@@ -118,6 +118,8 @@ window.objectAnalyzer = {
     if (window.__objectAnalyzerScrollRestorationInitialized) return;
     window.__objectAnalyzerScrollRestorationInitialized = true;
 
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
     const scrollToTop = () => {
         window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     };
