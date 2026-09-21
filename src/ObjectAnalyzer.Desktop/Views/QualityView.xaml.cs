@@ -8,6 +8,8 @@ namespace ObjectAnalyzer.Desktop.Views;
 
 public partial class QualityView : UserControl
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     public event EventHandler? LoadBaselineRequested;
     public event EventHandler? SaveBaselineRequested;
     public event EventHandler? DeleteBaselineRequested;
@@ -46,7 +48,7 @@ public partial class QualityView : UserControl
 
         EvaluationTextBox.Text = JsonSerializer.Serialize(
             evaluation,
-            new JsonSerializerOptions { WriteIndented = true });
+            s_jsonOptions);
 
         viewModel.SetStatus(evaluation.Passed
             ? "当前分析结果通过质量基线"
