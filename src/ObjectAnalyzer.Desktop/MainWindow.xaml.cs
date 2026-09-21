@@ -13,6 +13,8 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel = new();
     private readonly LocalAnalysisService _analysisService = new();
+    private readonly ReportHistoryService _reportHistoryService = new();
+    private readonly DesktopQualityBaselineService _baselineService = new();
 
     public MainWindow()
     {
@@ -33,8 +35,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             _viewModel.InputPath = dialog.FileName;
-            _viewModel.StatusText = "已选择文件，等待开始分析";
-            StatusTextBlock.Text = _viewModel.StatusText;
+            SetStatusText("已选择文件，等待开始分析");
         }
     }
 
@@ -77,15 +78,18 @@ public partial class MainWindow : Window
             else
             {
                 _viewModel.SetFailed($"分析结束，退出码 {result.ExitCode}");
+                SetStatusText(_viewModel.Status);
             }
         }
         catch (OperationCanceledException)
         {
             _viewModel.SetFailed("分析已取消");
+            SetStatusText(_viewModel.Status);
         }
         catch (Exception ex)
         {
             _viewModel.SetFailed(ex.Message);
+            SetStatusText(_viewModel.Status);
             OutputTextBox.AppendText($"错误: {ex.Message}{Environment.NewLine}");
         }
         finally
@@ -122,6 +126,19 @@ public partial class MainWindow : Window
         ExportCsvButton.IsEnabled = _viewModel.Result is not null;
         DeepAnalysisTextBox.Text = "请选择上方分析维度。\r\n\r\n未启用的深度分析会明确显示“未生成”。";
         InsightTextBox.Text = "请选择上方分析维度。\r\n\r\n当前页面基于本地 AnalysisResult 展示分析结果。";
+
+        var sourceName = Path.GetFileNameWithoutExtension(reportPath);
+        SetStatusText(_viewModel.GetQualityBaselineText(sourceName));
+        DuplicateSummaryText.Text = BuildReportSummary();
+    }
+
+    private string BuildReportSummary()
+    {
+        var metrics = _viewModel.GetQualityMetrics();
+        if (metrics is null)
+            return "暂无分析结果。";
+
+        return $"质量总分 {metrics.OverallScore:F1} · 完整性 {metrics.Completeness:F1} · 有效性 {metrics.Validity:F1} · 唯一性 {metrics.Uniqueness:F1} · 一致性 {metrics.Consistency:F1} · 异常控制 {metrics.AnomalyControl:F1}";
     }
 
     private void BindCollections()
@@ -165,7 +182,35 @@ public partial class MainWindow : Window
         InsightTextBox.Text = _viewModel.GetInsight("Schema Impact", _viewModel.Result?.SchemaDiff);
 
     private void ShowRegression_Click(object sender, RoutedEventArgs e) =>
-        InsightTextBox.Text = _viewModel.GetInsight("质量回归 / 分布漂移", _viewModel.Result?.DistributionDiff);
+        InsightTextBox.Text = _viewModel.GetQualityTrend(_viewModel.Reports);
+
+    private void ShowBaseline_Click(object sender, RoutedEventArgs e)
+    {
+        var sourceName = Path.GetFileNameWithoutExtension(_viewModel.ReportPath);
+        var baseline = _baselineService.Load(sourceName);
+        var metrics = _viewModel.GetQualityMetrics();
+        if (metrics is null)
+        {
+            InsightTextBox.Text = "质量基线\r\n\r\n当前没有分析结果。";
+            return;
+        }
+
+        var evaluation = DesktopQualityBaselineService.Evaluate(baseline, metrics);
+        var lines = evaluation.Failures.Count == 0
+            ? "所有基线指标均达到阈值。"
+            : string.Join(Environment.NewLine, evaluation.Failures.Select(x => $"• {x.Metric}: 实际 {x.Actual:F1}，最低 {x.Minimum:F1}"));
+
+        InsightTextBox.Text =
+            $"质量基线：{baseline.SourceName}\r\n\r\n" +
+            $"结果：{(evaluation.Passed ? "通过" : "未通过")}\r\n" +
+            $"质量总分：{metrics.OverallScore:F1}\r\n" +
+            $"完整性：{metrics.Completeness:F1}\r\n" +
+            $"有效性：{metrics.Validity:F1}\r\n" +
+            $"唯一性：{metrics.Uniqueness:F1}\r\n" +
+            $"一致性：{metrics.Consistency:F1}\r\n" +
+            $"异常控制：{metrics.AnomalyControl:F1}\r\n\r\n" +
+            lines;
+    }
 
     private void OpenReport_Click(object sender, RoutedEventArgs e)
     {
@@ -186,14 +231,8 @@ public partial class MainWindow : Window
     private void RefreshReportHistory()
     {
         _viewModel.ClearReports();
-        string directory = GetReportDirectory();
-        if (Directory.Exists(directory))
-        {
-            foreach (var path in Directory.EnumerateFiles(directory, "*.json")
-                         .OrderByDescending(File.GetLastWriteTime)
-                         .Take(100))
-                _viewModel.AddReport(path);
-        }
+        foreach (var report in _reportHistoryService.GetReports())
+            _viewModel.AddReport(report);
         BindCollections();
     }
 
@@ -230,8 +269,7 @@ public partial class MainWindow : Window
         }
 
         File.WriteAllText(dialog.FileName, sb.ToString(), new UTF8Encoding(true));
-        _viewModel.StatusText = $"CSV 已导出：{dialog.FileName}";
-        StatusTextBlock.Text = _viewModel.StatusText;
+        SetStatusText($"CSV 已导出：{dialog.FileName}");
     }
 
     private static string EscapeCsv(string value) =>
@@ -241,13 +279,10 @@ public partial class MainWindow : Window
 
     private static string BuildReportPath(string inputPath)
     {
-        string directory = GetReportDirectory();
+        string directory = ReportHistoryService.GetReportDirectory();
         Directory.CreateDirectory(directory);
         return Path.Combine(directory, $"{Path.GetFileNameWithoutExtension(inputPath)}-{DateTime.Now:yyyyMMdd-HHmmss}.json");
     }
-
-    private static string GetReportDirectory() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ObjectAnalyzer", "Reports");
 
     private void SetBusy(bool busy)
     {
@@ -257,4 +292,6 @@ public partial class MainWindow : Window
             ? "Object Analyzer Desktop · 正在执行本地分析"
             : "Object Analyzer Desktop · .NET 10 · WPF";
     }
+
+    private void SetStatusText(string text) => StatusTextBlock.Text = text;
 }
