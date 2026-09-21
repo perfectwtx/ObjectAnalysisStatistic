@@ -52,6 +52,24 @@ jobs:
           -p:DebugSymbols=false
           -o artifacts/desktop/win-x64
 
+      - name: Prepare package
+        shell: pwsh
+        run: |
+          $packageRoot = "artifacts/desktop/win-x64"
+
+          Copy-Item "scripts/install-desktop.ps1" $packageRoot -Force
+          Copy-Item "scripts/uninstall-desktop.ps1" $packageRoot -Force
+
+          $exe = Join-Path $packageRoot "ObjectAnalyzer.Desktop.exe"
+          if (!(Test-Path $exe)) {
+            throw "Desktop executable was not produced."
+          }
+
+          $size = (Get-Item $exe).Length
+          if ($size -le 0) {
+            throw "Desktop executable is empty."
+          }
+
       - name: Create ZIP package
         shell: pwsh
         run: |
