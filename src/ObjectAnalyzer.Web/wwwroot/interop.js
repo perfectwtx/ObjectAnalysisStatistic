@@ -111,3 +111,19 @@ window.objectAnalyzer = {
         return true;
     }
 };
+
+
+// 页面间增强导航切换后恢复到页面顶部，避免沿用上一页面的滚动位置导致新页面首屏内容不可见。
+(function initializeScrollRestoration() {
+    if (window.__objectAnalyzerScrollRestorationInitialized) return;
+    window.__objectAnalyzerScrollRestorationInitialized = true;
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    };
+
+    window.addEventListener('pageshow', scrollToTop);
+    if (window.Blazor && typeof window.Blazor.addEventListener === 'function') {
+        window.Blazor.addEventListener('enhancedload', scrollToTop);
+    }
+})();
