@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.ViewModels;
 
@@ -14,6 +16,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isBusy;
     private AnalysisResult? _result;
 
+    private string _baselineSourceName = string.Empty;
+    private string _minimumOverallScore = "90";
+    private string _minimumCompleteness = "90";
+    private string _minimumValidity = "90";
+    private string _minimumUniqueness = "90";
+    private string _minimumConsistency = "90";
+    private string _minimumAnomalyControl = "90";
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string InputPath { get => _inputPath; set => Set(ref _inputPath, value); }
@@ -23,10 +33,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool IsBusy { get => _isBusy; private set => Set(ref _isBusy, value); }
     public AnalysisResult? Result => _result;
 
+    public string BaselineSourceName { get => _baselineSourceName; set => Set(ref _baselineSourceName, value); }
+    public string MinimumOverallScore { get => _minimumOverallScore; set => Set(ref _minimumOverallScore, value); }
+    public string MinimumCompleteness { get => _minimumCompleteness; set => Set(ref _minimumCompleteness, value); }
+    public string MinimumValidity { get => _minimumValidity; set => Set(ref _minimumValidity, value); }
+    public string MinimumUniqueness { get => _minimumUniqueness; set => Set(ref _minimumUniqueness, value); }
+    public string MinimumConsistency { get => _minimumConsistency; set => Set(ref _minimumConsistency, value); }
+    public string MinimumAnomalyControl { get => _minimumAnomalyControl; set => Set(ref _minimumAnomalyControl, value); }
+
     public ObservableCollection<DesktopFieldRow> Fields { get; } = new();
     public ObservableCollection<DesktopDuplicateRow> Duplicates { get; } = new();
     public ObservableCollection<DesktopIssueRow> Issues { get; } = new();
     public ObservableCollection<DesktopReportRow> Reports { get; } = new();
+    public ObservableCollection<DesktopQualitySnapshotRow> QualityTrend { get; } = new();
+    public ObservableCollection<DesktopJobRow> Jobs { get; } = new();
 
     public void SetRunning(string reportPath)
     {
@@ -76,22 +96,101 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Issues.Add(new DesktopIssueRow(issue));
     }
 
-    public void ClearReports()
+    public void SetQualityTrend(IEnumerable<QualitySnapshot> snapshots)
     {
-        Reports.Clear();
+        QualityTrend.Clear();
+        foreach (var snapshot in snapshots.OrderBy(x => x.OccurredAtUtc))
+            QualityTrend.Add(new DesktopQualitySnapshotRow(snapshot));
     }
 
+    public void SetJobs(IEnumerable<AnalysisJob> jobs)
+    {
+        Jobs.Clear();
+        foreach (var job in jobs.OrderByDescending(x => x.StartedAtUtc))
+            Jobs.Add(new DesktopJobRow(job));
+    }
+
+    public void ClearReports() => Reports.Clear();
+
     public void AddReport(string path) => Reports.Add(new DesktopReportRow(path));
+
+    public void SetBaseline(QualityBaseline? baseline, string sourceName)
+    {
+        BaselineSourceName = sourceName;
+        MinimumOverallScore = FormatThreshold(baseline?.MinimumOverallScore);
+        MinimumCompleteness = FormatThreshold(baseline?.MinimumCompleteness);
+        MinimumValidity = FormatThreshold(baseline?.MinimumValidity);
+        MinimumUniqueness = FormatThreshold(baseline?.MinimumUniqueness);
+        MinimumConsistency = FormatThreshold(baseline?.MinimumConsistency);
+        MinimumAnomalyControl = FormatThreshold(baseline?.MinimumAnomalyControl);
+    }
+
+    public bool TryBuildBaseline(out QualityBaseline? baseline, out string error)
+    {
+        baseline = null;
+        error = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(BaselineSourceName))
+        {
+            error = "数据源名称不能为空。";
+            return false;
+        }
+
+        if (!TryParse(MinimumOverallScore, out var overall)
+            || !TryParse(MinimumCompleteness, out var completeness)
+            || !TryParse(MinimumValidity, out var validity)
+            || !TryParse(MinimumUniqueness, out var uniqueness)
+            || !TryParse(MinimumConsistency, out var consistency)
+            || !TryParse(MinimumAnomalyControl, out var anomalyControl))
+        {
+            error = "质量阈值必须是 0 到 100 之间的数字。";
+            return false;
+        }
+
+        baseline = new QualityBaseline(
+            BaselineSourceName.Trim(),
+            overall,
+            completeness,
+            validity,
+            uniqueness,
+            consistency,
+            anomalyControl);
+
+        try
+        {
+            baseline.Validate();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            baseline = null;
+            return false;
+        }
+    }
 
     public string GetDeepAnalysis(string name, object? value) =>
         value is null
             ? $"{name}\r\n\r\n未生成。请在分析时启用对应的深度分析选项。"
-            : System.Text.Json.JsonSerializer.Serialize(value, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            : Serialize(value);
 
     public string GetInsight(string title, object? value) =>
         value is null
             ? $"{title}\r\n\r\n当前报告没有生成该结果。"
-            : System.Text.Json.JsonSerializer.Serialize(value, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            : Serialize(value);
+
+    public string BuildReportDetails(DesktopReportRow? report)
+    {
+        if (report is null)
+            return "请选择报告。";
+
+        return $"报告：{report.Name}\r\n路径：{report.Path}\r\n修改时间：{report.TimeText}\r\n大小：{report.SizeText}";
+    }
+
+    public void SetStatus(string value)
+    {
+        Status = value;
+    }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
@@ -100,6 +199,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    private static string FormatThreshold(double? value) =>
+        value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? "90";
+
+    private static bool TryParse(string text, out double value) =>
+        double.TryParse(
+            text,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out value)
+        && value is >= 0 and <= 100;
+
+    private static string Serialize(object value) =>
+        JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true });
 }
 
 public sealed class DesktopFieldRow
@@ -166,5 +279,71 @@ public sealed class DesktopReportRow
         SizeText = file.Length < 1024 * 1024
             ? $"{file.Length / 1024d:N1} KB"
             : $"{file.Length / 1024d / 1024d:N1} MB";
+    }
+}
+
+public sealed class DesktopQualitySnapshotRow
+{
+    public string SourceName { get; }
+    public string TimeText { get; }
+    public string OverallText { get; }
+    public string CompletenessText { get; }
+    public string ValidityText { get; }
+    public string UniquenessText { get; }
+    public string ConsistencyText { get; }
+    public string AnomalyControlText { get; }
+    public long TotalObjects { get; }
+    public int IssueCount { get; }
+
+    public DesktopQualitySnapshotRow(QualitySnapshot snapshot)
+    {
+        SourceName = snapshot.SourceName;
+        TimeText = snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+        OverallText = $"{snapshot.Metrics.OverallScore:F2}";
+        CompletenessText = $"{snapshot.Metrics.Completeness:F2}";
+        ValidityText = $"{snapshot.Metrics.Validity:F2}";
+        UniquenessText = $"{snapshot.Metrics.Uniqueness:F2}";
+        ConsistencyText = $"{snapshot.Metrics.Consistency:F2}";
+        AnomalyControlText = $"{snapshot.Metrics.AnomalyControl:F2}";
+        TotalObjects = snapshot.TotalObjects;
+        IssueCount = snapshot.IssueCount;
+    }
+}
+
+public sealed class DesktopJobRow
+{
+    public Guid Id { get; }
+    public string SourceName { get; }
+    public string SourceType { get; }
+    public string StatusText { get; }
+    public string StartedText { get; }
+    public string DurationText { get; }
+    public long TotalObjects { get; }
+    public int FieldCount { get; }
+    public string QualityScoreText { get; }
+    public int IssueCount { get; }
+    public string? ErrorMessage { get; }
+
+    public DesktopJobRow(AnalysisJob job)
+    {
+        Id = job.Id;
+        SourceName = job.SourceName;
+        SourceType = job.SourceType;
+        StatusText = job.Status switch
+        {
+            AnalysisJobStatus.Pending => "等待",
+            AnalysisJobStatus.Running => "运行中",
+            AnalysisJobStatus.Succeeded => "成功",
+            AnalysisJobStatus.Failed => "失败",
+            AnalysisJobStatus.Cancelled => "已取消",
+            _ => job.Status.ToString()
+        };
+        StartedText = job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+        DurationText = job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-";
+        TotalObjects = job.TotalObjects;
+        FieldCount = job.FieldCount;
+        QualityScoreText = job.QualityScore?.ToString("F2") ?? "-";
+        IssueCount = job.IssueCount;
+        ErrorMessage = job.ErrorMessage;
     }
 }
