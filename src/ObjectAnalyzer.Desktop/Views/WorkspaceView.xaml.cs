@@ -9,7 +9,7 @@ namespace ObjectAnalyzer.Desktop.Views;
 
 public partial class WorkspaceView : UserControl
 {
-    private string DataDirectory =>
+    private static string DataDirectory =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ObjectAnalyzer");
