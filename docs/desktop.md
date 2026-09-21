@@ -103,4 +103,3 @@ ObjectAnalyzer-Desktop-win-x64
 
 后续需要企业部署或标准“下一步 / 安装”体验时，可以在现有发布目录基础上增加 MSIX、WiX MSI 或其他 Windows 安装器，而不需要修改 Desktop 的分析逻辑。
 
-后续需要正式安装体验时，可以在这个发布目录基础上增加 MSIX、WiX MSI 或其他 Windows 安装器，而不需要修改 Desktop 的分析逻辑。

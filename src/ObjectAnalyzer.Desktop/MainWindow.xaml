@@ -57,6 +57,7 @@
             <TabItem Header="作业中心"><views:JobsView x:Name="JobsViewControl"/></TabItem>
             <TabItem Header="报告"><views:ReportsView x:Name="ReportsViewControl"/></TabItem>
             <TabItem Header="分析输出"><views:OutputView/></TabItem>
+            <TabItem Header="工作区"><views:WorkspaceView/></TabItem>
         </TabControl>
 
         <TextBlock Grid.Row="3" Text="{Binding Status}" Foreground="#98A2B3" Margin="2,12,0,0"/>
