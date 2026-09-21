@@ -86,15 +86,15 @@ public sealed class MainViewModelTests
 
     private static AnalysisResult CreateResult()
     {
-        var field = new FieldStatistic(
-            "Id",
-            10,
-            1,
-            0,
-            9,
-            "Int64",
-            0.9,
-            null);
+        var field = new FieldStatistic
+        {
+            FieldName = "Id",
+            Count = 10,
+            NullCount = 0,
+            DistinctCount = 9,
+            PrimaryType = "Int64",
+            Coverage = 0.9
+        };
 
         return new AnalysisResult
         {
