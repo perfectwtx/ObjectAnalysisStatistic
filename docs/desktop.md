@@ -12,6 +12,8 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 启动后可以：
 
 - 选择 JSON、JSONL、CSV、Excel、XML、YAML 或压缩数据文件。
+- 将受支持的数据文件直接拖入主窗口的“分析文件”输入框。
+- 从“最近文件”下拉列表快速载入最近使用的文件，最多保留 10 条本机记录。
 - 执行本地对象分析并查看概览、Schema、重复、深度分析和质量问题。
 - 查看数据血缘、影响分析、Schema Impact 与回归结果。
 - 查看质量基线和质量趋势。
@@ -20,6 +22,14 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 - 导出字段 CSV。
 - 长时间分析过程中可以取消当前作业。
 
+最近文件列表保存在：
+
+```text
+%LOCALAPPDATA%/ObjectAnalyzer/recent-files.json
+```
+
+最近文件属于辅助信息，仅保存文件路径，不影响分析数据库和报告。
+
 ## 本地数据位置
 
 Desktop 使用当前用户的 Local Application Data 目录保存本地状态：
@@ -27,6 +37,7 @@ Desktop 使用当前用户的 Local Application Data 目录保存本地状态：
 ```text
 %LOCALAPPDATA%/ObjectAnalyzer/
 ├── object-analyzer.db
+├── recent-files.json
 └── Reports/
 ```
 
