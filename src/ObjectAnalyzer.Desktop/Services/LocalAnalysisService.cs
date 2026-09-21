@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ObjectAnalyzer.Abstractions;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.Services;
 
@@ -11,25 +12,32 @@ public sealed class LocalAnalysisService
         string reportPath,
         Action<string> writeOutput,
         Action<long> reportProgress,
+        DesktopPlatformService platform,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        ArgumentNullException.ThrowIfNull(platform);
 
+        await platform.InitializeAsync(cancellationToken);
+
+        var alertStore = new SqliteAlertRuleStore(platform.DatabasePath);
+        var webhookStore = new SqliteWebhookDeliveryStore(platform.DatabasePath);
+        await alertStore.InitializeAsync(cancellationToken);
+        await webhookStore.InitializeAsync(cancellationToken);
+
+        var jobService = new AnalysisJobService(
+            platform.HistoryStore,
+            alertStore,
+            webhookStore,
+            platform.BaselineStore);
+
+        var coordinator = new AnalysisExecutionCoordinator(jobService);
         var console = new DesktopConsole(writeOutput);
         var progress = new DesktopProgressReporter(reportProgress);
 
-        AnalysisServices.Use(new AnalysisServices
-        {
-            Console = console,
-            Progress = progress,
-            Presenter = NullResultPresenter.Instance
-        });
-
         try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             var options = new AnalysisOptions
             {
                 Input = new ObjectAnalyzer.Analysis.Options.InputSourceOptions
@@ -46,18 +54,42 @@ public sealed class LocalAnalysisService
                 }
             };
 
-            int exitCode = await Task.Run(() => AnalysisRunner.Run(options), cancellationToken);
-            if (exitCode != 0)
-                return new LocalAnalysisResult(exitCode, null);
+            AnalysisResult result = await coordinator.ExecuteAsync(
+                Path.GetFileName(inputPath),
+                DetectSourceType(inputPath),
+                async token =>
+                {
+                    AnalysisServices.Use(new AnalysisServices
+                    {
+                        Console = console,
+                        Progress = progress,
+                        Presenter = NullResultPresenter.Instance
+                    });
 
-            if (!File.Exists(reportPath))
-                throw new FileNotFoundException("分析完成但没有生成报告。", reportPath);
+                    try
+                    {
+                        int exitCode = await Task.Run(() => AnalysisRunner.Run(options), token);
+                        if (exitCode != 0)
+                            throw new AnalysisExecutionException(exitCode);
 
-            return new LocalAnalysisResult(exitCode, LoadResult(reportPath));
+                        if (!File.Exists(reportPath))
+                            throw new FileNotFoundException("分析完成但没有生成报告。", reportPath);
+
+                        return LoadResult(reportPath);
+                    }
+                    finally
+                    {
+                        AnalysisServices.Use(null);
+                    }
+                },
+                options,
+                cancellationToken);
+
+            return new LocalAnalysisResult(0, result);
         }
-        finally
+        catch (AnalysisExecutionException ex)
         {
-            AnalysisServices.Use(null);
+            return new LocalAnalysisResult(ex.ExitCode, null);
         }
     }
 
@@ -67,9 +99,30 @@ public sealed class LocalAnalysisService
         return JsonSerializer.Deserialize<AnalysisResult>(json)
             ?? throw new InvalidDataException("报告内容为空或不是有效的 AnalysisResult。");
     }
+
+    private static string DetectSourceType(string inputPath)
+        => Path.GetExtension(inputPath).TrimStart('.').ToLowerInvariant() switch
+        {
+            "jsonl" => "JSONL",
+            "yml" => "YAML",
+            "gz" => "GZip",
+            "bz2" => "BZip2",
+            _ => Path.GetExtension(inputPath).TrimStart('.').ToUpperInvariant()
+        };
 }
 
 public sealed record LocalAnalysisResult(int ExitCode, AnalysisResult? Result);
+
+internal sealed class AnalysisExecutionException : Exception
+{
+    public int ExitCode { get; }
+
+    public AnalysisExecutionException(int exitCode)
+        : base($"分析结束，退出码 {exitCode}")
+    {
+        ExitCode = exitCode;
+    }
+}
 
 internal sealed class DesktopConsole : IAnalysisConsole
 {
