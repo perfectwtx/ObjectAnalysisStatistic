@@ -32,7 +32,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         IsBusy = true;
         Progress = 0;
-        Status = "正在分析...";
+        SetStatus("正在分析...");
         ReportPath = reportPath;
     }
 
@@ -41,14 +41,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _result = result;
         IsBusy = false;
         Progress = 100;
-        Status = "分析完成";
+        SetStatus("分析完成");
         RefreshCollections();
     }
 
     public void SetFailed(string message)
     {
         IsBusy = false;
-        Status = $"分析失败：{message}";
+        SetStatus($"分析失败：{message}");
     }
 
     public void SetProgress(long value) => Progress = Math.Clamp((int)value, 0, 100);
@@ -57,7 +57,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _result = result;
         ReportPath = reportPath;
-        Status = "已加载历史报告";
+        SetStatus("已加载历史报告");
         RefreshCollections();
     }
 
