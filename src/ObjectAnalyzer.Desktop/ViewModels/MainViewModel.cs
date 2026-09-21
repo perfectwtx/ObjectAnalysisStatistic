@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.ViewModels;
 
@@ -76,12 +77,38 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Issues.Add(new DesktopIssueRow(issue));
     }
 
-    public void ClearReports()
+    public void ClearReports() => Reports.Clear();
+
+    public void AddReport(DesktopReportInfo report) => Reports.Add(new DesktopReportRow(report));
+
+    public QualityMetrics? GetQualityMetrics() =>
+        _result is null ? null : QualityMetricsCalculator.Calculate(_result);
+
+    public string GetQualityBaselineText(string sourceName)
     {
-        Reports.Clear();
+        var metrics = GetQualityMetrics();
+        if (metrics is null)
+            return "质量基线：当前没有分析结果。";
+
+        var baseline = new QualityBaseline(sourceName);
+        var evaluation = DesktopQualityBaselineService.Evaluate(baseline, metrics);
+        var state = evaluation.Passed ? "通过" : "未通过";
+        var failures = evaluation.Failures.Count == 0
+            ? "无"
+            : string.Join("、", evaluation.Failures.Select(x => $"{x.Metric} {x.Actual:F1} < {x.Minimum:F1}"));
+        return $"质量基线：{state}（默认阈值 90 分）\r\n失败项：{failures}";
     }
 
-    public void AddReport(string path) => Reports.Add(new DesktopReportRow(path));
+    public string GetQualityTrend(IReadOnlyList<DesktopReportRow> reports)
+    {
+        if (reports.Count == 0)
+            return "质量趋势\r\n\r\n暂无历史报告。";
+
+        var ordered = reports.OrderBy(x => x.LastWriteTime).ToList();
+        var lines = ordered.Select(x =>
+            $"{x.TimeText}  总分 {x.OverallScore,6:F1}  完整性 {x.Completeness,6:F1}  有效性 {x.Validity,6:F1}  唯一性 {x.Uniqueness,6:F1}  一致性 {x.Consistency,6:F1}  异常控制 {x.AnomalyControl,6:F1}");
+        return "质量趋势（最近 100 次本地报告）\r\n\r\n" + string.Join(Environment.NewLine, lines);
+    }
 
     public string GetDeepAnalysis(string name, object? value) =>
         value is null
@@ -92,6 +119,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         value is null
             ? $"{title}\r\n\r\n当前报告没有生成该结果。"
             : System.Text.Json.JsonSerializer.Serialize(value, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+    private void SetStatus(string value) => Status = value;
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
@@ -156,15 +185,29 @@ public sealed class DesktopReportRow
     public string Name { get; }
     public string TimeText { get; }
     public string SizeText { get; }
+    public double OverallScore { get; }
+    public double Completeness { get; }
+    public double Validity { get; }
+    public double Uniqueness { get; }
+    public double Consistency { get; }
+    public double AnomalyControl { get; }
 
-    public DesktopReportRow(string path)
+    public DateTime LastWriteTime { get; }
+
+    public DesktopReportRow(DesktopReportInfo source)
     {
-        Path = path;
-        var file = new FileInfo(path);
-        Name = file.Name;
-        TimeText = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss");
-        SizeText = file.Length < 1024 * 1024
-            ? $"{file.Length / 1024d:N1} KB"
-            : $"{file.Length / 1024d / 1024d:N1} MB";
+        Path = source.Path;
+        Name = source.Name;
+        LastWriteTime = source.LastWriteTime;
+        TimeText = source.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss");
+        SizeText = source.Size < 1024 * 1024
+            ? $"{source.Size / 1024d:N1} KB"
+            : $"{source.Size / 1024d / 1024d:N1} MB";
+        OverallScore = source.Metrics.OverallScore;
+        Completeness = source.Metrics.Completeness;
+        Validity = source.Metrics.Validity;
+        Uniqueness = source.Metrics.Uniqueness;
+        Consistency = source.Metrics.Consistency;
+        AnomalyControl = source.Metrics.AnomalyControl;
     }
 }
