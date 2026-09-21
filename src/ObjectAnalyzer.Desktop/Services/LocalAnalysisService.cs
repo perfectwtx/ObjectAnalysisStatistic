@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using ObjectAnalyzer.Abstractions;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.Services;
@@ -14,6 +15,7 @@ public sealed class LocalAnalysisService
         Action<string> writeOutput,
         Action<long> reportProgress,
         DesktopPlatformService platform,
+        AdvancedAnalysisOptions? advancedOptions = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
@@ -49,10 +51,11 @@ public sealed class LocalAnalysisService
                 {
                     OutputPath = reportPath
                 },
-                Progress = new ObjectAnalyzer.Analysis.Options.ProgressOptions
+                Progress = new ProgressOptions
                 {
                     ShowProgress = true
-                }
+                },
+                Advanced = advancedOptions ?? new AdvancedAnalysisOptions()
             };
 
             AnalysisResult result = await coordinator.ExecuteAsync(
