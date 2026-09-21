@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
@@ -17,6 +17,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _progress;
     private bool _isBusy;
     private AnalysisResult? _result;
+    private string _outputText = string.Empty;
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     private string _baselineSourceName = string.Empty;
@@ -35,6 +36,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public int Progress { get => _progress; private set => Set(ref _progress, value); }
     public bool IsBusy { get => _isBusy; private set => Set(ref _isBusy, value); }
     public AnalysisResult? Result => _result;
+    public string OutputText { get => _outputText; private set => Set(ref _outputText, value); }
+
+    public long TotalObjects => _result?.TotalObjects ?? 0;
+    public int FieldCount => _result?.FieldStatistics.Count ?? 0;
+    public long DuplicateGroups => _result?.TotalDuplicateGroups ?? 0;
+    public int QualityIssueCount => _result?.QualityViolations.Count ?? 0;
+    public string DuplicateSummary => _result is null
+        ? "暂无重复对象结果。"
+        : $"重复对象组：{_result.TotalDuplicateGroups:N0}，唯一对象：{_result.TotalUniqueObjects:N0}";
+    public bool HasResult => _result is not null;
+    public bool HasReport => File.Exists(_reportPath) && !string.Equals(
+        _reportPath, "分析完成后自动生成 JSON 报告", StringComparison.Ordinal);
 
     public string BaselineSourceName { get => _baselineSourceName; set => Set(ref _baselineSourceName, value); }
     public string MinimumOverallScore { get => _minimumOverallScore; set => Set(ref _minimumOverallScore, value); }
@@ -55,8 +68,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         IsBusy = true;
         Progress = 0;
-        SetStatus("正在分析...");
         ReportPath = reportPath;
+        OnPropertyChanged(nameof(HasReport));
+        SetStatus("正在分析...");
     }
 
     public void SetCompleted(AnalysisResult result)
@@ -66,6 +80,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Progress = 100;
         SetStatus("分析完成");
         RefreshCollections();
+        RaiseResultStateChanged();
     }
 
     public void SetFailed(string message)
@@ -80,8 +95,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _result = result;
         ReportPath = reportPath;
-        SetStatus("已加载历史报告");
         RefreshCollections();
+        RaiseResultStateChanged();
+    }
+
+    public void ClearOutput() => OutputText = string.Empty;
+
+    public void AppendOutput(string message)
+    {
+        OutputText = string.IsNullOrEmpty(OutputText)
+            ? message
+            : OutputText + Environment.NewLine + message;
     }
 
     public void RefreshCollections()
@@ -190,27 +214,40 @@ public sealed class MainViewModel : INotifyPropertyChanged
         return $"报告：{report.Name}\r\n路径：{report.Path}\r\n修改时间：{report.TimeText}\r\n大小：{report.SizeText}";
     }
 
-    public void SetStatus(string value)
+    public void SetStatus(string value) => Status = value;
+
+    private void RaiseResultStateChanged()
     {
-        Status = value;
+        OnPropertyChanged(nameof(Result));
+        OnPropertyChanged(nameof(TotalObjects));
+        OnPropertyChanged(nameof(FieldCount));
+        OnPropertyChanged(nameof(DuplicateGroups));
+        OnPropertyChanged(nameof(QualityIssueCount));
+        OnPropertyChanged(nameof(DuplicateSummary));
+        OnPropertyChanged(nameof(HasResult));
+        OnPropertyChanged(nameof(HasReport));
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
             return;
+
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
     }
 
+    private void OnPropertyChanged(string? propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
     private static string FormatThreshold(double? value) =>
-        value?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? "90";
+        value?.ToString("0.##", CultureInfo.InvariantCulture) ?? "90";
 
     private static bool TryParse(string text, out double value) =>
         double.TryParse(
             text,
             System.Globalization.NumberStyles.Float,
-            System.Globalization.CultureInfo.InvariantCulture,
+            CultureInfo.InvariantCulture,
             out value)
         && value is >= 0 and <= 100;
 
@@ -342,7 +379,9 @@ public sealed class DesktopJobRow
             _ => job.Status.ToString()
         };
         StartedText = job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        DurationText = job.DurationMs > 0 ? $"{job.DurationMs.ToString("N0", CultureInfo.InvariantCulture)} ms" : "-";
+        DurationText = job.DurationMs > 0
+            ? $"{job.DurationMs.ToString("N0", CultureInfo.InvariantCulture)} ms"
+            : "-";
         TotalObjects = job.TotalObjects;
         FieldCount = job.FieldCount;
         QualityScoreText = job.QualityScore?.ToString("F2", CultureInfo.InvariantCulture) ?? "-";
