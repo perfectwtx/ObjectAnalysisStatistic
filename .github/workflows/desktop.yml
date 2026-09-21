@@ -78,9 +78,5 @@ jobs:
 
           Compress-Archive -Path "$packageRoot/*" -DestinationPath $zip -CompressionLevel Optimal
 
-      - name: Upload Desktop package
-        uses: actions/upload-artifact@v4
-        with:
-          name: ObjectAnalyzer-Desktop-win-x64
-          path: artifacts/ObjectAnalyzer-Desktop-win-x64.zip
-          if-no-files-found: error
+      # GitHub Actions 当前仓库 artifact 配额已满，因此 PR 阶段只验证发布和 ZIP 创建。
+      # main / 手动运行后可以按需恢复产物上传。
