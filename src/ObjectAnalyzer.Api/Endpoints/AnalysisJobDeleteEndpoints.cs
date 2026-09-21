@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using ObjectAnalyzer.Platform;
 
-namespace ObjectAnalyzer.Api.Endpoints;
+namespace ObjectAnalyzer.Api;
 
 /// <summary>
 /// 删除分析历史作业。规范路径：DELETE /api/analysis/jobs/{jobId}。
