@@ -221,7 +221,7 @@ public partial class MainWindow : Window
         InsightTextBox.Text = MainViewModel.GetInsight("Schema Impact", _viewModel.Result?.SchemaDiff);
 
     private void ShowRegression_Click(object sender, RoutedEventArgs e) =>
-        InsightTextBox.Text = _viewModel.GetInsight("质量回归 / 分布漂移", _viewModel.Result?.DistributionDiff);
+        InsightTextBox.Text = MainViewModel.GetInsight("质量回归 / 分布漂移", _viewModel.Result?.DistributionDiff);
 
     private async Task RefreshPlatformDataAsync()
     {
