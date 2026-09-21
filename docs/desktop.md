@@ -14,6 +14,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 - 选择 JSON、JSONL、CSV、Excel、XML、YAML 或压缩数据文件。
 - 将受支持的数据文件直接拖入主窗口的“分析文件”输入框。
 - 从“最近文件”下拉列表快速载入最近使用的文件，最多保留 10 条本机记录。
+- 展开“分析选项”可以按需启用相关性、字符串模式、Unicode 卫生、时间序列和模糊去重等深度分析。
 - 执行本地对象分析并查看概览、Schema、重复、深度分析和质量问题。
 - 查看数据血缘、影响分析、Schema Impact 与回归结果。
 - 查看质量基线和质量趋势。
@@ -29,6 +30,8 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 ```
 
 最近文件属于辅助信息，仅保存文件路径，不影响分析数据库和报告。
+
+深度分析默认关闭。勾选深度分析选项后，Desktop 会把设置直接传递给 ObjectAnalyzer.Core；模糊去重需要同时填写目标字段。
 
 ## 本地数据位置
 
