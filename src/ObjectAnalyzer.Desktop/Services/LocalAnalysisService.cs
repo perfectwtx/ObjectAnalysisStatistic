@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using ObjectAnalyzer.Abstractions;
 using ObjectAnalyzer.Analysis;
@@ -7,7 +8,7 @@ namespace ObjectAnalyzer.Desktop.Services;
 
 public sealed class LocalAnalysisService
 {
-    public async Task<LocalAnalysisResult> AnalyzeAsync(
+    public static async Task<LocalAnalysisResult> AnalyzeAsync(
         string inputPath,
         string reportPath,
         Action<string> writeOutput,

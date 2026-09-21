@@ -16,7 +16,7 @@ ObjectAnalyzer 是一个面向结构化与半结构化数据的**对象分析与
 - **历史与回归**：保存质量快照，支持质量趋势和前后回归分析。
 - **告警与 Webhook**：质量阈值、质量回退、关键问题、Schema 变化、分布漂移，以及 Outbox 可靠投递。
 - **安全**：PII 识别、出站脱敏、审计日志。
-- **多入口**：CLI、HTTP API、Blazor Web。
+- **多入口**：CLI、HTTP API、Blazor Web、WPF Desktop。
 
 ## 支持的数据源
 
@@ -50,6 +50,18 @@ dotnet run --project src/ObjectAnalyzer.Api
 ```
 
 启动后可通过 `/scalar` 使用交互式 API 文档。
+
+### Desktop
+
+Windows 本地工作台：
+
+```powershell
+dotnet run --project src/ObjectAnalyzer.Desktop
+```
+
+Desktop 直接复用 Core 分析能力，并在本地保存作业历史、质量快照和 JSON 报告。
+
+完整说明见 [Desktop 使用与发布](docs/desktop.md)。
 
 ### 测试
 
@@ -133,6 +145,7 @@ samples/                   # 示例数据与规则
 | 文档 | 内容 |
 |---|---|
 | [快速开始](docs/getting-started.md) | 环境、启动、第一次分析 |
+| [Desktop 使用与发布](docs/desktop.md) | Desktop 本地使用、数据位置、Windows 发布 |
 | [总体架构](docs/architecture.md) | Core、Platform、宿主与任务生命周期 |
 | [数据质量](docs/data-quality.md) | 五维质量模型与质量指标 |
 | [问题中心](docs/issues.md) | Issue 模型、来源与处理路径 |
@@ -153,16 +166,27 @@ samples/                   # 示例数据与规则
 - C#
 - ASP.NET Core
 - Blazor
+- WPF
 - SQLite
 
 ## 设计原则
 
-1. **单一分析事实来源**：CLI、API、Web 共用 `AnalysisPipeline`。
+1. **单一分析事实来源**：CLI、API、Web、Desktop 共用 `AnalysisPipeline`。
 2. **业务与 UI 解耦**：Core 不依赖具体宿主和展示层。
 3. **标准指标结构化存储**：趋势、回归和告警优先使用标准化快照。
 4. **复杂结果按需持久化**：SchemaDiff、CorrelationMatrix 等复杂结果无需强行拆表。
 5. **任务可追踪**：分析任务必须能够追踪成功、失败和取消状态。
 6. **可靠通知**：Webhook 使用 Outbox + Worker，避免分析完成后直接同步调用外部系统。
+
+## Windows Desktop 发布
+
+仓库提供 Windows x64 自包含 ZIP 发布流程：
+
+```powershell
+./scripts/publish-desktop.ps1
+```
+
+GitHub Actions 也会在 Desktop 或 Core 变更推送到 `main` 时生成 `ObjectAnalyzer-Desktop-win-x64` 构建产物。
 
 ## 开源协议
 

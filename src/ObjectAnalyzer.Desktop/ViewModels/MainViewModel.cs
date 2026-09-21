@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -15,6 +17,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _progress;
     private bool _isBusy;
     private AnalysisResult? _result;
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     private string _baselineSourceName = string.Empty;
     private string _minimumOverallScore = "90";
@@ -169,17 +172,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public string GetDeepAnalysis(string name, object? value) =>
+    public static string GetDeepAnalysis(string name, object? value) =>
         value is null
             ? $"{name}\r\n\r\n未生成。请在分析时启用对应的深度分析选项。"
             : Serialize(value);
 
-    public string GetInsight(string title, object? value) =>
+    public static string GetInsight(string title, object? value) =>
         value is null
             ? $"{title}\r\n\r\n当前报告没有生成该结果。"
             : Serialize(value);
 
-    public string BuildReportDetails(DesktopReportRow? report)
+    public static string BuildReportDetails(DesktopReportRow? report)
     {
         if (report is null)
             return "请选择报告。";
@@ -212,7 +215,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         && value is >= 0 and <= 100;
 
     private static string Serialize(object value) =>
-        JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true });
+        JsonSerializer.Serialize(value, s_jsonOptions);
 }
 
 public sealed class DesktopFieldRow
@@ -228,7 +231,7 @@ public sealed class DesktopFieldRow
     {
         FieldName = source.FieldName;
         PrimaryType = source.PrimaryType;
-        CoverageText = $"{source.Coverage:P1}";
+        CoverageText = source.Coverage.ToString("P1", CultureInfo.InvariantCulture);
         Count = source.Count;
         NullCount = source.NullCount;
         DistinctCount = source.DistinctCount;
@@ -275,10 +278,10 @@ public sealed class DesktopReportRow
         Path = path;
         var file = new FileInfo(path);
         Name = file.Name;
-        TimeText = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss");
+        TimeText = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         SizeText = file.Length < 1024 * 1024
-            ? $"{file.Length / 1024d:N1} KB"
-            : $"{file.Length / 1024d / 1024d:N1} MB";
+            ? $"{(file.Length / 1024d).ToString("N1", CultureInfo.InvariantCulture)} KB"
+            : $"{(file.Length / 1024d / 1024d).ToString("N1", CultureInfo.InvariantCulture)} MB";
     }
 }
 
@@ -298,13 +301,13 @@ public sealed class DesktopQualitySnapshotRow
     public DesktopQualitySnapshotRow(QualitySnapshot snapshot)
     {
         SourceName = snapshot.SourceName;
-        TimeText = snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
-        OverallText = $"{snapshot.Metrics.OverallScore:F2}";
-        CompletenessText = $"{snapshot.Metrics.Completeness:F2}";
-        ValidityText = $"{snapshot.Metrics.Validity:F2}";
-        UniquenessText = $"{snapshot.Metrics.Uniqueness:F2}";
-        ConsistencyText = $"{snapshot.Metrics.Consistency:F2}";
-        AnomalyControlText = $"{snapshot.Metrics.AnomalyControl:F2}";
+        TimeText = snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        OverallText = snapshot.Metrics.OverallScore.ToString("F2", CultureInfo.InvariantCulture);
+        CompletenessText = snapshot.Metrics.Completeness.ToString("F2", CultureInfo.InvariantCulture);
+        ValidityText = snapshot.Metrics.Validity.ToString("F2", CultureInfo.InvariantCulture);
+        UniquenessText = snapshot.Metrics.Uniqueness.ToString("F2", CultureInfo.InvariantCulture);
+        ConsistencyText = snapshot.Metrics.Consistency.ToString("F2", CultureInfo.InvariantCulture);
+        AnomalyControlText = snapshot.Metrics.AnomalyControl.ToString("F2", CultureInfo.InvariantCulture);
         TotalObjects = snapshot.TotalObjects;
         IssueCount = snapshot.IssueCount;
     }
@@ -338,11 +341,11 @@ public sealed class DesktopJobRow
             AnalysisJobStatus.Cancelled => "已取消",
             _ => job.Status.ToString()
         };
-        StartedText = job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
-        DurationText = job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-";
+        StartedText = job.StartedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        DurationText = job.DurationMs > 0 ? $"{job.DurationMs.ToString("N0", CultureInfo.InvariantCulture)} ms" : "-";
         TotalObjects = job.TotalObjects;
         FieldCount = job.FieldCount;
-        QualityScoreText = job.QualityScore?.ToString("F2") ?? "-";
+        QualityScoreText = job.QualityScore?.ToString("F2", CultureInfo.InvariantCulture) ?? "-";
         IssueCount = job.IssueCount;
         ErrorMessage = job.ErrorMessage;
     }

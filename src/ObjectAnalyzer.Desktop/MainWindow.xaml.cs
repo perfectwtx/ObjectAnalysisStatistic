@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -16,9 +17,9 @@ namespace ObjectAnalyzer.Desktop;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel = new();
-    private readonly LocalAnalysisService _analysisService = new();
     private readonly DesktopPlatformService _platformService = new();
     private CancellationTokenSource? _analysisCancellation;
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     public MainWindow()
     {
@@ -79,7 +80,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var result = await _analysisService.AnalyzeAsync(
+            var result = await LocalAnalysisService.AnalyzeAsync(
                 inputPath,
                 reportPath,
                 message => Dispatcher.Invoke(() =>
@@ -161,10 +162,10 @@ public partial class MainWindow : Window
     private void LoadResultView(string reportPath)
     {
         ReportDetailsTextBlock.Text = $"当前报告：{Path.GetFileName(reportPath)}";
-        TotalObjectsText.Text = (_viewModel.Result?.TotalObjects ?? 0).ToString("N0");
-        FieldCountText.Text = (_viewModel.Result?.FieldStatistics.Count ?? 0).ToString("N0");
-        DuplicateGroupsText.Text = (_viewModel.Result?.TotalDuplicateGroups ?? 0).ToString("N0");
-        QualityIssuesText.Text = (_viewModel.Result?.QualityViolations.Count ?? 0).ToString("N0");
+        TotalObjectsText.Text = (_viewModel.Result?.TotalObjects ?? 0).ToString("N0", CultureInfo.InvariantCulture);
+        FieldCountText.Text = (_viewModel.Result?.FieldStatistics.Count ?? 0).ToString("N0", CultureInfo.InvariantCulture);
+        DuplicateGroupsText.Text = (_viewModel.Result?.TotalDuplicateGroups ?? 0).ToString("N0", CultureInfo.InvariantCulture);
+        QualityIssuesText.Text = (_viewModel.Result?.QualityViolations.Count ?? 0).ToString("N0", CultureInfo.InvariantCulture);
 
         BindCollections();
         OpenReportButton.IsEnabled = File.Exists(reportPath);
@@ -196,7 +197,7 @@ public partial class MainWindow : Window
     private void ShowDistribution_Click(object sender, RoutedEventArgs e) => ShowDeep(nameof(AnalysisResult.DistributionDiff), _viewModel.Result?.DistributionDiff);
     private void ShowSampling_Click(object sender, RoutedEventArgs e) => ShowDeep(nameof(AnalysisResult.SamplingConfidence), _viewModel.Result?.SamplingConfidence);
 
-    private void ShowDeep(string name, object? value) => DeepAnalysisTextBox.Text = _viewModel.GetDeepAnalysis(name, value);
+    private void ShowDeep(string name, object? value) => DeepAnalysisTextBox.Text = MainViewModel.GetDeepAnalysis(name, value);
 
     private void ShowLineage_Click(object sender, RoutedEventArgs e)
     {
@@ -217,10 +218,10 @@ public partial class MainWindow : Window
     }
 
     private void ShowSchemaImpact_Click(object sender, RoutedEventArgs e) =>
-        InsightTextBox.Text = _viewModel.GetInsight("Schema Impact", _viewModel.Result?.SchemaDiff);
+        InsightTextBox.Text = MainViewModel.GetInsight("Schema Impact", _viewModel.Result?.SchemaDiff);
 
     private void ShowRegression_Click(object sender, RoutedEventArgs e) =>
-        InsightTextBox.Text = _viewModel.GetInsight("质量回归 / 分布漂移", _viewModel.Result?.DistributionDiff);
+        InsightTextBox.Text = MainViewModel.GetInsight("质量回归 / 分布漂移", _viewModel.Result?.DistributionDiff);
 
     private async Task RefreshPlatformDataAsync()
     {
@@ -332,7 +333,7 @@ public partial class MainWindow : Window
 
         InsightTextBox.Text = JsonSerializer.Serialize(
             evaluation,
-            new JsonSerializerOptions { WriteIndented = true });
+            s_jsonOptions);
 
         _viewModel.SetStatus(evaluation.Passed
             ? "当前分析结果通过质量基线"
@@ -373,7 +374,7 @@ public partial class MainWindow : Window
     private void ReportHistory_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ReportHistoryList.SelectedItem is DesktopReportRow row)
-            ReportDetailsTextBlock.Text = _viewModel.BuildReportDetails(row);
+            ReportDetailsTextBlock.Text = MainViewModel.BuildReportDetails(row);
     }
 
     private void ReportHistory_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -419,7 +420,7 @@ public partial class MainWindow : Window
               .Append(field.Coverage.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',')
               .Append(field.Count).Append(',')
               .Append(field.NullCount).Append(',')
-              .Append(field.DistinctCount?.ToString() ?? string.Empty).AppendLine();
+              .Append(field.DistinctCount?.ToString(CultureInfo.InvariantCulture) ?? string.Empty).AppendLine();
         }
 
         File.WriteAllText(dialog.FileName, sb.ToString(), new UTF8Encoding(true));
