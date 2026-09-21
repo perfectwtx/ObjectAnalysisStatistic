@@ -199,6 +199,18 @@ public partial class MainWindow : Window
         _analysisCancellation.Cancel();
     }
 
+    private void OpenReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_viewModel.HasReport || !File.Exists(_viewModel.ReportPath))
+            return;
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = _viewModel.ReportPath,
+            UseShellExecute = true
+        });
+    }
+
     private void LoadReport(string reportPath)
     {
         try
