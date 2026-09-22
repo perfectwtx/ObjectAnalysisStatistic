@@ -36,6 +36,35 @@ public sealed class AnalysisExecutionCoordinatorTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_WhenCancellationIsRequestedAfterExecution_PersistsCancelledJob()
+    {
+        var history = new FakeHistoryStore();
+        var alerts = new FakeAlertRuleStore();
+        var deliveries = new FakeWebhookDeliveryStore();
+        var service = new AnalysisJobService(history, alerts, deliveries);
+        var coordinator = new AnalysisExecutionCoordinator(service);
+        using var cts = new CancellationTokenSource();
+
+        var task = coordinator.ExecuteAsync(
+            "unit-test",
+            "json",
+            token =>
+            {
+                // 模拟底层执行器没有及时观察取消信号，但返回了结果。
+                cts.Cancel();
+                return Task.FromResult(CreateMinimalResult());
+            },
+            null,
+            cts.Token);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+
+        var job = Assert.Single(history.Jobs);
+        Assert.Equal(AnalysisJobStatus.Cancelled, job.Status);
+        Assert.NotNull(job.CompletedAtUtc);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WithExistingJob_ReusesSameJobId()
     {
         var history = new FakeHistoryStore();
