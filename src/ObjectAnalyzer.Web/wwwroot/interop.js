@@ -1,10 +1,4 @@
 window.objectAnalyzer = {
-    resetScrollPosition: function () {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-    },
-
     downloadTextFile: function (fileName, content, mimeType) {
         const type = mimeType || 'application/json;charset=utf-8';
         const blob = new Blob([content], { type: type });
