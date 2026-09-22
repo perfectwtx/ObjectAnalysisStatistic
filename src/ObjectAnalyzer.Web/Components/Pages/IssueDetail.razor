@@ -31,7 +31,7 @@
         <div class="oa-empty-state">
             <strong>未找到质量问题</strong>
             <span>该问题可能已经不属于当前分析任务，或链接参数不完整。</span>
-            <a href="/issues">返回问题中心</a>
+            <a href="@BackUrl">返回问题中心</a>
         </div>
     }
     else
@@ -158,9 +158,17 @@
     private IReadOnlyList<QualityIssueRemediation> _remediations = Array.Empty<QualityIssueRemediation>();
     private bool _loading;
 
-    private string BackUrl => string.IsNullOrWhiteSpace(FieldFilter)
-        ? "/issues"
-        : $"/issues?field={Uri.EscapeDataString(FieldFilter)}";
+    private string BackUrl
+    {
+        get
+        {
+            var query = new List<string>();
+            if (_selectedJob is not null) query.Add($"jobId={_selectedJob.Id}");
+            if (!string.IsNullOrWhiteSpace(FieldFilter)) query.Add($"field={Uri.EscapeDataString(FieldFilter)}");
+            if (!string.IsNullOrWhiteSpace(CheckFilter)) query.Add($"check={Uri.EscapeDataString(CheckFilter)}");
+            return query.Count == 0 ? "/issues" : $"/issues?{string.Join("&", query)}";
+        }
+    }
 
     private string ResponsibilityUrl =>
         $"/issues/responsibility?jobId={_selectedJob?.Id}&field={Uri.EscapeDataString(_issue?.FieldName ?? string.Empty)}&check={Uri.EscapeDataString(_issue?.Check ?? string.Empty)}";
