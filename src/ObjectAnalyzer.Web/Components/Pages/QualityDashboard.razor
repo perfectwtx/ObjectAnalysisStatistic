@@ -3,6 +3,7 @@
 @using System.Text.Json
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Analysis.Gates
+@using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
 @inject IQualityHistoryQuery QualityHistory
@@ -229,6 +230,9 @@
         else { _qualityMetrics.Clear(); _topIssues.Clear(); }
         _loading = false;
     }
+
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
 
     private string FieldsUrl => _job is null ? "/quality/fields" : $"/quality/fields?jobId={_job.Id}";
     private string TrendUrl => _job is null ? "/quality/trend" : $"/quality/trend?jobId={_job.Id}";
