@@ -208,23 +208,24 @@ public sealed class AsyncAnalyzeWebApplicationFactory : WebApplicationFactory<Pr
 public sealed class InMemoryAsyncHistoryStore : IAnalysisHistoryStore
 {
     private readonly Dictionary<Guid, AnalysisJob> _jobs = new();
+    private readonly Dictionary<Guid, AnalysisJobStatus> _persistedStatuses = new();
 
-    public void Set(AnalysisJob job) => _jobs[job.Id] = job;
+    public void Set(AnalysisJob job) { _jobs[job.Id] = job; _persistedStatuses[job.Id] = job.Status; }
 
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
     {
         _jobs[job.Id] = job;
+        _persistedStatuses[job.Id] = job.Status;
         return Task.CompletedTask;
     }
 
         public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
         {
-            var existing = _jobs.GetValueOrDefault(job.Id);
-            if (existing is null || existing.Status != expectedStatus)
+            if (!_persistedStatuses.TryGetValue(job.Id, out var persistedStatus) || persistedStatus != expectedStatus)
                 return Task.FromResult(false);
-            _jobs[job.Id] = job;
+            _persistedStatuses[job.Id] = job.Status;
             return Task.FromResult(true);
         }
 
