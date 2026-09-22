@@ -86,6 +86,13 @@ public sealed class AnalysisExecutionCoordinator
             await _jobService.CancelAsync(job, CancellationToken.None);
             throw;
         }
+        catch (Exception ex) when (cancellationToken.IsCancellationRequested)
+        {
+            // 取消请求与执行器异常同时发生时，以用户取消为最终 Job 状态。
+            // 不能因为底层执行器晚到的普通异常，把已取消的作业重新记为 Failed。
+            await _jobService.CancelAsync(job, CancellationToken.None);
+            throw;
+        }
         catch (Exception ex)
         {
             await _jobService.FailAsync(job, ex, CancellationToken.None);
