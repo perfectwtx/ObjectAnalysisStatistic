@@ -95,7 +95,7 @@ public sealed class AnalysisExecutionCoordinator
             await _jobService.CancelAsync(job, CancellationToken.None);
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             if (job.Status == AnalysisJobStatus.Running)
                 await _jobService.FailAsync(job, ex, CancellationToken.None);
