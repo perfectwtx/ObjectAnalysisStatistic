@@ -227,7 +227,7 @@ public sealed class AnalysisExecutionCoordinatorTests
             return Task.CompletedTask;
         }
 
-        public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
+        public void SetPersistedStatus(Guid id, AnalysisJobStatus status) => _persistedStatuses[id] = status;\n\n        public AnalysisJobStatus GetPersistedStatus(Guid id) => _persistedStatuses[id];\n\n        public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
         {
             if (!_persistedStatuses.TryGetValue(job.Id, out var persistedStatus) || persistedStatus != expectedStatus)
                 return Task.FromResult(false);
