@@ -298,74 +298,6 @@ public static class AsyncAnalyzeEndpoints
         - Cancelled 是用户主动中断的状态。
         """);
 
-        private static DateTimeOffset ToUtcOffset(DateTime value)
-        => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
-
-    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJobSnapshot snap)
-    {
-        string? errorMessage = snap.Error is { } err
-            ? $"{err.GetType().Name}: {err.Message}"
-            : null;
-
-        return new AnalyzeJobSnapshotResponse(
-            Id: snap.Id,
-            Status: snap.Status,
-            Meta: snap.Meta,
-            CreatedAt: snap.CreatedAt,
-            TerminalAt: snap.TerminalAt,
-            ProgressText: snap.ProgressText,
-            ProcessedObjects: snap.ProcessedObjects,
-            Result: snap.Result,
-            Preview: snap.Preview,
-            Error: errorMessage,
-            PiiRedacted: snap.PiiRedacted,
-            Pii: AnalyzePiiView.From(snap.Pii));
-    }
-
-    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJob job)
-    {
-        var status = job.Status switch
-        {
-            AnalysisJobStatus.Succeeded => AnalysisStatus.Completed,
-            AnalysisJobStatus.Failed => AnalysisStatus.Failed,
-            AnalysisJobStatus.Cancelled => AnalysisStatus.Cancelled,
-            _ => AnalysisStatus.Running
-        };
-
-        AnalysisResult? result = null;
-        if (status == AnalysisStatus.Completed && !string.IsNullOrWhiteSpace(job.ResultJson))
-        {
-            try
-            {
-                result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
-            }
-            catch (JsonException)
-            {
-                // 历史结果损坏时仍返回作业状态和其它元数据，不让查询端点整体失败。
-            }
-        }
-
-        return new AnalyzeJobSnapshotResponse(
-            Id: job.Id.ToString("N"),
-            Status: status,
-            Meta: new AnalysisJobMeta(
-                DataFileName: job.SourceName,
-                Format: job.SourceType,
-                OperatorId: null,
-                SubmittedAt: ToUtcOffset(job.StartedAtUtc)),
-            CreatedAt: ToUtcOffset(job.StartedAtUtc),
-            TerminalAt: job.CompletedAtUtc.HasValue
-                ? ToUtcOffset(job.CompletedAtUtc.Value)
-                : null,
-            ProgressText: null,
-            ProcessedObjects: job.TotalObjects,
-            Result: result,
-            Preview: null,
-            Error: job.Status == AnalysisJobStatus.Failed ? job.ErrorMessage : null,
-            PiiRedacted: true,
-            Pii: null);
-    }
-
     // ── SSE 事件流 ──
         routes.MapGet("/analyze/async/{jobId}/events", async (string jobId, HttpContext http, IAnalysisHistoryStore historyStore) =>
         {
@@ -479,6 +411,74 @@ public static class AsyncAnalyzeEndpoints
         .WithDescription("触发对应作业的 CancellationTokenSource。运行时作业存在时返回 cancelled=true/false；运行时状态已清理但持久化作业已终态时返回 cancelled=false；持久化作业仍在运行但缺少运行时句柄时返回 409。");
 
         return routes;
+    }
+
+        private static DateTimeOffset ToUtcOffset(DateTime value)
+        => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
+    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJobSnapshot snap)
+    {
+        string? errorMessage = snap.Error is { } err
+            ? $"{err.GetType().Name}: {err.Message}"
+            : null;
+
+        return new AnalyzeJobSnapshotResponse(
+            Id: snap.Id,
+            Status: snap.Status,
+            Meta: snap.Meta,
+            CreatedAt: snap.CreatedAt,
+            TerminalAt: snap.TerminalAt,
+            ProgressText: snap.ProgressText,
+            ProcessedObjects: snap.ProcessedObjects,
+            Result: snap.Result,
+            Preview: snap.Preview,
+            Error: errorMessage,
+            PiiRedacted: snap.PiiRedacted,
+            Pii: AnalyzePiiView.From(snap.Pii));
+    }
+
+    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJob job)
+    {
+        var status = job.Status switch
+        {
+            AnalysisJobStatus.Succeeded => AnalysisStatus.Completed,
+            AnalysisJobStatus.Failed => AnalysisStatus.Failed,
+            AnalysisJobStatus.Cancelled => AnalysisStatus.Cancelled,
+            _ => AnalysisStatus.Running
+        };
+
+        AnalysisResult? result = null;
+        if (status == AnalysisStatus.Completed && !string.IsNullOrWhiteSpace(job.ResultJson))
+        {
+            try
+            {
+                result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            }
+            catch (JsonException)
+            {
+                // 历史结果损坏时仍返回作业状态和其它元数据，不让查询端点整体失败。
+            }
+        }
+
+        return new AnalyzeJobSnapshotResponse(
+            Id: job.Id.ToString("N"),
+            Status: status,
+            Meta: new AnalysisJobMeta(
+                DataFileName: job.SourceName,
+                Format: job.SourceType,
+                OperatorId: null,
+                SubmittedAt: ToUtcOffset(job.StartedAtUtc)),
+            CreatedAt: ToUtcOffset(job.StartedAtUtc),
+            TerminalAt: job.CompletedAtUtc.HasValue
+                ? ToUtcOffset(job.CompletedAtUtc.Value)
+                : null,
+            ProgressText: null,
+            ProcessedObjects: job.TotalObjects,
+            Result: result,
+            Preview: null,
+            Error: job.Status == AnalysisJobStatus.Failed ? job.ErrorMessage : null,
+            PiiRedacted: true,
+            Pii: null);
     }
 
     private static async Task RunJob(
