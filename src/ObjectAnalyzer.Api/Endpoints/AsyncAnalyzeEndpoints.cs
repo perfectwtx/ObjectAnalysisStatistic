@@ -262,22 +262,31 @@ public static class AsyncAnalyzeEndpoints
                 IAnalysisHistoryStore historyStore,
                 CancellationToken cancellationToken) =>
         {
-            var snap = AnalysisJobRegistry.Instance.Get(jobId);
-            if (snap is not null)
+            // 持久化 Job 是最终状态的权威来源。运行中的作业仍优先使用 Registry，
+            // 以获得实时进度；一旦持久化状态已经进入终态，就不能再被旧的 Registry 快照覆盖。
+            if (Guid.TryParse(jobId, out var persistedJobId))
             {
-                return TypedResults.Ok(ToResponse(snap));
+                var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
+                if (job is not null)
+                {
+                    if (job.Status is AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled)
+                        return TypedResults.Ok(ToResponse(job));
+
+                    var runningSnap = AnalysisJobRegistry.Instance.Get(jobId);
+                    if (runningSnap is not null)
+                        return TypedResults.Ok(ToResponse(runningSnap));
+
+                    return TypedResults.Ok(ToResponse(job));
+                }
             }
 
-            // Registry 只保留进程内的短期运行时状态；终态作业被清理后，
+            // Registry 只保留进程内的短期运行时状态。终态作业被清理后，
             // 客户端仍应能通过持久化历史查询到结果。应用重启后同样走这里。
-            if (!Guid.TryParse(jobId, out var persistedJobId))
-                return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
+            var snap = AnalysisJobRegistry.Instance.Get(jobId);
+            if (snap is not null)
+                return TypedResults.Ok(ToResponse(snap));
 
-            var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
-            if (job is null)
-                return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
-
-            return TypedResults.Ok(ToResponse(job));
+            return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
         })
         .WithTags("异步分析")
         .WithSummary("查询异步作业状态")
@@ -441,26 +450,29 @@ public static class AsyncAnalyzeEndpoints
                 IAnalysisHistoryStore historyStore,
                 CancellationToken cancellationToken) =>
         {
-            bool ok = AnalysisJobRegistry.Instance.Cancel(jobId);
-            var snap = AnalysisJobRegistry.Instance.Get(jobId);
-            if (snap is not null)
-                return TypedResults.Ok(new AnalyzeCancelResponse(jobId, ok));
+            // 先读取持久化状态，避免分析已经完成后，旧的 Registry 快照仍被当成可取消。
+            if (Guid.TryParse(jobId, out var persistedJobId))
+            {
+                var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
+                if (job is not null)
+                {
+                    if (job.Status is AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled)
+                        return TypedResults.Ok(new AnalyzeCancelResponse(jobId, false));
 
-            // Registry 只保存进程内运行时状态。终态作业可能已被 SweepExpired 清理，
-            // 但持久化历史仍然是作业是否存在、是否已经结束的权威来源。
-            if (!Guid.TryParse(jobId, out var persistedJobId))
-                return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
+                    var ok = AnalysisJobRegistry.Instance.Cancel(jobId);
+                    var snap = AnalysisJobRegistry.Instance.Get(jobId);
+                    if (snap is not null)
+                        return TypedResults.Ok(new AnalyzeCancelResponse(jobId, ok));
 
-            var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
-            if (job is null)
-                return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
+                    return TypedResults.Conflict(new ErrorResponse("作业仍在运行，但当前进程中已找不到对应的运行时取消句柄，无法执行取消。"));
+                }
+            }
 
-            if (job.Status is AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled)
-                return TypedResults.Ok(new AnalyzeCancelResponse(jobId, false));
+            var runtimeSnap = AnalysisJobRegistry.Instance.Get(jobId);
+            if (runtimeSnap is not null)
+                return TypedResults.Ok(new AnalyzeCancelResponse(jobId, AnalysisJobRegistry.Instance.Cancel(jobId)));
 
-            // 持久化作业仍处于 Pending/Running，但运行时 Registry 已不存在。
-            // 此时无法真正触发当前进程的 CancellationToken，不能伪装成取消成功。
-            return TypedResults.Conflict(new ErrorResponse("作业仍在运行，但当前进程中已找不到对应的运行时取消句柄，无法执行取消。"));
+            return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
         })
         .WithTags("异步分析")
         .WithSummary("取消异步分析作业")
