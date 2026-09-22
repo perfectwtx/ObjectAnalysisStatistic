@@ -72,6 +72,11 @@ public sealed class AnalysisExecutionCoordinator
         try
         {
             var value = await execute(cancellationToken);
+
+            // 分析函数可能在收到取消信号后仍正常返回（例如底层解析器未及时观察 Token）。
+            // 此时不能把已经被用户取消的作业重新标记为 Succeeded，否则持久化 Job 与运行时状态会分裂。
+            cancellationToken.ThrowIfCancellationRequested();
+
             var result = resultSelector(value);
             await _jobService.CompleteAsync(job, result, options, CancellationToken.None);
             return value;
