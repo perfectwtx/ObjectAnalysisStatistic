@@ -2136,8 +2136,6 @@
                 });
 
             Core.Analysis.AnalysisResult result = pipelineResult.Result;
-            // P6.3 内存预算 hard 模式：分析循环结束后由本机检查点统一抛错（避免在 progress 回调线程上抛）
-            memoryBudget.ThrowIfHardExceeded();
             effectiveFormat = runContext.EffectiveFormat ?? effectiveFormat;
 
             State.Preview = previewedPreview;
