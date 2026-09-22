@@ -46,6 +46,7 @@ public sealed class AnalysisJobService
     {
         var jobs = await _historyStore.GetRecentAsync(10000, cancellationToken);
         var orphaned = jobs.Where(x => x.Status is AnalysisJobStatus.Pending or AnalysisJobStatus.Running).ToList();
+        var recovered = 0;
         foreach (var job in orphaned)
         {
             job.Status = AnalysisJobStatus.Failed;
@@ -55,11 +56,11 @@ public sealed class AnalysisJobService
             if (await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Pending, cancellationToken) ||
                 await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
             {
-                // 仅统计真正完成了持久化状态转换的作业。
+                recovered++;
             }
         }
 
-        return orphaned.Count(x => x.Status == AnalysisJobStatus.Failed && x.CompletedAtUtc.HasValue);
+        return recovered;
     }
 
     public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
