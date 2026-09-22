@@ -49,11 +49,9 @@ public sealed class AnalysisJobRegistry
     {
         if (string.IsNullOrEmpty(jobId)) return false;
         if (!_jobs.TryGetValue(jobId, out var job)) return false;
-        if (job.IsTerminal) return false;
         try
         {
-            job.Cts.Cancel();
-            return true;
+            return job.Cancel();
         }
         catch (ObjectDisposedException)
         {
@@ -111,6 +109,8 @@ public sealed class AnalysisJobRegistry
         public CancellationTokenSource Cts { get; }
         public AnalysisJobMeta Meta { get; }
         public DateTimeOffset CreatedAt { get; }
+        private readonly object _sync = new();
+
         public DateTimeOffset? TerminalAt { get; private set; }
         public AnalysisStatus Status { get; private set; } = AnalysisStatus.Running;
         public AnalysisResult? Result { get; private set; }
@@ -129,35 +129,71 @@ public sealed class AnalysisJobRegistry
             CreatedAt = createdAt;
             cts.Token.Register(() =>
             {
-                if (Status == AnalysisStatus.Running)
+                lock (_sync)
                 {
-                    Status = AnalysisStatus.Cancelled;
-                    TerminalAt = DateTimeOffset.UtcNow;
+                    if (Status == AnalysisStatus.Running)
+                    {
+                        Status = AnalysisStatus.Cancelled;
+                        TerminalAt = DateTimeOffset.UtcNow;
+                    }
                 }
             });
         }
 
-        public bool IsTerminal =>
-            Status is AnalysisStatus.Completed or AnalysisStatus.Failed or AnalysisStatus.Cancelled;
+        public bool IsTerminal
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return Status is AnalysisStatus.Completed or AnalysisStatus.Failed or AnalysisStatus.Cancelled;
+                }
+            }
+        }
+
+        public bool Cancel()
+        {
+            lock (_sync)
+            {
+                if (Status != AnalysisStatus.Running)
+                    return false;
+
+                try
+                {
+                    Cts.Cancel();
+                    return true;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return false;
+                }
+            }
+        }
 
         public void MarkCompleted(AnalysisResult result, IReadOnlyList<Dictionary<string, object?>>? preview,
             bool piiRedacted = true, PiiPolicy? pii = null)
         {
-            if (IsTerminal) return;
-            Result = result;
+            lock (_sync)
+            {
+                if (Status != AnalysisStatus.Running) return;
+                Result = result;
             Preview = preview;
             PiiRedacted = piiRedacted;
             Pii = pii;
             Status = AnalysisStatus.Completed;
-            TerminalAt = DateTimeOffset.UtcNow;
+                TerminalAt = DateTimeOffset.UtcNow;
+            }
         }
 
         public void MarkFailed(Exception error)
         {
-            if (IsTerminal) return;
-            Error = error;
+            lock (_sync)
+            {
+                if (Status != AnalysisStatus.Running) return;
+                Error = error;
             Status = AnalysisStatus.Failed;
-            TerminalAt = DateTimeOffset.UtcNow;
+                TerminalAt = DateTimeOffset.UtcNow;
+            }
         }
 
         public void DisposeCts()
@@ -165,19 +201,25 @@ public sealed class AnalysisJobRegistry
             try { Cts.Dispose(); } catch { }
         }
 
-        public AnalysisJobSnapshot ToSnapshot() => new(
-            Id: Id,
-            Status: Status,
-            Meta: Meta,
-            CreatedAt: CreatedAt,
-            TerminalAt: TerminalAt,
-            ProgressText: ProgressText,
-            ProcessedObjects: Interlocked.Read(ref ProcessedObjects),
-            Result: Result,
-            Preview: Preview,
-            Error: Error,
-            PiiRedacted: PiiRedacted,
-            Pii: Pii);
+        public AnalysisJobSnapshot ToSnapshot()
+        {
+            lock (_sync)
+            {
+                return new(
+                    Id: Id,
+                    Status: Status,
+                    Meta: Meta,
+                    CreatedAt: CreatedAt,
+                    TerminalAt: TerminalAt,
+                    ProgressText: ProgressText,
+                    ProcessedObjects: Interlocked.Read(ref ProcessedObjects),
+                    Result: Result,
+                    Preview: Preview,
+                    Error: Error,
+                    PiiRedacted: PiiRedacted,
+                    Pii: Pii);
+            }
+        }
     }
 }
 
