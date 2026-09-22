@@ -289,7 +289,10 @@ public static class AsyncAnalyzeEndpoints
         - Cancelled 是用户主动中断的状态。
         """);
 
-        private static DateTimeOffset ToUtcOffset(DateTime value)\n        => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));\n\n    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJobSnapshot snap)
+        private static DateTimeOffset ToUtcOffset(DateTime value)
+        => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
+    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJobSnapshot snap)
     {
         string? errorMessage = snap.Error is { } err
             ? $"{err.GetType().Name}: {err.Message}"
