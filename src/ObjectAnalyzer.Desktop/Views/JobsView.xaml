@@ -44,7 +44,7 @@
             <TextBlock Grid.Row="2"
                        x:Name="JobDetailsTextBlock"
                        Text="双击作业查看详细信息。"
-                       Foreground="{StaticResource Brush.TextSecondary}"
+                       Foreground="{DynamicResource Brush.TextSecondary}"
                        TextWrapping="Wrap"
                        Margin="2,12,2,0"
                        FontSize="12"/>
