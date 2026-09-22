@@ -2132,7 +2132,8 @@
                     {
                         State.ErrorMessage = Loc.Get("ErrCheckpointFailed", p6Outcome.CheckpointErrorMessage);
                     }
-                });
+                },
+                cancellationToken: token);
 
             Core.Analysis.AnalysisResult result = pipelineResult.Result;
             effectiveFormat = runContext.EffectiveFormat ?? effectiveFormat;
