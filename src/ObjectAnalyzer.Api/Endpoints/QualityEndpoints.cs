@@ -132,13 +132,20 @@ public static class QualityEndpoints
             result.ObjectRelationships ?? new List<ObjectRelationship>()));
     }
 
-    private static async Task<Ok<QualityDashboardResponse>> GetDashboard(IAnalysisHistoryStore history, IQualityHistoryQuery qualityHistory, IQualityIssueQuery issues, CancellationToken cancellationToken)
+    private static async Task<Ok<QualityDashboardResponse>> GetDashboard(Guid? jobId, IAnalysisHistoryStore history, IQualityHistoryQuery qualityHistory, IQualityIssueQuery issues, CancellationToken cancellationToken)
     {
         var jobs = (await history.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc).ToList();
-        var job = jobs.FirstOrDefault();
-        if (job is null) return TypedResults.Ok(new QualityDashboardResponse(null, null, Array.Empty<QualitySnapshot>(), Array.Empty<QualityIssue>(), Array.Empty<QualityGateResult>()));
+
+        // 与 Web /quality?jobId=... 保持同一口径：传入 JobId 时只允许展示指定成功作业，
+        // 不再静默回退到“最近一次”作业。
+        var job = jobId.HasValue
+            ? jobs.FirstOrDefault(x => x.Id == jobId.Value)
+            : jobs.FirstOrDefault();
+
+        if (job is null)
+            return TypedResults.Ok(new QualityDashboardResponse(null, null, Array.Empty<QualitySnapshot>(), Array.Empty<QualityIssue>(), Array.Empty<QualityGateResult>()));
 
         AnalysisResult? result = null;
         try { result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson!); } catch (JsonException) { }
