@@ -39,7 +39,7 @@
             <TextBlock Grid.Row="2"
                        x:Name="ReportDetailsTextBlock"
                        Text="请选择报告查看详情。"
-                       Foreground="{StaticResource Brush.TextSecondary}"
+                       Foreground="{DynamicResource Brush.TextSecondary}"
                        TextWrapping="Wrap"
                        Margin="2,12,2,0"
                        FontSize="12"/>
