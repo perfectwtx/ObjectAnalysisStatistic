@@ -133,6 +133,7 @@
         if (!Guid.TryParse(args.Value?.ToString(), out var id))
             return;
         _job = _jobs.FirstOrDefault(x => x.Id == id);
+        JobId = _job?.Id;
         LoadRelationships();
         await InvokeAsync(StateHasChanged);
     }
