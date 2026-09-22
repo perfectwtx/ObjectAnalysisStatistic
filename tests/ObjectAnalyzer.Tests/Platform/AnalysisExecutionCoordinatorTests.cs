@@ -6,6 +6,30 @@ namespace ObjectAnalyzer.Tests.Platform;
 public sealed class AnalysisExecutionCoordinatorTests
 {
     [Fact]
+    public async Task RecoverOrphanedJobsAsync_MarksPendingAndRunningJobsAsFailed()
+    {
+        var history = new FakeHistoryStore();
+        var alerts = new FakeAlertRuleStore();
+        var deliveries = new FakeWebhookDeliveryStore();
+        var service = new AnalysisJobService(history, alerts, deliveries);
+
+        await history.SaveAsync(new AnalysisJob { Id = Guid.NewGuid(), Status = AnalysisJobStatus.Pending, StartedAtUtc = DateTime.UtcNow.AddMinutes(-3) });
+        await history.SaveAsync(new AnalysisJob { Id = Guid.NewGuid(), Status = AnalysisJobStatus.Running, StartedAtUtc = DateTime.UtcNow.AddMinutes(-2) });
+        await history.SaveAsync(new AnalysisJob { Id = Guid.NewGuid(), Status = AnalysisJobStatus.Succeeded });
+
+        var recovered = await service.RecoverOrphanedJobsAsync();
+
+        Assert.Equal(2, recovered);
+        Assert.Equal(2, history.Jobs.Count(x => x.Status == AnalysisJobStatus.Failed));
+        Assert.All(history.Jobs.Where(x => x.Status == AnalysisJobStatus.Failed), job =>
+        {
+            Assert.NotNull(job.CompletedAtUtc);
+            Assert.Equal("应用重启后检测到未完成的分析作业，已标记为失败。", job.ErrorMessage);
+        });
+        Assert.Contains(history.Jobs, x => x.Status == AnalysisJobStatus.Succeeded);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WhenCancelled_PersistsCancelledJob()
     {
         var history = new FakeHistoryStore();
