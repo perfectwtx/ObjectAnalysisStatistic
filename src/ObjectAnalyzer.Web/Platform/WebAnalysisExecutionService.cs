@@ -26,7 +26,8 @@ public sealed class WebAnalysisExecutionService
         AnalysisOptions options,
         AnalysisRules? rules,
         AnalysisRunContext runContext,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Action<PipelineResult>? beforePersist = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(runContext);
@@ -41,6 +42,10 @@ public sealed class WebAnalysisExecutionService
                 pipelineResult = await Task.Run(
                     () => AnalysisPipeline.Execute(options, rules, runContext, token),
                     token);
+
+                // 允许 Web 宿主在 Coordinator 持久化 Job 之前完成结果后处理。
+                // 这样诸如 resume / baseline merge 得到的最终 Result 会进入同一个 AnalysisJob。
+                beforePersist?.Invoke(pipelineResult);
 
                 return pipelineResult.Result;
             },
