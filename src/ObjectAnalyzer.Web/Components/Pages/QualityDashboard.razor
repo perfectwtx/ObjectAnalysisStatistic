@@ -205,7 +205,9 @@
         _loading = true;
         await HistoryStore.InitializeAsync();
         var recentJobs = (await HistoryStore.GetRecentAsync(100)).Where(x => x.Status == AnalysisJobStatus.Succeeded).OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc).ToList();
-        _job = recentJobs.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ResultJson));
+        _job = JobId.HasValue
+            ? recentJobs.FirstOrDefault(x => x.Id == JobId.Value && !string.IsNullOrWhiteSpace(x.ResultJson))
+            : recentJobs.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ResultJson));
         _recentSnapshots = (await QualityHistory.GetSnapshotsAsync(limit: 8)).ToList();
         _topIssues = _job is null ? new List<QualityIssue>() : (await QualityIssueQuery.GetByJobAsync(_job.Id)).OrderByDescending(x => x.Count).ThenBy(x => x.FieldName).Take(5).ToList();
         _result = null; _gateResults.Clear();
