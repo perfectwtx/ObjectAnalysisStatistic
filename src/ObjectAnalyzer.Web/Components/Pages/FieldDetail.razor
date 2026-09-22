@@ -14,7 +14,7 @@
             <div class="oa-eyebrow">Quality Analysis / Fields</div>
             <div class="oa-field-title-row">
                 <div><h1>字段质量详情</h1><p>从字段覆盖率、Null、唯一性与质量违规等维度查看字段画像，展开任意字段查看完整细节。</p></div>
-                <a class="btn btn-outline-secondary" href="/quality">返回总览</a>
+                <a class="btn btn-outline-secondary" href="@QualityUrl">返回总览</a>
             </div>
         </div>
     </header>
@@ -128,6 +128,8 @@
             || (IssueFilter == "Issue" && GetViolationCount(x.FieldName) > 0)
             || (IssueFilter == "Normal" && GetViolationCount(x.FieldName) == 0))
         .ToList();
+
+    private string QualityUrl => _selectedJobId == Guid.Empty ? "/quality" : $"/quality?jobId={_selectedJobId}";
 
     private string IssuesUrl => _selectedJobId == Guid.Empty
         ? "/issues"
