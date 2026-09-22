@@ -41,6 +41,23 @@ public sealed class AnalysisJobService
         return job;
     }
 
+    /// <summary>应用启动时将上一次进程遗留的 Pending/Running 作业标记为失败。</summary>
+    public async Task<int> RecoverOrphanedJobsAsync(CancellationToken cancellationToken = default)
+    {
+        var jobs = await _historyStore.GetRecentAsync(10000, cancellationToken);
+        var orphaned = jobs.Where(x => x.Status is AnalysisJobStatus.Pending or AnalysisJobStatus.Running).ToList();
+        foreach (var job in orphaned)
+        {
+            job.Status = AnalysisJobStatus.Failed;
+            job.CompletedAtUtc = DateTime.UtcNow;
+            job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
+            job.ErrorMessage = "应用重启后检测到未完成的分析作业，已标记为失败。";
+            await _historyStore.SaveAsync(job, cancellationToken);
+        }
+
+        return orphaned.Count;
+    }
+
     public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
     {
         var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
