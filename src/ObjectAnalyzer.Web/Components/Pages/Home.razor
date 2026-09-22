@@ -2100,7 +2100,40 @@
                 analysisOptions,
                 rules,
                 runContext,
-                token);
+                token,
+                beforePersist: completedPipeline =>
+                {
+                    // P6 后处理必须发生在 AnalysisJobService.CompleteAsync 之前。
+                    // Coordinator 会把 callback 返回的 AnalysisResult 持久化到当前 Job；
+                    // 若在 ExecuteAsync 返回后再 MergeFrom，数据库里的 ResultJson 会落后于页面。
+                    var p6Outcome = P6PostAnalysis.Apply(new P6PostAnalysisInput
+                    {
+                        Result = completedPipeline.Result,
+                        ResumeFromPath = resumeFromPath,
+                        BaselinePath = baselinePath,
+                        CheckpointFileName = safeCheckpointName,
+                        SourcePath = dataFilePath,
+                        SourceFormat = effectiveFormat
+                    });
+
+                    if (p6Outcome.LastCheckpointServerPath != null)
+                    {
+                        State.LastCheckpointServerPath = p6Outcome.LastCheckpointServerPath;
+                        State.LastCheckpointSize = p6Outcome.LastCheckpointSize;
+                    }
+                    if (p6Outcome.ResumeErrorMessage != null)
+                    {
+                        State.ErrorMessage = Loc.Get("ErrResumeFailed", p6Outcome.ResumeErrorMessage);
+                    }
+                    if (p6Outcome.BaselineErrorMessage != null)
+                    {
+                        State.ErrorMessage = Loc.Get("ErrBaselineFailed", p6Outcome.BaselineErrorMessage);
+                    }
+                    if (p6Outcome.CheckpointErrorMessage != null)
+                    {
+                        State.ErrorMessage = Loc.Get("ErrCheckpointFailed", p6Outcome.CheckpointErrorMessage);
+                    }
+                });
 
             Core.Analysis.AnalysisResult result = pipelineResult.Result;
             // P6.3 内存预算 hard 模式：分析循环结束后由本机检查点统一抛错（避免在 progress 回调线程上抛）
@@ -2144,36 +2177,6 @@
                 {
                     State.ResultWarning = Loc["ResultWarningExplain"];
                 }
-            }
-
-            // ── P6.2 增量分析 / 断点续跑 / 基线合并：分析成功后的合并阶段 ──
-            // 限制：Web 端不跳读源文件位置（仅合并聚合结果）；如需真正从源文件中间续跑请用 CLI。
-            // 核心逻辑已拆到 P6PostAnalysis.Apply（独立可测），此处只负责把返回值落到 State。
-            var p6Outcome = P6PostAnalysis.Apply(new P6PostAnalysisInput
-            {
-                Result = result,
-                ResumeFromPath = resumeFromPath,
-                BaselinePath = baselinePath,
-                CheckpointFileName = safeCheckpointName,
-                SourcePath = dataFilePath,
-                SourceFormat = effectiveFormat
-            });
-            if (p6Outcome.LastCheckpointServerPath != null)
-            {
-                State.LastCheckpointServerPath = p6Outcome.LastCheckpointServerPath;
-                State.LastCheckpointSize = p6Outcome.LastCheckpointSize;
-            }
-            if (p6Outcome.ResumeErrorMessage != null)
-            {
-                State.ErrorMessage = Loc.Get("ErrResumeFailed", p6Outcome.ResumeErrorMessage);
-            }
-            if (p6Outcome.BaselineErrorMessage != null)
-            {
-                State.ErrorMessage = Loc.Get("ErrBaselineFailed", p6Outcome.BaselineErrorMessage);
-            }
-            if (p6Outcome.CheckpointErrorMessage != null)
-            {
-                State.ErrorMessage = Loc.Get("ErrCheckpointFailed", p6Outcome.CheckpointErrorMessage);
             }
 
             // 数据血缘审计：仅在用户填写了 --audit-log 路径时写入一条 analysis_finish 事件
