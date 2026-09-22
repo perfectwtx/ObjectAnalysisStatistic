@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        RefreshThemeToggleButton();
 
         QualityViewControl.LoadBaselineRequested += async (_, _) => await LoadBaselineFromViewAsync();
         QualityViewControl.SaveBaselineRequested += async (_, _) => await SaveBaselineFromViewAsync();
@@ -42,11 +43,28 @@ public partial class MainWindow : Window
             _viewModel.SetRecentFiles(RecentFilesService.Load());
             RefreshReportHistory();
             await LoadBaselineAsync();
+            RefreshThemeToggleButton();
         }
         catch (Exception ex)
         {
             _viewModel.SetStatus($"本地历史初始化失败：{ex.Message}");
         }
+    }
+
+    private void ThemeToggle_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeService.Toggle();
+        RefreshThemeToggleButton();
+        _viewModel.SetStatus(
+            ThemeService.Current == AppTheme.Dark
+                ? "已切换到深色主题"
+                : "已切换到浅色主题");
+    }
+
+    private void RefreshThemeToggleButton()
+    {
+        ThemeToggleButton.Content = ThemeService.GetToggleLabel();
+        ThemeToggleButton.ToolTip = ThemeService.GetToggleTooltip();
     }
 
     private void SelectFile_Click(object sender, RoutedEventArgs e)
