@@ -14,7 +14,7 @@
                     <h1>质量趋势</h1>
                     <p>从历史质量快照观察整体质量分与核心质量维度的变化。</p>
                 </div>
-                <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="/quality">质量总览</a><a class="btn btn-outline-secondary" href="@RegressionUrl">质量回归</a><a class="btn btn-outline-secondary" href="@IssuesUrl">问题中心</a><button class="btn btn-outline-secondary oa-trend-refresh" @onclick="LoadAsync">刷新数据</button></div>
+                <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="@DashboardUrl">质量总览</a><a class="btn btn-outline-secondary" href="@RegressionUrl">质量回归</a><a class="btn btn-outline-secondary" href="@IssuesUrl">问题中心</a><button class="btn btn-outline-secondary oa-trend-refresh" @onclick="LoadAsync">刷新数据</button></div>
             </div>
         </div>
     </header>
@@ -80,7 +80,7 @@
                                 <td>@snapshot.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@snapshot.SourceName</td>
                                 <td><span class="oa-badge @ScoreBadge(snapshot.Metrics.OverallScore)">@snapshot.Metrics.OverallScore.ToString("F1")</span></td>
-                                <td><a class="oa-trend-issue-link" href="@($"/jobs/{snapshot.JobId}")">@snapshot.IssueCount</a></td>
+                                <td><a class="oa-trend-issue-link" href="@($"/issues?jobId={snapshot.JobId}")">@snapshot.IssueCount</a></td>
                                 <td>@snapshot.TotalObjects.ToString("N0")</td>
                                 <td>@snapshot.Metrics.Completeness.ToString("F1")</td>
                                 <td>@snapshot.Metrics.Validity.ToString("F1")</td>
@@ -135,6 +135,8 @@
     private int WindowSize = 30;
 
     private Guid? CurrentJobId => JobId ?? FilteredSnapshots.FirstOrDefault()?.JobId;
+    private string DashboardUrl => CurrentJobId.HasValue ? $"/quality?jobId={CurrentJobId.Value}" : "/quality";
+
     private string RegressionUrl => CurrentJobId.HasValue ? $"/quality/regression?jobId={CurrentJobId.Value}" : "/quality/regression";
     private string IssuesUrl => CurrentJobId.HasValue ? $"/issues?jobId={CurrentJobId.Value}" : "/issues";
 
