@@ -225,6 +225,16 @@ public sealed class AnalysisExecutionCoordinatorTests
             return Task.CompletedTask;
         }
 
+        public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
+        {
+            var existing = Jobs.FirstOrDefault(x => x.Id == job.Id);
+            if (existing is null || existing.Status != expectedStatus)
+                return Task.FromResult(false);
+            var index = Jobs.IndexOf(existing);
+            Jobs[index] = job;
+            return Task.FromResult(true);
+        }
+
         public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
