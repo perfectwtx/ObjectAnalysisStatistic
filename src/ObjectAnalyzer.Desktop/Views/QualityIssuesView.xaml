@@ -1,20 +1,28 @@
 <UserControl x:Class="ObjectAnalyzer.Desktop.Views.QualityIssuesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Margin="0,10,0,0" Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="10" Padding="16">
+    <Border Style="{StaticResource CardBorder}" Margin="0,8,0,0" Padding="16">
         <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-            <TextBlock Text="问题中心" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12"/>
-            <ListView Grid.Row="1" ItemsSource="{Binding Issues}">
-                <ListView.View>
-                    <GridView>
-                        <GridViewColumn Header="字段" DisplayMemberBinding="{Binding FieldName}" Width="220"/>
-                        <GridViewColumn Header="规则" DisplayMemberBinding="{Binding Check}" Width="150"/>
-                        <GridViewColumn Header="次数" DisplayMemberBinding="{Binding Count}" Width="90"/>
-                        <GridViewColumn Header="说明" DisplayMemberBinding="{Binding Message}" Width="640"/>
-                    </GridView>
-                </ListView.View>
-            </ListView>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="问题中心" Style="{StaticResource SectionTitle}"/>
+                <TextBlock Text="聚合当前分析结果中的质量违规项。" Style="{StaticResource SectionHint}"/>
+            </StackPanel>
+            <DataGrid Grid.Row="1"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      ItemsSource="{Binding Issues}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="字段" Binding="{Binding FieldName}" Width="220"/>
+                    <DataGridTextColumn Header="规则" Binding="{Binding Check}" Width="150"/>
+                    <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="90"/>
+                    <DataGridTextColumn Header="说明" Binding="{Binding Message}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
         </Grid>
     </Border>
 </UserControl>
