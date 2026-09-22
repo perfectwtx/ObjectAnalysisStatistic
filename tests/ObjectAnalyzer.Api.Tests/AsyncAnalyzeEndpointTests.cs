@@ -79,6 +79,48 @@ public sealed class AsyncAnalyzeEndpointTests : IClassFixture<AsyncAnalyzeWebApp
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task CancelAsyncJob_WhenRegistryHasNoSnapshotAndPersistedJobIsTerminal_ReturnsOkFalse()
+    {
+        var job = new AnalysisJob
+        {
+            Id = Guid.NewGuid(),
+            SourceName = "done.json",
+            SourceType = "json",
+            Status = AnalysisJobStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow.AddMinutes(-2),
+            CompletedAtUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        _factory.Store.Set(job);
+
+        using var client = _factory.CreateClient();
+        var response = await client.PostAsync($"/api/analyze/async/{job.Id:N}/cancel", content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(job.Id.ToString("N"), body.GetProperty("jobId").GetString());
+        Assert.False(body.GetProperty("cancelled").GetBoolean());
+    }
+
+    [Fact]
+    public async Task CancelAsyncJob_WhenRegistryHasNoSnapshotAndPersistedJobIsRunning_ReturnsConflict()
+    {
+        var job = new AnalysisJob
+        {
+            Id = Guid.NewGuid(),
+            SourceName = "running.json",
+            SourceType = "json",
+            Status = AnalysisJobStatus.Running,
+            StartedAtUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        _factory.Store.Set(job);
+
+        using var client = _factory.CreateClient();
+        var response = await client.PostAsync($"/api/analyze/async/{job.Id:N}/cancel", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
 }
 
 public sealed class AsyncAnalyzeWebApplicationFactory : WebApplicationFactory<Program>
