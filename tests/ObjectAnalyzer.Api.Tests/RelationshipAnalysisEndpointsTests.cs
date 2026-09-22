@@ -182,6 +182,15 @@ public sealed class InMemoryRelationshipHistoryStore : IAnalysisHistoryStore
     public void Set(AnalysisJob job) => _jobs[job.Id] = job;
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default) { _jobs[job.Id] = job; return Task.CompletedTask; }
+        public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
+        {
+            var existing = _jobs.GetValueOrDefault(job.Id);
+            if (existing is null || existing.Status != expectedStatus)
+                return Task.FromResult(false);
+            _jobs[job.Id] = job;
+            return Task.FromResult(true);
+        }
+
     public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(_jobs.GetValueOrDefault(id));
     public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AnalysisJob>>(_jobs.Values.Take(limit).ToList());
