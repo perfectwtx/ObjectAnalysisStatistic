@@ -5,7 +5,7 @@
         Title="Object Analyzer"
         Width="1360" Height="860"
         MinWidth="1100" MinHeight="700"
-        Background="{StaticResource Brush.Bg}"
+        Background="{DynamicResource Brush.Bg}"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="28,24,28,16">
         <Grid.RowDefinitions>
@@ -17,7 +17,15 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,16" LastChildFill="False">
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <Button x:Name="ThemeToggleButton"
+                    DockPanel.Dock="Right"
+                    Content="深色模式"
+                    Click="ThemeToggle_Click"
+                    VerticalAlignment="Center"
+                    MinWidth="96"
+                    Margin="0"
+                    ToolTip="切换到深色主题"/>
             <StackPanel>
                 <TextBlock Text="Object Analyzer" Style="{StaticResource PageTitle}"/>
                 <TextBlock Text="本地对象分析与数据质量工作台" Style="{StaticResource PageSubtitle}"/>
@@ -51,7 +59,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="最近文件"
-                                   Foreground="{StaticResource Brush.TextSecondary}"
+                                   Foreground="{DynamicResource Brush.TextSecondary}"
                                    VerticalAlignment="Center"
                                    FontSize="12"
                                    Margin="0,0,10,0"/>
@@ -101,7 +109,7 @@
                 <StackPanel Grid.Column="0" Margin="0,0,24,0" MinWidth="160">
                     <TextBlock Text="当前任务" Style="{StaticResource FieldLabel}"/>
                     <TextBlock Text="{Binding Status}"
-                               Foreground="{StaticResource Brush.TextSecondary}"
+                               Foreground="{DynamicResource Brush.TextSecondary}"
                                FontSize="13"
                                TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
@@ -109,7 +117,7 @@
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress, Mode=OneWay}"/>
                     <TextBlock Text="{Binding ReportPath}"
-                               Foreground="{StaticResource Brush.TextMuted}"
+                               Foreground="{DynamicResource Brush.TextMuted}"
                                FontSize="11"
                                TextTrimming="CharacterEllipsis"
                                Margin="0,6,0,0"/>
@@ -144,7 +152,7 @@
 
         <TextBlock Grid.Row="4"
                    Text="本地分析 · Object Analyzer Desktop"
-                   Foreground="{StaticResource Brush.TextMuted}"
+                   Foreground="{DynamicResource Brush.TextMuted}"
                    FontSize="11"
                    Margin="2,10,0,0"/>
     </Grid>
