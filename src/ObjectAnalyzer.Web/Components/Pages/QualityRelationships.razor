@@ -4,6 +4,7 @@
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
+@inject NavigationManager Navigation
 
 <PageTitle>字段关系分析</PageTitle>
 
@@ -167,6 +168,7 @@
         {
             SelectedJobId = id;
             JobId = id;
+            Navigation.NavigateTo($"/quality/relationships?jobId={id}", replace: true);
             await LoadSelectedJobAsync();
         }
     }
