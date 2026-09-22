@@ -215,6 +215,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     private sealed class FakeHistoryStore : IAnalysisHistoryStore
     {
         public List<AnalysisJob> Jobs { get; } = [];
+        private readonly Dictionary<Guid, AnalysisJobStatus> _persistedStatuses = [];
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
@@ -222,16 +223,15 @@ public sealed class AnalysisExecutionCoordinatorTests
             var existing = Jobs.FindIndex(x => x.Id == job.Id);
             if (existing >= 0) Jobs[existing] = job;
             else Jobs.Add(job);
+            _persistedStatuses[job.Id] = job.Status;
             return Task.CompletedTask;
         }
 
         public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
         {
-            var existing = Jobs.FirstOrDefault(x => x.Id == job.Id);
-            if (existing is null || existing.Status != expectedStatus)
+            if (!_persistedStatuses.TryGetValue(job.Id, out var persistedStatus) || persistedStatus != expectedStatus)
                 return Task.FromResult(false);
-            var index = Jobs.IndexOf(existing);
-            Jobs[index] = job;
+            _persistedStatuses[job.Id] = job.Status;
             return Task.FromResult(true);
         }
 
