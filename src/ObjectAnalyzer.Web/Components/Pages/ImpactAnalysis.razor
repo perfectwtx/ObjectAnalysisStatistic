@@ -5,6 +5,7 @@
 @using ObjectAnalyzer.Platform
 @using ImpactModel = ObjectAnalyzer.Analysis.ImpactAnalysis
 @inject IAnalysisHistoryStore HistoryStore
+@inject NavigationManager Navigation
 
 <PageTitle>影响分析</PageTitle>
 
@@ -187,6 +188,7 @@
 
         _job = _jobs.FirstOrDefault(x => x.Id == id);
         JobId = _job?.Id;
+        Navigation.NavigateTo($"/quality/impact-analysis?jobId={id}", replace: true);
         _impact = null;
         if (_job is not null)
         {
