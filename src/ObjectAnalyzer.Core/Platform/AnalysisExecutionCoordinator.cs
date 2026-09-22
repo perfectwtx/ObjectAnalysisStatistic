@@ -78,7 +78,9 @@ public sealed class AnalysisExecutionCoordinator
             cancellationToken.ThrowIfCancellationRequested();
 
             var result = resultSelector(value);
-            await _jobService.CompleteAsync(job, result, options, CancellationToken.None);
+            var completed = await _jobService.CompleteAsync(job, result, options, CancellationToken.None);
+            if (!completed)
+                throw new InvalidOperationException($"分析作业 {job.Id} 已被其他执行路径终止，无法标记为完成。");
             return value;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -95,7 +97,8 @@ public sealed class AnalysisExecutionCoordinator
         }
         catch (Exception ex)
         {
-            await _jobService.FailAsync(job, ex, CancellationToken.None);
+            if (job.Status == AnalysisJobStatus.Running)
+                await _jobService.FailAsync(job, ex, CancellationToken.None);
             throw;
         }
     }
