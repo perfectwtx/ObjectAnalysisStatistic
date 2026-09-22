@@ -30,6 +30,7 @@ builder.Services.AddAnalysisPlatform(historyDbPath);
 var app = builder.Build();
 
 await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
+await app.Services.GetRequiredService<AnalysisJobService>().RecoverOrphanedJobsAsync();
 await app.Services.GetRequiredService<IQualityIssueResponsibilityStore>().InitializeAsync();
 await app.Services.GetRequiredService<IQualityIssueRemediationStore>().InitializeAsync();
 await app.Services.GetRequiredService<IQualityBaselineStore>().InitializeAsync();
