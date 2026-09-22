@@ -9,7 +9,7 @@
             <ProgressBar Grid.Row="1" Height="8" Margin="0,12,0,12" Minimum="0" Maximum="100" Value="{Binding Progress, Mode=OneWay}"/>
             <TextBox Grid.Row="2" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto" Background="#0F172A" Foreground="#E2E8F0"
-                     FontFamily="Cascadia Mono" Padding="12" Text="{Binding OutputText}"/>
+                     FontFamily="Cascadia Mono" Padding="12" Text="{Binding OutputText, Mode=OneWay}"/>
         </Grid>
     </Border>
 </UserControl>
