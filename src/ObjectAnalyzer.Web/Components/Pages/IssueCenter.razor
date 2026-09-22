@@ -17,7 +17,7 @@
             @if (!string.IsNullOrWhiteSpace(CheckFilter)) { <strong>检查: @GetCheckLabel(CheckFilter)</strong> }
             @if (!string.IsNullOrWhiteSpace(StatusFilter)) { <strong>状态: @GetStatusLabel(StatusFilter)</strong> }
             @if (!string.IsNullOrWhiteSpace(OwnerFilter)) { <strong>责任人: @GetOwnerLabel(OwnerFilter)</strong> }
-            <a href="/issues">清除筛选</a>
+            <a href="@ClearFiltersUrl">清除筛选</a>
         </div>
     }
     <div class="oa-analysis-header">
@@ -171,6 +171,8 @@
     [SupplyParameterFromQuery(Name = "owner")]
     public string? OwnerFilter { get; set; }
 
+    private string ClearFiltersUrl => JobId.HasValue ? $"/issues?jobId={JobId.Value}" : "/issues";
+
     private bool HasActiveFilters =>
         JobId.HasValue ||
         !string.IsNullOrWhiteSpace(FieldFilter) ||
@@ -222,6 +224,7 @@
         if (Guid.TryParse(args.Value?.ToString(), out var id))
         {
             _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
+            JobId = _selectedJob?.Id;
             await LoadIssuesAsync(_selectedJob);
         }
     }
