@@ -198,7 +198,7 @@
     private List<QualityIssue> _topIssues = new();
     private List<QualityGateResult> _gateResults = new();
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
