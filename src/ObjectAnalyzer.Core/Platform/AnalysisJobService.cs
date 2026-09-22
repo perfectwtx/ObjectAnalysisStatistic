@@ -66,7 +66,7 @@ public sealed class AnalysisJobService
     public async Task<bool> CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
     {
         if (job.Status != AnalysisJobStatus.Running)
-            return;
+            return false;
 
         var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded
@@ -104,7 +104,10 @@ public sealed class AnalysisJobService
 
         var currentIssues = CreateQualityIssues(job.Id, result);
         if (!await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
-            return;
+        {
+            await ResyncStateAsync(job, cancellationToken);
+            return false;
+        }
 
         await _historyStore.SaveQualitySnapshotAsync(
             CreateQualitySnapshot(job, result),
@@ -118,6 +121,32 @@ public sealed class AnalysisJobService
         }
 
         await EnqueueAlertsAsync(job, result, previousJob, cancellationToken);
+        return true;
+    }
+
+    private async Task ResyncStateAsync(AnalysisJob job, CancellationToken cancellationToken)
+    {
+        var persisted = await _historyStore.GetAsync(job.Id, cancellationToken);
+        if (persisted is not null)
+            CopyState(persisted, job);
+    }
+
+    private static void CopyState(AnalysisJob source, AnalysisJob target)
+    {
+        target.SourceName = source.SourceName;
+        target.SourceType = source.SourceType;
+        target.Status = source.Status;
+        target.StartedAtUtc = source.StartedAtUtc;
+        target.CompletedAtUtc = source.CompletedAtUtc;
+        target.DurationMs = source.DurationMs;
+        target.TotalObjects = source.TotalObjects;
+        target.FieldCount = source.FieldCount;
+        target.QualityScore = source.QualityScore;
+        target.IssueCount = source.IssueCount;
+        target.ErrorMessage = source.ErrorMessage;
+        target.ResultJson = source.ResultJson;
+        target.GateResultsJson = source.GateResultsJson;
+        target.QualityBaselineEvaluationJson = source.QualityBaselineEvaluationJson;
     }
 
     private static QualitySnapshot CreateQualitySnapshot(AnalysisJob job, AnalysisResult result)
@@ -174,7 +203,8 @@ public sealed class AnalysisJobService
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.ErrorMessage = exception.Message;
-        await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken);
+        if (!await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
+            await ResyncStateAsync(job, cancellationToken);
     }
 
     public async Task CancelAsync(AnalysisJob job, CancellationToken cancellationToken = default)
@@ -186,7 +216,8 @@ public sealed class AnalysisJobService
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.ErrorMessage = "分析已取消。";
-        await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken);
+        if (!await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
+            await ResyncStateAsync(job, cancellationToken);
     }
 
     private async Task EnqueueAlertsAsync(AnalysisJob job, AnalysisResult result, AnalysisJob? previousJob, CancellationToken cancellationToken)
