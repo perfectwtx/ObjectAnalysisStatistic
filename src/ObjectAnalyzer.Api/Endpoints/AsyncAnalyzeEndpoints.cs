@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Parsing;
+using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Api;
 
@@ -256,29 +257,27 @@ public static class AsyncAnalyzeEndpoints
 
         // ── 查询作业状态 / 拉取结果 ──
         routes.MapGet("/analyze/async/{jobId}",
-            Results<Ok<AnalyzeJobSnapshotResponse>, NotFound<ErrorResponse>> (string jobId) =>
+            async Task<Results<Ok<AnalyzeJobSnapshotResponse>, NotFound<ErrorResponse>>> (
+                string jobId,
+                IAnalysisHistoryStore historyStore,
+                CancellationToken cancellationToken) =>
         {
             var snap = AnalysisJobRegistry.Instance.Get(jobId);
-            if (snap is null)
+            if (snap is not null)
+            {
+                return TypedResults.Ok(ToResponse(snap));
+            }
+
+            // Registry 只保留进程内的短期运行时状态；终态作业被清理后，
+            // 客户端仍应能通过持久化历史查询到结果。应用重启后同样走这里。
+            if (!Guid.TryParse(jobId, out var persistedJobId))
                 return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
 
-            string? errorMessage = null;
-            if (snap.Error is { } err)
-                errorMessage = $"{err.GetType().Name}: {err.Message}";
+            var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
+            if (job is null)
+                return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
 
-            return TypedResults.Ok(new AnalyzeJobSnapshotResponse(
-                Id: snap.Id,
-                Status: snap.Status,
-                Meta: snap.Meta,
-                CreatedAt: snap.CreatedAt,
-                TerminalAt: snap.TerminalAt,
-                ProgressText: snap.ProgressText,
-                ProcessedObjects: snap.ProcessedObjects,
-                Result: snap.Result,
-                Preview: snap.Preview,
-                Error: errorMessage,
-                PiiRedacted: snap.PiiRedacted,
-                Pii: AnalyzePiiView.From(snap.Pii)));
+            return TypedResults.Ok(ToResponse(job));
         })
         .WithTags("异步分析")
         .WithSummary("查询异步作业状态")
@@ -290,7 +289,72 @@ public static class AsyncAnalyzeEndpoints
         - Cancelled 是用户主动中断的状态。
         """);
 
-        // ── SSE 事件流 ──
+        private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJobSnapshot snap)
+    {
+        string? errorMessage = snap.Error is { } err
+            ? $"{err.GetType().Name}: {err.Message}"
+            : null;
+
+        return new AnalyzeJobSnapshotResponse(
+            Id: snap.Id,
+            Status: snap.Status,
+            Meta: snap.Meta,
+            CreatedAt: snap.CreatedAt,
+            TerminalAt: snap.TerminalAt,
+            ProgressText: snap.ProgressText,
+            ProcessedObjects: snap.ProcessedObjects,
+            Result: snap.Result,
+            Preview: snap.Preview,
+            Error: errorMessage,
+            PiiRedacted: snap.PiiRedacted,
+            Pii: AnalyzePiiView.From(snap.Pii));
+    }
+
+    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJob job)
+    {
+        var status = job.Status switch
+        {
+            AnalysisJobStatus.Succeeded => AnalysisStatus.Completed,
+            AnalysisJobStatus.Failed => AnalysisStatus.Failed,
+            AnalysisJobStatus.Cancelled => AnalysisStatus.Cancelled,
+            _ => AnalysisStatus.Running
+        };
+
+        AnalysisResult? result = null;
+        if (status == AnalysisStatus.Completed && !string.IsNullOrWhiteSpace(job.ResultJson))
+        {
+            try
+            {
+                result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            }
+            catch (JsonException)
+            {
+                // 历史结果损坏时仍返回作业状态和其它元数据，不让查询端点整体失败。
+            }
+        }
+
+        return new AnalyzeJobSnapshotResponse(
+            Id: job.Id.ToString("N"),
+            Status: status,
+            Meta: new AnalysisJobMeta(
+                DataFileName: job.SourceName,
+                Format: job.SourceType,
+                OperatorId: null,
+                SubmittedAt: new DateTimeOffset(job.StartedAtUtc, TimeSpan.Zero)),
+            CreatedAt: new DateTimeOffset(job.StartedAtUtc, TimeSpan.Zero),
+            TerminalAt: job.CompletedAtUtc.HasValue
+                ? new DateTimeOffset(job.CompletedAtUtc.Value, TimeSpan.Zero)
+                : null,
+            ProgressText: null,
+            ProcessedObjects: job.TotalObjects,
+            Result: result,
+            Preview: null,
+            Error: job.Status == AnalysisJobStatus.Failed ? job.ErrorMessage : null,
+            PiiRedacted: true,
+            Pii: null);
+    }
+
+    // ── SSE 事件流 ──
         routes.MapGet("/analyze/async/{jobId}/events", async (string jobId, HttpContext http) =>
         {
             http.Response.Headers.ContentType = "text/event-stream";
