@@ -15,7 +15,7 @@
             <h1>问题责任与整改</h1>
             <p>为质量问题指定责任人，记录整改措施，并跟踪整改闭环。</p>
         </div>
-        <button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button>
+        <div class="oa-header-actions"><a class="btn btn-outline-secondary" href="@IssuesUrl">问题中心</a><a class="btn btn-outline-secondary" href="@JobUrl">当前作业</a><button class="btn btn-outline-secondary" @onclick="LoadAsync">刷新</button></div>
     </div>
 
     @if (_loading)
@@ -113,7 +113,7 @@
                         @foreach (var item in _items)
                         {
                             <tr class="oa-issue-row">
-                                <td><strong>@item.Issue.FieldName</strong></td>
+                                <td><strong>@item.Issue.FieldName</strong><div class="mt-1"><a class="small" href="@IssueDetailUrl(item.Issue)">查看详情</a></div></td>
                                 <td><span class="oa-badge is-warning">@item.Issue.Check</span></td>
                                 <td><span class="oa-number-value">@item.Issue.Count</span></td>
                                 <td class="oa-edit-cell"><input class="form-control form-control-sm" @bind="item.Owner" placeholder="责任人" /></td>
@@ -234,6 +234,10 @@
     private string? _message;
     private string? _error;
 
+    private string IssuesUrl => _selectedJob is null ? "/issues" : $"/issues?jobId={_selectedJob.Id}";
+    private string JobUrl => _selectedJob is null ? "/jobs" : $"/jobs/{_selectedJob.Id}";
+    private static string IssueDetailUrl(QualityIssue issue) => $"/issues/detail?jobId={issue.JobId}&field={Uri.EscapeDataString(issue.FieldName)}&check={Uri.EscapeDataString(issue.Check)}";
+
     [SupplyParameterFromQuery(Name = "jobId")]
     public Guid? JobId { get; set; }
 
@@ -270,6 +274,7 @@
         if (Guid.TryParse(args.Value?.ToString(), out var id))
         {
             _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
+            JobId = id;
             await LoadIssuesAsync(_selectedJob);
         }
     }
