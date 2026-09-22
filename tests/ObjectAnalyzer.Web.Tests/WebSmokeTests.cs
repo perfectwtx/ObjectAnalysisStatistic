@@ -152,9 +152,22 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Theory]
-    [InlineData("/quality/data-lineage", "数据血缘")]
+    [InlineData("/quality", "质量总览")]
+    [InlineData("/quality/trend", "质量趋势")]
+    [InlineData("/quality/fields", "字段质量")]
+    [InlineData("/quality/recommendations", "质量修复建议")]
+    [InlineData("/quality/regression", "质量回归")]
+    [InlineData("/quality/schema-impact", "Schema 影响")]
     [InlineData("/quality/impact-analysis", "影响分析")]
-    public async Task QualityAnalysisPages_ReturnOk(string path, string title)
+    [InlineData("/quality/data-lineage", "数据血缘")]
+    [InlineData("/quality/relationships", "质量关系")]
+    [InlineData("/quality/object-relationships", "对象关系")]
+    [InlineData("/quality/baselines", "质量基线")]
+    [InlineData("/quality/webhooks", "Webhook")]
+    [InlineData("/issues", "问题中心")]
+    [InlineData("/issues/responsibility", "问题责任")]
+    [InlineData("/jobs", "分析作业中心")]
+    public async Task CoreWebPages_ReturnOk(string path, string title)
     {
         using var client = _factory.CreateClient();
         using var response = await client.GetAsync(path);
