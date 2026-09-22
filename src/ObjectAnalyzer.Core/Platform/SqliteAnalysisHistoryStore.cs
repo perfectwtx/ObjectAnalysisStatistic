@@ -143,6 +143,42 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         }
     }
 
+    public async Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)
+    {
+        await s_writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                UPDATE analysis_jobs SET
+                    source_name = $sourceName,
+                    source_type = $sourceType,
+                    status = $status,
+                    started_at_utc = $startedAt,
+                    completed_at_utc = $completedAt,
+                    duration_ms = $duration,
+                    total_objects = $totalObjects,
+                    field_count = $fieldCount,
+                    quality_score = $qualityScore,
+                    issue_count = $issueCount,
+                    error_message = $errorMessage,
+                    result_json = $resultJson,
+                    gate_results_json = $gateResultsJson,
+                    quality_baseline_evaluation_json = $qualityBaselineEvaluationJson
+                WHERE id = $id AND status = $expectedStatus;
+                """;
+            AddParameters(command, job);
+            command.Parameters.AddWithValue("$expectedStatus", (int)expectedStatus);
+            return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+        finally
+        {
+            s_writeLock.Release();
+        }
+    }
+
     public async Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default)
     {
         await s_writeLock.WaitAsync(cancellationToken);
