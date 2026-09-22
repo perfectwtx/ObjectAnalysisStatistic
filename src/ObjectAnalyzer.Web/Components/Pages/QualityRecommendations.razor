@@ -15,7 +15,7 @@
                 <div><h1>质量修复建议</h1><p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p></div>
                 <div class="oa-header-actions">
                     <a class="btn btn-outline-secondary" href="@IssuesUrl">问题中心</a>
-                    <a class="btn btn-outline-secondary" href="/quality">质量总览</a>
+                    <a class="btn btn-outline-secondary" href="@QualityUrl">质量总览</a>
                     <button class="btn btn-outline-secondary oa-recommendation-refresh" @onclick="LoadAsync">刷新数据</button>
                 </div>
             </div>
@@ -113,6 +113,8 @@
         .Where(x => string.IsNullOrWhiteSpace(CheckFilter) || string.Equals(x.Check, CheckFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.Field.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
         .ToList();
+    private string QualityUrl => SelectedJobId.HasValue ? $"/quality?jobId={SelectedJobId.Value}" : "/quality";
+
     private string IssuesUrl => SelectedJobId.HasValue ? $"/issues?jobId={SelectedJobId.Value}" : "/issues";
     private string _sourceName = "";
     private string _jobTime = "";
