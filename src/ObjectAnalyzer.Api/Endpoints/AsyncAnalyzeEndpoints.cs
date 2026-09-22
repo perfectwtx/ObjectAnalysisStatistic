@@ -436,17 +436,35 @@ public static class AsyncAnalyzeEndpoints
 
         // ── 取消作业 ──
         routes.MapPost("/analyze/async/{jobId}/cancel",
-            Results<Ok<AnalyzeCancelResponse>, NotFound<ErrorResponse>> (string jobId) =>
+            async Task<Results<Ok<AnalyzeCancelResponse>, NotFound<ErrorResponse>, Conflict<ErrorResponse>>> (
+                string jobId,
+                IAnalysisHistoryStore historyStore,
+                CancellationToken cancellationToken) =>
         {
             bool ok = AnalysisJobRegistry.Instance.Cancel(jobId);
             var snap = AnalysisJobRegistry.Instance.Get(jobId);
-            if (snap is null)
+            if (snap is not null)
+                return TypedResults.Ok(new AnalyzeCancelResponse(jobId, ok));
+
+            // Registry 只保存进程内运行时状态。终态作业可能已被 SweepExpired 清理，
+            // 但持久化历史仍然是作业是否存在、是否已经结束的权威来源。
+            if (!Guid.TryParse(jobId, out var persistedJobId))
                 return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
-            return TypedResults.Ok(new AnalyzeCancelResponse(jobId, ok));
+
+            var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
+            if (job is null)
+                return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
+
+            if (job.Status is AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled)
+                return TypedResults.Ok(new AnalyzeCancelResponse(jobId, false));
+
+            // 持久化作业仍处于 Pending/Running，但运行时 Registry 已不存在。
+            // 此时无法真正触发当前进程的 CancellationToken，不能伪装成取消成功。
+            return TypedResults.Conflict(new ErrorResponse("作业仍在运行，但当前进程中已找不到对应的运行时取消句柄，无法执行取消。"));
         })
         .WithTags("异步分析")
         .WithSummary("取消异步分析作业")
-        .WithDescription("触发对应作业的 CancellationTokenSource。返回 cancelled=true 表示已成功触发；作业不存在 / 已终态时返回 cancelled=false。");
+        .WithDescription("触发对应作业的 CancellationTokenSource。运行时作业存在时返回 cancelled=true/false；运行时状态已清理但持久化作业已终态时返回 cancelled=false；持久化作业仍在运行但缺少运行时句柄时返回 409。");
 
         return routes;
     }
