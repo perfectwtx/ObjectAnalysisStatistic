@@ -53,6 +53,7 @@ var app = builder.Build();
 
 // 平台历史数据库初始化
 await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
+await app.Services.GetRequiredService<AnalysisJobService>().RecoverOrphanedJobsAsync();
 await app.Services.GetRequiredService<IQualityIssueResponsibilityStore>().InitializeAsync();
 await app.Services.GetRequiredService<IQualityIssueRemediationStore>().InitializeAsync();
 await app.Services.GetRequiredService<IQualityBaselineStore>().InitializeAsync();
