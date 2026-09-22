@@ -72,12 +72,80 @@ public sealed class AsyncAnalyzeEndpointTests : IClassFixture<AsyncAnalyzeWebApp
     }
 
     [Fact]
+    public async Task GetAsyncJob_WhenPersistedJobIsTerminal_IgnoresStaleRuntimeSnapshot()
+    {
+        var job = new AnalysisJob
+        {
+            Id = Guid.NewGuid(),
+            SourceName = "completed.json",
+            SourceType = "json",
+            Status = AnalysisJobStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow.AddMinutes(-2),
+            CompletedAtUtc = DateTime.UtcNow.AddMinutes(-1),
+            TotalObjects = 5,
+            ResultJson = JsonSerializer.Serialize(new AnalysisResult { TotalObjects = 5 })
+        };
+        _factory.Store.Set(job);
+
+        using var cts = new CancellationTokenSource();
+        var jobId = job.Id.ToString("N");
+        AnalysisJobRegistry.Instance.Register(
+            jobId,
+            cts,
+            new AnalysisJobMeta("completed.json", "json", null, DateTimeOffset.UtcNow));
+        AnalysisJobRegistry.Instance.Complete(
+            jobId,
+            new AnalysisResult { TotalObjects = 1 },
+            null);
+
+        using var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/analyze/async/{jobId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Completed", body.GetProperty("status").GetString());
+        Assert.Equal(5, body.GetProperty("processedObjects").GetInt64());
+        Assert.Equal(5, body.GetProperty("result").GetProperty("totalObjects").GetInt64());
+    }
+
+    [Fact]
     public async Task GetAsyncJob_WhenPersistedJobDoesNotExist_ReturnsNotFound()
     {
         using var client = _factory.CreateClient();
         var response = await client.GetAsync($"/api/analyze/async/{Guid.NewGuid():N}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelAsyncJob_WhenPersistedJobIsTerminal_IgnoresStaleRuntimeSnapshot()
+    {
+        var job = new AnalysisJob
+        {
+            Id = Guid.NewGuid(),
+            SourceName = "completed-cancel.json",
+            SourceType = "json",
+            Status = AnalysisJobStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow.AddMinutes(-2),
+            CompletedAtUtc = DateTime.UtcNow.AddMinutes(-1)
+        };
+        _factory.Store.Set(job);
+
+        using var cts = new CancellationTokenSource();
+        var jobId = job.Id.ToString("N");
+        AnalysisJobRegistry.Instance.Register(
+            jobId,
+            cts,
+            new AnalysisJobMeta("completed-cancel.json", "json", null, DateTimeOffset.UtcNow));
+        AnalysisJobRegistry.Instance.Complete(jobId, new AnalysisResult(), null);
+
+        using var client = _factory.CreateClient();
+        var response = await client.PostAsync($"/api/analyze/async/{jobId}/cancel", content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(body.GetProperty("cancelled").GetBoolean());
+        Assert.False(cts.IsCancellationRequested);
     }
 
     [Fact]
