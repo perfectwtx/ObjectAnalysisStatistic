@@ -26,8 +26,8 @@ public sealed class WebAnalysisExecutionService
         AnalysisOptions options,
         AnalysisRules? rules,
         AnalysisRunContext runContext,
-        CancellationToken cancellationToken = default,
-        Action<PipelineResult>? beforePersist = null)
+        Action<PipelineResult>? beforePersist = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(runContext);
