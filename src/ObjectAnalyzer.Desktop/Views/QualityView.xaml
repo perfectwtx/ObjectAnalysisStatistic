@@ -86,7 +86,7 @@
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto"
                          FontFamily="Cascadia Mono, Consolas"
-                         Foreground="{StaticResource Brush.TextLabel}"
+                         Foreground="{DynamicResource Brush.TextLabel}"
                          Text="评估结果会显示在这里。"/>
             </Grid>
         </Border>
