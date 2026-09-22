@@ -109,7 +109,7 @@
                             <td>@job.TotalObjects.ToString("N0")</td>
                             <td>@job.FieldCount.ToString("N0")</td>
                             <td><strong class="oa-score">@(job.QualityScore?.ToString("F2") ?? "-")</strong></td>
-                            <td><a class="oa-issue-count oa-issue-link" href="@($"/jobs/{job.Id}")">@job.IssueCount</a></td>
+                            <td><a class="oa-issue-count oa-issue-link" href="@($"/issues?jobId={job.Id}")">@job.IssueCount</a></td>
                             <td>@(job.DurationMs > 0 ? $"{job.DurationMs:N0} ms" : "-")</td>
                             <td><a class="btn btn-sm btn-outline-secondary" href="/jobs/@job.Id">查看详情</a></td>
                         </tr>
