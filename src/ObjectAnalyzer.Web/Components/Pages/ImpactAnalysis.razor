@@ -162,8 +162,9 @@
         .Where(x => string.IsNullOrWhiteSpace(PathFilter) || x.Path.Contains(PathFilter, StringComparison.OrdinalIgnoreCase))
         .ToList();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        _jobs.Clear();
         await HistoryStore.InitializeAsync();
         var jobs = await HistoryStore.GetRecentAsync(100);
         _jobs.AddRange(jobs.Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson)).OrderByDescending(x => x.StartedAtUtc));
