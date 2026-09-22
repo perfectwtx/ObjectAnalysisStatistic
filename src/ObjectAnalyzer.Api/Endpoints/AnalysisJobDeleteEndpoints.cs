@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using ObjectAnalyzer.Platform;
@@ -50,7 +51,7 @@ public static class AnalysisJobDeleteEndpoints
     }
 
     private static async Task<Results<Ok<DeleteJobsResponse>, BadRequest<ErrorResponse>>> DeleteJobs(
-        DeleteJobsRequest? body,
+        [FromBody] DeleteJobsRequest? body,
         IAnalysisHistoryStore store,
         CancellationToken cancellationToken)
     {
