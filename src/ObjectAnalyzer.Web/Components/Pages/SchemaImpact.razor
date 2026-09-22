@@ -4,6 +4,7 @@
 @using ObjectAnalyzer.Platform
 @using ObjectAnalyzer.Analysis
 @inject IAnalysisHistoryStore HistoryStore
+@inject NavigationManager Navigation
 
 <PageTitle>Schema 影响分析</PageTitle>
 
@@ -248,6 +249,7 @@
         if (!Guid.TryParse(args.Value?.ToString(), out var id)) return;
         _job = _jobs.FirstOrDefault(x => x.Id == id);
         JobId = _job?.Id;
+        Navigation.NavigateTo($"/quality/schema-impact?jobId={id}", replace: true);
         RebuildDiff();
         await InvokeAsync(StateHasChanged);
     }
