@@ -74,7 +74,7 @@
                     <TextBlock Text="{Binding Status}" Foreground="#667085" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding Progress}"/>
+                    <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding Progress, Mode=OneWay}"/>
                     <TextBlock Text="{Binding ReportPath}" Foreground="#98A2B3" FontSize="12"
                                TextTrimming="CharacterEllipsis" Margin="0,5,0,0"/>
                 </StackPanel>
