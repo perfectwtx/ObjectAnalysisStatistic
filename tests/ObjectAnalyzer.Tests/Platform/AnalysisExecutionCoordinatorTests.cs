@@ -89,6 +89,41 @@ public sealed class AnalysisExecutionCoordinatorTests
     }
 
     [Fact]
+    public async Task CompleteAsync_WhenJobWasAlreadyCancelled_DoesNotOverwriteCancelledState()
+    {
+        var history = new FakeHistoryStore();
+        var alerts = new FakeAlertRuleStore();
+        var deliveries = new FakeWebhookDeliveryStore();
+        var service = new AnalysisJobService(history, alerts, deliveries);
+        var job = await service.StartAsync(Guid.NewGuid(), "unit-test", "json");
+
+        await service.CancelAsync(job);
+        await service.CompleteAsync(job, CreateMinimalResult());
+
+        var persisted = Assert.Single(history.Jobs);
+        Assert.Equal(AnalysisJobStatus.Cancelled, persisted.Status);
+        Assert.Equal("分析已取消。", persisted.ErrorMessage);
+        Assert.Null(persisted.ResultJson);
+    }
+
+    [Fact]
+    public async Task FailAsync_WhenJobWasAlreadyCancelled_DoesNotOverwriteCancelledState()
+    {
+        var history = new FakeHistoryStore();
+        var alerts = new FakeAlertRuleStore();
+        var deliveries = new FakeWebhookDeliveryStore();
+        var service = new AnalysisJobService(history, alerts, deliveries);
+        var job = await service.StartAsync(Guid.NewGuid(), "unit-test", "json");
+
+        await service.CancelAsync(job);
+        await service.FailAsync(job, new InvalidOperationException("late failure"));
+
+        var persisted = Assert.Single(history.Jobs);
+        Assert.Equal(AnalysisJobStatus.Cancelled, persisted.Status);
+        Assert.Equal("分析已取消。", persisted.ErrorMessage);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WithExistingJob_ReusesSameJobId()
     {
         var history = new FakeHistoryStore();
