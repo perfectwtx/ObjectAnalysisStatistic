@@ -13,7 +13,7 @@
             <div class="oa-recommendation-title-row">
                 <div><h1>质量修复建议</h1><p>把质量问题转换成可执行的治理建议，先建议、后修复，不直接修改源数据。</p></div>
                 <div class="oa-header-actions">
-                    <a class="btn btn-outline-secondary" href="/issues">问题中心</a>
+                    <a class="btn btn-outline-secondary" href="@IssuesUrl">问题中心</a>
                     <a class="btn btn-outline-secondary" href="/quality">质量总览</a>
                     <button class="btn btn-outline-secondary oa-recommendation-refresh" @onclick="LoadAsync">刷新数据</button>
                 </div>
@@ -100,6 +100,8 @@
     private bool _loading = true;
     private readonly List<Recommendation> _recommendations = new();
     private List<AnalysisJob> _jobs = new();
+    [SupplyParameterFromQuery(Name = "jobId")]
+    public Guid? JobId { get; set; }
     private Guid? SelectedJobId;
     private string? PriorityFilter;
     private string? CheckFilter;
@@ -110,6 +112,7 @@
         .Where(x => string.IsNullOrWhiteSpace(CheckFilter) || string.Equals(x.Check, CheckFilter, StringComparison.OrdinalIgnoreCase))
         .Where(x => string.IsNullOrWhiteSpace(FieldFilter) || x.Field.Contains(FieldFilter, StringComparison.OrdinalIgnoreCase))
         .ToList();
+    private string IssuesUrl => SelectedJobId.HasValue ? $"/issues?jobId={SelectedJobId.Value}" : "/issues";
     private string _sourceName = "";
     private string _jobTime = "";
 
@@ -126,7 +129,7 @@
             .ToList();
 
         if (SelectedJobId is null || !_jobs.Any(x => x.Id == SelectedJobId.Value))
-            SelectedJobId = _jobs.FirstOrDefault()?.Id;
+            SelectedJobId = JobId.HasValue && _jobs.Any(x => x.Id == JobId.Value) ? JobId.Value : _jobs.FirstOrDefault()?.Id;
 
         var job = _jobs.FirstOrDefault(x => x.Id == SelectedJobId); 
         if (job is not null)
@@ -157,6 +160,7 @@
         if (Guid.TryParse(e.Value?.ToString(), out var id))
         {
             SelectedJobId = id;
+            JobId = id;
             await LoadAsync();
         }
     }
