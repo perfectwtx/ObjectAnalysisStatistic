@@ -2,8 +2,11 @@
 @using Microsoft.AspNetCore.Components
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
+@inject NavigationManager Navigation
 @inject IQualityIssueQuery QualityIssueQuery
+@inject NavigationManager Navigation
 @inject IQualityIssueResponsibilityStore ResponsibilityStore
+@inject NavigationManager Navigation
 
 <PageTitle>Issue Center</PageTitle>
 
@@ -225,6 +228,7 @@
         {
             _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
             JobId = _selectedJob?.Id;
+            Navigation.NavigateTo($"/issues?jobId={id}", replace: true);
             await LoadIssuesAsync(_selectedJob);
         }
     }
