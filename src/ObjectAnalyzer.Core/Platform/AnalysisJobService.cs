@@ -63,7 +63,7 @@ public sealed class AnalysisJobService
         return recovered;
     }
 
-    public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<bool> CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
     {
         if (job.Status != AnalysisJobStatus.Running)
             return;
