@@ -4,6 +4,7 @@
 @using ObjectAnalyzer.Analysis
 @using ObjectAnalyzer.Platform
 @inject IAnalysisHistoryStore HistoryStore
+@inject NavigationManager Navigation
 
 <PageTitle>质量回归</PageTitle>
 
@@ -325,7 +326,10 @@
     {
         if (!Guid.TryParse(args.Value?.ToString(), out var id)) return;
         _currentJob = _jobs.FirstOrDefault(x => x.Id == id);
-        if (_currentJob?.Id == _previousJob?.Id) _previousJob = FindBaselineJob(_currentJob);
+        if (_currentJob is null) return;
+        JobId = _currentJob.Id;
+        if (_currentJob.Id == _previousJob?.Id) _previousJob = FindBaselineJob(_currentJob);
+        Navigation.NavigateTo($"/quality/regression?jobId={_currentJob.Id}", replace: true);
         RebuildReport();
         await InvokeAsync(StateHasChanged);
     }
