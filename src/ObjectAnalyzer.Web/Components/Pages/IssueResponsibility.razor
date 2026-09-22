@@ -275,6 +275,7 @@
         {
             _selectedJob = _jobs.FirstOrDefault(x => x.Id == id);
             JobId = id;
+            Navigation.NavigateTo($"/issues/responsibility?jobId={id}", replace: true);
             await LoadIssuesAsync(_selectedJob);
         }
     }
