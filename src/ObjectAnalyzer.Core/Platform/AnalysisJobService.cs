@@ -52,10 +52,14 @@ public sealed class AnalysisJobService
             job.CompletedAtUtc = DateTime.UtcNow;
             job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
             job.ErrorMessage = "应用重启后检测到未完成的分析作业，已标记为失败。";
-            await _historyStore.SaveAsync(job, cancellationToken);
+            if (await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Pending, cancellationToken) ||
+                await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
+            {
+                // 仅统计真正完成了持久化状态转换的作业。
+            }
         }
 
-        return orphaned.Count;
+        return orphaned.Count(x => x.Status == AnalysisJobStatus.Failed && x.CompletedAtUtc.HasValue);
     }
 
     public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
@@ -98,7 +102,9 @@ public sealed class AnalysisJobService
         }
 
         var currentIssues = CreateQualityIssues(job.Id, result);
-        await _historyStore.SaveAsync(job, cancellationToken);
+        if (!await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
+            return;
+
         await _historyStore.SaveQualitySnapshotAsync(
             CreateQualitySnapshot(job, result),
             CreateFieldSnapshots(job.Id, result),
@@ -167,7 +173,7 @@ public sealed class AnalysisJobService
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.ErrorMessage = exception.Message;
-        await _historyStore.SaveAsync(job, cancellationToken);
+        await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken);
     }
 
     public async Task CancelAsync(AnalysisJob job, CancellationToken cancellationToken = default)
@@ -179,7 +185,7 @@ public sealed class AnalysisJobService
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
         job.ErrorMessage = "分析已取消。";
-        await _historyStore.SaveAsync(job, cancellationToken);
+        await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken);
     }
 
     private async Task EnqueueAlertsAsync(AnalysisJob job, AnalysisResult result, AnalysisJob? previousJob, CancellationToken cancellationToken)
