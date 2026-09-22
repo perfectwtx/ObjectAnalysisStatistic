@@ -341,7 +341,7 @@ public static class AsyncAnalyzeEndpoints
                 Format: job.SourceType,
                 OperatorId: null,
                 SubmittedAt: ToUtcOffset(job.StartedAtUtc)),
-            CreatedAt: new DateTimeOffset(job.StartedAtUtc, TimeSpan.Zero),
+            CreatedAt: ToUtcOffset(job.StartedAtUtc),
             TerminalAt: job.CompletedAtUtc.HasValue
                 ? ToUtcOffset(job.CompletedAtUtc.Value)
                 : null,
@@ -355,7 +355,7 @@ public static class AsyncAnalyzeEndpoints
     }
 
     // ── SSE 事件流 ──
-        routes.MapGet("/analyze/async/{jobId}/events", async (string jobId, HttpContext http) =>
+        routes.MapGet("/analyze/async/{jobId}/events", async (string jobId, HttpContext http, IAnalysisHistoryStore historyStore) =>
         {
             http.Response.Headers.ContentType = "text/event-stream";
             http.Response.Headers.CacheControl = "no-cache";
@@ -381,16 +381,40 @@ public static class AsyncAnalyzeEndpoints
                 while (true)
                 {
                     var snap = AnalysisJobRegistry.Instance.Get(jobId);
-                    if (snap is null)
+                    if (snap is not null)
                     {
-                        await WriteEventAsync("gone", "{\"reason\": \"job not found or swept\"}", ct);
+                        bool terminal = snap.Status != AnalysisStatus.Running;
+                        await WriteEventAsync(terminal ? "complete" : "progress", SnapJson(snap), ct);
+                        if (terminal)
+                            return;
+                    }
+                    else if (Guid.TryParse(jobId, out var persistedJobId))
+                    {
+                        var persisted = await historyStore.GetAsync(persistedJobId, ct);
+                        if (persisted is null)
+                        {
+                            await WriteEventAsync("gone", "{\"reason\":\"job not found\"}", ct);
+                            return;
+                        }
+
+                        var terminal = persisted.Status is not (AnalysisJobStatus.Pending or AnalysisJobStatus.Running);
+                        var persistedStatus = persisted.Status switch
+                        {
+                            AnalysisJobStatus.Succeeded => "Completed",
+                            AnalysisJobStatus.Failed => "Failed",
+                            AnalysisJobStatus.Cancelled => "Cancelled",
+                            _ => "Running"
+                        };
+                        await WriteEventAsync(terminal ? "complete" : "progress",
+                            JsonSerializer.Serialize(new { processedObjects = persisted.TotalObjects, status = persistedStatus, error = persisted.ErrorMessage }, s_sseJsonOptions), ct);
+                        if (terminal)
+                            return;
+                    }
+                    else
+                    {
+                        await WriteEventAsync("gone", "{\"reason\":\"invalid job id\"}", ct);
                         return;
                     }
-
-                    bool terminal = snap.Status != AnalysisStatus.Running;
-                    await WriteEventAsync(terminal ? "complete" : "progress", SnapJson(snap), ct);
-                    if (terminal)
-                        return;
 
                     await Task.Delay(500, ct);
                 }
