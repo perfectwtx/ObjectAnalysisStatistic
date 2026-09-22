@@ -155,6 +155,7 @@
         if (Guid.TryParse(args.Value?.ToString(), out var id))
         {
             _selectedJobId = id;
+            JobId = id;
             _selectedField = null;
             await LoadSelectedJobAsync();
         }
