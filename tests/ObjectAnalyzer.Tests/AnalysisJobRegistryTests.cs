@@ -167,6 +167,26 @@ public class AnalysisJobRegistryTests
 
     [Fact]
     [Trait("Category", "JobRegistry")]
+    public async Task Cancel_AndComplete_Racing_LeavesOnlyOneTerminalState()
+    {
+        var registry = new AnalysisJobRegistry();
+        using var cts = new CancellationTokenSource();
+        var id = registry.Register(cts, MakeMeta());
+
+        var cancel = Task.Run(() => registry.Cancel(id));
+        var complete = Task.Run(() => registry.Complete(id, new AnalysisResult()));
+
+        await Task.WhenAll(cancel, complete);
+
+        var snapshot = registry.Get(id);
+        Assert.NotNull(snapshot);
+        Assert.True(
+            snapshot!.Status is AnalysisStatus.Cancelled or AnalysisStatus.Completed);
+        Assert.NotNull(snapshot.TerminalAt);
+    }
+
+    [Fact]
+    [Trait("Category", "JobRegistry")]
     public void SweepExpired_RemovesTerminalJobs_KeepsRunning()
     {
         var registry = new AnalysisJobRegistry();
