@@ -18,7 +18,7 @@
             <a class="btn btn-outline-secondary" href="/jobs">作业中心</a>
             <a class="btn btn-outline-secondary" href="@SchemaImpactUrl">Schema 影响</a>
             <a class="btn btn-outline-secondary" href="@ImpactAnalysisUrl">影响传播</a>
-            <a class="btn btn-outline-secondary" href="/quality/issues">质量问题</a>
+            <a class="btn btn-outline-secondary" href="@IssuesUrl">质量问题</a>
         </div>
     </div>
 
@@ -268,6 +268,7 @@
 
     private string SchemaImpactUrl => _currentJob is null ? "/quality/schema-impact" : $"/quality/schema-impact?jobId={_currentJob.Id}";
     private string ImpactAnalysisUrl => _currentJob is null ? "/quality/impact-analysis" : $"/quality/impact-analysis?jobId={_currentJob.Id}";
+    private string IssuesUrl => _currentJob is null ? "/issues" : $"/issues?jobId={_currentJob.Id}";
 
     private IReadOnlyList<QualityFieldRegression> FilteredFields => (_report?.FieldRegressions ?? new List<QualityFieldRegression>())
         .Where(MatchesFieldFilter)
