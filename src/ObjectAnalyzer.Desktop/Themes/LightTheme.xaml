@@ -1,0 +1,25 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="Brush.Bg" Color="#F5F7FA"/>
+    <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Border" Color="#D0D5DD"/>
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#EAECF0"/>
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#182230"/>
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#667085"/>
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#98A2B3"/>
+    <SolidColorBrush x:Key="Brush.TextLabel" Color="#344054"/>
+    <SolidColorBrush x:Key="Brush.Primary" Color="#2563EB"/>
+    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626"/>
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA"/>
+    <SolidColorBrush x:Key="Brush.Success" Color="#16A34A"/>
+    <SolidColorBrush x:Key="Brush.RowAlt" Color="#F9FAFB"/>
+    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="Brush.Selection" Color="#EFF6FF"/>
+    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#E5E7EB"/>
+    <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#0F172A"/>
+    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="Brush.InputBg" Color="#FFFFFF"/>
+
+</ResourceDictionary>
