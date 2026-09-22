@@ -243,6 +243,9 @@ public sealed class AnalysisExecutionCoordinatorTests
 
         public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AnalysisJob>>(Jobs.OrderByDescending(x => x.StartedAtUtc).Take(limit).ToList());
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult(Jobs.RemoveAll(x => x.Id == id) > 0);
     }
 
     private sealed class FakeAlertRuleStore : IAlertRuleStore
