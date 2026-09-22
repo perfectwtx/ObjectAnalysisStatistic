@@ -166,6 +166,7 @@
         if (Guid.TryParse(e.Value?.ToString(), out var id))
         {
             SelectedJobId = id;
+            JobId = id;
             await LoadSelectedJobAsync();
         }
     }
