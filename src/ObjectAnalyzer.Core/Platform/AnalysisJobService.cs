@@ -60,6 +60,9 @@ public sealed class AnalysisJobService
 
     public async Task CompleteAsync(AnalysisJob job, AnalysisResult result, AnalysisOptions? options = null, CancellationToken cancellationToken = default)
     {
+        if (job.Status != AnalysisJobStatus.Running)
+            return;
+
         var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded
                      && string.Equals(x.SourceName, job.SourceName, StringComparison.OrdinalIgnoreCase)
@@ -157,6 +160,9 @@ public sealed class AnalysisJobService
 
     public async Task FailAsync(AnalysisJob job, Exception exception, CancellationToken cancellationToken = default)
     {
+        if (job.Status != AnalysisJobStatus.Running)
+            return;
+
         job.Status = AnalysisJobStatus.Failed;
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
@@ -166,6 +172,9 @@ public sealed class AnalysisJobService
 
     public async Task CancelAsync(AnalysisJob job, CancellationToken cancellationToken = default)
     {
+        if (job.Status != AnalysisJobStatus.Running)
+            return;
+
         job.Status = AnalysisJobStatus.Cancelled;
         job.CompletedAtUtc = DateTime.UtcNow;
         job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
