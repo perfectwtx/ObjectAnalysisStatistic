@@ -158,6 +158,7 @@
         {
             _selectedJobId = id;
             JobId = id;
+            Navigation.NavigateTo($"/quality/fields?jobId={id}", replace: true);
             _selectedField = null;
             await LoadSelectedJobAsync();
         }
