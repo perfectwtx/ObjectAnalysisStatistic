@@ -20,8 +20,8 @@ public static class QualityEndpoints
         quality.MapGet("/relationships/{jobId:guid}", GetRelationships).WithSummary("获取指定作业的字段关系");
         quality.MapGet("/object-relationships/{jobId:guid}", GetObjectRelationships).WithSummary("获取指定作业的对象关系");
         quality.MapGet("/schema-impact/{jobId:guid}", GetSchemaImpact).WithSummary("获取指定作业的 Schema 影响");
-        quality.MapGet("/recommendations", GetRecommendations).WithSummary("获取最近一次分析的质量修复建议");
-        quality.MapGet("/regression", GetRegression).WithSummary("比较最近两次成功分析并返回质量回归");
+        quality.MapGet("/recommendations", GetRecommendations).WithSummary("获取指定或最近一次分析的质量修复建议");
+        quality.MapGet("/regression", GetRegression).WithSummary("比较指定分析作业与其前一次成功分析并返回质量回归");
 
         // 与 React 前端 API 客户端兼容的快照别名。
         quality.MapGet("/snapshots", GetTrend).WithSummary("获取质量快照");
@@ -209,12 +209,18 @@ public static class QualityEndpoints
         }
     }
 
-    private static async Task<Ok<QualityRecommendationsResponse>> GetRecommendations(IAnalysisHistoryStore history, CancellationToken cancellationToken)
+    private static async Task<Ok<QualityRecommendationsResponse>> GetRecommendations(Guid? jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
     {
-        var job = (await history.GetRecentAsync(100, cancellationToken))
+        var jobs = (await history.GetRecentAsync(100, cancellationToken))
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
-            .FirstOrDefault();
+            .ToList();
+
+        // 指定 Job 时严格使用该作业，避免历史页面与 API 显示不同分析结果。
+        var job = jobId.HasValue
+            ? jobs.FirstOrDefault(x => x.Id == jobId.Value)
+            : jobs.FirstOrDefault();
+
         if (job is null) return TypedResults.Ok(new QualityRecommendationsResponse(null, Array.Empty<QualityRecommendation>()));
 
         var result = new List<QualityRecommendation>();
@@ -233,14 +239,28 @@ public static class QualityEndpoints
         return TypedResults.Ok(new QualityRecommendationsResponse(job, result));
     }
 
-    private static async Task<Ok<QualityRegressionReport?>> GetRegression(IAnalysisHistoryStore history, CancellationToken cancellationToken)
+    private static async Task<Ok<QualityRegressionReport?>> GetRegression(Guid? jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
     {
         var jobs = (await history.GetRecentAsync(100, cancellationToken))
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
+            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
-            .Take(2)
             .ToList();
-        if (jobs.Count < 2 || jobs.Any(x => string.IsNullOrWhiteSpace(x.ResultJson))) return TypedResults.Ok<QualityRegressionReport?>(null);
+
+        if (jobId.HasValue)
+        {
+            var currentIndex = jobs.FindIndex(x => x.Id == jobId.Value);
+            if (currentIndex < 0)
+                return TypedResults.Ok<QualityRegressionReport?>(null);
+
+            // jobs 按时间倒序，当前作业之后的第一条就是它的前一次成功分析。
+            jobs = jobs.Skip(currentIndex).Take(2).ToList();
+        }
+        else
+        {
+            jobs = jobs.Take(2).ToList();
+        }
+
+        if (jobs.Count < 2) return TypedResults.Ok<QualityRegressionReport?>(null);
 
         try
         {
