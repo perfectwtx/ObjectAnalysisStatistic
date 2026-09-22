@@ -21,6 +21,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 - 查看和重新加载历史 JSON 报告。
 - 导出字段 CSV。
 - 长时间分析过程中可以取消当前作业。
+- 在窗口右上角切换**浅色 / 深色**主题。
 
 最近文件列表保存在：
 
@@ -28,7 +29,21 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 %LOCALAPPDATA%/ObjectAnalyzer/recent-files.json
 ```
 
-最近文件属于辅助信息，仅保存文件路径，不影响分析数据库和报告。
+主题偏好保存在：
+
+```text
+%LOCALAPPDATA%/ObjectAnalyzer/ui-settings.json
+```
+
+最近文件与主题偏好都属于辅助信息，不影响分析数据库和报告。
+
+## 主题
+
+主窗口右上角提供「深色模式 / 浅色模式」按钮：
+
+- 默认浅色主题。
+- 切换后立即生效，并写入 `ui-settings.json`。
+- 下次启动会自动恢复上次选择的主题。
 
 ## 本地数据位置
 
@@ -38,6 +53,7 @@ Desktop 使用当前用户的 Local Application Data 目录保存本地状态：
 %LOCALAPPDATA%/ObjectAnalyzer/
 ├── object-analyzer.db
 ├── recent-files.json
+├── ui-settings.json
 └── Reports/
 ```
 
@@ -113,4 +129,3 @@ ObjectAnalyzer-Desktop-win-x64
 当前发布方式是 ZIP + 用户级 PowerShell 安装脚本。它不依赖注册表安装机制。
 
 后续需要企业部署或标准“下一步 / 安装”体验时，可以在现有发布目录基础上增加 MSIX、WiX MSI 或其他 Windows 安装器，而不需要修改 Desktop 的分析逻辑。
-
