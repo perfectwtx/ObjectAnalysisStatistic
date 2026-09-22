@@ -5,6 +5,7 @@
 @using ObjectAnalyzer.Platform
 @using LineageModel = ObjectAnalyzer.Analysis.DataLineage
 @inject IAnalysisHistoryStore HistoryStore
+@inject NavigationManager Navigation
 
 <PageTitle>数据血缘</PageTitle>
 
@@ -172,6 +173,7 @@
 
         _job = _jobs.FirstOrDefault(x => x.Id == id);
         JobId = _job?.Id;
+        Navigation.NavigateTo($"/quality/data-lineage?jobId={id}", replace: true);
         _lineage = null;
         if (_job is not null)
         {
