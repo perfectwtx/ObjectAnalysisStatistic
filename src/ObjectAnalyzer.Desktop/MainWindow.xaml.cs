@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using ObjectAnalyzer.Desktop.Assets;
 using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Desktop.ViewModels;
 using ObjectAnalyzer.Desktop.Views;
@@ -36,6 +37,10 @@ public partial class MainWindow : FluentWindow
     {
         InitializeComponent();
         DataContext = _viewModel;
+
+        if (AppIcon.Load() is { } icon)
+            Icon = icon;
+        AppIcon.EnsureFileBesideAssembly();
 
         BuildPages();
 
@@ -405,7 +410,6 @@ public partial class MainWindow : FluentWindow
             }
             catch
             {
-                // 主分析结果已经完成，历史刷新失败不阻断主流程。
             }
         }
     }
