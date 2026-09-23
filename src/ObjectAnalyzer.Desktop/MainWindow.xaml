@@ -188,7 +188,7 @@
                                    IsPaneToggleVisible="False"
                                    Margin="0,0,12,0">
                     <ui:NavigationView.MenuItems>
-                        <ui:NavigationViewItemHeader Content="{DynamicResource Str.Group.Analysis}"/>
+                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Analysis}"/>
 
                         <ui:NavigationViewItem x:Name="NavOverview"
                                                Content="{DynamicResource Str.Tab.Overview}"
@@ -228,7 +228,7 @@
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
 
-                        <ui:NavigationViewItemHeader Content="{DynamicResource Str.Group.Quality}"/>
+                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Quality}"/>
 
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Issues}" Tag="issues">
                             <ui:NavigationViewItem.Icon>
@@ -242,7 +242,7 @@
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
 
-                        <ui:NavigationViewItemHeader Content="{DynamicResource Str.Group.History}"/>
+                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.History}"/>
 
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Jobs}" Tag="jobs">
                             <ui:NavigationViewItem.Icon>
