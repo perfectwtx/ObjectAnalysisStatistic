@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 using Microsoft.Win32;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -89,7 +90,6 @@ public static class ThemeService
         if (app is null)
             return;
 
-        // WPF UI Fluent theme (Light / Dark). EyeCare uses Light chrome + our soft palette.
         ApplicationTheme wpfUiTheme = mode switch
         {
             AppThemeMode.Dark => ApplicationTheme.Dark,
@@ -103,7 +103,6 @@ public static class ThemeService
         }
         catch
         {
-            // Theme manager may not be ready during early startup; custom brushes still apply.
         }
 
         string relativePath = mode switch
@@ -136,10 +135,25 @@ public static class ThemeService
             Source = new Uri(relativePath, UriKind.Relative)
         };
         themeDict["ThemeDictionaryTag"] = ThemeDictionaryTag;
+        dictionaries.Add(themeDict);
 
-        // Keep custom brushes after WPF UI dictionaries so DynamicResource Brush.* resolves to ours.
-        int insertAt = Math.Min(2, dictionaries.Count);
-        dictionaries.Insert(insertAt, themeDict);
+        ApplyWindowChrome();
+    }
+
+    private static void ApplyWindowChrome()
+    {
+        var app = Application.Current;
+        if (app is null)
+            return;
+
+        if (app.TryFindResource("Brush.Bg") is not Brush bg)
+            return;
+
+        foreach (Window window in app.Windows)
+            window.Background = bg;
+
+        if (app.MainWindow is not null)
+            app.MainWindow.Background = bg;
     }
 
     private static bool IsSystemDark()
@@ -154,7 +168,6 @@ public static class ThemeService
         }
         catch
         {
-            // Fall back to light when registry is unavailable.
         }
 
         return false;
@@ -214,7 +227,6 @@ public static class ThemeService
         }
         catch
         {
-            // Preference persistence must not block the UI.
         }
     }
 
