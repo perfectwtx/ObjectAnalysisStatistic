@@ -16,12 +16,10 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Title only; language/theme moved to Settings page -->
         <ui:TitleBar Grid.Row="0"
                      Title="Object Analyzer"
                      ShowMaximize="True"
-                     ShowMinimize="True"
-                     ForceShutdown="False"/>
+                     ShowMinimize="True"/>
 
         <Grid Grid.Row="1" Margin="16,8,16,12">
             <Grid.ColumnDefinitions>
