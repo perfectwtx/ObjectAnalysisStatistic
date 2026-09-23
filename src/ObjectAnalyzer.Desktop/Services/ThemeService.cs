@@ -2,6 +2,8 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
+using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
 
 namespace ObjectAnalyzer.Desktop.Services;
 
@@ -47,7 +49,7 @@ public static class ThemeService
     public static void Apply(AppThemeMode mode, bool persist = true)
     {
         Mode = mode;
-        ApplyResolvedTheme(ResolveEffectiveTheme(mode));
+        ApplyResolvedTheme(mode);
 
         if (persist)
             Save(mode);
@@ -76,42 +78,41 @@ public static class ThemeService
             return;
 
         if (dispatcher.CheckAccess())
-            ApplyResolvedTheme(ResolveEffectiveTheme(AppThemeMode.System));
+            ApplyResolvedTheme(AppThemeMode.System);
         else
-            dispatcher.Invoke(() => ApplyResolvedTheme(ResolveEffectiveTheme(AppThemeMode.System)));
+            dispatcher.Invoke(() => ApplyResolvedTheme(AppThemeMode.System));
     }
 
-    private static string ResolveEffectiveTheme(AppThemeMode mode) => mode switch
-    {
-        AppThemeMode.Dark => "Themes/DarkTheme.xaml",
-        AppThemeMode.EyeCare => "Themes/EyeCareTheme.xaml",
-        AppThemeMode.System => IsSystemDark() ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml",
-        _ => "Themes/LightTheme.xaml"
-    };
-
-    private static bool IsSystemDark()
-    {
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            object? value = key?.GetValue("AppsUseLightTheme");
-            if (value is int intValue)
-                return intValue == 0;
-        }
-        catch
-        {
-            // Fall back to light when registry is unavailable.
-        }
-
-        return false;
-    }
-
-    private static void ApplyResolvedTheme(string relativePath)
+    private static void ApplyResolvedTheme(AppThemeMode mode)
     {
         var app = Application.Current;
         if (app is null)
             return;
+
+        // WPF UI Fluent theme (Light / Dark). EyeCare uses Light chrome + our soft palette.
+        ApplicationTheme wpfUiTheme = mode switch
+        {
+            AppThemeMode.Dark => ApplicationTheme.Dark,
+            AppThemeMode.System => IsSystemDark() ? ApplicationTheme.Dark : ApplicationTheme.Light,
+            _ => ApplicationTheme.Light
+        };
+
+        try
+        {
+            ApplicationThemeManager.Apply(wpfUiTheme, WindowBackdropType.Mica);
+        }
+        catch
+        {
+            // Theme manager may not be ready during early startup; custom brushes still apply.
+        }
+
+        string relativePath = mode switch
+        {
+            AppThemeMode.Dark => "Themes/DarkTheme.xaml",
+            AppThemeMode.EyeCare => "Themes/EyeCareTheme.xaml",
+            AppThemeMode.System => IsSystemDark() ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml",
+            _ => "Themes/LightTheme.xaml"
+        };
 
         var dictionaries = app.Resources.MergedDictionaries;
 
@@ -135,7 +136,28 @@ public static class ThemeService
             Source = new Uri(relativePath, UriKind.Relative)
         };
         themeDict["ThemeDictionaryTag"] = ThemeDictionaryTag;
-        dictionaries.Insert(0, themeDict);
+
+        // Keep custom brushes after WPF UI dictionaries so DynamicResource Brush.* resolves to ours.
+        int insertAt = Math.Min(2, dictionaries.Count);
+        dictionaries.Insert(insertAt, themeDict);
+    }
+
+    private static bool IsSystemDark()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            object? value = key?.GetValue("AppsUseLightTheme");
+            if (value is int intValue)
+                return intValue == 0;
+        }
+        catch
+        {
+            // Fall back to light when registry is unavailable.
+        }
+
+        return false;
     }
 
     private static AppThemeMode LoadSavedMode()
