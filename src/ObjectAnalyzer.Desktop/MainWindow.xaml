@@ -21,7 +21,7 @@
                      ShowMaximize="True"
                      ShowMinimize="True"/>
 
-        <Grid Grid.Row="1" Margin="28,12,28,16">
+        <Grid Grid.Row="1" Margin="20,8,20,12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -31,7 +31,7 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <DockPanel Grid.Row="0" Margin="0,0,0,12">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="{DynamicResource Str.Language}"
                                VerticalAlignment="Center"
@@ -58,7 +58,7 @@
             </DockPanel>
 
             <!-- Input bar -->
-            <ui:Card Grid.Row="1" Margin="0,0,0,12" Padding="16">
+            <ui:Card Grid.Row="1" Margin="0,0,0,10" Padding="16">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -124,7 +124,7 @@
             </ui:Card>
 
             <!-- Status bar -->
-            <ui:Card Grid.Row="2" Padding="16,12" Margin="0,0,0,12">
+            <ui:Card Grid.Row="2" Padding="16,12" Margin="0,0,0,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -161,44 +161,75 @@
                 </Grid>
             </ui:Card>
 
-            <!-- Grouped tabs -->
-            <TabControl Grid.Row="3" Style="{StaticResource GroupTabControl}">
-                <TabItem Header="{DynamicResource Str.Group.Analysis}" Style="{StaticResource GroupTabItem}">
-                    <TabControl>
-                        <TabItem Header="{DynamicResource Str.Tab.Overview}"><views:OverviewView/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.Schema}"><views:SchemaView/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.Duplicates}"><views:DuplicateView/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.DeepAnalysis}"><views:DeepAnalysisView/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.Insights}">
-                            <views:InsightsView x:Name="InsightsViewControl"/>
-                        </TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.Output}"><views:OutputView/></TabItem>
-                    </TabControl>
-                </TabItem>
+            <!-- Left NavigationView + content host -->
+            <Grid Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="240"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                <TabItem Header="{DynamicResource Str.Group.Quality}" Style="{StaticResource GroupTabItem}">
-                    <TabControl>
-                        <TabItem Header="{DynamicResource Str.Tab.Issues}"><views:QualityIssuesView/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.QualityBaseline}">
-                            <views:QualityView x:Name="QualityViewControl"/>
-                        </TabItem>
-                    </TabControl>
-                </TabItem>
+                <ui:NavigationView x:Name="RootNavigation"
+                                   Grid.Column="0"
+                                   PaneDisplayMode="Left"
+                                   OpenPaneLength="240"
+                                   IsPaneOpen="True"
+                                   IsBackButtonVisible="Collapsed"
+                                   IsPaneToggleVisible="False"
+                                   Margin="0,0,12,0">
+                    <ui:NavigationView.MenuItems>
+                        <ui:NavigationViewItemHeader Content="{DynamicResource Str.Group.Analysis}"/>
+                        <ui:NavigationViewItem x:Name="NavOverview"
+                                               Content="{DynamicResource Str.Tab.Overview}"
+                                               Tag="overview"
+                                               Icon="{ui:SymbolIcon DataHistogram24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Schema}"
+                                               Tag="schema"
+                                               Icon="{ui:SymbolIcon Table24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Duplicates}"
+                                               Tag="duplicates"
+                                               Icon="{ui:SymbolIcon Copy24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.DeepAnalysis}"
+                                               Tag="deep"
+                                               Icon="{ui:SymbolIcon Search24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Insights}"
+                                               Tag="insights"
+                                               Icon="{ui:SymbolIcon BranchFork24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Output}"
+                                               Tag="output"
+                                               Icon="{ui:SymbolIcon Console24}"/>
 
-                <TabItem Header="{DynamicResource Str.Group.History}" Style="{StaticResource GroupTabItem}">
-                    <TabControl>
-                        <TabItem Header="{DynamicResource Str.Tab.Jobs}"><views:JobsView x:Name="JobsViewControl"/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.Reports}"><views:ReportsView x:Name="ReportsViewControl"/></TabItem>
-                        <TabItem Header="{DynamicResource Str.Tab.Workspace}"><views:WorkspaceView/></TabItem>
-                    </TabControl>
-                </TabItem>
-            </TabControl>
+                        <ui:NavigationViewItemHeader Content="{DynamicResource Str.Group.Quality}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Issues}"
+                                               Tag="issues"
+                                               Icon="{ui:SymbolIcon Warning24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.QualityBaseline}"
+                                               Tag="quality"
+                                               Icon="{ui:SymbolIcon Pulse24}"/>
+
+                        <ui:NavigationViewItemHeader Content="{DynamicResource Str.Group.History}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Jobs}"
+                                               Tag="jobs"
+                                               Icon="{ui:SymbolIcon History24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Reports}"
+                                               Tag="reports"
+                                               Icon="{ui:SymbolIcon Document24}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Workspace}"
+                                               Tag="workspace"
+                                               Icon="{ui:SymbolIcon Folder24}"/>
+                    </ui:NavigationView.MenuItems>
+                </ui:NavigationView>
+
+                <ContentControl x:Name="PageHost"
+                                Grid.Column="1"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"/>
+            </Grid>
 
             <TextBlock Grid.Row="4"
                        Text="{DynamicResource Str.Footer}"
                        Foreground="{DynamicResource Brush.TextMuted}"
                        FontSize="11"
-                       Margin="2,10,0,0"/>
+                       Margin="2,8,0,0"/>
         </Grid>
     </Grid>
 </ui:FluentWindow>

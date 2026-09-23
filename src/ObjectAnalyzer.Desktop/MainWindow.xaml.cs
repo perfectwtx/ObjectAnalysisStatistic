@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Desktop.ViewModels;
+using ObjectAnalyzer.Desktop.Views;
 using Wpf.Ui.Controls;
 
 namespace ObjectAnalyzer.Desktop;
@@ -18,13 +19,21 @@ public partial class MainWindow : FluentWindow
 
     private readonly MainViewModel _viewModel = new();
     private readonly DesktopPlatformService _platformService = new();
+    private readonly Dictionary<string, FrameworkElement> _pages = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _analysisCancellation;
     private bool _suppressPreferenceEvents;
+    private bool _navWired;
+
+    private QualityView QualityViewControl => (QualityView)_pages["quality"];
+    private JobsView JobsViewControl => (JobsView)_pages["jobs"];
+    private ReportsView ReportsViewControl => (ReportsView)_pages["reports"];
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
+
+        BuildPages();
 
         QualityViewControl.LoadBaselineRequested += async (_, _) => await LoadBaselineFromViewAsync();
         QualityViewControl.SaveBaselineRequested += async (_, _) => await SaveBaselineFromViewAsync();
@@ -38,11 +47,36 @@ public partial class MainWindow : FluentWindow
         ThemeService.ThemeChanged += (_, _) => Dispatcher.Invoke(RefreshPreferenceControls);
     }
 
+    private void BuildPages()
+    {
+        _pages["overview"] = CreatePage(new OverviewView());
+        _pages["schema"] = CreatePage(new SchemaView());
+        _pages["duplicates"] = CreatePage(new DuplicateView());
+        _pages["deep"] = CreatePage(new DeepAnalysisView());
+        _pages["insights"] = CreatePage(new InsightsView());
+        _pages["output"] = CreatePage(new OutputView());
+        _pages["issues"] = CreatePage(new QualityIssuesView());
+        _pages["quality"] = CreatePage(new QualityView());
+        _pages["jobs"] = CreatePage(new JobsView());
+        _pages["reports"] = CreatePage(new ReportsView());
+        _pages["workspace"] = CreatePage(new WorkspaceView());
+    }
+
+    private FrameworkElement CreatePage(FrameworkElement view)
+    {
+        view.DataContext = _viewModel;
+        return view;
+    }
+
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
         try
         {
+            WireNavigation();
+            NavigateTo("overview");
+            RootNavigation.SelectedItem = NavOverview;
+
             RefreshPreferenceControls();
             await RefreshPlatformDataAsync();
             _viewModel.SetRecentFiles(RecentFilesService.Load());
@@ -59,6 +93,34 @@ public partial class MainWindow : FluentWindow
         {
             _viewModel.SetStatus($"本地历史初始化失败：{ex.Message}");
         }
+    }
+
+    private void WireNavigation()
+    {
+        if (_navWired)
+            return;
+
+        _navWired = true;
+
+        foreach (object raw in RootNavigation.MenuItems)
+        {
+            if (raw is not NavigationViewItem item)
+                continue;
+
+            item.Click += (_, _) =>
+            {
+                if (item.Tag is string tag)
+                    NavigateTo(tag);
+            };
+        }
+    }
+
+    private void NavigateTo(string tag)
+    {
+        if (!_pages.TryGetValue(tag, out FrameworkElement? page))
+            return;
+
+        PageHost.Content = page;
     }
 
     private void RefreshPreferenceControls()
