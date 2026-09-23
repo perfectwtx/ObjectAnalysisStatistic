@@ -1,0 +1,58 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="Str.AppTitle">Object Analyzer</sys:String>
+    <sys:String x:Key="Str.AppSubtitle">Local object analysis and data quality workbench</sys:String>
+    <sys:String x:Key="Str.Footer">Local analysis · Object Analyzer Desktop</sys:String>
+
+    <sys:String x:Key="Str.AnalyzeFile">Input file</sys:String>
+    <sys:String x:Key="Str.RecentFiles">Recent</sys:String>
+    <sys:String x:Key="Str.SelectFile">Browse</sys:String>
+    <sys:String x:Key="Str.StartAnalysis">Analyze</sys:String>
+    <sys:String x:Key="Str.CancelAnalysis">Cancel</sys:String>
+    <sys:String x:Key="Str.CurrentTask">Current job</sys:String>
+    <sys:String x:Key="Str.OpenReport">Open report</sys:String>
+    <sys:String x:Key="Str.FilePathTooltip">Supports JSON / JSONL / CSV / Excel / XML / YAML and archives. Drop a file here.</sys:String>
+    <sys:String x:Key="Str.RecentFilesTooltip">Pick a recently analyzed file (up to 10)</sys:String>
+
+    <sys:String x:Key="Str.Group.Analysis">Analysis</sys:String>
+    <sys:String x:Key="Str.Group.Quality">Quality</sys:String>
+    <sys:String x:Key="Str.Group.History">History</sys:String>
+
+    <sys:String x:Key="Str.Tab.Overview">Overview</sys:String>
+    <sys:String x:Key="Str.Tab.Schema">Schema</sys:String>
+    <sys:String x:Key="Str.Tab.Duplicates">Duplicates</sys:String>
+    <sys:String x:Key="Str.Tab.DeepAnalysis">Deep analysis</sys:String>
+    <sys:String x:Key="Str.Tab.Insights">Lineage / Impact / Regression</sys:String>
+    <sys:String x:Key="Str.Tab.Output">Output</sys:String>
+    <sys:String x:Key="Str.Tab.Issues">Issues</sys:String>
+    <sys:String x:Key="Str.Tab.QualityBaseline">Baseline and trend</sys:String>
+    <sys:String x:Key="Str.Tab.Jobs">Jobs</sys:String>
+    <sys:String x:Key="Str.Tab.Reports">Reports</sys:String>
+    <sys:String x:Key="Str.Tab.Workspace">Workspace</sys:String>
+
+    <sys:String x:Key="Str.Language">Language</sys:String>
+    <sys:String x:Key="Str.Theme">Theme</sys:String>
+    <sys:String x:Key="Str.Theme.Light">Light</sys:String>
+    <sys:String x:Key="Str.Theme.Dark">Dark</sys:String>
+    <sys:String x:Key="Str.Theme.System">System</sys:String>
+    <sys:String x:Key="Str.Theme.EyeCare">Eye care</sys:String>
+
+    <sys:String x:Key="Str.Lang.Zh">中文</sys:String>
+    <sys:String x:Key="Str.Lang.En">English</sys:String>
+
+    <sys:String x:Key="Str.Status.WaitingFile">Waiting for a file</sys:String>
+    <sys:String x:Key="Str.Status.FileSelected">File selected, ready to analyze</sys:String>
+    <sys:String x:Key="Str.Status.FileDropped">File dropped, ready to analyze</sys:String>
+    <sys:String x:Key="Str.Status.FileFromRecent">Loaded from recent files, ready to analyze</sys:String>
+    <sys:String x:Key="Str.Status.ThemeApplied">Theme updated</sys:String>
+    <sys:String x:Key="Str.Status.LanguageApplied">Language updated</sys:String>
+
+    <sys:String x:Key="Str.Dialog.SelectFileTitle">Select a data file to analyze</sys:String>
+    <sys:String x:Key="Str.Dialog.UnsupportedFile">The dropped file type is not supported.</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotSelectFile">Cannot select file</sys:String>
+    <sys:String x:Key="Str.Dialog.NeedExistingFile">Please select an existing data file.</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotStart">Cannot start analysis</sys:String>
+
+</ResourceDictionary>
