@@ -9,6 +9,11 @@ namespace ObjectAnalyzer.Desktop.Services;
 
 public sealed class LocalAnalysisService
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public static async Task<LocalAnalysisResult> AnalyzeAsync(
         string inputPath,
         string reportPath,
@@ -117,7 +122,7 @@ public sealed class LocalAnalysisService
     public static AnalysisResult LoadResult(string reportPath)
     {
         var json = File.ReadAllText(reportPath);
-        return JsonSerializer.Deserialize<AnalysisResult>(json)
+        return JsonSerializer.Deserialize<AnalysisResult>(json, s_jsonOptions)
             ?? throw new InvalidDataException("报告内容为空或不是有效的 AnalysisResult。");
     }
 
