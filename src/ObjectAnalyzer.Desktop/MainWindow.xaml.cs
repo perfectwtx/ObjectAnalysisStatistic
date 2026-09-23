@@ -39,8 +39,15 @@ public partial class MainWindow : FluentWindow
 
         if (AppIcon.Load() is { } icon)
         {
+            // Window chrome / taskbar
             Icon = icon;
-            AppTitleBar.Icon = icon;
+            // TitleBar.Icon requires IconElement (not ImageSource)
+            AppTitleBar.Icon = new ImageIcon
+            {
+                Source = icon,
+                Width = 18,
+                Height = 18
+            };
         }
         AppIcon.EnsureFileBesideAssembly();
 
