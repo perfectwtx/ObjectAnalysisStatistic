@@ -5,10 +5,11 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Desktop.ViewModels;
+using Wpf.Ui.Controls;
 
 namespace ObjectAnalyzer.Desktop;
 
-public partial class MainWindow : Window
+public partial class MainWindow : FluentWindow
 {
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -66,12 +67,12 @@ public partial class MainWindow : Window
         try
         {
             LanguageComboBox.Items.Clear();
-            LanguageComboBox.Items.Add(new ComboBoxItem
+            LanguageComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem
             {
                 Content = LocalizationService.Get("Str.Lang.Zh", "中文"),
                 Tag = AppLanguage.Chinese
             });
-            LanguageComboBox.Items.Add(new ComboBoxItem
+            LanguageComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem
             {
                 Content = LocalizationService.Get("Str.Lang.En", "English"),
                 Tag = AppLanguage.English
@@ -81,7 +82,7 @@ public partial class MainWindow : Window
             ThemeComboBox.Items.Clear();
             foreach (AppThemeMode mode in Enum.GetValues<AppThemeMode>())
             {
-                ThemeComboBox.Items.Add(new ComboBoxItem
+                ThemeComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem
                 {
                     Content = ThemeService.GetModeLabel(mode),
                     Tag = mode
@@ -90,7 +91,7 @@ public partial class MainWindow : Window
 
             for (int i = 0; i < ThemeComboBox.Items.Count; i++)
             {
-                if (ThemeComboBox.Items[i] is ComboBoxItem item
+                if (ThemeComboBox.Items[i] is System.Windows.Controls.ComboBoxItem item
                     && item.Tag is AppThemeMode mode
                     && mode == ThemeService.Mode)
                 {
@@ -110,7 +111,8 @@ public partial class MainWindow : Window
         if (_suppressPreferenceEvents)
             return;
 
-        if (LanguageComboBox.SelectedItem is not ComboBoxItem item || item.Tag is not AppLanguage language)
+        if (LanguageComboBox.SelectedItem is not System.Windows.Controls.ComboBoxItem item
+            || item.Tag is not AppLanguage language)
             return;
 
         if (language == LocalizationService.Current)
@@ -126,7 +128,8 @@ public partial class MainWindow : Window
         if (_suppressPreferenceEvents)
             return;
 
-        if (ThemeComboBox.SelectedItem is not ComboBoxItem item || item.Tag is not AppThemeMode mode)
+        if (ThemeComboBox.SelectedItem is not System.Windows.Controls.ComboBoxItem item
+            || item.Tag is not AppThemeMode mode)
             return;
 
         if (mode == ThemeService.Mode)
@@ -187,7 +190,7 @@ public partial class MainWindow : Window
 
     private void RecentFiles_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is not ComboBox comboBox || comboBox.SelectedItem is not string path)
+        if (sender is not System.Windows.Controls.ComboBox comboBox || comboBox.SelectedItem is not string path)
             return;
 
         comboBox.SelectedItem = null;
