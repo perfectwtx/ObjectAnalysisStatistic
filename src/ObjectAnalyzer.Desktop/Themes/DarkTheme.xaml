@@ -1,25 +1,27 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <SolidColorBrush x:Key="Brush.Bg" Color="#0B1220"/>
-    <SolidColorBrush x:Key="Brush.Surface" Color="#111827"/>
-    <SolidColorBrush x:Key="Brush.Border" Color="#334155"/>
-    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#1F2937"/>
-    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#94A3B8"/>
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#64748B"/>
-    <SolidColorBrush x:Key="Brush.TextLabel" Color="#CBD5E1"/>
-    <SolidColorBrush x:Key="Brush.Primary" Color="#3B82F6"/>
-    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#2563EB"/>
-    <SolidColorBrush x:Key="Brush.Danger" Color="#F87171"/>
-    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#7F1D1D"/>
-    <SolidColorBrush x:Key="Brush.Success" Color="#4ADE80"/>
-    <SolidColorBrush x:Key="Brush.RowAlt" Color="#0F172A"/>
-    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#1E293B"/>
-    <SolidColorBrush x:Key="Brush.Selection" Color="#1E3A5F"/>
-    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#1F2937"/>
-    <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#020617"/>
-    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#E2E8F0"/>
-    <SolidColorBrush x:Key="Brush.InputBg" Color="#0F172A"/>
+    <!-- Deep navy + cyan tech palette -->
+    <SolidColorBrush x:Key="Brush.Bg" Color="#070B14"/>
+    <SolidColorBrush x:Key="Brush.Surface" Color="#0D1526"/>
+    <SolidColorBrush x:Key="Brush.Border" Color="#1E3A5F"/>
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#152238"/>
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#E8F1FF"/>
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#8BA3C7"/>
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#5A7394"/>
+    <SolidColorBrush x:Key="Brush.TextLabel" Color="#B4C7E0"/>
+    <SolidColorBrush x:Key="Brush.Primary" Color="#22D3EE"/>
+    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#06B6D4"/>
+    <SolidColorBrush x:Key="Brush.Danger" Color="#FB7185"/>
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#4C1D24"/>
+    <SolidColorBrush x:Key="Brush.Success" Color="#34D399"/>
+    <SolidColorBrush x:Key="Brush.RowAlt" Color="#0A1220"/>
+    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#121C30"/>
+    <SolidColorBrush x:Key="Brush.Selection" Color="#0E2A3D"/>
+    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#152238"/>
+    <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#04060C"/>
+    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#A5F3FC"/>
+    <SolidColorBrush x:Key="Brush.InputBg" Color="#0A1220"/>
+    <SolidColorBrush x:Key="Brush.AccentGlow" Color="#1A3A4A"/>
 
 </ResourceDictionary>
