@@ -16,40 +16,57 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <DockPanel Margin="0,0,0,12">
-                <ui:Button DockPanel.Dock="Right" Content="刷新" Click="Refresh_Click">
-                    <ui:Button.Icon>
-                        <ui:SymbolIcon Symbol="ArrowSync24"/>
-                    </ui:Button.Icon>
-                </ui:Button>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <ui:Button Content="导出 CSV" Click="ExportCsv_Click" Margin="0,0,8,0"/>
+                    <ui:Button Content="打开位置" Click="OpenReport_Click" Margin="0,0,8,0"/>
+                    <ui:Button Content="刷新" Click="RefreshReports_Click">
+                        <ui:Button.Icon>
+                            <ui:SymbolIcon Symbol="ArrowSync24"/>
+                        </ui:Button.Icon>
+                    </ui:Button>
+                </StackPanel>
                 <StackPanel HorizontalAlignment="Left">
                     <TextBlock Text="报告" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="本地生成的分析报告列表。双击可回读 JSON 报告。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
+                    <TextBlock Text="本地生成的分析报告。双击 JSON 可回读到工作台。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
                 </StackPanel>
             </DockPanel>
 
-            <ListBox Grid.Row="1"
-                     ItemsSource="{Binding Reports}"
-                     VerticalAlignment="Stretch"
-                     Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}"
-                     MouseDoubleClick="Reports_DoubleClick">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding}"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <DataGrid Grid.Row="1"
+                      x:Name="ReportHistoryList"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      ItemsSource="{Binding Reports}"
+                      SelectionChanged="ReportHistory_SelectionChanged"
+                      MouseDoubleClick="ReportHistory_DoubleClick"
+                      VerticalAlignment="Stretch"
+                      Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="2*"/>
+                    <DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="3*"/>
+                </DataGrid.Columns>
+            </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
                                   Glyph="📄"
                                   Title="还没有报告"
-                                  Hint="完成分析后，报告文件会出现在这里。"
+                                  Hint="分析完成后会自动生成报告，可在此重新加载或导出字段 CSV。"
                                   Visibility="{Binding HasReports, Converter={StaticResource InverseBoolToVis}}"/>
+
+            <TextBlock Grid.Row="2"
+                       x:Name="ReportDetailsTextBlock"
+                       Text="选择报告查看详情。"
+                       Foreground="{DynamicResource Brush.TextSecondary}"
+                       TextWrapping="Wrap"
+                       Margin="2,12,2,0"
+                       FontSize="12"
+                       Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}"/>
         </Grid>
     </Border>
 </UserControl>
