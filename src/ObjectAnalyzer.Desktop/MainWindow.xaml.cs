@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Win32;
 using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Desktop.ViewModels;
@@ -17,12 +18,12 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel = new();
     private readonly DesktopPlatformService _platformService = new();
     private CancellationTokenSource? _analysisCancellation;
+    private bool _suppressPreferenceEvents;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
-        RefreshThemeToggleButton();
 
         QualityViewControl.LoadBaselineRequested += async (_, _) => await LoadBaselineFromViewAsync();
         QualityViewControl.SaveBaselineRequested += async (_, _) => await SaveBaselineFromViewAsync();
@@ -32,6 +33,8 @@ public partial class MainWindow : Window
         ReportsViewControl.ReportLoadRequested += (_, e) => LoadReport(e.Path);
 
         Loaded += MainWindow_Loaded;
+        LocalizationService.LanguageChanged += (_, _) => Dispatcher.Invoke(RefreshPreferenceControls);
+        ThemeService.ThemeChanged += (_, _) => Dispatcher.Invoke(RefreshPreferenceControls);
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -39,11 +42,17 @@ public partial class MainWindow : Window
         Loaded -= MainWindow_Loaded;
         try
         {
+            RefreshPreferenceControls();
             await RefreshPlatformDataAsync();
             _viewModel.SetRecentFiles(RecentFilesService.Load());
             RefreshReportHistory();
             await LoadBaselineAsync();
-            RefreshThemeToggleButton();
+
+            if (string.IsNullOrWhiteSpace(_viewModel.Status)
+                || _viewModel.Status is "等待选择文件" or "Waiting for a file")
+            {
+                _viewModel.SetStatus(LocalizationService.Get("Str.Status.WaitingFile", "等待选择文件"));
+            }
         }
         catch (Exception ex)
         {
@@ -51,34 +60,97 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ThemeToggle_Click(object sender, RoutedEventArgs e)
+    private void RefreshPreferenceControls()
     {
-        ThemeService.Toggle();
-        RefreshThemeToggleButton();
-        _viewModel.SetStatus(
-            ThemeService.Current == AppTheme.Dark
-                ? "已切换到深色主题"
-                : "已切换到浅色主题");
+        _suppressPreferenceEvents = true;
+        try
+        {
+            LanguageComboBox.Items.Clear();
+            LanguageComboBox.Items.Add(new ComboBoxItem
+            {
+                Content = LocalizationService.Get("Str.Lang.Zh", "中文"),
+                Tag = AppLanguage.Chinese
+            });
+            LanguageComboBox.Items.Add(new ComboBoxItem
+            {
+                Content = LocalizationService.Get("Str.Lang.En", "English"),
+                Tag = AppLanguage.English
+            });
+            LanguageComboBox.SelectedIndex = LocalizationService.Current == AppLanguage.English ? 1 : 0;
+
+            ThemeComboBox.Items.Clear();
+            foreach (AppThemeMode mode in Enum.GetValues<AppThemeMode>())
+            {
+                ThemeComboBox.Items.Add(new ComboBoxItem
+                {
+                    Content = ThemeService.GetModeLabel(mode),
+                    Tag = mode
+                });
+            }
+
+            for (int i = 0; i < ThemeComboBox.Items.Count; i++)
+            {
+                if (ThemeComboBox.Items[i] is ComboBoxItem item
+                    && item.Tag is AppThemeMode mode
+                    && mode == ThemeService.Mode)
+                {
+                    ThemeComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _suppressPreferenceEvents = false;
+        }
     }
 
-    private void RefreshThemeToggleButton()
+    private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        ThemeToggleButton.Content = ThemeService.GetToggleLabel();
-        ThemeToggleButton.ToolTip = ThemeService.GetToggleTooltip();
+        if (_suppressPreferenceEvents)
+            return;
+
+        if (LanguageComboBox.SelectedItem is not ComboBoxItem item || item.Tag is not AppLanguage language)
+            return;
+
+        if (language == LocalizationService.Current)
+            return;
+
+        LocalizationService.Apply(language);
+        RefreshPreferenceControls();
+        _viewModel.SetStatus(LocalizationService.Get("Str.Status.LanguageApplied", "已切换语言"));
+    }
+
+    private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressPreferenceEvents)
+            return;
+
+        if (ThemeComboBox.SelectedItem is not ComboBoxItem item || item.Tag is not AppThemeMode mode)
+            return;
+
+        if (mode == ThemeService.Mode)
+            return;
+
+        ThemeService.Apply(mode);
+        RefreshPreferenceControls();
+        _viewModel.SetStatus(LocalizationService.Get("Str.Status.ThemeApplied", "已切换主题"));
     }
 
     private void SelectFile_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
         {
-            Title = "选择要分析的数据文件",
-            Filter = "支持的文件|*.json;*.jsonl;*.csv;*.xlsx;*.xls;*.xml;*.yaml;*.yml;*.gz;*.bz2;*.zip|所有文件|*.*",
+            Title = LocalizationService.Get("Str.Dialog.SelectFileTitle", "选择要分析的数据文件"),
+            Filter = "Supported|*.json;*.jsonl;*.csv;*.xlsx;*.xls;*.xml;*.yaml;*.yml;*.gz;*.bz2;*.zip|All|*.*",
             CheckFileExists = true
         };
 
         if (dialog.ShowDialog(this) == true)
         {
-            SetInputFile(dialog.FileName, "已选择文件，等待开始分析");
+            SetInputFile(
+                dialog.FileName,
+                LocalizationService.Get("Str.Status.FileSelected", "已选择文件，等待开始分析"));
         }
     }
 
@@ -99,18 +171,23 @@ public partial class MainWindow : Window
         string? path = files?.FirstOrDefault(IsSupportedFile);
         if (path is null)
         {
-            MessageBox.Show(this, "拖入的文件格式不受支持。", "无法选择文件",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                this,
+                LocalizationService.Get("Str.Dialog.UnsupportedFile", "拖入的文件格式不受支持。"),
+                LocalizationService.Get("Str.Dialog.CannotSelectFile", "无法选择文件"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
-        SetInputFile(path, "已通过拖拽选择文件，等待开始分析");
+        SetInputFile(
+            path,
+            LocalizationService.Get("Str.Status.FileDropped", "已通过拖拽选择文件，等待开始分析"));
     }
 
-    private void RecentFiles_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void RecentFiles_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.ComboBox comboBox
-            || comboBox.SelectedItem is not string path)
+        if (sender is not ComboBox comboBox || comboBox.SelectedItem is not string path)
             return;
 
         comboBox.SelectedItem = null;
@@ -122,7 +199,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        SetInputFile(path, "已从最近文件载入，等待开始分析");
+        SetInputFile(
+            path,
+            LocalizationService.Get("Str.Status.FileFromRecent", "已从最近文件载入，等待开始分析"));
     }
 
     private void SetInputFile(string path, string status)
@@ -131,6 +210,7 @@ public partial class MainWindow : Window
             return;
 
         _viewModel.InputPath = Path.GetFullPath(path);
+        InputPathTextBox.ToolTip = _viewModel.InputPath;
         _viewModel.AddRecentFile(_viewModel.InputPath);
         RecentFilesService.Save(_viewModel.RecentFiles);
         _viewModel.SetStatus(status);
@@ -144,8 +224,12 @@ public partial class MainWindow : Window
         string inputPath = _viewModel.InputPath.Trim();
         if (string.IsNullOrWhiteSpace(inputPath) || !File.Exists(inputPath))
         {
-            MessageBox.Show(this, "请选择一个存在的数据文件。", "无法开始分析",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(
+                this,
+                LocalizationService.Get("Str.Dialog.NeedExistingFile", "请选择一个存在的数据文件。"),
+                LocalizationService.Get("Str.Dialog.CannotStart", "无法开始分析"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
