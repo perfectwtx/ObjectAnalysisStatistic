@@ -14,8 +14,11 @@
             <DockPanel Margin="0,0,0,12">
                 <ui:Button DockPanel.Dock="Right"
                            Content="刷新作业"
-                           Click="RefreshJobs_Click"
-                           Icon="{ui:SymbolIcon ArrowClockwise24}"/>
+                           Click="RefreshJobs_Click">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="ArrowSync24"/>
+                    </ui:Button.Icon>
+                </ui:Button>
                 <StackPanel>
                     <TextBlock Text="作业历史" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="双击作业可查看详细信息。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
