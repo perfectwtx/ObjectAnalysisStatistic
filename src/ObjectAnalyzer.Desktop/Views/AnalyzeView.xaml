@@ -4,15 +4,16 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
+            <TextBlock Text="// MODULE · ANALYZE" Style="{StaticResource HudBadge}" Margin="0,0,0,6"/>
             <TextBlock Text="{DynamicResource Str.Analyze.PageTitle}" Style="{StaticResource PageTitle}" Margin="0,0,0,4"/>
             <TextBlock Text="{DynamicResource Str.Analyze.PageSubtitle}"
                        Style="{StaticResource PageSubtitle}" Margin="0,0,0,16"/>
 
-            <ui:Card Padding="20" Margin="0,0,0,12">
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Analyze.DataFile}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="01  DATA SOURCE" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{DynamicResource Str.Analyze.DataFileHint}"
-                               Style="{StaticResource SectionHint}" Margin="0,0,0,12"/>
+                               Style="{StaticResource SectionHint}" Margin="0,4,0,12"/>
 
                     <TextBlock Text="{DynamicResource Str.Analyze.FilePath}" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,0,0,12">
@@ -40,13 +41,13 @@
                               SelectionChanged="RecentFiles_SelectionChanged"
                               MaxDropDownHeight="240"/>
                 </StackPanel>
-            </ui:Card>
+            </Border>
 
-            <ui:Card Padding="20" Margin="0,0,0,12">
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Analyze.RulesOutput}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="02  RULES · OUTPUT" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{DynamicResource Str.Analyze.RulesHint}"
-                               Style="{StaticResource SectionHint}" Margin="0,0,0,12"/>
+                               Style="{StaticResource SectionHint}" Margin="0,4,0,12"/>
 
                     <TextBlock Text="{DynamicResource Str.Analyze.RulesFile}" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,0,0,12">
@@ -79,9 +80,9 @@
                         <ComboBoxItem Content="Excel" Tag="xlsx"/>
                     </ComboBox>
                 </StackPanel>
-            </ui:Card>
+            </Border>
 
-            <ui:Card Padding="20" Margin="0,0,0,12">
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -89,9 +90,11 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="03  PIPELINE" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
                         <TextBlock Text="{Binding Status}"
                                    FontSize="14"
                                    FontWeight="SemiBold"
+                                   FontFamily="Cascadia Mono, Consolas"
                                    Foreground="{DynamicResource Brush.TextPrimary}"/>
                         <ProgressBar Style="{StaticResource CyanProgressBar}"
                                      Margin="0,12,0,6"
@@ -137,7 +140,7 @@
                         </ui:Button>
                     </StackPanel>
                 </Grid>
-            </ui:Card>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
