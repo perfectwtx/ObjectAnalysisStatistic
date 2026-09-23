@@ -1,6 +1,6 @@
 # Desktop 使用与发布
 
-ObjectAnalyzer Desktop 是基于 WPF 的 Windows 本地分析工作台，直接复用 ObjectAnalyzer.Core，不需要启动 Web 或 API。
+ObjectAnalyzer Desktop 是基于 WPF + [WPF UI](https://github.com/lepoco/wpfui) 的 Windows 本地分析工作台，直接复用 ObjectAnalyzer.Core，不需要启动 Web 或 API。
 
 ## 本地运行
 
@@ -38,6 +38,12 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 
 最近文件与 UI 偏好都属于辅助信息，不影响分析数据库和报告。
 
+## UI 技术栈
+
+- **WPF UI (lepoco)**：`FluentWindow`、`TitleBar`、`Card`、Fluent 按钮与控件样式，支持 Mica 背景。
+- **自有主题资源**：`Brush.*` 与护眼色板仍由 `Themes/*.xaml` 提供，并与 WPF UI 的 `ApplicationThemeManager` 同步。
+- **本地化**：`Localization/Strings.*.xaml` + `LocalizationService`。
+
 ## 页签分组
 
 结果区使用两级页签：
@@ -67,10 +73,10 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 
 | 模式 | 说明 |
 |------|------|
-| **浅色** | 默认明亮主题 |
-| **深色** | 深色背景，适合低光环境 |
-| **跟随系统** | 读取 Windows「应用模式」浅色/深色，系统变更时自动同步 |
-| **护眼** | 柔和绿纸色调，降低对比刺激 |
+| **浅色** | WPF UI Light + 自有浅色色板 |
+| **深色** | WPF UI Dark + 自有深色色板 |
+| **跟随系统** | 跟随 Windows 应用浅色/深色，系统变更时自动同步 |
+| **护眼** | WPF UI Light 窗体 + 柔和绿纸色板 |
 
 偏好会持久化到 `ui-settings.json`，下次启动自动恢复。
 
