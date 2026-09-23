@@ -39,9 +39,7 @@ public partial class MainWindow : FluentWindow
 
         if (AppIcon.Load() is { } icon)
         {
-            // Window chrome / taskbar
             Icon = icon;
-            // TitleBar.Icon requires IconElement (not ImageSource)
             AppTitleBar.Icon = new ImageIcon
             {
                 Source = icon,
@@ -92,6 +90,8 @@ public partial class MainWindow : FluentWindow
     private FrameworkElement CreatePage(FrameworkElement view)
     {
         view.DataContext = _viewModel;
+        view.HorizontalAlignment = HorizontalAlignment.Stretch;
+        view.VerticalAlignment = VerticalAlignment.Stretch;
         return view;
     }
 
@@ -146,6 +146,8 @@ public partial class MainWindow : FluentWindow
         if (!_pages.TryGetValue(tag, out FrameworkElement? page))
             return;
 
+        page.HorizontalAlignment = HorizontalAlignment.Stretch;
+        page.VerticalAlignment = VerticalAlignment.Stretch;
         PageHost.Content = page;
 
         foreach (object raw in RootNavigation.MenuItems)
