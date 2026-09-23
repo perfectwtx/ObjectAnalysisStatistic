@@ -4,6 +4,7 @@ using ObjectAnalyzer.Abstractions;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Platform;
+using ObjectAnalyzer.Reporting;
 
 namespace ObjectAnalyzer.Desktop.Services;
 
@@ -16,7 +17,8 @@ public sealed class LocalAnalysisService
 
     public static async Task<LocalAnalysisResult> AnalyzeAsync(
         string inputPath,
-        string reportPath,
+        string jsonReportPath,
+        string userReportPath,
         string? rulesPath,
         Action<string> writeOutput,
         Action<long> reportProgress,
@@ -24,7 +26,8 @@ public sealed class LocalAnalysisService
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(jsonReportPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userReportPath);
         ArgumentNullException.ThrowIfNull(platform);
 
         await platform.InitializeAsync(cancellationToken);
@@ -58,7 +61,7 @@ public sealed class LocalAnalysisService
                 },
                 Report = new ReportOutputOptions
                 {
-                    OutputPath = reportPath
+                    OutputPath = jsonReportPath
                 },
                 Progress = new ProgressOptions
                 {
@@ -90,18 +93,22 @@ public sealed class LocalAnalysisService
                         if (exitCode != 0)
                             throw new AnalysisExecutionException(exitCode);
 
-                        if (!File.Exists(reportPath))
-                            throw new FileNotFoundException("分析完成但没有生成报告。", reportPath);
+                        if (!File.Exists(jsonReportPath))
+                            throw new FileNotFoundException("分析完成但没有生成 JSON 报告。", jsonReportPath);
 
-                        // 工作台回读需要 JSON AnalysisResult；非 JSON 格式只保证报告文件存在。
-                        if (reportPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-                            return LoadResult(reportPath);
+                        AnalysisResult analysisResult = LoadResult(jsonReportPath);
 
-                        string siblingJson = Path.ChangeExtension(reportPath, ".json");
-                        if (File.Exists(siblingJson))
-                            return LoadResult(siblingJson);
+                        if (!string.Equals(
+                                Path.GetFullPath(jsonReportPath),
+                                Path.GetFullPath(userReportPath),
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(userReportPath)!);
+                            ReportExporter.Save(analysisResult, userReportPath, redactPii: true);
+                            writeOutput($"已导出用户格式报告: {userReportPath}");
+                        }
 
-                        return new AnalysisResult();
+                        return analysisResult;
                     }
                     finally
                     {
