@@ -265,7 +265,7 @@ public partial class MainWindow : FluentWindow
             _viewModel.RulesPath = Path.GetFullPath(dialog.FileName);
     }
 
-    private void OnFileDragOver(DragEventArgs e)
+    private static void OnFileDragOver(DragEventArgs e)
     {
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Copy
