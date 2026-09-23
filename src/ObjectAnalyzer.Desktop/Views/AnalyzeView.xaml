@@ -4,17 +4,17 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
-            <TextBlock Text="开始分析" Style="{StaticResource PageTitle}" Margin="0,0,0,4"/>
-            <TextBlock Text="选择数据文件、可选规则与报告格式，然后启动本地分析。"
+            <TextBlock Text="{DynamicResource Str.Analyze.PageTitle}" Style="{StaticResource PageTitle}" Margin="0,0,0,4"/>
+            <TextBlock Text="{DynamicResource Str.Analyze.PageSubtitle}"
                        Style="{StaticResource PageSubtitle}" Margin="0,0,0,16"/>
 
             <ui:Card Padding="20" Margin="0,0,0,12">
                 <StackPanel>
-                    <TextBlock Text="数据文件" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="支持 JSON / JSONL / CSV / Excel / XML / YAML 及压缩包。可拖拽到路径框。"
+                    <TextBlock Text="{DynamicResource Str.Analyze.DataFile}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Analyze.DataFileHint}"
                                Style="{StaticResource SectionHint}" Margin="0,0,0,12"/>
 
-                    <TextBlock Text="文件路径" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{DynamicResource Str.Analyze.FilePath}" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -27,7 +27,7 @@
                                  AllowDrop="True"
                                  DragOver="InputPathTextBox_DragOver"
                                  Drop="InputPathTextBox_Drop"/>
-                        <ui:Button Grid.Column="1" Content="选择文件" Click="SelectFile_Click"
+                        <ui:Button Grid.Column="1" Content="{DynamicResource Str.SelectFile}" Click="SelectFile_Click"
                                    Margin="10,0,0,0" Height="36">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="FolderOpen24"/>
@@ -35,21 +35,20 @@
                         </ui:Button>
                     </Grid>
 
-                    <TextBlock Text="最近文件" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{DynamicResource Str.RecentFiles}" Style="{StaticResource FieldLabel}"/>
                     <ComboBox ItemsSource="{Binding RecentFiles}"
                               SelectionChanged="RecentFiles_SelectionChanged"
-                              MaxDropDownHeight="240"
-                              Margin="0,0,0,0"/>
+                              MaxDropDownHeight="240"/>
                 </StackPanel>
             </ui:Card>
 
             <ui:Card Padding="20" Margin="0,0,0,12">
                 <StackPanel>
-                    <TextBlock Text="规则与输出" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="规则文件对应 CLI 的 -r；报告类型按扩展名生成（json / html / md / csv / xlsx）。"
+                    <TextBlock Text="{DynamicResource Str.Analyze.RulesOutput}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Analyze.RulesHint}"
                                Style="{StaticResource SectionHint}" Margin="0,0,0,12"/>
 
-                    <TextBlock Text="规则文件（可选）" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{DynamicResource Str.Analyze.RulesFile}" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -59,7 +58,7 @@
                                  Style="{StaticResource PathTextBox}"
                                  Text="{Binding RulesPath, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{Binding RulesPath}"/>
-                        <ui:Button Grid.Column="1" Content="选择规则" Click="SelectRules_Click"
+                        <ui:Button Grid.Column="1" Content="{DynamicResource Str.Analyze.SelectRules}" Click="SelectRules_Click"
                                    Margin="10,0,0,0" Height="36">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="DocumentBulletList24"/>
@@ -67,13 +66,13 @@
                         </ui:Button>
                     </Grid>
 
-                    <TextBlock Text="报告格式" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{DynamicResource Str.Analyze.ReportFormat}" Style="{StaticResource FieldLabel}"/>
                     <ComboBox x:Name="ReportFormatComboBox"
-                              Width="200"
+                              Width="240"
                               HorizontalAlignment="Left"
                               SelectedIndex="0"
                               SelectionChanged="ReportFormatComboBox_SelectionChanged">
-                        <ComboBoxItem Content="JSON（可回读到工作台）" Tag="json"/>
+                        <ComboBoxItem Content="JSON" Tag="json"/>
                         <ComboBoxItem Content="HTML" Tag="html"/>
                         <ComboBoxItem Content="Markdown" Tag="md"/>
                         <ComboBoxItem Content="CSV" Tag="csv"/>
@@ -106,7 +105,7 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:Button x:Name="AnalyzeButton"
-                                   Content="开始分析"
+                                   Content="{DynamicResource Str.StartAnalysis}"
                                    Appearance="Primary"
                                    Click="Analyze_Click"
                                    Height="40"
@@ -117,7 +116,7 @@
                             </ui:Button.Icon>
                         </ui:Button>
                         <ui:Button x:Name="CancelButton"
-                                   Content="取消"
+                                   Content="{DynamicResource Str.Analyze.Cancel}"
                                    Appearance="Danger"
                                    Click="CancelAnalysis_Click"
                                    Height="40"
@@ -127,7 +126,7 @@
                                 <ui:SymbolIcon Symbol="Dismiss24"/>
                             </ui:Button.Icon>
                         </ui:Button>
-                        <ui:Button Content="打开报告"
+                        <ui:Button Content="{DynamicResource Str.OpenReport}"
                                    Click="OpenReport_Click"
                                    Height="40"
                                    IsEnabled="{Binding HasReport}">
