@@ -114,8 +114,11 @@
                 </ui:NavigationView>
             </Border>
 
+            <!-- 子页从左上铺满，避免内容在可视区中部“悬空” -->
             <ContentControl x:Name="PageHost"
                             Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch"/>
         </Grid>
