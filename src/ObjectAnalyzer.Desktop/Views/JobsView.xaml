@@ -1,6 +1,7 @@
 <UserControl x:Class="ObjectAnalyzer.Desktop.Views.JobsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views">
     <Border Style="{StaticResource CardBorder}" Margin="0,8,0,0" Padding="16">
         <Grid>
             <Grid.RowDefinitions>
@@ -26,7 +27,8 @@
                       IsReadOnly="True"
                       CanUserAddRows="False"
                       ItemsSource="{Binding Jobs}"
-                      MouseDoubleClick="JobGrid_DoubleClick">
+                      MouseDoubleClick="JobGrid_DoubleClick"
+                      Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="开始时间" Binding="{Binding StartedText}" Width="150"/>
                     <DataGridTextColumn Header="数据源" Binding="{Binding SourceName}" Width="230"/>
@@ -41,13 +43,20 @@
                 </DataGrid.Columns>
             </DataGrid>
 
+            <views:EmptyStateView Grid.Row="1"
+                                  Glyph="◷"
+                                  Title="还没有作业记录"
+                                  Hint="本地完成的分析作业会出现在这里，便于回顾状态、耗时与质量分。"
+                                  Visibility="{Binding HasJobs, Converter={StaticResource InverseBoolToVis}}"/>
+
             <TextBlock Grid.Row="2"
                        x:Name="JobDetailsTextBlock"
                        Text="双击作业查看详细信息。"
                        Foreground="{DynamicResource Brush.TextSecondary}"
                        TextWrapping="Wrap"
                        Margin="2,12,2,0"
-                       FontSize="12"/>
+                       FontSize="12"
+                       Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}"/>
         </Grid>
     </Border>
 </UserControl>
