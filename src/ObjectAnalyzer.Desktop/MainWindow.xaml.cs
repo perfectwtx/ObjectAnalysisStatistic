@@ -27,6 +27,7 @@ public partial class MainWindow : FluentWindow
     private bool _suppressPreferenceEvents;
     private bool _navWired;
 
+    private AnalyzeView AnalyzeViewControl => (AnalyzeView)_pages["analyze"];
     private QualityView QualityViewControl => (QualityView)_pages["quality"];
     private JobsView JobsViewControl => (JobsView)_pages["jobs"];
     private ReportsView ReportsViewControl => (ReportsView)_pages["reports"];
@@ -37,6 +38,16 @@ public partial class MainWindow : FluentWindow
         DataContext = _viewModel;
 
         BuildPages();
+
+        AnalyzeViewControl.SelectFileRequested += (_, _) => SelectFile();
+        AnalyzeViewControl.SelectRulesRequested += (_, _) => SelectRules();
+        AnalyzeViewControl.AnalyzeRequested += async (_, _) => await RunAnalysisAsync();
+        AnalyzeViewControl.CancelRequested += (_, _) => CancelAnalysis();
+        AnalyzeViewControl.OpenReportRequested += (_, _) => OpenReport();
+        AnalyzeViewControl.RecentFileSelected += (_, path) => OnRecentFileSelected(path);
+        AnalyzeViewControl.ReportFormatChanged += (_, format) => _viewModel.ReportFormat = format;
+        AnalyzeViewControl.FileDragOver += (_, e) => OnFileDragOver(e);
+        AnalyzeViewControl.FileDrop += (_, e) => OnFileDrop(e);
 
         QualityViewControl.LoadBaselineRequested += async (_, _) => await LoadBaselineFromViewAsync();
         QualityViewControl.SaveBaselineRequested += async (_, _) => await SaveBaselineFromViewAsync();
@@ -52,6 +63,7 @@ public partial class MainWindow : FluentWindow
 
     private void BuildPages()
     {
+        _pages["analyze"] = CreatePage(new AnalyzeView());
         _pages["overview"] = CreatePage(new OverviewView());
         _pages["schema"] = CreatePage(new SchemaView());
         _pages["duplicates"] = CreatePage(new DuplicateView());
@@ -77,8 +89,8 @@ public partial class MainWindow : FluentWindow
         try
         {
             WireNavigation();
-            NavigateTo("overview");
-            NavOverview.IsActive = true;
+            NavigateTo("analyze");
+            NavAnalyze.IsActive = true;
 
             RefreshPreferenceControls();
             await RefreshPlatformDataAsync();
@@ -130,8 +142,12 @@ public partial class MainWindow : FluentWindow
             if (raw is not NavigationViewItem item)
                 continue;
 
-            item.IsActive = item.Tag is string itemTag
+            bool active = item.Tag is string itemTag
                 && string.Equals(itemTag, tag, StringComparison.OrdinalIgnoreCase);
+            if (active)
+                item.Activate(RootNavigation);
+            else
+                item.Deactivate(RootNavigation);
         }
     }
 
@@ -214,7 +230,7 @@ public partial class MainWindow : FluentWindow
         _viewModel.SetStatus(LocalizationService.Get("Str.Status.ThemeApplied", "已切换主题"));
     }
 
-    private void SelectFile_Click(object sender, RoutedEventArgs e)
+    private void SelectFile()
     {
         var dialog = new OpenFileDialog
         {
@@ -231,7 +247,20 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    private void InputPathTextBox_DragOver(object sender, DragEventArgs e)
+    private void SelectRules()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择规则文件",
+            Filter = "Rules|*.json;*.jsonc;*.yaml;*.yml|All|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog(this) == true)
+            _viewModel.RulesPath = Path.GetFullPath(dialog.FileName);
+    }
+
+    private void OnFileDragOver(DragEventArgs e)
     {
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Copy
@@ -239,7 +268,7 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
-    private void InputPathTextBox_Drop(object sender, DragEventArgs e)
+    private void OnFileDrop(DragEventArgs e)
     {
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
             return;
@@ -262,12 +291,8 @@ public partial class MainWindow : FluentWindow
             LocalizationService.Get("Str.Status.FileDropped", "已通过拖拽选择文件，等待开始分析"));
     }
 
-    private void RecentFiles_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnRecentFileSelected(string path)
     {
-        if (sender is not System.Windows.Controls.ComboBox comboBox || comboBox.SelectedItem is not string path)
-            return;
-
-        comboBox.SelectedItem = null;
         if (!File.Exists(path))
         {
             _viewModel.SetRecentFiles(_viewModel.RecentFiles.Where(File.Exists));
@@ -287,7 +312,7 @@ public partial class MainWindow : FluentWindow
             return;
 
         _viewModel.InputPath = Path.GetFullPath(path);
-        InputPathTextBox.ToolTip = _viewModel.InputPath;
+        AnalyzeViewControl.SetInputPathTooltip(_viewModel.InputPath);
         _viewModel.AddRecentFile(_viewModel.InputPath);
         RecentFilesService.Save(_viewModel.RecentFiles);
         _viewModel.SetStatus(status);
@@ -296,7 +321,7 @@ public partial class MainWindow : FluentWindow
     private static bool IsSupportedFile(string path) =>
         File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path));
 
-    private async void Analyze_Click(object sender, RoutedEventArgs e)
+    private async Task RunAnalysisAsync()
     {
         string inputPath = _viewModel.InputPath.Trim();
         if (string.IsNullOrWhiteSpace(inputPath) || !File.Exists(inputPath))
@@ -310,10 +335,20 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        string reportPath = BuildReportPath(inputPath);
+        string? rulesPath = string.IsNullOrWhiteSpace(_viewModel.RulesPath)
+            ? null
+            : _viewModel.RulesPath.Trim();
+        if (rulesPath is not null && !File.Exists(rulesPath))
+        {
+            MessageBox.Show(this, "规则文件不存在，请重新选择。", "无法开始分析",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        string reportPath = BuildReportPath(inputPath, _viewModel.ReportFormat);
         _viewModel.SetRunning(reportPath);
         _viewModel.ClearOutput();
-        SetBusy(true);
+        AnalyzeViewControl.SetBusy(true);
 
         using var cancellation = new CancellationTokenSource();
         _analysisCancellation = cancellation;
@@ -323,6 +358,7 @@ public partial class MainWindow : FluentWindow
             var result = await LocalAnalysisService.AnalyzeAsync(
                 inputPath,
                 reportPath,
+                rulesPath,
                 message => Dispatcher.Invoke(() => _viewModel.AppendOutput(message)),
                 value => Dispatcher.Invoke(() => _viewModel.SetProgress(value)),
                 _platformService,
@@ -335,6 +371,11 @@ public partial class MainWindow : FluentWindow
                 _viewModel.SetCompleted(result.Result);
                 await RefreshPlatformDataAsync();
                 await LoadBaselineAsync();
+            }
+            else if (result.ExitCode == 0)
+            {
+                _viewModel.SetStatus("分析完成（非 JSON 报告，工作台字段统计可能为空）");
+                _viewModel.SetProgress(100);
             }
             else
             {
@@ -355,7 +396,7 @@ public partial class MainWindow : FluentWindow
             if (ReferenceEquals(_analysisCancellation, cancellation))
                 _analysisCancellation = null;
 
-            SetBusy(false);
+            AnalyzeViewControl.SetBusy(false);
             RefreshReportHistory();
 
             try
@@ -369,7 +410,7 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    private void CancelAnalysis_Click(object sender, RoutedEventArgs e)
+    private void CancelAnalysis()
     {
         if (_analysisCancellation is null)
             return;
@@ -378,7 +419,7 @@ public partial class MainWindow : FluentWindow
         _analysisCancellation.Cancel();
     }
 
-    private void OpenReport_Click(object sender, RoutedEventArgs e)
+    private void OpenReport()
     {
         if (!_viewModel.HasReport || !File.Exists(_viewModel.ReportPath))
             return;
@@ -394,6 +435,13 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
+            if (!reportPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(this, "工作台仅支持回读 JSON 分析报告。", "无法打开报告",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var result = LocalAnalysisService.LoadResult(reportPath);
             _viewModel.Load(result, reportPath);
             _viewModel.SetStatus($"已加载历史报告：{Path.GetFileName(reportPath)}");
@@ -507,7 +555,12 @@ public partial class MainWindow : FluentWindow
 
         if (Directory.Exists(directory))
         {
-            foreach (var path in Directory.EnumerateFiles(directory, "*.json")
+            foreach (var path in Directory.EnumerateFiles(directory, "*.*")
+                         .Where(p =>
+                         {
+                             string ext = Path.GetExtension(p).ToLowerInvariant();
+                             return ext is ".json" or ".html" or ".md" or ".csv" or ".xlsx" or ".pdf";
+                         })
                          .OrderByDescending(File.GetLastWriteTime)
                          .Take(100))
             {
@@ -526,14 +579,24 @@ public partial class MainWindow : FluentWindow
         return string.IsNullOrWhiteSpace(input) ? string.Empty : Path.GetFileName(input);
     }
 
-    private static string BuildReportPath(string inputPath)
+    private static string BuildReportPath(string inputPath, string format)
     {
         string directory = GetReportDirectory();
         Directory.CreateDirectory(directory);
 
+        string ext = format?.Trim().ToLowerInvariant() switch
+        {
+            "html" => ".html",
+            "md" or "markdown" => ".md",
+            "csv" => ".csv",
+            "xlsx" or "excel" => ".xlsx",
+            "pdf" => ".pdf",
+            _ => ".json"
+        };
+
         return Path.Combine(
             directory,
-            $"{Path.GetFileNameWithoutExtension(inputPath)}-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+            $"{Path.GetFileNameWithoutExtension(inputPath)}-{DateTime.Now:yyyyMMdd-HHmmss}{ext}");
     }
 
     private static string GetReportDirectory() =>
@@ -541,11 +604,4 @@ public partial class MainWindow : FluentWindow
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ObjectAnalyzer",
             "Reports");
-
-    private void SetBusy(bool busy)
-    {
-        AnalyzeButton.IsEnabled = !busy;
-        CancelButton.IsEnabled = busy;
-        InputPathTextBox.IsEnabled = !busy;
-    }
 }
