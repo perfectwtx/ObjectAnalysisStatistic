@@ -49,6 +49,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool HasReport => File.Exists(_reportPath) && !string.Equals(
         _reportPath, "分析完成后自动生成 JSON 报告", StringComparison.Ordinal);
 
+    public bool HasFields => Fields.Count > 0;
+    public bool HasDuplicates => Duplicates.Count > 0;
+    public bool HasIssues => Issues.Count > 0;
+    public bool HasJobs => Jobs.Count > 0;
+    public bool HasReports => Reports.Count > 0;
+    public bool HasQualityTrend => QualityTrend.Count > 0;
+    public bool HasOutput => !string.IsNullOrWhiteSpace(OutputText);
+
     public string BaselineSourceName { get => _baselineSourceName; set => Set(ref _baselineSourceName, value); }
     public string MinimumOverallScore { get => _minimumOverallScore; set => Set(ref _minimumOverallScore, value); }
     public string MinimumCompleteness { get => _minimumCompleteness; set => Set(ref _minimumCompleteness, value); }
@@ -100,13 +108,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RaiseResultStateChanged();
     }
 
-    public void ClearOutput() => OutputText = string.Empty;
+    public void ClearOutput()
+    {
+        OutputText = string.Empty;
+        OnPropertyChanged(nameof(HasOutput));
+    }
 
     public void AppendOutput(string message)
     {
         OutputText = string.IsNullOrEmpty(OutputText)
             ? message
             : OutputText + Environment.NewLine + message;
+        OnPropertyChanged(nameof(HasOutput));
     }
 
     public void RefreshCollections()
@@ -122,6 +135,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Issues.Clear();
         foreach (var issue in _result?.QualityViolations ?? [])
             Issues.Add(new DesktopIssueRow(issue));
+
+        RaiseCollectionStateChanged();
     }
 
     public void SetQualityTrend(IEnumerable<QualitySnapshot> snapshots)
@@ -129,6 +144,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         QualityTrend.Clear();
         foreach (var snapshot in snapshots.OrderBy(x => x.OccurredAtUtc))
             QualityTrend.Add(new DesktopQualitySnapshotRow(snapshot));
+        OnPropertyChanged(nameof(HasQualityTrend));
     }
 
     public void SetJobs(IEnumerable<AnalysisJob> jobs)
@@ -136,11 +152,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Jobs.Clear();
         foreach (var job in jobs.OrderByDescending(x => x.StartedAtUtc))
             Jobs.Add(new DesktopJobRow(job));
+        OnPropertyChanged(nameof(HasJobs));
     }
 
-    public void ClearReports() => Reports.Clear();
+    public void ClearReports()
+    {
+        Reports.Clear();
+        OnPropertyChanged(nameof(HasReports));
+    }
 
-    public void AddReport(string path) => Reports.Add(new DesktopReportRow(path));
+    public void AddReport(string path)
+    {
+        Reports.Add(new DesktopReportRow(path));
+        OnPropertyChanged(nameof(HasReports));
+    }
 
     public void SetBaseline(QualityBaseline? baseline, string sourceName)
     {
@@ -253,6 +278,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(DuplicateSummary));
         OnPropertyChanged(nameof(HasResult));
         OnPropertyChanged(nameof(HasReport));
+        RaiseCollectionStateChanged();
+    }
+
+    private void RaiseCollectionStateChanged()
+    {
+        OnPropertyChanged(nameof(HasFields));
+        OnPropertyChanged(nameof(HasDuplicates));
+        OnPropertyChanged(nameof(HasIssues));
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
