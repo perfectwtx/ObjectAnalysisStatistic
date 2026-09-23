@@ -12,8 +12,10 @@ namespace ObjectAnalyzer.Desktop.ViewModels;
 public sealed class MainViewModel : INotifyPropertyChanged
 {
     private string _inputPath = string.Empty;
+    private string _rulesPath = string.Empty;
+    private string _reportFormat = "json";
     private string _status = "等待选择文件";
-    private string _reportPath = "分析完成后自动生成 JSON 报告";
+    private string _reportPath = "分析完成后自动生成报告";
     private int _progress;
     private bool _isBusy;
     private AnalysisResult? _result;
@@ -31,6 +33,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string InputPath { get => _inputPath; set => Set(ref _inputPath, value); }
+    public string RulesPath { get => _rulesPath; set => Set(ref _rulesPath, value); }
+    public string ReportFormat { get => _reportFormat; set => Set(ref _reportFormat, value); }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public string ReportPath { get => _reportPath; private set => Set(ref _reportPath, value); }
     public int Progress { get => _progress; private set => Set(ref _progress, value); }
@@ -45,9 +49,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string DuplicateSummary => _result is null
         ? "暂无重复对象结果。"
         : $"重复对象组：{_result.TotalDuplicateGroups:N0}，唯一对象：{_result.TotalUniqueObjects:N0}";
-    public bool HasResult => _result is not null;
-    public bool HasReport => File.Exists(_reportPath) && !string.Equals(
-        _reportPath, "分析完成后自动生成 JSON 报告", StringComparison.Ordinal);
+    public bool HasResult => _result is not null && _result.FieldStatistics.Count > 0;
+    public bool HasReport => File.Exists(_reportPath);
 
     public bool HasFields => Fields.Count > 0;
     public bool HasDuplicates => Duplicates.Count > 0;
@@ -306,7 +309,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private static bool TryParse(string text, out double value) =>
         double.TryParse(
             text,
-            System.Globalization.NumberStyles.Float,
+            NumberStyles.Float,
             CultureInfo.InvariantCulture,
             out value)
         && value is >= 0 and <= 100;
