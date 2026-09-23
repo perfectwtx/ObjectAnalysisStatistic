@@ -32,7 +32,7 @@ public static class ThemeService
             "ObjectAnalyzer",
             "ui-settings.json");
 
-    public static AppThemeMode Mode { get; private set; } = AppThemeMode.Light;
+    public static AppThemeMode Mode { get; private set; } = AppThemeMode.Dark;
 
     public static event EventHandler? ThemeChanged;
 
@@ -177,8 +177,9 @@ public static class ThemeService
     {
         try
         {
+            // 无本地偏好时默认深色（科技感）
             if (!File.Exists(SettingsPath))
-                return AppThemeMode.Light;
+                return AppThemeMode.Dark;
 
             var settings = JsonSerializer.Deserialize<UiSettings>(
                 File.ReadAllText(SettingsPath),
@@ -186,15 +187,16 @@ public static class ThemeService
 
             return settings?.Theme?.ToLowerInvariant() switch
             {
-                "dark" => AppThemeMode.Dark,
+                "light" => AppThemeMode.Light,
                 "system" => AppThemeMode.System,
                 "eyecare" => AppThemeMode.EyeCare,
-                _ => AppThemeMode.Light
+                "dark" => AppThemeMode.Dark,
+                _ => AppThemeMode.Dark
             };
         }
         catch
         {
-            return AppThemeMode.Light;
+            return AppThemeMode.Dark;
         }
     }
 
