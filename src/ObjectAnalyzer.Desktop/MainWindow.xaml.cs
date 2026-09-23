@@ -38,7 +38,10 @@ public partial class MainWindow : FluentWindow
         DataContext = _viewModel;
 
         if (AppIcon.Load() is { } icon)
+        {
             Icon = icon;
+            AppTitleBar.Icon = icon;
+        }
         AppIcon.EnsureFileBesideAssembly();
 
         BuildPages();
@@ -77,7 +80,6 @@ public partial class MainWindow : FluentWindow
         _pages["jobs"] = CreatePage(new JobsView());
         _pages["reports"] = CreatePage(new ReportsView());
         _pages["workspace"] = CreatePage(new WorkspaceView());
-        _pages["settings"] = CreatePage(new SettingsView());
     }
 
     private FrameworkElement CreatePage(FrameworkElement view)
@@ -268,9 +270,12 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        // 工作台概览依赖 JSON AnalysisResult；始终写入 .json。
-        string reportPath = BuildReportPath(inputPath, "json");
-        _viewModel.SetRunning(reportPath);
+        string jsonReportPath = BuildReportPath(inputPath, "json");
+        string userFormat = string.IsNullOrWhiteSpace(_viewModel.ReportFormat) ? "json" : _viewModel.ReportFormat.Trim();
+        string userReportPath = string.Equals(userFormat, "json", StringComparison.OrdinalIgnoreCase)
+            ? jsonReportPath
+            : BuildReportPath(inputPath, userFormat);
+        _viewModel.SetRunning(userReportPath);
         _viewModel.ClearOutput();
         AnalyzeViewControl.SetBusy(true);
 
@@ -281,7 +286,8 @@ public partial class MainWindow : FluentWindow
         {
             var result = await LocalAnalysisService.AnalyzeAsync(
                 inputPath,
-                reportPath,
+                jsonReportPath,
+                userReportPath,
                 rulesPath,
                 message => Dispatcher.Invoke(() => _viewModel.AppendOutput(message)),
                 value => Dispatcher.Invoke(() => _viewModel.SetProgress(value)),
