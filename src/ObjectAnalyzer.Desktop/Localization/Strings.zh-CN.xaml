@@ -1,0 +1,58 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="Str.AppTitle">Object Analyzer</sys:String>
+    <sys:String x:Key="Str.AppSubtitle">本地对象分析与数据质量工作台</sys:String>
+    <sys:String x:Key="Str.Footer">本地分析 · Object Analyzer Desktop</sys:String>
+
+    <sys:String x:Key="Str.AnalyzeFile">分析文件</sys:String>
+    <sys:String x:Key="Str.RecentFiles">最近文件</sys:String>
+    <sys:String x:Key="Str.SelectFile">选择文件</sys:String>
+    <sys:String x:Key="Str.StartAnalysis">开始分析</sys:String>
+    <sys:String x:Key="Str.CancelAnalysis">取消分析</sys:String>
+    <sys:String x:Key="Str.CurrentTask">当前任务</sys:String>
+    <sys:String x:Key="Str.OpenReport">打开报告</sys:String>
+    <sys:String x:Key="Str.FilePathTooltip">支持 JSON / JSONL / CSV / Excel / XML / YAML 及压缩文件，可直接拖入</sys:String>
+    <sys:String x:Key="Str.RecentFilesTooltip">选择最近分析过的文件（最多 10 条）</sys:String>
+
+    <sys:String x:Key="Str.Group.Analysis">分析</sys:String>
+    <sys:String x:Key="Str.Group.Quality">质量</sys:String>
+    <sys:String x:Key="Str.Group.History">历史</sys:String>
+
+    <sys:String x:Key="Str.Tab.Overview">概览</sys:String>
+    <sys:String x:Key="Str.Tab.Schema">Schema</sys:String>
+    <sys:String x:Key="Str.Tab.Duplicates">重复分析</sys:String>
+    <sys:String x:Key="Str.Tab.DeepAnalysis">深度分析</sys:String>
+    <sys:String x:Key="Str.Tab.Insights">血缘 / 影响 / 回归</sys:String>
+    <sys:String x:Key="Str.Tab.Output">分析输出</sys:String>
+    <sys:String x:Key="Str.Tab.Issues">质量问题</sys:String>
+    <sys:String x:Key="Str.Tab.QualityBaseline">质量基线与趋势</sys:String>
+    <sys:String x:Key="Str.Tab.Jobs">作业中心</sys:String>
+    <sys:String x:Key="Str.Tab.Reports">报告</sys:String>
+    <sys:String x:Key="Str.Tab.Workspace">工作区</sys:String>
+
+    <sys:String x:Key="Str.Language">语言</sys:String>
+    <sys:String x:Key="Str.Theme">主题</sys:String>
+    <sys:String x:Key="Str.Theme.Light">浅色</sys:String>
+    <sys:String x:Key="Str.Theme.Dark">深色</sys:String>
+    <sys:String x:Key="Str.Theme.System">跟随系统</sys:String>
+    <sys:String x:Key="Str.Theme.EyeCare">护眼</sys:String>
+
+    <sys:String x:Key="Str.Lang.Zh">中文</sys:String>
+    <sys:String x:Key="Str.Lang.En">English</sys:String>
+
+    <sys:String x:Key="Str.Status.WaitingFile">等待选择文件</sys:String>
+    <sys:String x:Key="Str.Status.FileSelected">已选择文件，等待开始分析</sys:String>
+    <sys:String x:Key="Str.Status.FileDropped">已通过拖拽选择文件，等待开始分析</sys:String>
+    <sys:String x:Key="Str.Status.FileFromRecent">已从最近文件载入，等待开始分析</sys:String>
+    <sys:String x:Key="Str.Status.ThemeApplied">已切换主题</sys:String>
+    <sys:String x:Key="Str.Status.LanguageApplied">已切换语言</sys:String>
+
+    <sys:String x:Key="Str.Dialog.SelectFileTitle">选择要分析的数据文件</sys:String>
+    <sys:String x:Key="Str.Dialog.UnsupportedFile">拖入的文件格式不受支持。</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotSelectFile">无法选择文件</sys:String>
+    <sys:String x:Key="Str.Dialog.NeedExistingFile">请选择一个存在的数据文件。</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotStart">无法开始分析</sys:String>
+
+</ResourceDictionary>
