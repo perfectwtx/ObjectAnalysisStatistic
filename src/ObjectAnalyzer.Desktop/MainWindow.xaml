@@ -18,17 +18,30 @@
 
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button x:Name="ThemeToggleButton"
-                    DockPanel.Dock="Right"
-                    Content="深色模式"
-                    Click="ThemeToggle_Click"
-                    VerticalAlignment="Center"
-                    MinWidth="96"
-                    Margin="0"
-                    ToolTip="切换到深色主题"/>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="LanguageLabel"
+                           Text="{DynamicResource Str.Language}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Foreground="{DynamicResource Brush.TextSecondary}"
+                           FontSize="12"/>
+                <ComboBox x:Name="LanguageComboBox"
+                          Width="110"
+                          Margin="0,0,16,0"
+                          SelectionChanged="LanguageComboBox_SelectionChanged"/>
+                <TextBlock x:Name="ThemeLabel"
+                           Text="{DynamicResource Str.Theme}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Foreground="{DynamicResource Brush.TextSecondary}"
+                           FontSize="12"/>
+                <ComboBox x:Name="ThemeComboBox"
+                          Width="120"
+                          SelectionChanged="ThemeComboBox_SelectionChanged"/>
+            </StackPanel>
             <StackPanel>
-                <TextBlock Text="Object Analyzer" Style="{StaticResource PageTitle}"/>
-                <TextBlock Text="本地对象分析与数据质量工作台" Style="{StaticResource PageSubtitle}"/>
+                <TextBlock Text="{DynamicResource Str.AppTitle}" Style="{StaticResource PageTitle}"/>
+                <TextBlock Text="{DynamicResource Str.AppSubtitle}" Style="{StaticResource PageSubtitle}"/>
             </StackPanel>
         </DockPanel>
 
@@ -43,22 +56,20 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                    <TextBlock Text="分析文件" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{DynamicResource Str.AnalyzeFile}" Style="{StaticResource FieldLabel}"/>
                     <TextBox x:Name="InputPathTextBox"
+                             Style="{StaticResource PathTextBox}"
                              Text="{Binding InputPath, UpdateSourceTrigger=PropertyChanged}"
-                             Height="36"
-                             FontSize="13"
-                             VerticalContentAlignment="Center"
+                             ToolTip="{Binding InputPath, FallbackValue={StaticResource Str.FilePathTooltip}}"
                              AllowDrop="True"
                              DragOver="InputPathTextBox_DragOver"
-                             Drop="InputPathTextBox_Drop"
-                             ToolTip="支持 JSON / JSONL / CSV / Excel / XML / YAML 及压缩文件，可直接拖入"/>
+                             Drop="InputPathTextBox_Drop"/>
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="最近文件"
+                        <TextBlock Text="{DynamicResource Str.RecentFiles}"
                                    Foreground="{DynamicResource Brush.TextSecondary}"
                                    VerticalAlignment="Center"
                                    FontSize="12"
@@ -67,19 +78,19 @@
                                   ItemsSource="{Binding RecentFiles}"
                                   SelectionChanged="RecentFiles_SelectionChanged"
                                   MaxDropDownHeight="240"
-                                  ToolTip="选择最近分析过的文件（最多 10 条）"/>
+                                  ToolTip="{DynamicResource Str.RecentFilesTooltip}"/>
                     </Grid>
                 </StackPanel>
 
                 <Button Grid.Column="1"
-                        Content="选择文件"
+                        Content="{DynamicResource Str.SelectFile}"
                         Click="SelectFile_Click"
                         VerticalAlignment="Bottom"
                         Height="36"
                         Margin="0,0,8,0"/>
                 <Button Grid.Column="2"
                         x:Name="AnalyzeButton"
-                        Content="开始分析"
+                        Content="{DynamicResource Str.StartAnalysis}"
                         Style="{StaticResource PrimaryButton}"
                         Click="Analyze_Click"
                         VerticalAlignment="Bottom"
@@ -87,7 +98,7 @@
                         Margin="0,0,8,0"/>
                 <Button Grid.Column="3"
                         x:Name="CancelButton"
-                        Content="取消分析"
+                        Content="{DynamicResource Str.CancelAnalysis}"
                         Style="{StaticResource DangerButton}"
                         Click="CancelAnalysis_Click"
                         VerticalAlignment="Bottom"
@@ -107,7 +118,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Margin="0,0,24,0" MinWidth="160">
-                    <TextBlock Text="当前任务" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{DynamicResource Str.CurrentTask}" Style="{StaticResource FieldLabel}"/>
                     <TextBlock Text="{Binding Status}"
                                Foreground="{DynamicResource Brush.TextSecondary}"
                                FontSize="13"
@@ -120,11 +131,12 @@
                                Foreground="{DynamicResource Brush.TextMuted}"
                                FontSize="11"
                                TextTrimming="CharacterEllipsis"
-                               Margin="0,6,0,0"/>
+                               Margin="0,6,0,0"
+                               ToolTip="{Binding ReportPath}"/>
                 </StackPanel>
 
                 <Button Grid.Column="2"
-                        Content="打开报告"
+                        Content="{DynamicResource Str.OpenReport}"
                         Click="OpenReport_Click"
                         IsEnabled="{Binding HasReport}"
                         Height="34"
@@ -133,41 +145,41 @@
             </Grid>
         </Border>
 
-        <!-- Grouped tabs: 分析 / 质量 / 历史 -->
+        <!-- Grouped tabs -->
         <TabControl Grid.Row="3" Style="{StaticResource GroupTabControl}">
-            <TabItem Header="分析" Style="{StaticResource GroupTabItem}">
+            <TabItem x:Name="GroupAnalysisTab" Header="{DynamicResource Str.Group.Analysis}" Style="{StaticResource GroupTabItem}">
                 <TabControl>
-                    <TabItem Header="概览"><views:OverviewView/></TabItem>
-                    <TabItem Header="Schema"><views:SchemaView/></TabItem>
-                    <TabItem Header="重复分析"><views:DuplicateView/></TabItem>
-                    <TabItem Header="深度分析"><views:DeepAnalysisView/></TabItem>
-                    <TabItem Header="血缘 / 影响 / 回归">
+                    <TabItem Header="{DynamicResource Str.Tab.Overview}"><views:OverviewView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Schema}"><views:SchemaView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Duplicates}"><views:DuplicateView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.DeepAnalysis}"><views:DeepAnalysisView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Insights}">
                         <views:InsightsView x:Name="InsightsViewControl"/>
                     </TabItem>
-                    <TabItem Header="分析输出"><views:OutputView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Output}"><views:OutputView/></TabItem>
                 </TabControl>
             </TabItem>
 
-            <TabItem Header="质量" Style="{StaticResource GroupTabItem}">
+            <TabItem Header="{DynamicResource Str.Group.Quality}" Style="{StaticResource GroupTabItem}">
                 <TabControl>
-                    <TabItem Header="质量问题"><views:QualityIssuesView/></TabItem>
-                    <TabItem Header="质量基线与趋势">
+                    <TabItem Header="{DynamicResource Str.Tab.Issues}"><views:QualityIssuesView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.QualityBaseline}">
                         <views:QualityView x:Name="QualityViewControl"/>
                     </TabItem>
                 </TabControl>
             </TabItem>
 
-            <TabItem Header="历史" Style="{StaticResource GroupTabItem}">
+            <TabItem Header="{DynamicResource Str.Group.History}" Style="{StaticResource GroupTabItem}">
                 <TabControl>
-                    <TabItem Header="作业中心"><views:JobsView x:Name="JobsViewControl"/></TabItem>
-                    <TabItem Header="报告"><views:ReportsView x:Name="ReportsViewControl"/></TabItem>
-                    <TabItem Header="工作区"><views:WorkspaceView/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Jobs}"><views:JobsView x:Name="JobsViewControl"/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Reports}"><views:ReportsView x:Name="ReportsViewControl"/></TabItem>
+                    <TabItem Header="{DynamicResource Str.Tab.Workspace}"><views:WorkspaceView/></TabItem>
                 </TabControl>
             </TabItem>
         </TabControl>
 
         <TextBlock Grid.Row="4"
-                   Text="本地分析 · Object Analyzer Desktop"
+                   Text="{DynamicResource Str.Footer}"
                    Foreground="{DynamicResource Brush.TextMuted}"
                    FontSize="11"
                    Margin="2,10,0,0"/>
