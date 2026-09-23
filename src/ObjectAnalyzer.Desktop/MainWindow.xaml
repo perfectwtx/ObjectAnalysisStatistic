@@ -133,21 +133,37 @@
             </Grid>
         </Border>
 
-        <!-- Tabs -->
-        <TabControl Grid.Row="3">
-            <TabItem Header="概览"><views:OverviewView/></TabItem>
-            <TabItem Header="Schema"><views:SchemaView/></TabItem>
-            <TabItem Header="重复分析"><views:DuplicateView/></TabItem>
-            <TabItem Header="深度分析"><views:DeepAnalysisView/></TabItem>
-            <TabItem Header="质量问题"><views:QualityIssuesView/></TabItem>
-            <TabItem Header="质量"><views:QualityView x:Name="QualityViewControl"/></TabItem>
-            <TabItem Header="血缘 / 影响 / 回归">
-                <views:InsightsView x:Name="InsightsViewControl"/>
+        <!-- Grouped tabs: 分析 / 质量 / 历史 -->
+        <TabControl Grid.Row="3" Style="{StaticResource GroupTabControl}">
+            <TabItem Header="分析" Style="{StaticResource GroupTabItem}">
+                <TabControl>
+                    <TabItem Header="概览"><views:OverviewView/></TabItem>
+                    <TabItem Header="Schema"><views:SchemaView/></TabItem>
+                    <TabItem Header="重复分析"><views:DuplicateView/></TabItem>
+                    <TabItem Header="深度分析"><views:DeepAnalysisView/></TabItem>
+                    <TabItem Header="血缘 / 影响 / 回归">
+                        <views:InsightsView x:Name="InsightsViewControl"/>
+                    </TabItem>
+                    <TabItem Header="分析输出"><views:OutputView/></TabItem>
+                </TabControl>
             </TabItem>
-            <TabItem Header="作业中心"><views:JobsView x:Name="JobsViewControl"/></TabItem>
-            <TabItem Header="报告"><views:ReportsView x:Name="ReportsViewControl"/></TabItem>
-            <TabItem Header="分析输出"><views:OutputView/></TabItem>
-            <TabItem Header="工作区"><views:WorkspaceView/></TabItem>
+
+            <TabItem Header="质量" Style="{StaticResource GroupTabItem}">
+                <TabControl>
+                    <TabItem Header="质量问题"><views:QualityIssuesView/></TabItem>
+                    <TabItem Header="质量基线与趋势">
+                        <views:QualityView x:Name="QualityViewControl"/>
+                    </TabItem>
+                </TabControl>
+            </TabItem>
+
+            <TabItem Header="历史" Style="{StaticResource GroupTabItem}">
+                <TabControl>
+                    <TabItem Header="作业中心"><views:JobsView x:Name="JobsViewControl"/></TabItem>
+                    <TabItem Header="报告"><views:ReportsView x:Name="ReportsViewControl"/></TabItem>
+                    <TabItem Header="工作区"><views:WorkspaceView/></TabItem>
+                </TabControl>
+            </TabItem>
         </TabControl>
 
         <TextBlock Grid.Row="4"
