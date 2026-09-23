@@ -8,6 +8,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/LightTheme.xaml"/>
                 <ResourceDictionary Source="Themes/DesktopStyles.xaml"/>
+                <ResourceDictionary Source="Localization/Strings.zh-CN.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <converters:BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
