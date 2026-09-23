@@ -28,93 +28,100 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
+            <!-- 侧栏：细强调色边 + 深色表面 -->
             <Border Grid.Column="0"
                     Background="{DynamicResource Brush.Surface}"
-                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderBrush="{DynamicResource Brush.Border}"
                     BorderThickness="1"
                     CornerRadius="12"
-                    Padding="8,12"
+                    Padding="0"
                     Margin="0,0,12,0">
-                <ui:NavigationView x:Name="RootNavigation"
-                                   PaneDisplayMode="Left"
-                                   OpenPaneLength="232"
-                                   IsPaneOpen="True"
-                                   IsBackButtonVisible="Collapsed"
-                                   IsPaneToggleVisible="False"
-                                   Background="{DynamicResource Brush.Surface}">
-                    <ui:NavigationView.MenuItems>
-                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Nav.Workbench}"/>
-                        <ui:NavigationViewItem x:Name="NavAnalyze" Content="{DynamicResource Str.StartAnalysis}" Tag="analyze">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Play24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
+                <Grid>
+                    <Border Width="3" HorizontalAlignment="Left"
+                            Background="{DynamicResource Brush.Primary}"
+                            CornerRadius="12,0,0,12"
+                            Opacity="0.85"/>
+                    <ui:NavigationView x:Name="RootNavigation"
+                                       Margin="6,10,6,10"
+                                       PaneDisplayMode="Left"
+                                       OpenPaneLength="232"
+                                       IsPaneOpen="True"
+                                       IsBackButtonVisible="Collapsed"
+                                       IsPaneToggleVisible="False"
+                                       Background="Transparent">
+                        <ui:NavigationView.MenuItems>
+                            <ui:NavigationViewItemHeader Text="{DynamicResource Str.Nav.Workbench}"/>
+                            <ui:NavigationViewItem x:Name="NavAnalyze" Content="{DynamicResource Str.StartAnalysis}" Tag="analyze">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Play24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
 
-                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Analysis}"/>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Overview}" Tag="overview">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="DataHistogram24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Schema}" Tag="schema">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Table24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Duplicates}" Tag="duplicates">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Copy24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.DeepAnalysis}" Tag="deep">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Search24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Insights}" Tag="insights">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="BranchFork24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Output}" Tag="output">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Code24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
+                            <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Analysis}"/>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Overview}" Tag="overview">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="DataHistogram24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Schema}" Tag="schema">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Table24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Duplicates}" Tag="duplicates">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Copy24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.DeepAnalysis}" Tag="deep">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Search24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Insights}" Tag="insights">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="BranchFork24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Output}" Tag="output">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Code24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
 
-                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Quality}"/>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Issues}" Tag="issues">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Warning24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.QualityBaseline}" Tag="quality">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="HeartPulse24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
+                            <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Quality}"/>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Issues}" Tag="issues">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Warning24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.QualityBaseline}" Tag="quality">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="HeartPulse24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
 
-                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.History}"/>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Jobs}" Tag="jobs">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="History24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Reports}" Tag="reports">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Document24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Workspace}" Tag="workspace">
-                            <ui:NavigationViewItem.Icon>
-                                <ui:SymbolIcon Symbol="Folder24"/>
-                            </ui:NavigationViewItem.Icon>
-                        </ui:NavigationViewItem>
-                    </ui:NavigationView.MenuItems>
-                </ui:NavigationView>
+                            <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.History}"/>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Jobs}" Tag="jobs">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="History24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Reports}" Tag="reports">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Document24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                            <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Workspace}" Tag="workspace">
+                                <ui:NavigationViewItem.Icon>
+                                    <ui:SymbolIcon Symbol="Folder24"/>
+                                </ui:NavigationViewItem.Icon>
+                            </ui:NavigationViewItem>
+                        </ui:NavigationView.MenuItems>
+                    </ui:NavigationView>
+                </Grid>
             </Border>
 
-            <!-- 子页从左上铺满，避免内容在可视区中部“悬空” -->
             <ContentControl x:Name="PageHost"
                             Grid.Column="1"
                             HorizontalAlignment="Stretch"
