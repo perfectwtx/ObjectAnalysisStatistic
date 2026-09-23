@@ -7,6 +7,9 @@ using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Desktop.ViewModels;
 using ObjectAnalyzer.Desktop.Views;
 using Wpf.Ui.Controls;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace ObjectAnalyzer.Desktop;
 
@@ -75,7 +78,7 @@ public partial class MainWindow : FluentWindow
         {
             WireNavigation();
             NavigateTo("overview");
-            RootNavigation.SelectedItem = NavOverview;
+            NavOverview.IsActive = true;
 
             RefreshPreferenceControls();
             await RefreshPlatformDataAsync();
@@ -121,6 +124,15 @@ public partial class MainWindow : FluentWindow
             return;
 
         PageHost.Content = page;
+
+        foreach (object raw in RootNavigation.MenuItems)
+        {
+            if (raw is not NavigationViewItem item)
+                continue;
+
+            item.IsActive = item.Tag is string itemTag
+                && string.Equals(itemTag, tag, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private void RefreshPreferenceControls()
