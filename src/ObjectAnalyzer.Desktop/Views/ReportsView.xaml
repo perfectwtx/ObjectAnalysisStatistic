@@ -1,8 +1,9 @@
 <UserControl x:Class="ObjectAnalyzer.Desktop.Views.ReportsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views">
-    <Border Style="{StaticResource CardBorder}" Margin="0,8,0,0" Padding="16">
+    <ui:Card Padding="16">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -12,9 +13,12 @@
 
             <DockPanel Margin="0,0,0,12">
                 <WrapPanel DockPanel.Dock="Right">
-                    <Button Content="刷新历史报告" Click="RefreshReports_Click"/>
-                    <Button Content="打开当前报告" Click="OpenReport_Click" IsEnabled="{Binding HasReport}"/>
-                    <Button Content="导出字段 CSV" Style="{StaticResource PrimaryButton}" Click="ExportCsv_Click" IsEnabled="{Binding HasResult}" Margin="0"/>
+                    <ui:Button Content="刷新历史报告" Click="RefreshReports_Click" Margin="0,0,8,0"
+                               Icon="{ui:SymbolIcon ArrowClockwise24}"/>
+                    <ui:Button Content="打开当前报告" Click="OpenReport_Click" IsEnabled="{Binding HasReport}" Margin="0,0,8,0"
+                               Icon="{ui:SymbolIcon Open24}"/>
+                    <ui:Button Content="导出字段 CSV" Appearance="Primary" Click="ExportCsv_Click" IsEnabled="{Binding HasResult}"
+                               Icon="{ui:SymbolIcon ArrowDownload24}"/>
                 </WrapPanel>
                 <StackPanel>
                     <TextBlock Text="报告历史" Style="{StaticResource SectionTitle}"/>
@@ -53,5 +57,5 @@
                        FontSize="12"
                        Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}"/>
         </Grid>
-    </Border>
+    </ui:Card>
 </UserControl>

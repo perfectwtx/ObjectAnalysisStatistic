@@ -1,14 +1,15 @@
 <UserControl x:Class="ObjectAnalyzer.Desktop.Views.QualityView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views">
-    <Grid Margin="0,8,0,0">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+        <ui:Card Margin="0,0,0,12" Padding="16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -36,46 +37,39 @@
 
                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
                         <TextBlock Text="数据源" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding BaselineSourceName, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="数据源名称"/>
+                        <TextBox Text="{Binding BaselineSourceName, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,8,0">
                         <TextBlock Text="总分" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Overall 最低分"/>
+                        <TextBox Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Margin="0,0,8,0">
                         <TextBlock Text="完整性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumCompleteness, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Completeness"/>
+                        <TextBox Text="{Binding MinimumCompleteness, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="3" Margin="0,0,8,0">
                         <TextBlock Text="有效性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumValidity, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Validity"/>
+                        <TextBox Text="{Binding MinimumValidity, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="4" Margin="0,0,8,0">
                         <TextBlock Text="唯一性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumUniqueness, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Uniqueness"/>
+                        <TextBox Text="{Binding MinimumUniqueness, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="5" Margin="0,0,8,0">
                         <TextBlock Text="一致性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumConsistency, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Consistency"/>
+                        <TextBox Text="{Binding MinimumConsistency, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="6">
                         <TextBlock Text="异常控制" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumAnomalyControl, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="AnomalyControl"/>
+                        <TextBox Text="{Binding MinimumAnomalyControl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                 </Grid>
 
                 <WrapPanel Grid.Row="2" Margin="0,4,0,0">
-                    <Button Content="读取基线" Click="LoadBaseline_Click"/>
-                    <Button Content="保存基线" Click="SaveBaseline_Click"/>
-                    <Button Content="删除基线" Style="{StaticResource DangerButton}" Click="DeleteBaseline_Click"/>
-                    <Button Content="评估当前结果" Style="{StaticResource PrimaryButton}" Click="EvaluateBaseline_Click" Margin="0"/>
+                    <ui:Button Content="读取基线" Click="LoadBaseline_Click" Margin="0,0,8,0"/>
+                    <ui:Button Content="保存基线" Click="SaveBaseline_Click" Margin="0,0,8,0"/>
+                    <ui:Button Content="删除基线" Appearance="Danger" Click="DeleteBaseline_Click" Margin="0,0,8,0"/>
+                    <ui:Button Content="评估当前结果" Appearance="Primary" Click="EvaluateBaseline_Click"/>
                 </WrapPanel>
 
                 <TextBox Grid.Row="3"
@@ -90,15 +84,15 @@
                          Foreground="{DynamicResource Brush.TextLabel}"
                          Text="评估结果会显示在这里。"/>
             </Grid>
-        </Border>
+        </ui:Card>
 
-        <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="12">
+        <ui:Card Grid.Row="1" Padding="16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="质量趋势" Style="{StaticResource SectionTitle}" Margin="4,0,0,10"/>
+                <TextBlock Text="质量趋势" Style="{StaticResource SectionTitle}" Margin="0,0,0,10"/>
 
                 <DataGrid Grid.Row="1"
                           AutoGenerateColumns="False"
@@ -126,6 +120,6 @@
                                       Hint="完成并保存分析作业后，质量快照会在此形成趋势记录。"
                                       Visibility="{Binding HasQualityTrend, Converter={StaticResource InverseBoolToVis}}"/>
             </Grid>
-        </Border>
+        </ui:Card>
     </Grid>
 </UserControl>

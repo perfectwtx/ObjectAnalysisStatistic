@@ -1,7 +1,8 @@
 <UserControl x:Class="ObjectAnalyzer.Desktop.Views.InsightsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Style="{StaticResource CardBorder}" Margin="0,8,0,0" Padding="16">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <ui:Card Padding="16">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -14,10 +15,10 @@
                            Style="{StaticResource SectionHint}"/>
             </StackPanel>
             <WrapPanel Grid.Row="1" Margin="0,0,0,12">
-                <Button Content="数据血缘" Click="ShowLineage_Click"/>
-                <Button Content="影响分析" Click="ShowImpact_Click"/>
-                <Button Content="Schema Impact" Click="ShowSchemaImpact_Click"/>
-                <Button Content="回归分析" Click="ShowRegression_Click" Margin="0"/>
+                <ui:Button Content="数据血缘" Click="ShowLineage_Click" Margin="0,0,8,8"/>
+                <ui:Button Content="影响分析" Click="ShowImpact_Click" Margin="0,0,8,8"/>
+                <ui:Button Content="Schema Impact" Click="ShowSchemaImpact_Click" Margin="0,0,8,8"/>
+                <ui:Button Content="回归分析" Click="ShowRegression_Click" Margin="0,0,0,8"/>
             </WrapPanel>
             <TextBox Grid.Row="2"
                      x:Name="ResultTextBox"
@@ -30,5 +31,5 @@
                      Padding="14"
                      Text="请选择上方分析维度。&#x0a;&#x0a;当前页面基于本地 AnalysisResult 展示分析结果。"/>
         </Grid>
-    </Border>
+    </ui:Card>
 </UserControl>
