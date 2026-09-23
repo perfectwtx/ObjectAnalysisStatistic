@@ -19,6 +19,7 @@
     <sys:String x:Key="Str.Group.Analysis">分析</sys:String>
     <sys:String x:Key="Str.Group.Quality">质量</sys:String>
     <sys:String x:Key="Str.Group.History">历史</sys:String>
+    <sys:String x:Key="Str.Nav.Workbench">工作台</sys:String>
 
     <sys:String x:Key="Str.Tab.Overview">概览</sys:String>
     <sys:String x:Key="Str.Tab.Schema">Schema</sys:String>
@@ -41,6 +42,33 @@
 
     <sys:String x:Key="Str.Lang.Zh">中文</sys:String>
     <sys:String x:Key="Str.Lang.En">English</sys:String>
+
+    <sys:String x:Key="Str.Workspace.Subtitle">语言、主题与本地数据目录</sys:String>
+    <sys:String x:Key="Str.Workspace.LanguageHint">切换后界面文案立即更新。</sys:String>
+    <sys:String x:Key="Str.Workspace.ThemeHint">支持浅色、深色、跟随系统与护眼模式。</sys:String>
+    <sys:String x:Key="Str.Workspace.LocalTitle">本地工作区</sys:String>
+    <sys:String x:Key="Str.Workspace.LocalHint">分析状态、作业历史与报告保存在当前 Windows 用户目录。</sys:String>
+    <sys:String x:Key="Str.Workspace.DataDir">数据目录</sys:String>
+    <sys:String x:Key="Str.Workspace.Database">SQLite 数据库</sys:String>
+    <sys:String x:Key="Str.Workspace.ReportsDir">报告目录</sys:String>
+    <sys:String x:Key="Str.Workspace.OpenDir">打开目录</sys:String>
+    <sys:String x:Key="Str.Workspace.OpenLocation">打开位置</sys:String>
+    <sys:String x:Key="Str.Workspace.RuntimeTitle">运行环境</sys:String>
+    <sys:String x:Key="Str.Workspace.AppVersion">应用版本</sys:String>
+    <sys:String x:Key="Str.Workspace.OS">操作系统</sys:String>
+    <sys:String x:Key="Str.Workspace.Runtime">运行时</sys:String>
+
+    <sys:String x:Key="Str.Analyze.PageTitle">开始分析</sys:String>
+    <sys:String x:Key="Str.Analyze.PageSubtitle">选择数据文件、可选规则与报告格式，然后启动本地分析。</sys:String>
+    <sys:String x:Key="Str.Analyze.DataFile">数据文件</sys:String>
+    <sys:String x:Key="Str.Analyze.DataFileHint">支持 JSON / JSONL / CSV / Excel / XML / YAML 及压缩包。可拖拽到路径框。</sys:String>
+    <sys:String x:Key="Str.Analyze.FilePath">文件路径</sys:String>
+    <sys:String x:Key="Str.Analyze.RulesOutput">规则与输出</sys:String>
+    <sys:String x:Key="Str.Analyze.RulesHint">规则文件对应 CLI 的 -r；报告类型按扩展名生成。</sys:String>
+    <sys:String x:Key="Str.Analyze.RulesFile">规则文件（可选）</sys:String>
+    <sys:String x:Key="Str.Analyze.SelectRules">选择规则</sys:String>
+    <sys:String x:Key="Str.Analyze.ReportFormat">报告格式</sys:String>
+    <sys:String x:Key="Str.Analyze.Cancel">取消</sys:String>
 
     <sys:String x:Key="Str.Status.WaitingFile">等待选择文件</sys:String>
     <sys:String x:Key="Str.Status.FileSelected">已选择文件，等待开始分析</sys:String>

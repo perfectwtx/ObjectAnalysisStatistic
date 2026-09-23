@@ -19,6 +19,7 @@
     <sys:String x:Key="Str.Group.Analysis">Analysis</sys:String>
     <sys:String x:Key="Str.Group.Quality">Quality</sys:String>
     <sys:String x:Key="Str.Group.History">History</sys:String>
+    <sys:String x:Key="Str.Nav.Workbench">Workbench</sys:String>
 
     <sys:String x:Key="Str.Tab.Overview">Overview</sys:String>
     <sys:String x:Key="Str.Tab.Schema">Schema</sys:String>
@@ -41,6 +42,33 @@
 
     <sys:String x:Key="Str.Lang.Zh">中文</sys:String>
     <sys:String x:Key="Str.Lang.En">English</sys:String>
+
+    <sys:String x:Key="Str.Workspace.Subtitle">Language, theme, and local data folders</sys:String>
+    <sys:String x:Key="Str.Workspace.LanguageHint">UI text updates immediately after switching.</sys:String>
+    <sys:String x:Key="Str.Workspace.ThemeHint">Light, dark, system, and eye-care modes.</sys:String>
+    <sys:String x:Key="Str.Workspace.LocalTitle">Local workspace</sys:String>
+    <sys:String x:Key="Str.Workspace.LocalHint">Analysis state, job history, and reports are stored under the current Windows user profile.</sys:String>
+    <sys:String x:Key="Str.Workspace.DataDir">Data folder</sys:String>
+    <sys:String x:Key="Str.Workspace.Database">SQLite database</sys:String>
+    <sys:String x:Key="Str.Workspace.ReportsDir">Reports folder</sys:String>
+    <sys:String x:Key="Str.Workspace.OpenDir">Open folder</sys:String>
+    <sys:String x:Key="Str.Workspace.OpenLocation">Show in Explorer</sys:String>
+    <sys:String x:Key="Str.Workspace.RuntimeTitle">Runtime</sys:String>
+    <sys:String x:Key="Str.Workspace.AppVersion">App version</sys:String>
+    <sys:String x:Key="Str.Workspace.OS">Operating system</sys:String>
+    <sys:String x:Key="Str.Workspace.Runtime">Runtime ID</sys:String>
+
+    <sys:String x:Key="Str.Analyze.PageTitle">Analyze</sys:String>
+    <sys:String x:Key="Str.Analyze.PageSubtitle">Pick a data file, optional rules, and report format, then run local analysis.</sys:String>
+    <sys:String x:Key="Str.Analyze.DataFile">Data file</sys:String>
+    <sys:String x:Key="Str.Analyze.DataFileHint">Supports JSON / JSONL / CSV / Excel / XML / YAML and archives. Drop a file on the path box.</sys:String>
+    <sys:String x:Key="Str.Analyze.FilePath">File path</sys:String>
+    <sys:String x:Key="Str.Analyze.RulesOutput">Rules and output</sys:String>
+    <sys:String x:Key="Str.Analyze.RulesHint">Rules map to CLI -r; report type follows the file extension.</sys:String>
+    <sys:String x:Key="Str.Analyze.RulesFile">Rules file (optional)</sys:String>
+    <sys:String x:Key="Str.Analyze.SelectRules">Browse rules</sys:String>
+    <sys:String x:Key="Str.Analyze.ReportFormat">Report format</sys:String>
+    <sys:String x:Key="Str.Analyze.Cancel">Cancel</sys:String>
 
     <sys:String x:Key="Str.Status.WaitingFile">Waiting for a file</sys:String>
     <sys:String x:Key="Str.Status.FileSelected">File selected, ready to analyze</sys:String>
