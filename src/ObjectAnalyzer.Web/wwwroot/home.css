@@ -2158,3 +2158,180 @@
     text-decoration:none;
 }
 .app-shell .field-detail-issues-link:hover{text-decoration:underline}
+
+
+/* ─── Visual alignment with the application workspace ───
+   Keep the analysis workflow unique, but make its chrome use the same
+   spacing, surfaces, borders and typography as the rest of the Web UI. */
+.app-shell{
+    grid-template-columns:248px 4px minmax(0,1fr);
+    background:var(--oa-bg);
+}
+.app-shell .sidebar{
+    background:color-mix(in srgb,var(--oa-surface) 96%,var(--oa-bg));
+    border-right:1px solid var(--oa-border);
+}
+.app-shell .side-brand{
+    min-height:72px;
+    padding:0 18px;
+    border-bottom:1px solid var(--oa-border);
+    background:var(--oa-surface);
+}
+.app-shell .side-brand .brand-icon{
+    width:36px;
+    height:36px;
+    border:1px solid var(--oa-accent-border);
+    border-radius:10px;
+    background:linear-gradient(145deg,var(--oa-accent-soft),var(--oa-surface));
+    color:var(--oa-accent);
+}
+.app-shell .side-brand h1{
+    font-size:.94rem;
+    letter-spacing:-.02em;
+}
+.app-shell .side-brand .brand-sub{
+    margin-top:2px;
+    color:var(--oa-text-3);
+    font-size:.66rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+.app-shell .side-scroll{
+    padding:18px 12px 14px;
+    gap:12px;
+}
+.app-shell .console-heading{
+    padding:0 10px 7px;
+}
+.app-shell .console-heading .console-kicker{
+    color:var(--oa-text-3);
+    font-size:.65rem;
+    font-weight:750;
+    letter-spacing:.1em;
+}
+.app-shell .console-heading .console-caption{
+    margin-top:3px;
+    color:var(--oa-text-3);
+    font-size:.66rem;
+}
+.app-shell .side-group{
+    padding:12px;
+    border:1px solid var(--oa-border);
+    border-radius:10px;
+    background:var(--oa-surface-2);
+    box-shadow:none;
+}
+.app-shell .side-group-title{
+    color:var(--oa-text-2);
+    font-size:.68rem;
+    font-weight:750;
+    letter-spacing:.03em;
+}
+.app-shell .group-index{
+    color:var(--oa-accent);
+    font-variant-numeric:tabular-nums;
+}
+.app-shell .side-group-run{
+    background:linear-gradient(180deg,var(--oa-accent-soft),var(--oa-surface));
+    border-color:var(--oa-accent-border);
+}
+.app-shell .main-area{
+    background:
+        radial-gradient(900px 360px at 100% -10%,color-mix(in srgb,var(--oa-accent) 7%,transparent),transparent 65%),
+        var(--oa-bg);
+}
+.app-shell .topbar{
+    min-height:72px;
+    margin:0 0 18px;
+    padding:0 clamp(1rem,2.6vw,2rem);
+    border-bottom:1px solid var(--oa-border);
+    background:color-mix(in srgb,var(--oa-surface) 92%,transparent);
+}
+.app-shell .workspace-kicker{
+    color:var(--oa-text-3);
+    font-size:.65rem;
+    font-weight:750;
+    letter-spacing:.1em;
+}
+.app-shell .workspace-title{
+    color:var(--oa-text-1);
+    font-size:.95rem;
+    font-weight:700;
+}
+.app-shell .main-area{
+    padding:0 0 3rem;
+}
+.app-shell .results-section{
+    width:min(1680px,100%);
+    padding:0 clamp(1rem,2.6vw,2rem);
+}
+.app-shell .results-header{
+    margin-bottom:1rem;
+    padding:1rem 1.1rem;
+    border:1px solid var(--oa-border);
+    border-radius:10px;
+    background:var(--oa-surface);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .summary-cards{
+    gap:.75rem;
+    margin-bottom:1rem;
+}
+.app-shell .summary-cards .card{
+    min-height:104px;
+    border-radius:10px;
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .charts-section{
+    gap:.75rem;
+    margin-bottom:1rem;
+}
+.app-shell .chart-box{
+    border-radius:10px;
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .detail-tabs{
+    top:12px;
+    border-radius:10px;
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .p3-section,
+.app-shell .deep-section,
+.app-shell .duplicates-section,
+.app-shell .preview-section{
+    border-radius:10px;
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .field-table,
+.app-shell .table-scroll{
+    border-radius:10px;
+}
+@media(max-width:760px){
+    .app-shell{
+        grid-template-columns:1fr;
+    }
+    .app-shell .side-handle{
+        display:none;
+    }
+    .app-shell .sidebar{
+        position:relative;
+        width:100%;
+        height:auto;
+        border-right:0;
+        border-bottom:1px solid var(--oa-border);
+    }
+    .app-shell .side-scroll{
+        max-height:none;
+    }
+    .app-shell .side-group-run{
+        position:static;
+    }
+    .app-shell .topbar{
+        min-height:60px;
+        margin-bottom:14px;
+        padding:0 16px;
+    }
+    .app-shell .results-section{
+        padding:0 16px;
+    }
+}
