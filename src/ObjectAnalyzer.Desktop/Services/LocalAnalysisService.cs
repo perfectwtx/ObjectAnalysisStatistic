@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using ObjectAnalyzer.Abstractions;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Analysis.Options;
 using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.Services;
@@ -11,6 +12,7 @@ public sealed class LocalAnalysisService
     public static async Task<LocalAnalysisResult> AnalyzeAsync(
         string inputPath,
         string reportPath,
+        string? rulesPath,
         Action<string> writeOutput,
         Action<long> reportProgress,
         DesktopPlatformService platform,
@@ -41,15 +43,19 @@ public sealed class LocalAnalysisService
         {
             var options = new AnalysisOptions
             {
-                Input = new ObjectAnalyzer.Analysis.Options.InputSourceOptions
+                Input = new InputSourceOptions
                 {
                     InputPath = inputPath
                 },
-                Report = new ObjectAnalyzer.Analysis.Options.ReportOutputOptions
+                Rules = new RulesOptions
+                {
+                    RulesFile = string.IsNullOrWhiteSpace(rulesPath) ? null : rulesPath
+                },
+                Report = new ReportOutputOptions
                 {
                     OutputPath = reportPath
                 },
-                Progress = new ObjectAnalyzer.Analysis.Options.ProgressOptions
+                Progress = new ProgressOptions
                 {
                     ShowProgress = true
                 }
@@ -82,7 +88,15 @@ public sealed class LocalAnalysisService
                         if (!File.Exists(reportPath))
                             throw new FileNotFoundException("分析完成但没有生成报告。", reportPath);
 
-                        return LoadResult(reportPath);
+                        // 工作台回读需要 JSON AnalysisResult；非 JSON 格式只保证报告文件存在。
+                        if (reportPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                            return LoadResult(reportPath);
+
+                        string siblingJson = Path.ChangeExtension(reportPath, ".json");
+                        if (File.Exists(siblingJson))
+                            return LoadResult(siblingJson);
+
+                        return new AnalysisResult();
                     }
                     finally
                     {

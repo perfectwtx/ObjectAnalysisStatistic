@@ -7,7 +7,8 @@
         MinWidth="1100" MinHeight="700"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Brush.Bg}">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -15,213 +16,70 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0"
-                     Title="Object Analyzer"
-                     ShowMaximize="True"
-                     ShowMinimize="True"/>
-
-        <Grid Grid.Row="1" Margin="20,8,20,12">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <!-- Header -->
-            <DockPanel Grid.Row="0" Margin="0,0,0,12">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{DynamicResource Str.Language}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,8,0"
-                               Foreground="{DynamicResource Brush.TextSecondary}"
-                               FontSize="12"/>
-                    <ComboBox x:Name="LanguageComboBox"
-                              Width="110"
-                              Margin="0,0,16,0"
+        <ui:TitleBar Grid.Row="0" Title="Object Analyzer" ShowMaximize="True" ShowMinimize="True">
+            <ui:TitleBar.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <ComboBox x:Name="LanguageComboBox" Width="100" Margin="0,0,8,0"
                               SelectionChanged="LanguageComboBox_SelectionChanged"/>
-                    <TextBlock Text="{DynamicResource Str.Theme}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,8,0"
-                               Foreground="{DynamicResource Brush.TextSecondary}"
-                               FontSize="12"/>
-                    <ComboBox x:Name="ThemeComboBox"
-                              Width="120"
+                    <ComboBox x:Name="ThemeComboBox" Width="110"
                               SelectionChanged="ThemeComboBox_SelectionChanged"/>
                 </StackPanel>
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.AppTitle}" Style="{StaticResource PageTitle}"/>
-                    <TextBlock Text="{DynamicResource Str.AppSubtitle}" Style="{StaticResource PageSubtitle}"/>
-                </StackPanel>
-            </DockPanel>
+            </ui:TitleBar.Header>
+        </ui:TitleBar>
 
-            <!-- Input bar -->
-            <ui:Card Grid.Row="1" Margin="0,0,0,10" Padding="16">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+        <Grid Grid.Row="1" Margin="16,8,16,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="248"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                        <TextBlock Text="{DynamicResource Str.AnalyzeFile}" Style="{StaticResource FieldLabel}"/>
-                        <TextBox x:Name="InputPathTextBox"
-                                 Style="{StaticResource PathTextBox}"
-                                 Text="{Binding InputPath, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="{DynamicResource Str.FilePathTooltip}"
-                                 AllowDrop="True"
-                                 DragOver="InputPathTextBox_DragOver"
-                                 Drop="InputPathTextBox_Drop"/>
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{DynamicResource Str.RecentFiles}"
-                                       Foreground="{DynamicResource Brush.TextSecondary}"
-                                       VerticalAlignment="Center"
-                                       FontSize="12"
-                                       Margin="0,0,10,0"/>
-                            <ComboBox Grid.Column="1"
-                                      ItemsSource="{Binding RecentFiles}"
-                                      SelectionChanged="RecentFiles_SelectionChanged"
-                                      MaxDropDownHeight="240"
-                                      ToolTip="{DynamicResource Str.RecentFilesTooltip}"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <ui:Button Grid.Column="1"
-                            Content="{DynamicResource Str.SelectFile}"
-                            Click="SelectFile_Click"
-                            VerticalAlignment="Bottom"
-                            Height="36"
-                            Margin="0,0,8,0">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="FolderOpen24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                    <ui:Button Grid.Column="2"
-                            x:Name="AnalyzeButton"
-                            Content="{DynamicResource Str.StartAnalysis}"
-                            Appearance="Primary"
-                            Click="Analyze_Click"
-                            VerticalAlignment="Bottom"
-                            Height="36"
-                            Margin="0,0,8,0">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="Play24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                    <ui:Button Grid.Column="3"
-                            x:Name="CancelButton"
-                            Content="{DynamicResource Str.CancelAnalysis}"
-                            Appearance="Danger"
-                            Click="CancelAnalysis_Click"
-                            VerticalAlignment="Bottom"
-                            Height="36"
-                            Margin="0"
-                            IsEnabled="False">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="Dismiss24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                </Grid>
-            </ui:Card>
-
-            <!-- Status bar -->
-            <ui:Card Grid.Row="2" Padding="16,12" Margin="0,0,0,10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" Margin="0,0,24,0" MinWidth="160">
-                        <TextBlock Text="{DynamicResource Str.CurrentTask}" Style="{StaticResource FieldLabel}"/>
-                        <TextBlock Text="{Binding Status}"
-                                   Foreground="{DynamicResource Brush.TextSecondary}"
-                                   FontSize="13"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress, Mode=OneWay}" Height="8"/>
-                        <TextBlock Text="{Binding ReportPath}"
-                                   Foreground="{DynamicResource Brush.TextMuted}"
-                                   FontSize="11"
-                                   TextTrimming="CharacterEllipsis"
-                                   Margin="0,6,0,0"
-                                   ToolTip="{Binding ReportPath}"/>
-                    </StackPanel>
-
-                    <ui:Button Grid.Column="2"
-                            Content="{DynamicResource Str.OpenReport}"
-                            Click="OpenReport_Click"
-                            IsEnabled="{Binding HasReport}"
-                            Height="34"
-                            Padding="16,0"
-                            Margin="20,0,0,0">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="Document24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                </Grid>
-            </ui:Card>
-
-            <!-- Left NavigationView + content host -->
-            <Grid Grid.Row="3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="240"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
+            <Border Grid.Column="0"
+                    Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="8,12"
+                    Margin="0,0,12,0">
                 <ui:NavigationView x:Name="RootNavigation"
-                                   Grid.Column="0"
                                    PaneDisplayMode="Left"
-                                   OpenPaneLength="240"
+                                   OpenPaneLength="232"
                                    IsPaneOpen="True"
                                    IsBackButtonVisible="Collapsed"
-                                   IsPaneToggleVisible="False"
-                                   Margin="0,0,12,0">
+                                   IsPaneToggleVisible="False">
                     <ui:NavigationView.MenuItems>
-                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Analysis}"/>
+                        <ui:NavigationViewItemHeader Text="工作台"/>
+                        <ui:NavigationViewItem x:Name="NavAnalyze" Content="开始分析" Tag="analyze">
+                            <ui:NavigationViewItem.Icon>
+                                <ui:SymbolIcon Symbol="Play24"/>
+                            </ui:NavigationViewItem.Icon>
+                        </ui:NavigationViewItem>
 
-                        <ui:NavigationViewItem x:Name="NavOverview"
-                                               Content="{DynamicResource Str.Tab.Overview}"
-                                               Tag="overview">
+                        <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Analysis}"/>
+                        <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Overview}" Tag="overview">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="DataHistogram24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Schema}" Tag="schema">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Table24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Duplicates}" Tag="duplicates">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Copy24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.DeepAnalysis}" Tag="deep">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Search24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Insights}" Tag="insights">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="BranchFork24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Output}" Tag="output">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Code24"/>
@@ -229,13 +87,11 @@
                         </ui:NavigationViewItem>
 
                         <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.Quality}"/>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Issues}" Tag="issues">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Warning24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.QualityBaseline}" Tag="quality">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="HeartPulse24"/>
@@ -243,19 +99,16 @@
                         </ui:NavigationViewItem>
 
                         <ui:NavigationViewItemHeader Text="{DynamicResource Str.Group.History}"/>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Jobs}" Tag="jobs">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="History24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Reports}" Tag="reports">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Document24"/>
                             </ui:NavigationViewItem.Icon>
                         </ui:NavigationViewItem>
-
                         <ui:NavigationViewItem Content="{DynamicResource Str.Tab.Workspace}" Tag="workspace">
                             <ui:NavigationViewItem.Icon>
                                 <ui:SymbolIcon Symbol="Folder24"/>
@@ -263,18 +116,12 @@
                         </ui:NavigationViewItem>
                     </ui:NavigationView.MenuItems>
                 </ui:NavigationView>
+            </Border>
 
-                <ContentControl x:Name="PageHost"
-                                Grid.Column="1"
-                                HorizontalContentAlignment="Stretch"
-                                VerticalContentAlignment="Stretch"/>
-            </Grid>
-
-            <TextBlock Grid.Row="4"
-                       Text="{DynamicResource Str.Footer}"
-                       Foreground="{DynamicResource Brush.TextMuted}"
-                       FontSize="11"
-                       Margin="2,8,0,0"/>
+            <ContentControl x:Name="PageHost"
+                            Grid.Column="1"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"/>
         </Grid>
     </Grid>
 </ui:FluentWindow>
