@@ -3,31 +3,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root"
              HorizontalAlignment="Stretch"
-             VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="12"
-            Padding="24,20"
+             VerticalAlignment="Top">
+    <Border Background="Transparent"
+            Padding="4,8,4,8"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-        <!-- 内容从左上开始，避免整页看起来“从中间起” -->
+            VerticalAlignment="Top">
         <StackPanel HorizontalAlignment="Left"
                     VerticalAlignment="Top"
-                    MaxWidth="520">
-            <Border Width="48" Height="48"
-                    CornerRadius="12"
+                    MaxWidth="560">
+            <Border Width="44" Height="44"
+                    CornerRadius="10"
                     Background="{DynamicResource Brush.HeaderBg}"
                     HorizontalAlignment="Left"
                     Margin="0,0,0,12">
                 <TextBlock Text="{Binding Glyph, ElementName=Root}"
-                           FontSize="22"
+                           FontSize="20"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource Brush.Primary}"/>
             </Border>
             <TextBlock Text="{Binding Title, ElementName=Root}"
-                       FontSize="16"
+                       FontSize="15"
                        FontWeight="SemiBold"
                        HorizontalAlignment="Left"
                        TextAlignment="Left"

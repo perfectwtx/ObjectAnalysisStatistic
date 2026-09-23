@@ -2,69 +2,54 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-             xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views">
-    <ui:Card Padding="16">
+             xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+    <Border Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.BorderSubtle}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="16"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <DockPanel Margin="0,0,0,12">
-                <WrapPanel DockPanel.Dock="Right">
-                    <ui:Button Content="刷新历史报告" Click="RefreshReports_Click" Margin="0,0,8,0">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="ArrowSync24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                    <ui:Button Content="打开当前报告" Click="OpenReport_Click" IsEnabled="{Binding HasReport}" Margin="0,0,8,0">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="Open24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                    <ui:Button Content="导出字段 CSV" Appearance="Primary" Click="ExportCsv_Click" IsEnabled="{Binding HasResult}">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="ArrowDownload24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                </WrapPanel>
-                <StackPanel>
-                    <TextBlock Text="报告历史" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="双击报告可重新加载到工作台。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
+                <ui:Button DockPanel.Dock="Right" Content="刷新" Click="Refresh_Click">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="ArrowSync24"/>
+                    </ui:Button.Icon>
+                </ui:Button>
+                <StackPanel HorizontalAlignment="Left">
+                    <TextBlock Text="报告" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="本地生成的分析报告列表。双击可回读 JSON 报告。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
                 </StackPanel>
             </DockPanel>
 
-            <DataGrid Grid.Row="1"
-                      x:Name="ReportHistoryList"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      CanUserAddRows="False"
-                      ItemsSource="{Binding Reports}"
-                      MouseDoubleClick="ReportHistory_DoubleClick"
-                      SelectionChanged="ReportHistory_SelectionChanged"
-                      Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="报告" Binding="{Binding Name}" Width="*"/>
-                    <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" Width="180"/>
-                    <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="100"/>
-                </DataGrid.Columns>
-            </DataGrid>
+            <ListBox Grid.Row="1"
+                     ItemsSource="{Binding Reports}"
+                     VerticalAlignment="Stretch"
+                     Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}"
+                     MouseDoubleClick="Reports_DoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <views:EmptyStateView Grid.Row="1"
-                                  Glyph="▤"
-                                  Title="还没有历史报告"
-                                  Hint="分析完成后会自动生成 JSON 报告，可在此重新加载或导出字段 CSV。"
+                                  VerticalAlignment="Top"
+                                  HorizontalAlignment="Stretch"
+                                  Glyph="📄"
+                                  Title="还没有报告"
+                                  Hint="完成分析后，报告文件会出现在这里。"
                                   Visibility="{Binding HasReports, Converter={StaticResource InverseBoolToVis}}"/>
-
-            <TextBlock Grid.Row="2"
-                       x:Name="ReportDetailsTextBlock"
-                       Text="请选择报告查看详情。"
-                       Foreground="{DynamicResource Brush.TextSecondary}"
-                       TextWrapping="Wrap"
-                       Margin="2,12,2,0"
-                       FontSize="12"
-                       Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}"/>
         </Grid>
-    </ui:Card>
+    </Border>
 </UserControl>

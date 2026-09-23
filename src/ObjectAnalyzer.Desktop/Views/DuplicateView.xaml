@@ -1,15 +1,22 @@
 <UserControl x:Class="ObjectAnalyzer.Desktop.Views.DuplicateView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-             xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views">
-    <ui:Card Padding="16">
+             xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+    <Border Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.BorderSubtle}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="16"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel>
+            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock Text="重复分析" Style="{StaticResource SectionTitle}"/>
                 <TextBlock Text="{Binding DuplicateSummary}" Style="{StaticResource SectionHint}"/>
             </StackPanel>
@@ -19,6 +26,7 @@
                       IsReadOnly="True"
                       CanUserAddRows="False"
                       ItemsSource="{Binding Duplicates}"
+                      VerticalAlignment="Stretch"
                       Visibility="{Binding HasDuplicates, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="对象哈希/摘要" Binding="{Binding Key}" Width="3*"/>
@@ -27,10 +35,12 @@
             </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
+                                  VerticalAlignment="Top"
+                                  HorizontalAlignment="Stretch"
                                   Glyph="⧉"
                                   Title="未发现重复对象"
                                   Hint="分析完成后，若存在重复对象组，将在此列出摘要与重复次数。"
                                   Visibility="{Binding HasDuplicates, Converter={StaticResource InverseBoolToVis}}"/>
         </Grid>
-    </ui:Card>
+    </Border>
 </UserControl>
