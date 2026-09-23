@@ -9,6 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ObjectAnalyzer.Desktop</RootNamespace>
     <AssemblyName>ObjectAnalyzer.Desktop</AssemblyName>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,5 +19,16 @@
   <ItemGroup>
     <ProjectReference Include="..\ObjectAnalyzer.Core\ObjectAnalyzer.Core.csproj" />
   </ItemGroup>
+
+  <!-- Generate Assets/app.ico from embedded base64 before compile so ApplicationIcon works -->
+  <Target Name="GenerateAppIcon" BeforeTargets="BeforeCompile;ResolveAssemblyReferences">
+    <PropertyGroup>
+      <_AppIconPath>$(MSBuildProjectDirectory)\Assets\app.ico</_AppIconPath>
+      <_AppIconDataCs>$(MSBuildProjectDirectory)\Assets\AppIconData.cs</_AppIconDataCs>
+    </PropertyGroup>
+    <Exec Condition="!Exists('$(_AppIconPath)')"
+          ConsoleToMSBuild="true"
+          Command="powershell -NoProfile -Command &quot;$c = Get-Content -Raw '$(_AppIconDataCs)'; if ($c -match 'IcoBase64\s*=\s*&amp;quot;([^&amp;quot;]+)&amp;quot;') { $b = [Convert]::FromBase64String($Matches[1]); [IO.File]::WriteAllBytes('$(_AppIconPath)', $b); Write-Host 'Generated app.ico' } else { Write-Error 'IcoBase64 not found' }&quot;" />
+  </Target>
 
 </Project>
