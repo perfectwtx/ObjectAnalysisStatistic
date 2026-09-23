@@ -19,8 +19,7 @@
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="LanguageLabel"
-                           Text="{DynamicResource Str.Language}"
+                <TextBlock Text="{DynamicResource Str.Language}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0"
                            Foreground="{DynamicResource Brush.TextSecondary}"
@@ -29,8 +28,7 @@
                           Width="110"
                           Margin="0,0,16,0"
                           SelectionChanged="LanguageComboBox_SelectionChanged"/>
-                <TextBlock x:Name="ThemeLabel"
-                           Text="{DynamicResource Str.Theme}"
+                <TextBlock Text="{DynamicResource Str.Theme}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0"
                            Foreground="{DynamicResource Brush.TextSecondary}"
@@ -60,7 +58,7 @@
                     <TextBox x:Name="InputPathTextBox"
                              Style="{StaticResource PathTextBox}"
                              Text="{Binding InputPath, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="{Binding InputPath, FallbackValue={StaticResource Str.FilePathTooltip}}"
+                             ToolTip="{DynamicResource Str.FilePathTooltip}"
                              AllowDrop="True"
                              DragOver="InputPathTextBox_DragOver"
                              Drop="InputPathTextBox_Drop"/>
@@ -147,7 +145,7 @@
 
         <!-- Grouped tabs -->
         <TabControl Grid.Row="3" Style="{StaticResource GroupTabControl}">
-            <TabItem x:Name="GroupAnalysisTab" Header="{DynamicResource Str.Group.Analysis}" Style="{StaticResource GroupTabItem}">
+            <TabItem Header="{DynamicResource Str.Group.Analysis}" Style="{StaticResource GroupTabItem}">
                 <TabControl>
                     <TabItem Header="{DynamicResource Str.Tab.Overview}"><views:OverviewView/></TabItem>
                     <TabItem Header="{DynamicResource Str.Tab.Schema}"><views:SchemaView/></TabItem>
