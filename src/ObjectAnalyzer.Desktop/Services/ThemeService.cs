@@ -1,13 +1,16 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using Microsoft.Win32;
 
 namespace ObjectAnalyzer.Desktop.Services;
 
-public enum AppTheme
+public enum AppThemeMode
 {
     Light,
-    Dark
+    Dark,
+    System,
+    EyeCare
 }
 
 public static class ThemeService
@@ -26,24 +29,86 @@ public static class ThemeService
             "ObjectAnalyzer",
             "ui-settings.json");
 
-    public static AppTheme Current { get; private set; } = AppTheme.Light;
+    public static AppThemeMode Mode { get; private set; } = AppThemeMode.Light;
+
+    public static event EventHandler? ThemeChanged;
 
     public static void Initialize()
     {
-        Apply(LoadSavedTheme(), persist: false);
+        SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
+        Apply(LoadSavedMode(), persist: false);
     }
 
-    public static AppTheme Toggle()
+    public static void Shutdown()
     {
-        var next = Current == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark;
-        Apply(next, persist: true);
-        return Current;
+        SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
     }
 
-    public static void Apply(AppTheme theme, bool persist = true)
+    public static void Apply(AppThemeMode mode, bool persist = true)
     {
-        Current = theme;
+        Mode = mode;
+        ApplyResolvedTheme(ResolveEffectiveTheme(mode));
 
+        if (persist)
+            Save(mode);
+
+        ThemeChanged?.Invoke(null, EventArgs.Empty);
+    }
+
+    public static string GetModeLabel(AppThemeMode mode) => mode switch
+    {
+        AppThemeMode.Dark => LocalizationService.Get("Str.Theme.Dark", "深色"),
+        AppThemeMode.System => LocalizationService.Get("Str.Theme.System", "跟随系统"),
+        AppThemeMode.EyeCare => LocalizationService.Get("Str.Theme.EyeCare", "护眼"),
+        _ => LocalizationService.Get("Str.Theme.Light", "浅色")
+    };
+
+    private static void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (Mode != AppThemeMode.System)
+            return;
+
+        if (e.Category is not (UserPreferenceCategory.General or UserPreferenceCategory.Color))
+            return;
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+            return;
+
+        if (dispatcher.CheckAccess())
+            ApplyResolvedTheme(ResolveEffectiveTheme(AppThemeMode.System));
+        else
+            dispatcher.Invoke(() => ApplyResolvedTheme(ResolveEffectiveTheme(AppThemeMode.System)));
+    }
+
+    private static string ResolveEffectiveTheme(AppThemeMode mode) => mode switch
+    {
+        AppThemeMode.Dark => "Themes/DarkTheme.xaml",
+        AppThemeMode.EyeCare => "Themes/EyeCareTheme.xaml",
+        AppThemeMode.System => IsSystemDark() ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml",
+        _ => "Themes/LightTheme.xaml"
+    };
+
+    private static bool IsSystemDark()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            object? value = key?.GetValue("AppsUseLightTheme");
+            if (value is int intValue)
+                return intValue == 0;
+        }
+        catch
+        {
+            // Fall back to light when registry is unavailable.
+        }
+
+        return false;
+    }
+
+    private static void ApplyResolvedTheme(string relativePath)
+    {
         var app = Application.Current;
         if (app is null)
             return;
@@ -54,7 +119,8 @@ public static class ThemeService
         {
             if (dictionaries[i].Source?.OriginalString is string source
                 && (source.Contains("LightTheme.xaml", StringComparison.OrdinalIgnoreCase)
-                    || source.Contains("DarkTheme.xaml", StringComparison.OrdinalIgnoreCase)))
+                    || source.Contains("DarkTheme.xaml", StringComparison.OrdinalIgnoreCase)
+                    || source.Contains("EyeCareTheme.xaml", StringComparison.OrdinalIgnoreCase)))
             {
                 dictionaries.RemoveAt(i);
             }
@@ -64,68 +130,61 @@ public static class ThemeService
             }
         }
 
-        string relativePath = theme == AppTheme.Dark
-            ? "Themes/DarkTheme.xaml"
-            : "Themes/LightTheme.xaml";
-
         var themeDict = new ResourceDictionary
         {
             Source = new Uri(relativePath, UriKind.Relative)
         };
         themeDict["ThemeDictionaryTag"] = ThemeDictionaryTag;
-
-        // Keep theme colors before styles so DynamicResource resolves correctly.
         dictionaries.Insert(0, themeDict);
-
-        if (persist)
-            Save(theme);
     }
 
-    public static string GetToggleLabel() =>
-        Current == AppTheme.Dark ? "浅色模式" : "深色模式";
-
-    public static string GetToggleTooltip() =>
-        Current == AppTheme.Dark
-            ? "切换到浅色主题"
-            : "切换到深色主题";
-
-    private static AppTheme LoadSavedTheme()
+    private static AppThemeMode LoadSavedMode()
     {
         try
         {
             if (!File.Exists(SettingsPath))
-                return AppTheme.Light;
+                return AppThemeMode.Light;
 
             var settings = JsonSerializer.Deserialize<UiSettings>(
                 File.ReadAllText(SettingsPath),
                 s_jsonOptions);
 
-            if (settings?.Theme is null)
-                return AppTheme.Light;
-
-            return string.Equals(settings.Theme, "Dark", StringComparison.OrdinalIgnoreCase)
-                ? AppTheme.Dark
-                : AppTheme.Light;
+            return settings?.Theme?.ToLowerInvariant() switch
+            {
+                "dark" => AppThemeMode.Dark,
+                "system" => AppThemeMode.System,
+                "eyecare" => AppThemeMode.EyeCare,
+                _ => AppThemeMode.Light
+            };
         }
         catch
         {
-            return AppTheme.Light;
+            return AppThemeMode.Light;
         }
     }
 
-    private static void Save(AppTheme theme)
+    private static void Save(AppThemeMode mode)
     {
         try
         {
             string directory = Path.GetDirectoryName(SettingsPath)
-                ?? throw new InvalidOperationException("无法确定 UI 设置存储目录。");
+                ?? throw new InvalidOperationException("Cannot resolve settings directory.");
 
             Directory.CreateDirectory(directory);
 
-            var settings = new UiSettings
+            UiSettings settings;
+            if (File.Exists(SettingsPath))
             {
-                Theme = theme.ToString()
-            };
+                settings = JsonSerializer.Deserialize<UiSettings>(
+                    File.ReadAllText(SettingsPath),
+                    s_jsonOptions) ?? new UiSettings();
+            }
+            else
+            {
+                settings = new UiSettings();
+            }
+
+            settings.Theme = mode.ToString();
 
             File.WriteAllText(
                 SettingsPath,
@@ -133,12 +192,13 @@ public static class ThemeService
         }
         catch
         {
-            // 主题偏好属于辅助信息，保存失败不影响主流程。
+            // Preference persistence must not block the UI.
         }
     }
 
     private sealed class UiSettings
     {
         public string? Theme { get; set; }
+        public string? Language { get; set; }
     }
 }
