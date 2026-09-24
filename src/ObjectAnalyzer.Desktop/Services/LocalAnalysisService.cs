@@ -20,6 +20,7 @@ public sealed class LocalAnalysisService
         string jsonReportPath,
         string userReportPath,
         string? rulesPath,
+        DesktopAnalysisSettings settings,
         Action<string> writeOutput,
         Action<long> reportProgress,
         DesktopPlatformService platform,
@@ -28,6 +29,7 @@ public sealed class LocalAnalysisService
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(jsonReportPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(userReportPath);
+        ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(platform);
 
         await platform.InitializeAsync(cancellationToken);
@@ -66,6 +68,21 @@ public sealed class LocalAnalysisService
                 Progress = new ProgressOptions
                 {
                     ShowProgress = true
+                },
+                Advanced = new AdvancedAnalysisOptions
+                {
+                    EnableCorrelation = settings.EnableCorrelation,
+                    EnableStringPatterns = settings.EnableStringPatterns,
+                    EnableUnicodeHygiene = settings.EnableUnicodeHygiene,
+                    EnableTimeSeries = settings.EnableTimeSeries,
+                    EnableDistributionSnapshot = settings.EnableDistributionSnapshot,
+                    FuzzyDedupField = string.IsNullOrWhiteSpace(settings.FuzzyDedupField)
+                        ? null
+                        : settings.FuzzyDedupField.Trim()
+                },
+                Sampling = new SamplingOptions
+                {
+                    SampleReservoir = settings.SampleReservoir > 0 ? settings.SampleReservoir : 0
                 }
             };
 
@@ -142,6 +159,17 @@ public sealed class LocalAnalysisService
             "bz2" => "BZip2",
             _ => Path.GetExtension(inputPath).TrimStart('.').ToUpperInvariant()
         };
+}
+
+public sealed class DesktopAnalysisSettings
+{
+    public bool EnableCorrelation { get; set; }
+    public bool EnableStringPatterns { get; set; }
+    public bool EnableUnicodeHygiene { get; set; }
+    public bool EnableTimeSeries { get; set; }
+    public bool EnableDistributionSnapshot { get; set; }
+    public string FuzzyDedupField { get; set; } = string.Empty;
+    public int SampleReservoir { get; set; }
 }
 
 public sealed record LocalAnalysisResult(int ExitCode, AnalysisResult? Result);
