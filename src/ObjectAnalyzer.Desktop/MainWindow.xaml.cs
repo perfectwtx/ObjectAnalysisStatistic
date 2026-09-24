@@ -56,6 +56,7 @@ public partial class MainWindow : FluentWindow
         AnalyzeViewControl.AnalyzeRequested += async (_, _) => await RunAnalysisAsync();
         AnalyzeViewControl.CancelRequested += (_, _) => CancelAnalysis();
         AnalyzeViewControl.OpenReportRequested += (_, _) => OpenReport();
+        AnalyzeViewControl.OpenReportFolderRequested += (_, _) => OpenReportFolder();
         AnalyzeViewControl.RecentFileSelected += (_, path) => OnRecentFileSelected(path);
         AnalyzeViewControl.ReportFormatChanged += (_, format) => _viewModel.ReportFormat = format;
         AnalyzeViewControl.FileDragOver += (_, e) => OnFileDragOver(e);
@@ -293,11 +294,13 @@ public partial class MainWindow : FluentWindow
 
         try
         {
+            var settings = _viewModel.BuildAnalysisSettings();
             var result = await LocalAnalysisService.AnalyzeAsync(
                 inputPath,
                 jsonReportPath,
                 userReportPath,
                 rulesPath,
+                settings,
                 message => Dispatcher.Invoke(() => _viewModel.AppendOutput(message)),
                 value => Dispatcher.Invoke(() => _viewModel.SetProgress(value)),
                 _platformService,
@@ -366,6 +369,17 @@ public partial class MainWindow : FluentWindow
         Process.Start(new ProcessStartInfo
         {
             FileName = _viewModel.ReportPath,
+            UseShellExecute = true
+        });
+    }
+
+    private void OpenReportFolder()
+    {
+        string directory = GetReportDirectory();
+        Directory.CreateDirectory(directory);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = directory,
             UseShellExecute = true
         });
     }
