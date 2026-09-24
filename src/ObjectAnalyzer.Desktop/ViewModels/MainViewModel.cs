@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Desktop.Services;
 using ObjectAnalyzer.Platform;
 
 namespace ObjectAnalyzer.Desktop.ViewModels;
@@ -30,6 +31,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _minimumConsistency = "90";
     private string _minimumAnomalyControl = "90";
 
+    private bool _enableCorrelation;
+    private bool _enableStringPatterns;
+    private bool _enableUnicodeHygiene;
+    private bool _enableTimeSeries;
+    private bool _enableDistributionSnapshot;
+    private string _fuzzyDedupField = string.Empty;
+    private string _sampleReservoirText = "0";
+    private string _fieldFilter = string.Empty;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string InputPath { get => _inputPath; set => Set(ref _inputPath, value); }
@@ -42,6 +52,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public AnalysisResult? Result => _result;
     public string OutputText { get => _outputText; private set => Set(ref _outputText, value); }
 
+    public bool EnableCorrelation { get => _enableCorrelation; set => Set(ref _enableCorrelation, value); }
+    public bool EnableStringPatterns { get => _enableStringPatterns; set => Set(ref _enableStringPatterns, value); }
+    public bool EnableUnicodeHygiene { get => _enableUnicodeHygiene; set => Set(ref _enableUnicodeHygiene, value); }
+    public bool EnableTimeSeries { get => _enableTimeSeries; set => Set(ref _enableTimeSeries, value); }
+    public bool EnableDistributionSnapshot { get => _enableDistributionSnapshot; set => Set(ref _enableDistributionSnapshot, value); }
+    public string FuzzyDedupField { get => _fuzzyDedupField; set => Set(ref _fuzzyDedupField, value); }
+    public string SampleReservoirText { get => _sampleReservoirText; set => Set(ref _sampleReservoirText, value); }
+
+    public string FieldFilter
+    {
+        get => _fieldFilter;
+        set
+        {
+            if (Set(ref _fieldFilter, value))
+                ApplyFieldFilter();
+        }
+    }
+
     public long TotalObjects => _result?.TotalObjects ?? 0;
     public int FieldCount => _result?.FieldStatistics.Count ?? 0;
     public long DuplicateGroups => _result?.TotalDuplicateGroups ?? 0;
@@ -53,6 +81,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool HasReport => File.Exists(_reportPath);
 
     public bool HasFields => Fields.Count > 0;
+    public bool HasFilteredFields => FilteredFields.Count > 0;
     public bool HasDuplicates => Duplicates.Count > 0;
     public bool HasIssues => Issues.Count > 0;
     public bool HasJobs => Jobs.Count > 0;
@@ -69,12 +98,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string MinimumAnomalyControl { get => _minimumAnomalyControl; set => Set(ref _minimumAnomalyControl, value); }
 
     public ObservableCollection<DesktopFieldRow> Fields { get; } = new();
+    public ObservableCollection<DesktopFieldRow> FilteredFields { get; } = new();
     public ObservableCollection<DesktopDuplicateRow> Duplicates { get; } = new();
     public ObservableCollection<DesktopIssueRow> Issues { get; } = new();
     public ObservableCollection<DesktopReportRow> Reports { get; } = new();
     public ObservableCollection<DesktopQualitySnapshotRow> QualityTrend { get; } = new();
     public ObservableCollection<DesktopJobRow> Jobs { get; } = new();
     public ObservableCollection<string> RecentFiles { get; } = new();
+
+    public DesktopAnalysisSettings BuildAnalysisSettings()
+    {
+        int.TryParse(SampleReservoirText?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int reservoir);
+        if (reservoir < 0) reservoir = 0;
+
+        return new DesktopAnalysisSettings
+        {
+            EnableCorrelation = EnableCorrelation,
+            EnableStringPatterns = EnableStringPatterns,
+            EnableUnicodeHygiene = EnableUnicodeHygiene,
+            EnableTimeSeries = EnableTimeSeries,
+            EnableDistributionSnapshot = EnableDistributionSnapshot,
+            FuzzyDedupField = FuzzyDedupField ?? string.Empty,
+            SampleReservoir = reservoir
+        };
+    }
 
     public void SetRunning(string reportPath)
     {
@@ -132,6 +179,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         foreach (var field in (_result?.FieldStatistics ?? []).OrderBy(x => x.FieldName, StringComparer.OrdinalIgnoreCase))
             Fields.Add(new DesktopFieldRow(field, totalObjects));
 
+        ApplyFieldFilter();
+
         Duplicates.Clear();
         foreach (var duplicate in _result?.DuplicateObjects ?? [])
             Duplicates.Add(new DesktopDuplicateRow(duplicate));
@@ -141,6 +190,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Issues.Add(new DesktopIssueRow(issue));
 
         RaiseCollectionStateChanged();
+    }
+
+    public void ApplyFieldFilter()
+    {
+        FilteredFields.Clear();
+        string filter = FieldFilter?.Trim() ?? string.Empty;
+        IEnumerable<DesktopFieldRow> query = Fields;
+        if (!string.IsNullOrEmpty(filter))
+        {
+            query = Fields.Where(f =>
+                f.FieldName.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                || f.PrimaryType.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                || (f.SemanticType?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        foreach (var row in query)
+            FilteredFields.Add(row);
+
+        OnPropertyChanged(nameof(HasFilteredFields));
     }
 
     public void SetQualityTrend(IEnumerable<QualitySnapshot> snapshots)
@@ -228,7 +296,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public static string GetDeepAnalysis(string name, object? value) =>
         value is null
-            ? $"{name}\r\n\r\n未生成。请在分析时启用对应的深度分析选项。"
+            ? $"{name}\r\n\r\n未生成。请在分析页勾选对应的深度分析选项后重新分析。"
             : Serialize(value);
 
     public static string GetInsight(string title, object? value) =>
@@ -288,17 +356,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void RaiseCollectionStateChanged()
     {
         OnPropertyChanged(nameof(HasFields));
+        OnPropertyChanged(nameof(HasFilteredFields));
         OnPropertyChanged(nameof(HasDuplicates));
         OnPropertyChanged(nameof(HasIssues));
     }
 
-    private void Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
-            return;
+            return false;
 
         field = value;
         OnPropertyChanged(propertyName);
+        return true;
     }
 
     private void OnPropertyChanged(string? propertyName) =>
