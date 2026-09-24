@@ -18,14 +18,16 @@
             </Grid.RowDefinitions>
             <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
                 <TextBlock Text="Schema / 字段结构" Style="{StaticResource SectionTitle}"/>
-                <TextBlock Text="查看字段类型、覆盖率与 Schema 演进结果。" Style="{StaticResource SectionHint}"/>
+                <TextBlock Text="双击行查看该字段全部取值 · 类型、覆盖率与空值分布。" Style="{StaticResource SectionHint}"/>
             </StackPanel>
 
             <DataGrid Grid.Row="1"
+                      x:Name="FieldsGrid"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"
                       ItemsSource="{Binding Fields}"
+                      MouseDoubleClick="FieldsGrid_MouseDoubleClick"
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasFields, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
@@ -34,6 +36,7 @@
                     <DataGridTextColumn Header="覆盖率" Binding="{Binding CoverageText}" Width="*"/>
                     <DataGridTextColumn Header="非空" Binding="{Binding Count}" Width="*"/>
                     <DataGridTextColumn Header="空值" Binding="{Binding NullCount}" Width="*"/>
+                    <DataGridTextColumn Header="唯一值" Binding="{Binding DistinctCount}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -42,7 +45,7 @@
                                   HorizontalAlignment="Stretch"
                                   Glyph="▣"
                                   Title="暂无 Schema 数据"
-                                  Hint="完成分析后，这里会展示字段类型与覆盖率结构。"
+                                  Hint="完成分析后，这里会展示字段类型与覆盖率结构。双击字段行可查看取值详情。"
                                   Visibility="{Binding HasFields, Converter={StaticResource InverseBoolToVis}}"/>
         </Grid>
     </Border>
