@@ -56,7 +56,12 @@
             </Border>
         </UniformGrid>
 
-        <ui:Card Grid.Row="1" Padding="16">
+        <Border Grid.Row="1"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -64,17 +69,19 @@
                 </Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,10">
                     <TextBlock Text="字段概览" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="按字段名排序 · 覆盖率与空值分布"
+                    <TextBlock Text="双击行查看该字段全部取值 · 按字段名排序"
                                Style="{StaticResource SectionHint}"
                                Margin="12,2,0,0"
                                VerticalAlignment="Center"/>
                 </DockPanel>
 
                 <DataGrid Grid.Row="1"
+                          x:Name="FieldsGrid"
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserAddRows="False"
                           ItemsSource="{Binding Fields}"
+                          MouseDoubleClick="FieldsGrid_MouseDoubleClick"
                           Visibility="{Binding HasFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="字段" Binding="{Binding FieldName}" Width="2*"/>
@@ -87,11 +94,12 @@
                 </DataGrid>
 
                 <views:EmptyStateView Grid.Row="1"
+                                      VerticalAlignment="Top"
                                       Glyph="◫"
                                       Title="还没有字段统计"
-                                      Hint="选择数据文件并点击「开始分析」后，字段覆盖率与类型分布会显示在这里。"
+                                      Hint="选择数据文件并点击「开始分析」后，字段覆盖率与类型分布会显示在这里。双击字段行可查看取值详情。"
                                       Visibility="{Binding HasFields, Converter={StaticResource InverseBoolToVis}}"/>
             </Grid>
-        </ui:Card>
+        </Border>
     </Grid>
 </UserControl>

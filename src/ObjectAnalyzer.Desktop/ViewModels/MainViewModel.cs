@@ -128,8 +128,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void RefreshCollections()
     {
         Fields.Clear();
+        long totalObjects = _result?.TotalObjects ?? 0;
         foreach (var field in (_result?.FieldStatistics ?? []).OrderBy(x => x.FieldName, StringComparer.OrdinalIgnoreCase))
-            Fields.Add(new DesktopFieldRow(field));
+            Fields.Add(new DesktopFieldRow(field, totalObjects));
 
         Duplicates.Clear();
         foreach (var duplicate in _result?.DuplicateObjects ?? [])
@@ -326,8 +327,15 @@ public sealed class DesktopFieldRow
     public long Count { get; }
     public long NullCount { get; }
     public long? DistinctCount { get; }
+    public bool DistinctApproximate { get; }
+    public bool ValueCountsTruncated { get; }
+    public string? SemanticType { get; }
+    public string? NumericRangeText { get; }
+    public string? QuantilesText { get; }
+    public IReadOnlyList<DesktopFieldValueRow> Values { get; }
+    public IReadOnlyList<DesktopFieldTypeRow> Types { get; }
 
-    public DesktopFieldRow(FieldStatistic source)
+    public DesktopFieldRow(FieldStatistic source, long totalObjects = 0)
     {
         FieldName = source.FieldName;
         PrimaryType = source.PrimaryType;
@@ -335,6 +343,54 @@ public sealed class DesktopFieldRow
         Count = source.Count;
         NullCount = source.NullCount;
         DistinctCount = source.DistinctCount;
+        DistinctApproximate = source.DistinctApproximate;
+        ValueCountsTruncated = source.ValueCountsTruncated;
+        SemanticType = source.SemanticType;
+        NumericRangeText = source.MinNumber is not null && source.MaxNumber is not null
+            ? string.Create(CultureInfo.InvariantCulture, $"{source.MinNumber:G6} ~ {source.MaxNumber:G6}")
+            : null;
+        QuantilesText = source.FormatQuantiles();
+
+        long denom = Count > 0 ? Count : 1;
+        Values = source.ValueCounts
+            .OrderByDescending(x => x.Value)
+            .ThenBy(x => x.Key, StringComparer.Ordinal)
+            .Select(x => new DesktopFieldValueRow(
+                x.Key,
+                x.Value,
+                (double)x.Value / denom))
+            .ToList();
+
+        Types = source.TypeCounts
+            .OrderByDescending(x => x.Value)
+            .Select(x => new DesktopFieldTypeRow(x.Key, x.Value))
+            .ToList();
+    }
+}
+
+public sealed class DesktopFieldValueRow
+{
+    public string Value { get; }
+    public long Count { get; }
+    public string ShareText { get; }
+
+    public DesktopFieldValueRow(string value, long count, double share)
+    {
+        Value = string.IsNullOrEmpty(value) ? "(空字符串)" : value;
+        Count = count;
+        ShareText = share.ToString("P2", CultureInfo.InvariantCulture);
+    }
+}
+
+public sealed class DesktopFieldTypeRow
+{
+    public string TypeName { get; }
+    public long Count { get; }
+
+    public DesktopFieldTypeRow(string typeName, long count)
+    {
+        TypeName = typeName;
+        Count = count;
     }
 }
 
