@@ -82,6 +82,34 @@
             </Border>
 
             <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="分析选项" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="开启深度分析会增加耗时与内存；默认仅做字段统计与质量检查。"
+                               Style="{StaticResource SectionHint}"/>
+
+                    <WrapPanel Margin="0,0,0,10">
+                        <CheckBox Content="相关性矩阵" IsChecked="{Binding EnableCorrelation}" Margin="0,0,16,8"/>
+                        <CheckBox Content="字符串模式" IsChecked="{Binding EnableStringPatterns}" Margin="0,0,16,8"/>
+                        <CheckBox Content="Unicode 卫生" IsChecked="{Binding EnableUnicodeHygiene}" Margin="0,0,16,8"/>
+                        <CheckBox Content="时间序列" IsChecked="{Binding EnableTimeSeries}" Margin="0,0,16,8"/>
+                        <CheckBox Content="分布快照" IsChecked="{Binding EnableDistributionSnapshot}" Margin="0,0,16,8"/>
+                    </WrapPanel>
+
+                    <TextBlock Text="模糊去重字段（可选）" Style="{StaticResource FieldLabel}"/>
+                    <TextBox Text="{Binding FuzzyDedupField, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource PathTextBox}"
+                             Margin="0,0,0,12"
+                             ToolTip="填写字段名后启用模糊去重，例如 email 或 name"/>
+
+                    <TextBlock Text="采样容量 SampleReservoir（0=全量）" Style="{StaticResource FieldLabel}"/>
+                    <TextBox Text="{Binding SampleReservoirText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource PathTextBox}"
+                             Width="160"
+                             HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -131,9 +159,17 @@
                         <ui:Button Content="{DynamicResource Str.OpenReport}"
                                    Click="OpenReport_Click"
                                    Height="40"
+                                   Margin="0,0,8,0"
                                    IsEnabled="{Binding HasReport}">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="Document24"/>
+                            </ui:Button.Icon>
+                        </ui:Button>
+                        <ui:Button Content="报告目录"
+                                   Click="OpenReportFolder_Click"
+                                   Height="40">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="FolderOpen24"/>
                             </ui:Button.Icon>
                         </ui:Button>
                     </StackPanel>

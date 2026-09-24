@@ -10,6 +10,7 @@ public partial class AnalyzeView : UserControl
     public event EventHandler? AnalyzeRequested;
     public event EventHandler? CancelRequested;
     public event EventHandler? OpenReportRequested;
+    public event EventHandler? OpenReportFolderRequested;
     public event EventHandler<string>? RecentFileSelected;
     public event EventHandler<string>? ReportFormatChanged;
     public event EventHandler<DragEventArgs>? FileDragOver;
@@ -45,6 +46,9 @@ public partial class AnalyzeView : UserControl
 
     private void OpenReport_Click(object sender, RoutedEventArgs e) =>
         OpenReportRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenReportFolder_Click(object sender, RoutedEventArgs e) =>
+        OpenReportFolderRequested?.Invoke(this, EventArgs.Empty);
 
     private void RecentFiles_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
