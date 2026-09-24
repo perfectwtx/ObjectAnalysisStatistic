@@ -1,27 +1,27 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Near-black HUD + neon cyan -->
-    <SolidColorBrush x:Key="Brush.Bg" Color="#03050A"/>
-    <SolidColorBrush x:Key="Brush.Surface" Color="#0A101C"/>
-    <SolidColorBrush x:Key="Brush.Border" Color="#1A4A5C"/>
-    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#122030"/>
-    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#F0F7FF"/>
-    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#7EB6D4"/>
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#4A6B82"/>
-    <SolidColorBrush x:Key="Brush.TextLabel" Color="#A8D4E8"/>
-    <SolidColorBrush x:Key="Brush.Primary" Color="#00E5FF"/>
-    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#22D3EE"/>
-    <SolidColorBrush x:Key="Brush.Danger" Color="#FF4D6D"/>
-    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#5C1520"/>
-    <SolidColorBrush x:Key="Brush.Success" Color="#00F5A0"/>
-    <SolidColorBrush x:Key="Brush.RowAlt" Color="#070D16"/>
-    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#0C1624"/>
-    <SolidColorBrush x:Key="Brush.Selection" Color="#0A3040"/>
-    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#0E1C2A"/>
-    <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#010308"/>
-    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#5CE1FF"/>
-    <SolidColorBrush x:Key="Brush.InputBg" Color="#060C14"/>
-    <SolidColorBrush x:Key="Brush.AccentGlow" Color="#0A2830"/>
+    <!-- Premium zinc dark + soft indigo accent (Linear / Vercel inspired) -->
+    <SolidColorBrush x:Key="Brush.Bg" Color="#09090B"/>
+    <SolidColorBrush x:Key="Brush.Surface" Color="#111113"/>
+    <SolidColorBrush x:Key="Brush.Border" Color="#2A2A2E"/>
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#1C1C1F"/>
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="#A1A1AA"/>
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#71717A"/>
+    <SolidColorBrush x:Key="Brush.TextLabel" Color="#D4D4D8"/>
+    <SolidColorBrush x:Key="Brush.Primary" Color="#818CF8"/>
+    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#A5B4FC"/>
+    <SolidColorBrush x:Key="Brush.Danger" Color="#F87171"/>
+    <SolidColorBrush x:Key="Brush.DangerBorder" Color="#3F1D1D"/>
+    <SolidColorBrush x:Key="Brush.Success" Color="#34D399"/>
+    <SolidColorBrush x:Key="Brush.RowAlt" Color="#0E0E10"/>
+    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#141416"/>
+    <SolidColorBrush x:Key="Brush.Selection" Color="#1E1B4B"/>
+    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#1C1C1F"/>
+    <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#050506"/>
+    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#C4B5FD"/>
+    <SolidColorBrush x:Key="Brush.InputBg" Color="#0C0C0E"/>
+    <SolidColorBrush x:Key="Brush.AccentGlow" Color="#1A1830"/>
 
 </ResourceDictionary>

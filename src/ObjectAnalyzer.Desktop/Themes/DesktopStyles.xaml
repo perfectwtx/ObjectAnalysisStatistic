@@ -5,7 +5,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="Padding" Value="16"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
@@ -14,8 +14,8 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="18,16"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="20,18"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
@@ -25,18 +25,18 @@
     </Style>
 
     <Style x:Key="PageTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="26"/>
-        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="24"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+        <Setter Property="LetterSpacing" Value="0"/>
     </Style>
 
     <Style x:Key="HudBadge" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}"/>
-        <Setter Property="Opacity" Value="0.9"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
     </Style>
 
     <Style x:Key="PageSubtitle" TargetType="TextBlock">
@@ -47,10 +47,9 @@
     </Style>
 
     <Style x:Key="SectionTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Segoe UI"/>
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
     </Style>
 
     <Style x:Key="SectionHint" TargetType="TextBlock">
@@ -63,25 +62,23 @@
 
     <Style x:Key="FieldLabel" TargetType="TextBlock">
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextLabel}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
         <Setter Property="Margin" Value="0,0,0,6"/>
     </Style>
 
     <Style x:Key="MetricLabel" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="10"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
     </Style>
 
     <Style x:Key="MetricValue" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="28"/>
-        <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}"/>
-        <Setter Property="Margin" Value="0,8,0,0"/>
-        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Segoe UI"/>
+        <Setter Property="FontSize" Value="26"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
     </Style>
 
     <Style x:Key="PathTextBox" TargetType="TextBox">
@@ -104,7 +101,7 @@
     </Style>
 
     <Style x:Key="CyanProgressBar" TargetType="ProgressBar">
-        <Setter Property="Height" Value="8"/>
+        <Setter Property="Height" Value="6"/>
         <Setter Property="Minimum" Value="0"/>
         <Setter Property="Maximum" Value="100"/>
         <Setter Property="Background" Value="{DynamicResource Brush.ProgressTrack}"/>
@@ -116,20 +113,13 @@
                     <Grid SnapsToDevicePixels="True">
                         <Border x:Name="PART_Track"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="4"
+                                CornerRadius="3"
                                 Height="{TemplateBinding Height}"/>
                         <Border x:Name="PART_Indicator"
                                 HorizontalAlignment="Left"
-                                CornerRadius="4"
-                                Height="{TemplateBinding Height}">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#0088AA" Offset="0"/>
-                                    <GradientStop Color="#00E5FF" Offset="0.5"/>
-                                    <GradientStop Color="#A5F3FC" Offset="1"/>
-                                </LinearGradientBrush>
-                            </Border.Background>
-                        </Border>
+                                CornerRadius="3"
+                                Height="{TemplateBinding Height}"
+                                Background="{DynamicResource Brush.Primary}"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -152,7 +142,6 @@
         <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Selection}"/>
     </Style>
 
-    <!-- Global DataGrid: hover highlight + soft row separators -->
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
@@ -161,7 +150,7 @@
         <Setter Property="RowBackground" Value="Transparent"/>
         <Setter Property="AlternatingRowBackground" Value="{DynamicResource Brush.RowAlt}"/>
         <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
-        <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
+        <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
         <Setter Property="GridLinesVisibility" Value="Horizontal"/>
         <Setter Property="HeadersVisibility" Value="Column"/>
         <Setter Property="SelectionUnit" Value="FullRow"/>
@@ -173,11 +162,11 @@
 
     <Style TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{DynamicResource Brush.HeaderBg}"/>
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextLabel}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
         <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="11"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
     </Style>
@@ -208,7 +197,7 @@
 
     <Style TargetType="DataGridCell">
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Padding" Value="12,7"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Template">
             <Setter.Value>
