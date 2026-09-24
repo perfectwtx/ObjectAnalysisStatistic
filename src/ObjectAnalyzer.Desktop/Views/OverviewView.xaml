@@ -51,10 +51,15 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,10">
-                    <TextBlock Text="字段概览" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="双击行查看取值详情"
+                    <TextBox DockPanel.Dock="Right"
+                             Width="220"
+                             Style="{StaticResource PathTextBox}"
+                             Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="按字段名 / 类型 / 语义过滤"/>
+                    <TextBlock Text="字段概览" Style="{StaticResource SectionTitle}" VerticalAlignment="Center"/>
+                    <TextBlock Text="搜索 · 双击查看取值"
                                Style="{StaticResource SectionHint}"
-                               Margin="12,0,0,0"
+                               Margin="12,0,12,0"
                                VerticalAlignment="Center"/>
                 </DockPanel>
 
@@ -63,9 +68,9 @@
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserAddRows="False"
-                          ItemsSource="{Binding Fields}"
+                          ItemsSource="{Binding FilteredFields}"
                           MouseDoubleClick="FieldsGrid_MouseDoubleClick"
-                          Visibility="{Binding HasFields, Converter={StaticResource BoolToVis}}">
+                          Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="字段" Binding="{Binding FieldName}" Width="2*"/>
                         <DataGridTextColumn Header="类型" Binding="{Binding PrimaryType}" Width="*"/>
@@ -79,9 +84,9 @@
                 <views:EmptyStateView Grid.Row="1"
                                       VerticalAlignment="Top"
                                       Glyph="◫"
-                                      Title="还没有字段统计"
-                                      Hint="选择数据文件并开始分析后，字段覆盖率与类型会显示在这里。"
-                                      Visibility="{Binding HasFields, Converter={StaticResource InverseBoolToVis}}"/>
+                                      Title="没有匹配的字段"
+                                      Hint="调整搜索关键词，或先完成一次分析。"
+                                      Visibility="{Binding HasFilteredFields, Converter={StaticResource InverseBoolToVis}}"/>
             </Grid>
         </Border>
     </Grid>

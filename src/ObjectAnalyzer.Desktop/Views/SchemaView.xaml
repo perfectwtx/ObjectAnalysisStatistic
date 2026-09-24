@@ -5,31 +5,38 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
     <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
+            BorderBrush="{DynamicResource Brush.Border}"
             BorderThickness="1"
-            CornerRadius="12"
+            CornerRadius="10"
             Padding="16"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
-        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock Text="Schema / 字段结构" Style="{StaticResource SectionTitle}"/>
-                <TextBlock Text="双击行查看该字段全部取值 · 类型、覆盖率与空值分布。" Style="{StaticResource SectionHint}"/>
-            </StackPanel>
+            <DockPanel Margin="0,0,0,10">
+                <TextBox DockPanel.Dock="Right"
+                         Width="220"
+                         Style="{StaticResource PathTextBox}"
+                         Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="按字段名 / 类型 / 语义过滤"/>
+                <StackPanel>
+                    <TextBlock Text="Schema / 字段结构" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="搜索 · 双击查看取值详情" Style="{StaticResource SectionHint}"/>
+                </StackPanel>
+            </DockPanel>
 
             <DataGrid Grid.Row="1"
                       x:Name="FieldsGrid"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"
-                      ItemsSource="{Binding Fields}"
+                      ItemsSource="{Binding FilteredFields}"
                       MouseDoubleClick="FieldsGrid_MouseDoubleClick"
                       VerticalAlignment="Stretch"
-                      Visibility="{Binding HasFields, Converter={StaticResource BoolToVis}}">
+                      Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="字段" Binding="{Binding FieldName}" Width="2*"/>
                     <DataGridTextColumn Header="类型" Binding="{Binding PrimaryType}" Width="*"/>
@@ -44,9 +51,9 @@
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
                                   Glyph="▣"
-                                  Title="暂无 Schema 数据"
-                                  Hint="完成分析后，这里会展示字段类型与覆盖率结构。双击字段行可查看取值详情。"
-                                  Visibility="{Binding HasFields, Converter={StaticResource InverseBoolToVis}}"/>
+                                  Title="没有匹配的 Schema 字段"
+                                  Hint="调整搜索，或完成分析后再查看。"
+                                  Visibility="{Binding HasFilteredFields, Converter={StaticResource InverseBoolToVis}}"/>
         </Grid>
     </Border>
 </UserControl>
