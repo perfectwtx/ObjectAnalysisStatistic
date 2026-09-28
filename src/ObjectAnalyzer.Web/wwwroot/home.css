@@ -2706,3 +2706,27 @@
         border-bottom:1px solid var(--oa-border);
     }
 }
+
+
+/* Final two-column balance: the global navigation owns the product identity,
+   while the right console stays visually secondary to the analysis canvas. */
+.app-shell .sidebar{
+    background:var(--oa-surface);
+}
+.app-shell .side-brand{
+    min-height:64px;
+}
+.app-shell .side-brand h1{
+    font-size:.82rem;
+    letter-spacing:.01em;
+    text-transform:uppercase;
+}
+.app-shell .side-brand .brand-sub{
+    font-size:.6rem;
+}
+.app-shell .side-scroll{
+    padding-top:14px;
+}
+.app-shell .main-area{
+    min-width:0;
+}
