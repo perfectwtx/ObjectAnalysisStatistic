@@ -90,8 +90,8 @@ window.objectAnalyzer = {
         const applyWidth = (w) => {
             const width = clamp(w);
             shell.style.gridTemplateColumns = isRight
-                ? `minmax(0, 1fr) 6px ${width}px`
-                : `${width}px 6px minmax(0, 1fr)`;
+                ? `minmax(0, 1fr) 4px ${width}px`
+                : `${width}px 4px minmax(0, 1fr)`;
         };
 
         const saved = parseInt(localStorage.getItem(storageKey) || '0', 10);
