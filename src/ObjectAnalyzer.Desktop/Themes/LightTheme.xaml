@@ -1,27 +1,27 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Clean zinc light + indigo -->
-    <SolidColorBrush x:Key="Brush.Bg" Color="#F4F4F5"/>
+    <!-- Cool gray light + steel-blue accent -->
+    <SolidColorBrush x:Key="Brush.Bg" Color="#F2F3F5"/>
     <SolidColorBrush x:Key="Brush.Surface" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="Brush.Border" Color="#E4E4E7"/>
-    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#F0F0F2"/>
+    <SolidColorBrush x:Key="Brush.Border" Color="#D5D8DE"/>
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="#E8EAED"/>
     <SolidColorBrush x:Key="Brush.TextPrimary" Color="#18181B"/>
     <SolidColorBrush x:Key="Brush.TextSecondary" Color="#52525B"/>
-    <SolidColorBrush x:Key="Brush.TextMuted" Color="#A1A1AA"/>
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="#8B8F9C"/>
     <SolidColorBrush x:Key="Brush.TextLabel" Color="#3F3F46"/>
-    <SolidColorBrush x:Key="Brush.Primary" Color="#4F46E5"/>
-    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#4338CA"/>
+    <SolidColorBrush x:Key="Brush.Primary" Color="#2F5F9E"/>
+    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#274E84"/>
     <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626"/>
     <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA"/>
     <SolidColorBrush x:Key="Brush.Success" Color="#059669"/>
-    <SolidColorBrush x:Key="Brush.RowAlt" Color="#FAFAFA"/>
-    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#F4F4F5"/>
-    <SolidColorBrush x:Key="Brush.Selection" Color="#EEF2FF"/>
-    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#E4E4E7"/>
+    <SolidColorBrush x:Key="Brush.RowAlt" Color="#F7F8FA"/>
+    <SolidColorBrush x:Key="Brush.HeaderBg" Color="#ECEEF1"/>
+    <SolidColorBrush x:Key="Brush.Selection" Color="#E4EDF7"/>
+    <SolidColorBrush x:Key="Brush.ProgressTrack" Color="#D5D8DE"/>
     <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#18181B"/>
-    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#C4B5FD"/>
+    <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#9EC1FF"/>
     <SolidColorBrush x:Key="Brush.InputBg" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="Brush.AccentGlow" Color="#E0E7FF"/>
+    <SolidColorBrush x:Key="Brush.AccentGlow" Color="#D6E4F5"/>
 
 </ResourceDictionary>

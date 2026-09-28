@@ -7,8 +7,8 @@
     <Border Background="{DynamicResource Brush.Surface}"
             BorderBrush="{DynamicResource Brush.BorderSubtle}"
             BorderThickness="1"
-            CornerRadius="12"
-            Padding="16"
+            CornerRadius="2"
+            Padding="10"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>

@@ -2,6 +2,8 @@
 
 ObjectAnalyzer Desktop 是基于 WPF + [WPF UI](https://github.com/lepoco/wpfui) 的 Windows 本地分析工作台，直接复用 ObjectAnalyzer.Core，不需要启动 Web 或 API。
 
+界面按专业工具布局组织：标题栏、菜单栏、工具栏、齐平导航、工作区、状态栏。色板为炭灰底 + 钢蓝强调色，圆角与内边距保持紧凑，避免消费级卡片堆叠。
+
 ## 本地运行
 
 ```powershell
@@ -14,7 +16,8 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 - 选择 JSON、JSONL、CSV、Excel、XML、YAML 或压缩数据文件。
 - 将受支持的数据文件直接拖入主窗口的“分析文件”输入框（路径单行完整显示，悬停可看完整路径）。
 - 从“最近文件”下拉列表快速载入最近使用的文件，最多保留 10 条本机记录。
-- 在**分析 / 质量 / 历史**三组页签中查看结果。
+- 用菜单或工具栏执行打开文件、开始分析、取消、打开报告。快捷键：`Ctrl+O` 打开文件，`F5` 开始分析。
+- 在左侧导航或「查看」菜单中切换分析 / 质量 / 历史页面。
 - 执行本地对象分析并查看概览、Schema、重复、深度分析和质量问题。
 - 查看数据血缘、影响分析、Schema Impact 与回归结果。
 - 查看质量基线和质量趋势。
@@ -22,7 +25,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 - 查看和重新加载历史 JSON 报告。
 - 导出字段 CSV。
 - 长时间分析过程中可以取消当前作业。
-- 在窗口右上角切换**语言（中文 / English）**与**主题（浅色 / 深色 / 跟随系统 / 护眼）**。
+- 在工具栏右侧切换**语言（中文 / English）**与**主题（浅色 / 深色 / 跟随系统 / 护眼）**；工作区页仍可修改同一偏好。
 
 最近文件列表保存在：
 
@@ -40,8 +43,9 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 
 ## UI 技术栈
 
-- **WPF UI (lepoco)**：`FluentWindow`、`TitleBar`、`Card`、Fluent 按钮与控件样式，支持 Mica 背景。
-- **自有主题资源**：`Brush.*` 与护眼色板仍由 `Themes/*.xaml` 提供，并与 WPF UI 的 `ApplicationThemeManager` 同步。
+- **WPF UI (lepoco)**：`FluentWindow`、`TitleBar`、Fluent 按钮与控件样式。
+- **工具壳层**：标准菜单 + 工具栏 + 齐平侧栏 + 底部状态栏（进度、当前文件）。
+- **自有主题资源**：`Brush.*` 与护眼色板由 `Themes/*.xaml` 提供，深色/浅色强调色为钢蓝（`#6B9DFF` / `#2F5F9E`），并与 WPF UI 的 `ApplicationThemeManager` 同步。
 - **本地化**：`Localization/Strings.*.xaml` + `LocalizationService`。
 
 ## 页签分组
@@ -58,7 +62,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 
 ## 语言
 
-主窗口右上角语言下拉框：
+工具栏语言下拉框：
 
 - **中文**（默认）
 - **English**
@@ -69,12 +73,12 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 
 ## 主题
 
-主窗口右上角主题下拉框支持四种模式：
+工具栏主题下拉框支持四种模式：
 
 | 模式 | 说明 |
 |------|------|
-| **浅色** | WPF UI Light + 自有浅色色板 |
-| **深色** | WPF UI Dark + 自有深色色板 |
+| **浅色** | WPF UI Light + 自有浅色钢蓝色板 |
+| **深色** | WPF UI Dark + 自有炭灰 / 钢蓝色板 |
 | **跟随系统** | 跟随 Windows 应用浅色/深色，系统变更时自动同步 |
 | **护眼** | WPF UI Light 窗体 + 柔和绿纸色板 |
 
