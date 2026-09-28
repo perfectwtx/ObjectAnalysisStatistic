@@ -2730,3 +2730,38 @@
 .app-shell .main-area{
     min-width:0;
 }
+
+
+/* Right-side console hierarchy: separate it from the result canvas without
+   making it compete with the global application navigation. */
+.app-shell .sidebar{
+    box-shadow:-8px 0 24px color-mix(in srgb,var(--oa-text-1) 5%,transparent);
+}
+.app-shell .side-brand{
+    justify-content:flex-start;
+    padding-inline:16px;
+}
+.app-shell .side-scroll{
+    padding-inline:14px;
+}
+.app-shell .console-heading{
+    padding-inline:8px;
+}
+.app-shell .side-group{
+    background:var(--oa-surface);
+}
+.app-shell .side-group-run{
+    background:var(--oa-accent-soft);
+}
+.app-shell .main-area{
+    background:var(--oa-bg);
+}
+.app-shell .results-section{
+    width:min(1520px,100%);
+    margin:0 auto;
+}
+@media(max-width:1100px) and (min-width:761px){
+    .app-shell .results-section{
+        width:100%;
+    }
+}
