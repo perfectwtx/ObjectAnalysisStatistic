@@ -128,7 +128,7 @@
 
 
 /* Jobs and job detail density refinement */
-.oa-jobs-page .oa-summary-grid { margin-bottom: 1.35rem !important; }
+.oa-jobs-page .oa-summary-grid { margin-bottom: 1.35rem; }
 .oa-jobs-page .oa-summary-card { min-height: 118px; }
 .oa-jobs-page .oa-jobs-table { min-width: 1040px; }
 .oa-jobs-page .oa-jobs-table th:last-child,
@@ -147,4 +147,22 @@
     .oa-jobs-page .oa-analysis-header { margin-bottom: 1.1rem; }
     .oa-jobs-page .oa-summary-grid { gap: .75rem; }
     .oa-jobs-page .oa-summary-card { min-height: 104px; }
+}
+
+
+/* Keep page-specific refinements below the shared analysis system. */
+.oa-page .oa-summary-card,
+.oa-analysis-page .oa-summary-card{
+    border-color:var(--oa-border);
+    background:var(--oa-surface);
+}
+.oa-page .oa-count-pill,
+.oa-analysis-page .oa-count-pill{
+    color:var(--oa-text-2);
+    background:var(--oa-surface-2);
+    border-color:var(--oa-border);
+}
+.oa-page .oa-data-table,
+.oa-analysis-page .oa-data-table{
+    border-color:var(--oa-border);
 }
