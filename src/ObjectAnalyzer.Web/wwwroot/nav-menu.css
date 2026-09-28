@@ -212,3 +212,26 @@ body:has(.app-shell) .oa-global-content{padding:0;max-width:none}
 @media (prefers-reduced-motion:reduce){
     .oa-sidebar__link,.oa-sidebar{transition:none}
 }
+
+
+/* Shared workspace geometry: analysis pages and navigation use the same content rhythm. */
+.oa-global-content{
+    width:min(1680px,100%);
+    padding-inline:var(--oa-page-gutter);
+}
+.oa-sidebar{
+    width:248px;
+}
+.oa-sidebar__link{
+    min-height:var(--oa-control-height);
+}
+@media(max-width:1100px){
+    .oa-global-content{
+        padding-inline:var(--oa-page-gutter);
+    }
+}
+@media(max-width:760px){
+    .oa-global-content{
+        padding-inline:var(--oa-page-gutter);
+    }
+}
