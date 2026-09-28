@@ -2344,3 +2344,19 @@
         width:100%;
     }
 }
+
+
+/* Final component normalization: use shared radius tokens instead of page-local values. */
+.oa-analysis-page .oa-context-grid>div,
+.oa-analysis-page .oa-field-filter-card .form-select{
+    border-radius:var(--oa-radius-sm);
+}
+.oa-analysis-page .oa-field-table-card .table-responsive{
+    border-radius:0 0 var(--oa-radius-lg) var(--oa-radius-lg);
+}
+.oa-analysis-page .oa-lineage-context{
+    background:var(--oa-surface-2);
+}
+.oa-analysis-page .oa-lineage-table-wrap .table thead th{
+    background:var(--oa-surface-2);
+}
