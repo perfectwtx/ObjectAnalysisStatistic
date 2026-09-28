@@ -43,7 +43,7 @@
 .page main .btn-outline-secondary { color: var(--oa-text-2); border-color: var(--oa-border-strong); }
 .page main .btn-outline-secondary:hover { color: var(--oa-text-1); background: var(--oa-surface-3); border-color: var(--oa-border-strong); }
 .page main .form-label { margin-bottom: .5rem; color: var(--oa-text-2); font-size: .82rem; font-weight: 650; }
-.page main .form-control, .page main .form-select { min-height: var(--oa-control-height); color: var(--oa-text-1); background: var(--oa-surface-2); border: 1px solid var(--oa-border-strong); border-radius: 9px; }
+.page main .form-control, .page main .form-select { min-height: var(--oa-control-height); color: var(--oa-text-1); background: var(--oa-surface-2); border: 1px solid var(--oa-border-strong); border-radius: var(--oa-radius-sm); }
 .page main textarea.form-control { min-height: 100px; }
 .page main .form-control::placeholder { color: var(--oa-text-3); }
 .page main .form-control:focus, .page main .form-select:focus { color: var(--oa-text-1); background: var(--oa-surface); border-color: var(--oa-accent); }
