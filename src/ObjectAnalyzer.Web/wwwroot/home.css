@@ -2661,3 +2661,48 @@
         padding-inline:var(--oa-page-gutter);
     }
 }
+
+
+/* Analysis workbench layout: keep the global navigation on the far left and
+   move the analysis control console to the opposite side of the result canvas. */
+.app-shell{
+    grid-template-columns:minmax(0,1fr) 4px 324px;
+}
+.app-shell .main-area{
+    grid-column:1;
+    grid-row:1;
+    min-width:0;
+}
+.app-shell .side-handle{
+    grid-column:2;
+    grid-row:1;
+}
+.app-shell .sidebar{
+    grid-column:3;
+    grid-row:1;
+    border-right:0;
+    border-left:1px solid var(--oa-border);
+}
+.app-shell .side-handle{
+    cursor:col-resize;
+}
+@media(max-width:1100px) and (min-width:761px){
+    .app-shell{
+        grid-template-columns:minmax(0,1fr) 4px 280px;
+    }
+}
+@media(max-width:760px){
+    .app-shell{
+        grid-template-columns:1fr;
+    }
+    .app-shell .main-area,
+    .app-shell .side-handle,
+    .app-shell .sidebar{
+        grid-column:1;
+        grid-row:auto;
+    }
+    .app-shell .sidebar{
+        border-left:0;
+        border-bottom:1px solid var(--oa-border);
+    }
+}
