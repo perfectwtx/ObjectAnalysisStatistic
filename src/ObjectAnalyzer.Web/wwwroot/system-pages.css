@@ -91,7 +91,7 @@
     margin-top: 1.25rem;
     padding: .75rem .9rem;
     border: 1px solid var(--oa-border);
-    border-radius: 10px;
+    border-radius: var(--oa-radius-md);
     background: var(--oa-surface-2);
     font-size: .78rem;
 }
@@ -103,7 +103,7 @@
     margin-top: 1.25rem;
     padding: .8rem .9rem;
     border: 1px solid var(--oa-border);
-    border-radius: 10px;
+    border-radius: var(--oa-radius-md);
     background: var(--oa-surface-2);
     color: var(--oa-text-2);
     font-size: .8rem;
