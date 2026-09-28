@@ -2582,7 +2582,7 @@
         if (firstRender)
         {
             _darkTheme = await Js.InvokeAsync<bool>("objectAnalyzer.isDarkTheme");
-            await Js.InvokeVoidAsync("objectAnalyzer.initSplitter", ".app-shell", ".side-handle", "oa-sidebar-width");
+            await Js.InvokeVoidAsync("objectAnalyzer.initSplitter", ".app-shell", ".side-handle", "oa-analysis-sidebar-width", "right");
             StateHasChanged();
         }
 
