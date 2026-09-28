@@ -33,8 +33,8 @@
 .page main .table tbody td { font-size: .88rem; }
 .page main .table tbody tr:last-child td { border-bottom: 0; }
 .page main .table-hover > tbody > tr:hover > * { color: var(--oa-text-1); background: var(--oa-accent-soft); }
-.page main .btn { min-height: var(--oa-control-height); padding-inline: 1rem; border-radius: 9px; font-weight: 620; transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
-.page main .btn-sm { min-height: 34px; padding-inline: .75rem; border-radius: 8px; font-size: .82rem; }
+.page main .btn { min-height: var(--oa-control-height); padding-inline: 1rem; border-radius: var(--oa-radius-sm); font-weight: 620; transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
+.page main .btn-sm { min-height: 34px; padding-inline: .75rem; border-radius: var(--oa-radius-sm); font-size: .82rem; }
 .page main .btn:not(:disabled):hover { transform: translateY(-1px); }
 .page main .btn-primary { background: var(--oa-accent); border-color: var(--oa-accent); color: var(--oa-on-accent); }
 .page main .btn-primary:hover { background: var(--oa-accent-strong); border-color: var(--oa-accent-strong); }
