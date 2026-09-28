@@ -79,14 +79,23 @@ window.objectAnalyzer = {
     },
 
     // 侧边栏 / 主区可拖拽分隔条：拖动调整 grid 列宽并持久化到 localStorage
-    initSplitter: function (shellSelector, handleSelector, storageKey) {
+    initSplitter: function (shellSelector, handleSelector, storageKey, side = 'left') {
         const shell = document.querySelector(shellSelector);
         const handle = document.querySelector(handleSelector);
         if (!shell || !handle) return false;
 
+        const isRight = side === 'right';
         const clamp = (w) => Math.min(560, Math.max(240, w));
+        const readWidth = (clientX) => isRight ? window.innerWidth - clientX : clientX;
+        const applyWidth = (w) => {
+            const width = clamp(w);
+            shell.style.gridTemplateColumns = isRight
+                ? `minmax(0, 1fr) 6px ${width}px`
+                : `${width}px 6px minmax(0, 1fr)`;
+        };
+
         const saved = parseInt(localStorage.getItem(storageKey) || '0', 10);
-        if (saved) shell.style.gridTemplateColumns = clamp(saved) + 'px 6px minmax(0, 1fr)';
+        if (saved) applyWidth(saved);
 
         let dragging = false;
         handle.addEventListener('pointerdown', (e) => {
@@ -97,14 +106,14 @@ window.objectAnalyzer = {
         });
         handle.addEventListener('pointermove', (e) => {
             if (!dragging) return;
-            shell.style.gridTemplateColumns = clamp(e.clientX) + 'px 6px minmax(0, 1fr)';
+            applyWidth(readWidth(e.clientX));
         });
         const stop = (e) => {
             if (!dragging) return;
             dragging = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            try { localStorage.setItem(storageKey, String(clamp(e.clientX))); } catch (err) { }
+            try { localStorage.setItem(storageKey, String(clamp(readWidth(e.clientX)))); } catch (err) { }
         };
         handle.addEventListener('pointerup', stop);
         handle.addEventListener('pointercancel', stop);
