@@ -2525,3 +2525,88 @@
         border-top:1px solid var(--oa-border);
     }
 }
+
+
+/* Final visual alignment: reuse the same page rhythm as the rest of the Web analysis workspace. */
+.app-shell .main-area{
+    background:var(--oa-bg);
+    background-image:none;
+}
+.app-shell .topbar{
+    min-height:40px;
+    margin-bottom:1.35rem;
+    padding-bottom:.85rem;
+    border-bottom:1px solid var(--oa-border);
+}
+.app-shell .workspace-identity{
+    gap:.35rem;
+}
+.app-shell .workspace-title{
+    font-size:1.05rem;
+    font-weight:720;
+    letter-spacing:-.018em;
+}
+.app-shell .results-header{
+    margin-bottom:1.1rem;
+    padding:0 0 1rem;
+    background:transparent;
+    border:0;
+    border-bottom:1px solid var(--oa-border);
+    border-radius:0;
+    box-shadow:none;
+}
+.app-shell .results-header .header-actions{
+    gap:.55rem;
+}
+.app-shell .summary-cards{
+    gap:.9rem;
+    margin-bottom:1.1rem;
+}
+.app-shell .summary-cards .card{
+    min-height:118px;
+    border-radius:var(--oa-radius-lg);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .charts-section{
+    gap:.9rem;
+    margin-bottom:1.1rem;
+}
+.app-shell .charts-section .chart-box{
+    border-radius:var(--oa-radius-lg);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .detail-tabs{
+    top:.5rem;
+    margin-bottom:1rem;
+    padding:.2rem;
+    border-radius:var(--oa-radius-md);
+    box-shadow:var(--oa-shadow-sm);
+}
+.app-shell .p3-section,
+.app-shell .deep-section,
+.app-shell .duplicates-section,
+.app-shell .preview-section{
+    border-radius:var(--oa-radius-lg);
+}
+.app-shell .toolbar{
+    border-radius:var(--oa-radius-md);
+}
+.app-shell .field-table,
+.app-shell .table-scroll{
+    border-radius:var(--oa-radius-lg);
+}
+.app-shell .side-group{
+    border-radius:var(--oa-radius-md);
+}
+.app-shell .side-group-run{
+    border-radius:var(--oa-radius-md);
+}
+@media(max-width:860px){
+    .app-shell .topbar{
+        margin-bottom:1rem;
+        padding-bottom:.75rem;
+    }
+    .app-shell .results-header{
+        padding-bottom:.8rem;
+    }
+}
