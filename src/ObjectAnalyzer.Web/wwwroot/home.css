@@ -13,7 +13,7 @@
 .app-shell .preview-section { min-width: 0; }
 .app-shell .sidebar { box-shadow: none; }
 .app-shell .side-scroll { padding: .7rem .7rem 1rem; gap: .7rem; }
-.app-shell .side-group { padding: .8rem; border-radius: 12px; }
+.app-shell .side-group { padding: .8rem; border-radius: var(--oa-radius-md); }
 .app-shell .side-group-title { margin-bottom: .45rem; font-size: .68rem; }
 .app-shell .side-subgroup-title { padding-top: .55rem; margin-top: .25rem; font-size: .66rem; }
 .app-shell .options-grid { gap: .6rem .65rem; }
@@ -25,7 +25,7 @@
 .app-shell .option-group > summary { padding: .15rem 0; }
 .app-shell .opt-group-title { font-size: .78rem; }
 .app-shell .opt-group-hint { font-size: .68rem; }
-.app-shell .upload-area { margin-bottom: .4rem; padding: 1.2rem .8rem 1rem; border-radius: 12px; }
+.app-shell .upload-area { margin-bottom: .4rem; padding: 1.2rem .8rem 1rem; border-radius: var(--oa-radius-md); }
 .app-shell .upload-area::before { font-size: 1.35rem; margin-bottom: .2rem; }
 .app-shell .upload-area p { font-size: .78rem; }
 .app-shell .upload-area small { font-size: .7rem; }
@@ -37,23 +37,23 @@
 .app-shell .main-area { padding: 1.25rem clamp(1rem, 2.6vw, 2.5rem) 3rem; }
 .app-shell .topbar { min-height: 34px; margin-bottom: 1.25rem; }
 .app-shell .results-section { width: min(100%, 1440px); margin-inline: auto; padding-top: 0; }
-.app-shell .results-header { align-items: flex-start; margin-bottom: 1.25rem; padding: 1.1rem 1.2rem; background: var(--oa-surface); border: 1px solid var(--oa-border); border-radius: 14px; box-shadow: var(--oa-shadow-sm); }
+.app-shell .results-header { align-items: flex-start; margin-bottom: 1.25rem; padding: 1.1rem 1.2rem; background: var(--oa-surface); border: 1px solid var(--oa-border); border-radius: var(--oa-radius-lg); box-shadow: var(--oa-shadow-sm); }
 .app-shell .results-header h2 { flex: 0 0 auto; padding-top: .2rem; }
 .app-shell .results-header .header-actions { flex: 1 1 620px; justify-content: flex-end; align-items: flex-start; }
 .app-shell .download-group { padding: .25rem .45rem; border-left: 1px solid var(--oa-border); }
 .app-shell .download-label { width: 100%; margin-bottom: .1rem; }
 .app-shell .summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin: 0 0 1.25rem; }
-.app-shell .summary-cards .card { min-height: 112px; padding: 1rem 1.1rem; border-radius: 14px; display: flex; flex-direction: column; justify-content: center; }
+.app-shell .summary-cards .card { min-height: 112px; padding: 1rem 1.1rem; border-radius: var(--oa-radius-lg); display: flex; flex-direction: column; justify-content: center; }
 .app-shell .summary-cards .card-value { font-size: 1.85rem; }
 .app-shell .summary-cards .card-label { font-size: .7rem; }
 .app-shell .charts-section { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0 0 1.25rem; }
-.app-shell .chart-box { min-height: 300px; padding: 1.1rem 1.2rem; border-radius: 14px; }
+.app-shell .chart-box { min-height: 300px; padding: 1.1rem 1.2rem; border-radius: var(--oa-radius-lg); }
 .app-shell .chart-box h3 { margin-bottom: .9rem; font-size: .9rem; }
 .app-shell .detail-tabs { margin: 0 0 1rem; }
 .app-shell .field-table, .app-shell .table-scroll, .app-shell .preview-col-select { box-shadow: none; }
-.app-shell .field-table, .app-shell .table-scroll { border-radius: 12px; }
+.app-shell .field-table, .app-shell .table-scroll { border-radius: var(--oa-radius-md); }
 .app-shell .field-table th, .app-shell .field-table td { padding: .7rem .85rem; }
-.app-shell .toolbar { padding: .8rem; margin-bottom: .85rem; background: var(--oa-surface-2); border: 1px solid var(--oa-border); border-radius: 12px; }
+.app-shell .toolbar { padding: .8rem; margin-bottom: .85rem; background: var(--oa-surface-2); border: 1px solid var(--oa-border); border-radius: var(--oa-radius-md); }
 .app-shell .empty-state { min-height: 500px; max-width: 920px; margin: 2rem auto; background: var(--oa-surface); box-shadow: var(--oa-shadow-sm); }
 .app-shell .result-warning, .app-shell .memory-warning, .app-shell .checkpoint-info, .app-shell .error { margin-bottom: 1rem; }
 
@@ -113,10 +113,10 @@
     padding: .25rem;
     background: var(--oa-surface);
     border: 1px solid var(--oa-border);
-    border-radius: 12px;
+    border-radius: var(--oa-radius-md);
 }
 .app-shell .detail-tabs button {
-    border-radius: 9px;
+    border-radius: var(--oa-radius-sm);
 }
 .app-shell .p3-section,
 .app-shell .deep-section,
@@ -143,7 +143,7 @@
     padding: .7rem;
     background: var(--oa-surface-2);
     border: 1px solid var(--oa-border);
-    border-radius: 12px;
+    border-radius: var(--oa-radius-md);
 }
 
 /* Result canvas refinement: make the analysis flow read from signal to detail. */
@@ -180,7 +180,7 @@
 .app-shell .p3-section,
 .app-shell .deep-section {
     padding: 1.2rem 1.25rem;
-    border-radius: 14px;
+    border-radius: var(--oa-radius-lg);
 }
 .app-shell .p3-header,
 .app-shell .deep-header {
@@ -217,7 +217,7 @@
     padding: 1.1rem 1.2rem;
     background: var(--oa-surface);
     border: 1px solid var(--oa-border);
-    border-radius: 14px;
+    border-radius: var(--oa-radius-lg);
     box-shadow: var(--oa-shadow-sm);
 }
 .app-shell .duplicates-section > h3,
@@ -276,7 +276,7 @@
 .app-shell .side-scroll > .option-group {
     background: var(--oa-surface);
     border: 1px solid var(--oa-border);
-    border-radius: 12px;
+    border-radius: var(--oa-radius-md);
     box-shadow: none;
 }
 .app-shell .side-scroll > .option-group + .option-group {
@@ -341,7 +341,7 @@
     padding: .55rem .65rem;
     background: var(--oa-surface-2);
     border: 1px solid var(--oa-border);
-    border-radius: 9px;
+    border-radius: var(--oa-radius-sm);
 }
 .app-shell .side-group .option-advanced > summary {
     color: var(--oa-text-2);
@@ -368,7 +368,7 @@
     margin-top: .25rem;
     padding: .7rem;
     border: 1px solid var(--oa-border-strong);
-    border-radius: 9px;
+    border-radius: var(--oa-radius-sm);
     background: var(--oa-surface-2);
     color: var(--oa-text-1);
     font-family: var(--oa-font-mono);
@@ -382,7 +382,7 @@
     margin-top: .55rem;
     padding: .7rem;
     border: 1px solid var(--oa-border);
-    border-radius: 9px;
+    border-radius: var(--oa-radius-sm);
     background: var(--oa-surface-2);
 }
 .app-shell .rules-doc pre {
@@ -543,7 +543,7 @@
 .app-shell .side-group{
     padding:11px;
     border:1px solid var(--oa-border);
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
     background:var(--oa-surface);
 }
 .app-shell .side-group-title{
@@ -641,7 +641,7 @@
 .app-shell .summary-cards .card{
     min-height:104px;
     padding:14px 16px;
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
     border:1px solid var(--oa-border);
     background:var(--oa-surface);
     box-shadow:var(--oa-shadow-sm);
@@ -668,7 +668,7 @@
     min-height:315px;
     padding:15px 17px;
     border:1px solid var(--oa-border);
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
     background:var(--oa-surface);
     box-shadow:var(--oa-shadow-sm);
 }
@@ -717,7 +717,7 @@
 .app-shell .p3-section,
 .app-shell .deep-section{
     border-color:var(--oa-border);
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
 }
 .app-shell .field-table{
     box-shadow:var(--oa-shadow-sm);
@@ -1097,7 +1097,7 @@
     margin:0 0 .85rem;
     padding:.8rem;
     border:1px solid var(--oa-accent-border);
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
     background:var(--oa-accent-soft);
 }
 .app-shell .run-context{
@@ -1233,7 +1233,7 @@
 .app-shell .field-table{
     overflow:hidden;
     border:1px solid var(--oa-border);
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
     background:var(--oa-surface);
     box-shadow:var(--oa-shadow-sm);
 }
@@ -1486,7 +1486,7 @@
     min-width:0;
     padding:1rem;
     border:1px solid var(--oa-border);
-    border-radius:12px;
+    border-radius: var(--oa-radius-md);
     background:var(--oa-surface);
     box-shadow:var(--oa-shadow-sm);
 }
