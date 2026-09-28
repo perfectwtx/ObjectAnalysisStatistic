@@ -11,7 +11,7 @@
 .oa-analysis-page .table { --bs-table-bg:transparent; }
 .oa-analysis-page .table thead th { color:var(--oa-text-2); background:var(--oa-surface-2); font-size:.78rem; font-weight:700; white-space:nowrap; border-bottom-color:var(--oa-border); }
 .oa-analysis-page .table td, .oa-analysis-page .table th { padding:.8rem .9rem; }
-.oa-analysis-page .alert { border-radius:12px; border-width:1px; padding:1rem 1.1rem; }
+.oa-analysis-page .alert { border-radius:var(--oa-radius-md); border-width:1px; padding:1rem 1.1rem; }
 .oa-analysis-page .badge { border-radius:999px; padding:.4em .7em; font-weight:650; }
 .oa-badge{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:.28rem .65rem;border:1px solid var(--oa-border);border-radius:999px;background:var(--oa-surface-2);color:var(--oa-text-2);font-size:.72rem;font-weight:700;line-height:1.2;white-space:nowrap}
 .oa-badge.is-success{border-color:color-mix(in srgb,var(--oa-success) 30%,transparent);background:var(--oa-success-soft);color:var(--oa-success)}
@@ -1614,7 +1614,7 @@
 .oa-quality-dashboard-page .oa-kpi-card.is-accent::before{background:var(--oa-accent)}
 .oa-quality-dashboard-page .oa-kpi-symbol{font-size:1.45rem}
 .oa-quality-dimension-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7rem}
-.oa-quality-dimension{min-width:0;padding:.85rem .9rem;border:1px solid var(--oa-border);border-radius:12px;background:var(--oa-surface);box-shadow:var(--oa-shadow-sm)}
+.oa-quality-dimension{min-width:0;padding:.85rem .9rem;border:1px solid var(--oa-border);border-radius:var(--oa-radius-md);background:var(--oa-surface);box-shadow:var(--oa-shadow-sm)}
 .oa-quality-dimension-head{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem}
 .oa-quality-dimension-head span{color:var(--oa-text-2);font-size:.75rem;font-weight:700}
 .oa-quality-dimension-head strong{color:var(--oa-text-1);font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums}
@@ -2067,7 +2067,7 @@
 .oa-detail-comment {
     margin-top: 1rem;
     padding: .75rem .9rem;
-    border-radius: 10px;
+    border-radius:var(--oa-radius-md);
     background: var(--oa-surface-muted, #f6f7f9);
     line-height: 1.6;
 }
@@ -2079,7 +2079,7 @@
     margin-top: 1rem;
     padding: 1rem 1.2rem;
     border: 1px solid var(--oa-border, #e5e7eb);
-    border-radius: 14px;
+    border-radius:var(--oa-radius-lg);
     background: var(--oa-surface, #fff);
 }
 .oa-issue-detail-next p {
