@@ -103,7 +103,7 @@
 .oa-remediation-editor { padding:.85rem; border:1px solid var(--oa-border); border-radius:10px; background:var(--oa-surface-2); }
 .oa-remediation-editor .form-label { font-size:.74rem; font-weight:650; color:var(--oa-text-2); }
 .oa-remediation-editor .oa-editor-actions { margin-top:.9rem; padding-top:.75rem; }
-.oa-remediation-table { margin-top:.75rem; border:1px solid var(--oa-border); border-radius:9px; }
+.oa-remediation-table { margin-top:.75rem; border:1px solid var(--oa-border); border-radius:var(--oa-radius-sm); }
 .oa-remediation-table .table { min-width:700px; }
 .oa-feedback { margin-top:1rem; }
 .oa-empty-state-success { margin-top:1.25rem; border:1px solid var(--oa-border); border-radius:14px; background:var(--oa-surface); }
@@ -2125,8 +2125,8 @@
 @media (prefers-color-scheme: dark) {
     .oa-issue-status.is-open { color: #adb5bd; }
     .oa-issue-status.is-progress { color: #ffd866; }
-    .oa-issue-status.is-resolved { color: #75d6a0; }
-    .oa-issue-status.is-ignored { color: #adb5bd; }
+    .oa-issue-status.is-resolved { color: var(--oa-success); }
+    .oa-issue-status.is-ignored { color: var(--oa-text-3); }
 }
 
 
@@ -2358,5 +2358,17 @@
     background:var(--oa-surface-2);
 }
 .oa-analysis-page .oa-lineage-table-wrap .table thead th{
+    background:var(--oa-surface-2);
+}
+
+
+/* Keep analysis detail components on the shared surface system. */
+.oa-analysis-page .oa-detail-card{
+    border-color:var(--oa-border);
+    box-shadow:var(--oa-shadow-sm);
+}
+.oa-analysis-page .oa-metric-card{
+    border-color:var(--oa-border);
+    border-radius:var(--oa-radius-md);
     background:var(--oa-surface-2);
 }
