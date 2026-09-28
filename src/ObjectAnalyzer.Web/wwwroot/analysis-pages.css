@@ -2299,3 +2299,48 @@
 .oa-quality-dashboard-page .oa-issue-content strong{font-family:var(--oa-font-mono)}
 .oa-quality-dashboard-page .oa-dashboard-context{margin-bottom:1.35rem}
 @media(max-width:640px){.oa-quality-dashboard-page .oa-header-actions{width:100%}.oa-quality-dashboard-page .oa-header-actions .btn{flex:1 1 auto}}
+
+
+/* Shared page rhythm: keep every analysis surface visually anchored to the same system. */
+.oa-analysis-page > .oa-analysis-header,
+.oa-analysis-page > header.oa-analysis-header{
+    min-height:48px;
+}
+.oa-analysis-page .oa-header-actions,
+.oa-analysis-page .oa-analysis-actions{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    flex-wrap:wrap;
+}
+.oa-analysis-page .oa-header-actions .btn,
+.oa-analysis-page .oa-analysis-actions .btn{
+    min-height:var(--oa-control-height);
+}
+.oa-analysis-page .card,
+.oa-analysis-page .oa-panel,
+.oa-analysis-page .oa-data-card{
+    border-color:var(--oa-border);
+    box-shadow:var(--oa-shadow-sm);
+}
+.oa-analysis-page .form-control,
+.oa-analysis-page .form-select,
+.oa-analysis-page input,
+.oa-analysis-page select,
+.oa-analysis-page textarea{
+    border-color:var(--oa-border-strong);
+}
+.oa-analysis-page .table-responsive,
+.oa-analysis-page .oa-table-wrap{
+    border-color:var(--oa-border);
+}
+@media(max-width:760px){
+    .oa-analysis-page > .oa-analysis-header,
+    .oa-analysis-page > header.oa-analysis-header{
+        gap:1rem;
+    }
+    .oa-analysis-page .oa-header-actions,
+    .oa-analysis-page .oa-analysis-actions{
+        width:100%;
+    }
+}
