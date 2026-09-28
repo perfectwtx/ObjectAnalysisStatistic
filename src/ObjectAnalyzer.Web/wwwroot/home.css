@@ -2610,3 +2610,54 @@
         padding-bottom:.8rem;
     }
 }
+
+
+/* Shared page tokens: keep the workbench chrome consistent with the rest of the Web application. */
+.app-shell .main-area{
+    font-family:var(--oa-font-sans);
+}
+.app-shell .topbar{
+    padding-inline:var(--oa-page-gutter);
+}
+.app-shell .results-section{
+    padding-inline:var(--oa-page-gutter);
+}
+.app-shell .topbar .header-actions,
+.app-shell .results-header .header-actions{
+    gap:.5rem;
+}
+.app-shell .theme-toggle,
+.app-shell .lang-btn,
+.app-shell .results-header .btn{
+    min-height:var(--oa-control-height);
+}
+.app-shell .theme-toggle{
+    width:var(--oa-control-height);
+}
+.app-shell .summary-cards .card,
+.app-shell .chart-box,
+.app-shell .p3-section,
+.app-shell .deep-section,
+.app-shell .duplicates-section,
+.app-shell .preview-section{
+    border-color:var(--oa-border);
+}
+.app-shell .summary-cards .card-label,
+.app-shell .results-meta,
+.app-shell .download-label{
+    line-height:1.45;
+}
+.app-shell .field-table th,
+.app-shell .field-table td,
+.app-shell .table-scroll th,
+.app-shell .table-scroll td{
+    border-color:var(--oa-border);
+}
+@media(max-width:760px){
+    .app-shell .topbar{
+        padding-inline:var(--oa-page-gutter);
+    }
+    .app-shell .results-section{
+        padding-inline:var(--oa-page-gutter);
+    }
+}
