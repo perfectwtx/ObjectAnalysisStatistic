@@ -385,7 +385,7 @@ public partial class MainWindow : FluentWindow
         });
     }
 
-    private void OpenReportFolder()
+    private static void OpenReportFolder()
     {
         string directory = GetReportDirectory();
         Directory.CreateDirectory(directory);
