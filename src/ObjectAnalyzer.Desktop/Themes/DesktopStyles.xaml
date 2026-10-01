@@ -29,7 +29,6 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontFamily" Value="Segoe UI, Segoe UI Variable Display"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
-        <Setter Property="LetterSpacing" Value="0"/>
     </Style>
 
     <Style x:Key="HudBadge" TargetType="TextBlock">
