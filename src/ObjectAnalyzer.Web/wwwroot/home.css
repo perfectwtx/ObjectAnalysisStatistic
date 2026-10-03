@@ -580,7 +580,7 @@
 .app-shell .progress-status{
     padding:.55rem .65rem;
     border:1px solid var(--oa-accent-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface);
 }
 .app-shell .main-area{
@@ -697,7 +697,7 @@
     min-width:94px;
     padding:0 12px;
     border:0;
-    border-radius:7px;
+    border-radius:var(--oa-radius-sm);
     color:var(--oa-text-2);
     background:transparent;
     font-size:.74rem;
@@ -1535,7 +1535,7 @@
 .app-shell .p3-list > li{
     padding:.55rem .6rem;
     border:1px solid var(--oa-border);
-    border-radius:7px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface-2);
 }
 .app-shell .p3-field{
@@ -1572,7 +1572,7 @@
     gap:.5rem;
     padding:.7rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface-2);
 }
 .app-shell .p3-baseline-row input[type=file]{
@@ -1586,13 +1586,13 @@
     margin-top:.8rem;
     padding:.7rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface-2);
 }
 .app-shell .p3-diff-group{
     margin-top:.6rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     overflow:hidden;
 }
 .app-shell .p3-diff-group summary{
@@ -1768,7 +1768,7 @@
     margin-bottom:.65rem;
     padding:.55rem .65rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface-2);
     color:var(--oa-text-3);
     font-size:.6rem;
@@ -1944,7 +1944,7 @@
 .app-shell .field-detail-stat{
     padding:.55rem .65rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface);
 }
 .app-shell .field-detail-stat span{
@@ -1969,7 +1969,7 @@
 .app-shell .field-detail-card{
     padding:.7rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface);
 }
 .app-shell .field-detail-list{
@@ -2389,7 +2389,7 @@
     white-space:nowrap;
     padding:.35rem .65rem;
     border:1px solid var(--oa-border);
-    border-radius:8px;
+    border-radius:var(--oa-radius-sm);
     background:var(--oa-surface);
     color:var(--oa-text-2);
     font-size:.72rem;
@@ -2422,7 +2422,7 @@
     min-height:28px;
     padding:0 .55rem;
     border-color:transparent;
-    border-radius:7px;
+    border-radius:var(--oa-radius-sm);
     font-size:.68rem;
     font-weight:700;
 }
