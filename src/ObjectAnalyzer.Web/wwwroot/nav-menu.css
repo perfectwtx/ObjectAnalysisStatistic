@@ -193,7 +193,7 @@ body:has(.app-shell) .oa-global-content{padding:0;max-width:none}
         width:32px;height:32px;
         margin-left:auto;
         border:1px solid var(--oa-border);
-        border-radius:8px;
+        border-radius:var(--oa-radius-sm);
         background:var(--oa-surface-2);
         color:var(--oa-text-2);
         font-size:1.25rem;
