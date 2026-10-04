@@ -1847,7 +1847,7 @@
 .oa-recommendations-page .oa-panel-header h2{margin:0;font-size:.94rem;font-weight:780}
 .oa-recommendations-page .oa-panel-header p{margin:.2rem 0 0;color:var(--oa-text-3);font-size:.7rem}
 .oa-recommendation-list{display:grid;gap:.7rem;padding:.8rem}
-.oa-recommendation-item{overflow:hidden;border:1px solid var(--oa-border);border-radius:11px;background:var(--oa-surface);transition:border-color .12s ease,box-shadow .12s ease}
+.oa-recommendation-item{overflow:hidden;border:1px solid var(--oa-border);border-radius:var(--oa-radius-sm);background:var(--oa-surface);transition:border-color .12s ease,box-shadow .12s ease}
 .oa-recommendation-item:hover{border-color:var(--oa-border-strong);box-shadow:var(--oa-shadow-sm)}
 .oa-recommendation-item-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem .8rem;border-bottom:1px solid var(--oa-border);background:var(--oa-surface-2)}
 .oa-recommendation-field-wrap{display:flex;align-items:center;min-width:0;gap:.65rem}
