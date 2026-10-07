@@ -4,43 +4,31 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel Margin="0,0,0,10" HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock Text="血缘 / 影响 / 回归" Style="{StaticResource SectionTitle}"/>
-                <TextBlock Text="基于本地 AnalysisResult 展示数据血缘、影响分析与回归结果。"
-                           Style="{StaticResource SectionHint}"/>
-            </StackPanel>
-            <WrapPanel Grid.Row="1" Margin="0,0,0,12" HorizontalAlignment="Left">
-                <ui:Button Content="数据血缘" Click="ShowLineage_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="影响分析" Click="ShowImpact_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="Schema Impact" Click="ShowSchemaImpact_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="回归分析" Click="ShowRegression_Click" Margin="0,0,0,8"/>
-            </WrapPanel>
-            <TextBox Grid.Row="2"
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <DockPanel>
+                    <WrapPanel DockPanel.Dock="Right">
+                        <ui:Button Content="{DynamicResource Str.Insights.Lineage}" Click="ShowLineage_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.Impact}" Click="ShowImpact_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.SchemaImpact}" Click="ShowSchemaImpact_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.Regression}" Click="ShowRegression_Click" Height="26" Padding="10,0" FontSize="12"/>
+                    </WrapPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.Insights}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Insights.Hint}" Style="{StaticResource SectionHint}"/>
+                </DockPanel>
+            </Border>
+            <TextBox Grid.Row="1"
                      x:Name="ResultTextBox"
-                     IsReadOnly="True"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
+                     Style="{StaticResource TerminalTextBox}"
                      VerticalAlignment="Stretch"
-                     FontFamily="Cascadia Mono, Consolas"
-                     FontSize="12"
-                     Padding="14"
-                     Background="{DynamicResource Brush.ConsoleBg}"
-                     Foreground="{DynamicResource Brush.ConsoleFg}"
-                     Text="请选择上方分析维度。&#x0a;&#x0a;当前页面基于本地 AnalysisResult 展示分析结果。"/>
+                     Text="{DynamicResource Str.Insights.Placeholder}"/>
         </Grid>
     </Border>
 </UserControl>

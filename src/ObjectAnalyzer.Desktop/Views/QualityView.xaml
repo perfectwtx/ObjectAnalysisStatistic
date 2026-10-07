@@ -9,7 +9,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <ui:Card Margin="0,0,0,12" Padding="10">
+        <Border Style="{StaticResource HudPanel}" Margin="0,0,0,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -18,11 +18,10 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Margin="0,0,0,12">
-                    <TextBlock Text="质量基线" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="按数据源保存最低质量阈值，并可立即评估当前分析结果。"
-                               Style="{StaticResource SectionHint}"/>
-                </StackPanel>
+                <DockPanel Margin="0,0,0,8">
+                    <TextBlock Text="{DynamicResource Str.Quality.Baseline}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Quality.BaselineHint}" Style="{StaticResource SectionHint}"/>
+                </DockPanel>
 
                 <Grid Grid.Row="1" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
@@ -36,63 +35,60 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                        <TextBlock Text="数据源" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding BaselineSourceName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Quality.Source}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding BaselineSourceName, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                        <TextBlock Text="总分" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Col.Overall}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                        <TextBlock Text="完整性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumCompleteness, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Col.Completeness}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumCompleteness, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="3" Margin="0,0,8,0">
-                        <TextBlock Text="有效性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumValidity, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Col.Validity}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumValidity, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="4" Margin="0,0,8,0">
-                        <TextBlock Text="唯一性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumUniqueness, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Col.Uniqueness}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumUniqueness, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="5" Margin="0,0,8,0">
-                        <TextBlock Text="一致性" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumConsistency, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Col.Consistency}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumConsistency, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="6">
-                        <TextBlock Text="异常控制" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Text="{Binding MinimumAnomalyControl, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="{DynamicResource Str.Quality.Anomaly}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumAnomalyControl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                 </Grid>
 
-                <WrapPanel Grid.Row="2" Margin="0,4,0,0">
-                    <ui:Button Content="读取基线" Click="LoadBaseline_Click" Margin="0,0,8,0"/>
-                    <ui:Button Content="保存基线" Click="SaveBaseline_Click" Margin="0,0,8,0"/>
-                    <ui:Button Content="删除基线" Appearance="Danger" Click="DeleteBaseline_Click" Margin="0,0,8,0"/>
-                    <ui:Button Content="评估当前结果" Appearance="Primary" Click="EvaluateBaseline_Click"/>
+                <WrapPanel Grid.Row="2">
+                    <ui:Button Content="{DynamicResource Str.Quality.Load}" Click="LoadBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Save}" Click="SaveBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Delete}" Appearance="Danger" Click="DeleteBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Evaluate}" Appearance="Primary" Click="EvaluateBaseline_Click" Height="28" Padding="10,0" FontSize="12"/>
                 </WrapPanel>
 
                 <TextBox Grid.Row="3"
                          x:Name="EvaluationTextBox"
-                         Margin="0,12,0,0"
-                         MinHeight="88"
-                         IsReadOnly="True"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto"
-                         FontFamily="Cascadia Mono, Consolas"
-                         Foreground="{DynamicResource Brush.TextLabel}"
-                         Text="评估结果会显示在这里。"/>
+                         Margin="0,8,0,0"
+                         MinHeight="72"
+                         Style="{StaticResource TerminalTextBox}"
+                         Text="{DynamicResource Str.Quality.EvalPlaceholder}"/>
             </Grid>
-        </ui:Card>
+        </Border>
 
-        <ui:Card Grid.Row="1" Padding="10">
+        <Border Grid.Row="1" Style="{StaticResource ToolPage}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="质量趋势" Style="{StaticResource SectionTitle}" Margin="0,0,0,10"/>
+                <Border Style="{StaticResource ToolPageHeaderBar}">
+                    <TextBlock Text="{DynamicResource Str.Quality.Trend}" Style="{StaticResource SectionTitle}"/>
+                </Border>
 
                 <DataGrid Grid.Row="1"
                           AutoGenerateColumns="False"
@@ -101,25 +97,24 @@
                           ItemsSource="{Binding QualityTrend}"
                           Visibility="{Binding HasQualityTrend, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" Width="150"/>
-                        <DataGridTextColumn Header="数据源" Binding="{Binding SourceName}" Width="220"/>
-                        <DataGridTextColumn Header="总分" Binding="{Binding OverallText}" Width="80"/>
-                        <DataGridTextColumn Header="完整性" Binding="{Binding CompletenessText}" Width="80"/>
-                        <DataGridTextColumn Header="有效性" Binding="{Binding ValidityText}" Width="80"/>
-                        <DataGridTextColumn Header="唯一性" Binding="{Binding UniquenessText}" Width="80"/>
-                        <DataGridTextColumn Header="一致性" Binding="{Binding ConsistencyText}" Width="80"/>
-                        <DataGridTextColumn Header="异常控制" Binding="{Binding AnomalyControlText}" Width="90"/>
-                        <DataGridTextColumn Header="对象数" Binding="{Binding TotalObjects}" Width="90"/>
-                        <DataGridTextColumn Header="问题数" Binding="{Binding IssueCount}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Time}" Binding="{Binding TimeText}" Width="150"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Source}" Binding="{Binding SourceName}" Width="220"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Overall}" Binding="{Binding OverallText}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Completeness}" Binding="{Binding CompletenessText}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Validity}" Binding="{Binding ValidityText}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Uniqueness}" Binding="{Binding UniquenessText}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Consistency}" Binding="{Binding ConsistencyText}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Anomaly}" Binding="{Binding AnomalyControlText}" Width="90"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Metric.Objects}" Binding="{Binding TotalObjects}" Width="90"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.IssueCount}" Binding="{Binding IssueCount}" Width="80"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
                 <views:EmptyStateView Grid.Row="1"
-                                      Glyph="◎"
-                                      Title="暂无质量趋势"
-                                      Hint="完成并保存分析作业后，质量快照会在此形成趋势记录。"
+                                      Title="{DynamicResource Str.Empty.NoTrend.Title}"
+                                      Hint="{DynamicResource Str.Empty.NoTrend.Hint}"
                                       Visibility="{Binding HasQualityTrend, Converter={StaticResource InverseBoolToVis}}"/>
             </Grid>
-        </ui:Card>
+        </Border>
     </Grid>
 </UserControl>

@@ -4,7 +4,7 @@
 .oa-global-shell{
     min-height:100vh;
     display:grid;
-    grid-template-columns:248px minmax(0,1fr);
+    grid-template-columns:196px minmax(0,1fr);
     background:var(--oa-bg);
 }
 .oa-global-sidebar{
@@ -24,14 +24,14 @@
     width:min(1680px,100%);
     min-height:100vh;
     margin:0 auto;
-    padding:28px 32px 48px;
+    padding:16px 18px 28px;
 }
 
 .oa-sidebar{
     position:relative;
     display:flex;
     flex-direction:column;
-    width:248px;
+    width:196px;
     height:100vh;
     overflow:hidden;
     background:color-mix(in srgb,var(--oa-surface) 96%,var(--oa-bg));
@@ -41,8 +41,8 @@
 .oa-sidebar__brand{
     display:flex;
     align-items:center;
-    min-height:72px;
-    padding:0 18px;
+    min-height:48px;
+    padding:0 12px;
     border-bottom:1px solid var(--oa-border);
     flex:0 0 auto;
 }
@@ -57,9 +57,9 @@
 .oa-sidebar__logo{
     display:grid;
     place-items:center;
-    width:36px;
-    height:36px;
-    flex:0 0 36px;
+    width:28px;
+    height:28px;
+    flex:0 0 28px;
     border:1px solid var(--oa-accent-border);
     border-radius:var(--oa-radius-md);
     background:linear-gradient(145deg,var(--oa-accent-soft),var(--oa-surface));
@@ -69,8 +69,8 @@
 .oa-sidebar__brand-copy{display:flex;flex-direction:column;min-width:0}
 .oa-sidebar__brand-copy strong{font-size:.94rem;letter-spacing:-.02em}
 .oa-sidebar__brand-copy small{margin-top:2px;color:var(--oa-text-3);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase}
-.oa-sidebar__scroll{flex:1;overflow-y:auto;padding:18px 12px 14px}
-.oa-sidebar__section{margin-bottom:20px}
+.oa-sidebar__scroll{flex:1;overflow-y:auto;padding:10px 8px 12px}
+.oa-sidebar__section{margin-bottom:14px}
 .oa-sidebar__section-label{
     padding:0 10px 7px;
     color:var(--oa-text-3);
@@ -84,9 +84,9 @@
     display:flex;
     align-items:center;
     gap:10px;
-    min-height:39px;
-    margin:2px 0;
-    padding:0 10px;
+    min-height:32px;
+    margin:1px 0;
+    padding:0 8px;
     border:1px solid transparent;
     border-radius:var(--oa-radius-sm);
     color:var(--oa-text-2);
@@ -220,7 +220,7 @@ body:has(.app-shell) .oa-global-content{padding:0;max-width:none}
     padding-inline:var(--oa-page-gutter);
 }
 .oa-sidebar{
-    width:248px;
+    width:196px;
 }
 .oa-sidebar__link{
     min-height:var(--oa-control-height);

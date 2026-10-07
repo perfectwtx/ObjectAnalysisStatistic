@@ -10,10 +10,10 @@
         "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
     --oa-font-mono: ui-monospace, "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
 
-    --oa-accent: #4f46e5;
-    --oa-accent-strong: #4338ca;
-    --oa-accent-soft: #eef2ff;
-    --oa-accent-border: #c7d2fe;
+    --oa-accent: #2f5f9e;
+    --oa-accent-strong: #244a7c;
+    --oa-accent-soft: #e8eef7;
+    --oa-accent-border: #c5d4ea;
     --oa-on-accent: #ffffff;
 
     --oa-bg: #f5f6fa;
@@ -45,25 +45,25 @@
     --oa-warning-bg: var(--oa-warning-soft);
     --oa-danger-bg: var(--oa-danger-soft);
 
-    --oa-radius-sm: 8px;
-    --oa-radius-md: 12px;
-    --oa-radius-lg: 16px;
-    --oa-radius-xl: 20px;
+    --oa-radius-sm: 2px;
+    --oa-radius-md: 4px;
+    --oa-radius-lg: 6px;
+    --oa-radius-xl: 8px;
 
-    --oa-shadow-sm: 0 1px 2px rgba(23, 30, 46, 0.05);
-    --oa-shadow-md: 0 2px 6px rgba(23, 30, 46, 0.06), 0 12px 28px -18px rgba(23, 30, 46, 0.18);
-    --oa-shadow-lg: 0 4px 10px rgba(23, 30, 46, 0.07), 0 24px 48px -24px rgba(23, 30, 46, 0.25);
-    --oa-ring: 0 0 0 3px rgba(79, 70, 229, 0.22);
+    --oa-shadow-sm: 0 1px 0 rgba(23, 30, 46, 0.05);
+    --oa-shadow-md: 0 1px 2px rgba(23, 30, 46, 0.07);
+    --oa-shadow-lg: 0 2px 8px rgba(23, 30, 46, 0.08);
+    --oa-ring: 0 0 0 2px rgba(47, 95, 158, 0.22);
 
     --oa-header-bg: rgba(255, 255, 255, 0.82);
     --oa-grid-line: #eceef4;
 }
 
 [data-bs-theme="dark"] {
-    --oa-accent: #38bdf8;
-    --oa-accent-strong: #7dd3fc;
-    --oa-accent-soft: rgba(56, 189, 248, 0.13);
-    --oa-accent-border: rgba(56, 189, 248, 0.35);
+    --oa-accent: #6b9dff;
+    --oa-accent-strong: #8bb3ff;
+    --oa-accent-soft: rgba(107, 157, 255, 0.13);
+    --oa-accent-border: rgba(107, 157, 255, 0.35);
     --oa-on-accent: #06121f;
 
     --oa-bg: #0f1420;
@@ -97,7 +97,7 @@
     --oa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --oa-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 28px -18px rgba(0, 0, 0, 0.55);
     --oa-shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.45), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
-    --oa-ring: 0 0 0 3px rgba(129, 140, 248, 0.35);
+    --oa-ring: 0 0 0 2px rgba(107, 157, 255, 0.35);
 
     --oa-header-bg: rgba(15, 20, 32, 0.82);
     --oa-grid-line: #232c42;
@@ -114,8 +114,8 @@ html {
 
 body {
     background:
-        radial-gradient(1200px 400px at 80% -10%, rgba(79, 70, 229, 0.06), transparent 60%),
-        radial-gradient(900px 380px at -10% 0%, rgba(2, 132, 199, 0.05), transparent 55%),
+        radial-gradient(1200px 400px at 80% -10%, rgba(47, 95, 158, 0.06), transparent 60%),
+        radial-gradient(900px 380px at -10% 0%, rgba(47, 95, 158, 0.04), transparent 55%),
         var(--oa-bg);
     color: var(--oa-text-1);
     -webkit-font-smoothing: antialiased;
@@ -127,7 +127,7 @@ h1:focus {
 }
 
 ::selection {
-    background: rgba(79, 70, 229, 0.22);
+    background: rgba(47, 95, 158, 0.22);
 }
 
 * {
@@ -1973,7 +1973,7 @@ a, .btn-link {
 }
 
 .p3-section {
-    border-top: 3px solid #6366f1;
+    border-top: 3px solid var(--oa-accent);
 }
 
 .deep-section {
@@ -1986,11 +1986,11 @@ a, .btn-link {
 }
 
 .p3-header h2 {
-    color: #4f46e5;
+    color: var(--oa-accent);
 }
 
 [data-bs-theme="dark"] .p3-header h2 {
-    color: #a5b4fc;
+    color: var(--oa-accent);
 }
 
 .p3-hint,
@@ -2056,13 +2056,13 @@ a, .btn-link {
 .p3-stat-num {
     font-size: 1.4rem;
     font-weight: 750;
-    color: #4f46e5;
+    color: var(--oa-accent);
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
 
 [data-bs-theme="dark"] .p3-stat-num {
-    color: #a5b4fc;
+    color: var(--oa-accent);
 }
 
 .deep-stat-num {

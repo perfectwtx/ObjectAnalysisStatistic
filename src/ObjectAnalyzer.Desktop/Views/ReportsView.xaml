@@ -5,11 +5,7 @@
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
@@ -19,21 +15,24 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <DockPanel Margin="0,0,0,12">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <ui:Button Content="导出 CSV" Click="ExportCsv_Click" Margin="0,0,8,0"/>
-                    <ui:Button Content="打开位置" Click="OpenReport_Click" Margin="0,0,8,0"/>
-                    <ui:Button Content="刷新" Click="RefreshReports_Click">
-                        <ui:Button.Icon>
-                            <ui:SymbolIcon Symbol="ArrowSync24"/>
-                        </ui:Button.Icon>
-                    </ui:Button>
-                </StackPanel>
-                <StackPanel HorizontalAlignment="Left">
-                    <TextBlock Text="报告" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="本地生成的分析报告。双击 JSON 可回读到工作台。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
-                </StackPanel>
-            </DockPanel>
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <ui:Button Content="{DynamicResource Str.Reports.ExportCsv}" Click="ExportCsv_Click"
+                                   Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                        <ui:Button Content="{DynamicResource Str.Reports.OpenLocation}" Click="OpenReport_Click"
+                                   Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                        <ui:Button Content="{DynamicResource Str.Reports.Refresh}" Click="RefreshReports_Click"
+                                   Height="26" Padding="10,0" FontSize="12">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="ArrowSync24"/>
+                            </ui:Button.Icon>
+                        </ui:Button>
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.Reports}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Reports.Hint}" Style="{StaticResource SectionHint}"/>
+                </DockPanel>
+            </Border>
 
             <DataGrid Grid.Row="1"
                       x:Name="ReportHistoryList"
@@ -46,27 +45,29 @@
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="2*"/>
-                    <DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="3*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Name}" Binding="{Binding Name}" Width="2*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Path}" Binding="{Binding Path}" Width="3*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
-                                  Glyph="📄"
-                                  Title="还没有报告"
-                                  Hint="分析完成后会自动生成报告，可在此重新加载或导出字段 CSV。"
+                                  Title="{DynamicResource Str.Empty.NoReports.Title}"
+                                  Hint="{DynamicResource Str.Empty.NoReports.Hint}"
                                   Visibility="{Binding HasReports, Converter={StaticResource InverseBoolToVis}}"/>
 
-            <TextBlock Grid.Row="2"
-                       x:Name="ReportDetailsTextBlock"
-                       Text="选择报告查看详情。"
-                       Foreground="{DynamicResource Brush.TextSecondary}"
-                       TextWrapping="Wrap"
-                       Margin="2,12,2,0"
-                       FontSize="12"
-                       Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}"/>
+            <Border Grid.Row="2"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderThickness="0,1,0,0"
+                    Padding="10,6"
+                    Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}">
+                <TextBlock x:Name="ReportDetailsTextBlock"
+                           Text="{DynamicResource Str.Reports.Details}"
+                           Foreground="{DynamicResource Brush.TextSecondary}"
+                           TextWrapping="Wrap"
+                           FontSize="12"/>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

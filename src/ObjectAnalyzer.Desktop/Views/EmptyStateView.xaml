@@ -5,23 +5,12 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Top">
     <Border Background="Transparent"
-            Padding="4,8,4,8"
+            Padding="12,10"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top">
         <StackPanel HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     MaxWidth="560">
-            <Border Width="28" Height="28"
-                    CornerRadius="2"
-                    Background="{DynamicResource Brush.HeaderBg}"
-                    HorizontalAlignment="Left"
-                    Margin="0,0,0,8">
-                <TextBlock Text="{Binding Glyph, ElementName=Root}"
-                           FontSize="13"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource Brush.Primary}"/>
-            </Border>
             <TextBlock Text="{Binding Title, ElementName=Root}"
                        FontSize="13"
                        FontWeight="SemiBold"
@@ -30,11 +19,11 @@
                        Foreground="{DynamicResource Brush.TextPrimary}"/>
             <TextBlock Text="{Binding Hint, ElementName=Root}"
                        FontSize="12"
-                       Margin="0,4,0,0"
+                       Margin="0,2,0,0"
                        HorizontalAlignment="Left"
                        TextAlignment="Left"
                        TextWrapping="Wrap"
-                       Foreground="{DynamicResource Brush.TextSecondary}"/>
+                       Foreground="{DynamicResource Brush.TextMuted}"/>
         </StackPanel>
     </Border>
 </UserControl>

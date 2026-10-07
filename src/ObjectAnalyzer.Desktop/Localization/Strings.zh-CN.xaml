@@ -99,4 +99,106 @@
     <sys:String x:Key="Str.Dialog.NeedExistingFile">请选择一个存在的数据文件。</sys:String>
     <sys:String x:Key="Str.Dialog.CannotStart">无法开始分析</sys:String>
 
+    <sys:String x:Key="Str.Metric.Objects">对象数</sys:String>
+    <sys:String x:Key="Str.Metric.Fields">字段数</sys:String>
+    <sys:String x:Key="Str.Metric.DuplicateGroups">重复组</sys:String>
+    <sys:String x:Key="Str.Metric.Issues">质量问题</sys:String>
+    <sys:String x:Key="Str.Overview.Fields">字段</sys:String>
+    <sys:String x:Key="Str.Filter.Tooltip">按字段名 / 类型 / 语义过滤</sys:String>
+
+    <sys:String x:Key="Str.Col.Field">字段</sys:String>
+    <sys:String x:Key="Str.Col.Type">类型</sys:String>
+    <sys:String x:Key="Str.Col.Coverage">覆盖率</sys:String>
+    <sys:String x:Key="Str.Col.NonNull">非空</sys:String>
+    <sys:String x:Key="Str.Col.Null">空值</sys:String>
+    <sys:String x:Key="Str.Col.Distinct">唯一值</sys:String>
+    <sys:String x:Key="Str.Col.Value">取值</sys:String>
+    <sys:String x:Key="Str.Col.Count">次数</sys:String>
+    <sys:String x:Key="Str.Col.Share">占比(相对非空)</sys:String>
+    <sys:String x:Key="Str.Col.Key">对象哈希/摘要</sys:String>
+    <sys:String x:Key="Str.Col.DupCount">重复次数</sys:String>
+    <sys:String x:Key="Str.Col.Rule">规则</sys:String>
+    <sys:String x:Key="Str.Col.Message">说明</sys:String>
+    <sys:String x:Key="Str.Col.Time">时间</sys:String>
+    <sys:String x:Key="Str.Col.Source">数据源</sys:String>
+    <sys:String x:Key="Str.Col.Overall">总分</sys:String>
+    <sys:String x:Key="Str.Col.Completeness">完整性</sys:String>
+    <sys:String x:Key="Str.Col.Validity">有效性</sys:String>
+    <sys:String x:Key="Str.Col.Uniqueness">唯一性</sys:String>
+    <sys:String x:Key="Str.Col.Consistency">一致性</sys:String>
+    <sys:String x:Key="Str.Col.Anomaly">异常控制</sys:String>
+    <sys:String x:Key="Str.Col.Started">开始时间</sys:String>
+    <sys:String x:Key="Str.Col.SourceType">类型</sys:String>
+    <sys:String x:Key="Str.Col.Status">状态</sys:String>
+    <sys:String x:Key="Str.Col.QualityScore">质量分</sys:String>
+    <sys:String x:Key="Str.Col.Duration">耗时</sys:String>
+    <sys:String x:Key="Str.Col.Error">错误</sys:String>
+    <sys:String x:Key="Str.Col.Name">名称</sys:String>
+    <sys:String x:Key="Str.Col.Path">路径</sys:String>
+    <sys:String x:Key="Str.Col.IssueCount">问题数</sys:String>
+
+    <sys:String x:Key="Str.Empty.NoFields.Title">没有匹配的字段</sys:String>
+    <sys:String x:Key="Str.Empty.NoFields.Hint">调整过滤条件，或先完成一次分析。</sys:String>
+    <sys:String x:Key="Str.Empty.NoSchema.Title">没有匹配的 Schema 字段</sys:String>
+    <sys:String x:Key="Str.Empty.NoSchema.Hint">调整过滤条件，或完成分析后再查看。</sys:String>
+    <sys:String x:Key="Str.Empty.NoDuplicates.Title">未发现重复对象</sys:String>
+    <sys:String x:Key="Str.Empty.NoDuplicates.Hint">分析完成后若存在重复组，将在此列出。</sys:String>
+    <sys:String x:Key="Str.Empty.NoOutput.Title">等待分析日志</sys:String>
+    <sys:String x:Key="Str.Empty.NoOutput.Hint">开始分析后，管线日志会实时出现在这里。</sys:String>
+    <sys:String x:Key="Str.Empty.NoIssues.Title">暂无质量问题</sys:String>
+    <sys:String x:Key="Str.Empty.NoIssues.Hint">当前结果没有质量违规。</sys:String>
+    <sys:String x:Key="Str.Empty.NoTrend.Title">暂无质量趋势</sys:String>
+    <sys:String x:Key="Str.Empty.NoTrend.Hint">保存分析作业后，质量快照会在此列出。</sys:String>
+    <sys:String x:Key="Str.Empty.NoJobs.Title">还没有作业记录</sys:String>
+    <sys:String x:Key="Str.Empty.NoJobs.Hint">完成本地分析后，作业会出现在这里。</sys:String>
+    <sys:String x:Key="Str.Empty.NoReports.Title">还没有报告</sys:String>
+    <sys:String x:Key="Str.Empty.NoReports.Hint">分析完成后会生成报告，可在此重新加载或导出 CSV。</sys:String>
+
+    <sys:String x:Key="Str.Output.Title">pipeline · stdout</sys:String>
+    <sys:String x:Key="Str.Deep.Hint">选择分析维度。未启用的项会显示「未生成」。</sys:String>
+    <sys:String x:Key="Str.Deep.Placeholder">选择上方分析维度。&#x0a;&#x0a;未启用的深度分析会显示「未生成」。</sys:String>
+    <sys:String x:Key="Str.Deep.Correlation">相关性</sys:String>
+    <sys:String x:Key="Str.Deep.Fuzzy">模糊去重</sys:String>
+    <sys:String x:Key="Str.Deep.Patterns">字符串模式</sys:String>
+    <sys:String x:Key="Str.Deep.Unicode">Unicode</sys:String>
+    <sys:String x:Key="Str.Deep.TimeSeries">时间序列</sys:String>
+    <sys:String x:Key="Str.Deep.Distribution">分布漂移</sys:String>
+    <sys:String x:Key="Str.Deep.Sampling">采样置信度</sys:String>
+    <sys:String x:Key="Str.Insights.Hint">基于本地分析结果的血缘、影响与回归。</sys:String>
+    <sys:String x:Key="Str.Insights.Placeholder">选择上方分析维度。</sys:String>
+    <sys:String x:Key="Str.Insights.Lineage">数据血缘</sys:String>
+    <sys:String x:Key="Str.Insights.Impact">影响分析</sys:String>
+    <sys:String x:Key="Str.Insights.SchemaImpact">Schema Impact</sys:String>
+    <sys:String x:Key="Str.Insights.Regression">回归分析</sys:String>
+
+    <sys:String x:Key="Str.Quality.Baseline">质量基线</sys:String>
+    <sys:String x:Key="Str.Quality.BaselineHint">按数据源保存最低质量阈值，并可评估当前结果。</sys:String>
+    <sys:String x:Key="Str.Quality.Trend">质量趋势</sys:String>
+    <sys:String x:Key="Str.Quality.Load">读取基线</sys:String>
+    <sys:String x:Key="Str.Quality.Save">保存基线</sys:String>
+    <sys:String x:Key="Str.Quality.Delete">删除基线</sys:String>
+    <sys:String x:Key="Str.Quality.Evaluate">评估当前结果</sys:String>
+    <sys:String x:Key="Str.Quality.EvalPlaceholder">评估结果会显示在这里。</sys:String>
+    <sys:String x:Key="Str.Quality.Source">数据源</sys:String>
+    <sys:String x:Key="Str.Quality.Anomaly">异常控制</sys:String>
+
+    <sys:String x:Key="Str.Jobs.Hint">双击作业查看详细信息。</sys:String>
+    <sys:String x:Key="Str.Jobs.Refresh">刷新</sys:String>
+    <sys:String x:Key="Str.Jobs.Details">双击作业查看详细信息。</sys:String>
+    <sys:String x:Key="Str.Reports.Hint">双击 JSON 可回读到工作台。</sys:String>
+    <sys:String x:Key="Str.Reports.ExportCsv">导出 CSV</sys:String>
+    <sys:String x:Key="Str.Reports.OpenLocation">打开位置</sys:String>
+    <sys:String x:Key="Str.Reports.Refresh">刷新</sys:String>
+    <sys:String x:Key="Str.Reports.Details">选择报告查看详情。</sys:String>
+
+    <sys:String x:Key="Str.Detail.Title">字段取值详情</sys:String>
+    <sys:String x:Key="Str.Detail.CopyAll">复制全部</sys:String>
+    <sys:String x:Key="Str.Detail.ExportCsv">导出 CSV</sys:String>
+    <sys:String x:Key="Str.Detail.Close">关闭</sys:String>
+
+    <sys:String x:Key="Str.Settings.Title">设置</sys:String>
+    <sys:String x:Key="Str.Settings.Subtitle">语言、主题与显示偏好</sys:String>
+    <sys:String x:Key="Str.Settings.Language">界面语言</sys:String>
+    <sys:String x:Key="Str.Settings.Theme">主题外观</sys:String>
+
 </ResourceDictionary>

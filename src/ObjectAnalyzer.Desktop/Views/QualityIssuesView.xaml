@@ -4,11 +4,7 @@
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
@@ -16,10 +12,9 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel Margin="0,0,0,12" HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock Text="问题中心" Style="{StaticResource SectionTitle}"/>
-                <TextBlock Text="聚合当前分析结果中的质量违规项。" Style="{StaticResource SectionHint}"/>
-            </StackPanel>
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <TextBlock Text="{DynamicResource Str.Tab.Issues}" Style="{StaticResource SectionTitle}"/>
+            </Border>
 
             <DataGrid Grid.Row="1"
                       AutoGenerateColumns="False"
@@ -29,19 +24,18 @@
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasIssues, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="字段" Binding="{Binding FieldName}" Width="220"/>
-                    <DataGridTextColumn Header="规则" Binding="{Binding Check}" Width="150"/>
-                    <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="90"/>
-                    <DataGridTextColumn Header="说明" Binding="{Binding Message}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="220"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Rule}" Binding="{Binding Check}" Width="150"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count}" Width="90"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Message}" Binding="{Binding Message}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
-                                  Glyph="✓"
-                                  Title="暂无质量问题"
-                                  Hint="当前结果没有检测到质量违规；完成分析后，违规项会在此列出。"
+                                  Title="{DynamicResource Str.Empty.NoIssues.Title}"
+                                  Hint="{DynamicResource Str.Empty.NoIssues.Hint}"
                                   Visibility="{Binding HasIssues, Converter={StaticResource InverseBoolToVis}}"/>
         </Grid>
     </Border>

@@ -5,11 +5,7 @@
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
@@ -19,19 +15,22 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <DockPanel Margin="0,0,0,12">
-                <ui:Button DockPanel.Dock="Right"
-                           Content="刷新作业"
-                           Click="RefreshJobs_Click">
-                    <ui:Button.Icon>
-                        <ui:SymbolIcon Symbol="ArrowSync24"/>
-                    </ui:Button.Icon>
-                </ui:Button>
-                <StackPanel HorizontalAlignment="Left">
-                    <TextBlock Text="作业历史" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="双击作业可查看详细信息。" Style="{StaticResource SectionHint}" Margin="0,4,0,0"/>
-                </StackPanel>
-            </DockPanel>
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <DockPanel>
+                    <ui:Button DockPanel.Dock="Right"
+                               Content="{DynamicResource Str.Jobs.Refresh}"
+                               Click="RefreshJobs_Click"
+                               Height="26"
+                               Padding="10,0"
+                               FontSize="12">
+                        <ui:Button.Icon>
+                            <ui:SymbolIcon Symbol="ArrowSync24"/>
+                        </ui:Button.Icon>
+                    </ui:Button>
+                    <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.Jobs}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Jobs.Hint}" Style="{StaticResource SectionHint}"/>
+                </DockPanel>
+            </Border>
 
             <DataGrid Grid.Row="1"
                       x:Name="JobGrid"
@@ -43,35 +42,37 @@
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="开始时间" Binding="{Binding StartedText}" Width="150"/>
-                    <DataGridTextColumn Header="数据源" Binding="{Binding SourceName}" Width="230"/>
-                    <DataGridTextColumn Header="类型" Binding="{Binding SourceType}" Width="80"/>
-                    <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="80"/>
-                    <DataGridTextColumn Header="对象数" Binding="{Binding TotalObjects}" Width="90"/>
-                    <DataGridTextColumn Header="字段数" Binding="{Binding FieldCount}" Width="80"/>
-                    <DataGridTextColumn Header="质量分" Binding="{Binding QualityScoreText}" Width="80"/>
-                    <DataGridTextColumn Header="问题数" Binding="{Binding IssueCount}" Width="80"/>
-                    <DataGridTextColumn Header="耗时" Binding="{Binding DurationText}" Width="100"/>
-                    <DataGridTextColumn Header="错误" Binding="{Binding ErrorMessage}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Started}" Binding="{Binding StartedText}" Width="150"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Source}" Binding="{Binding SourceName}" Width="230"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.SourceType}" Binding="{Binding SourceType}" Width="80"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Status}" Binding="{Binding StatusText}" Width="80"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Metric.Objects}" Binding="{Binding TotalObjects}" Width="90"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Metric.Fields}" Binding="{Binding FieldCount}" Width="80"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.QualityScore}" Binding="{Binding QualityScoreText}" Width="80"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.IssueCount}" Binding="{Binding IssueCount}" Width="80"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Duration}" Binding="{Binding DurationText}" Width="100"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Error}" Binding="{Binding ErrorMessage}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
-                                  Glyph="◷"
-                                  Title="还没有作业记录"
-                                  Hint="本地完成的分析作业会出现在这里，便于回顾状态、耗时与质量分。"
+                                  Title="{DynamicResource Str.Empty.NoJobs.Title}"
+                                  Hint="{DynamicResource Str.Empty.NoJobs.Hint}"
                                   Visibility="{Binding HasJobs, Converter={StaticResource InverseBoolToVis}}"/>
 
-            <TextBlock Grid.Row="2"
-                       x:Name="JobDetailsTextBlock"
-                       Text="双击作业查看详细信息。"
-                       Foreground="{DynamicResource Brush.TextSecondary}"
-                       TextWrapping="Wrap"
-                       Margin="2,12,2,0"
-                       FontSize="12"
-                       Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}"/>
+            <Border Grid.Row="2"
+                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                    BorderThickness="0,1,0,0"
+                    Padding="10,6"
+                    Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}">
+                <TextBlock x:Name="JobDetailsTextBlock"
+                           Text="{DynamicResource Str.Jobs.Details}"
+                           Foreground="{DynamicResource Brush.TextSecondary}"
+                           TextWrapping="Wrap"
+                           FontSize="12"/>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

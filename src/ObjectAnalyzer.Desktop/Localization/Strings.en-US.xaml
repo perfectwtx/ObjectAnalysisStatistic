@@ -99,4 +99,106 @@
     <sys:String x:Key="Str.Dialog.NeedExistingFile">Please select an existing data file.</sys:String>
     <sys:String x:Key="Str.Dialog.CannotStart">Cannot start analysis</sys:String>
 
+    <sys:String x:Key="Str.Metric.Objects">Objects</sys:String>
+    <sys:String x:Key="Str.Metric.Fields">Fields</sys:String>
+    <sys:String x:Key="Str.Metric.DuplicateGroups">Duplicate groups</sys:String>
+    <sys:String x:Key="Str.Metric.Issues">Issues</sys:String>
+    <sys:String x:Key="Str.Overview.Fields">Fields</sys:String>
+    <sys:String x:Key="Str.Filter.Tooltip">Filter by field name, type, or semantic</sys:String>
+
+    <sys:String x:Key="Str.Col.Field">Field</sys:String>
+    <sys:String x:Key="Str.Col.Type">Type</sys:String>
+    <sys:String x:Key="Str.Col.Coverage">Coverage</sys:String>
+    <sys:String x:Key="Str.Col.NonNull">Non-null</sys:String>
+    <sys:String x:Key="Str.Col.Null">Null</sys:String>
+    <sys:String x:Key="Str.Col.Distinct">Distinct</sys:String>
+    <sys:String x:Key="Str.Col.Value">Value</sys:String>
+    <sys:String x:Key="Str.Col.Count">Count</sys:String>
+    <sys:String x:Key="Str.Col.Share">Share (of non-null)</sys:String>
+    <sys:String x:Key="Str.Col.Key">Object hash / summary</sys:String>
+    <sys:String x:Key="Str.Col.DupCount">Duplicates</sys:String>
+    <sys:String x:Key="Str.Col.Rule">Rule</sys:String>
+    <sys:String x:Key="Str.Col.Message">Message</sys:String>
+    <sys:String x:Key="Str.Col.Time">Time</sys:String>
+    <sys:String x:Key="Str.Col.Source">Source</sys:String>
+    <sys:String x:Key="Str.Col.Overall">Overall</sys:String>
+    <sys:String x:Key="Str.Col.Completeness">Completeness</sys:String>
+    <sys:String x:Key="Str.Col.Validity">Validity</sys:String>
+    <sys:String x:Key="Str.Col.Uniqueness">Uniqueness</sys:String>
+    <sys:String x:Key="Str.Col.Consistency">Consistency</sys:String>
+    <sys:String x:Key="Str.Col.Anomaly">Anomaly control</sys:String>
+    <sys:String x:Key="Str.Col.Started">Started</sys:String>
+    <sys:String x:Key="Str.Col.SourceType">Kind</sys:String>
+    <sys:String x:Key="Str.Col.Status">Status</sys:String>
+    <sys:String x:Key="Str.Col.QualityScore">Quality</sys:String>
+    <sys:String x:Key="Str.Col.Duration">Duration</sys:String>
+    <sys:String x:Key="Str.Col.Error">Error</sys:String>
+    <sys:String x:Key="Str.Col.Name">Name</sys:String>
+    <sys:String x:Key="Str.Col.Path">Path</sys:String>
+    <sys:String x:Key="Str.Col.IssueCount">Issues</sys:String>
+
+    <sys:String x:Key="Str.Empty.NoFields.Title">No matching fields</sys:String>
+    <sys:String x:Key="Str.Empty.NoFields.Hint">Adjust the filter, or run an analysis first.</sys:String>
+    <sys:String x:Key="Str.Empty.NoSchema.Title">No matching schema fields</sys:String>
+    <sys:String x:Key="Str.Empty.NoSchema.Hint">Adjust the filter, or run an analysis first.</sys:String>
+    <sys:String x:Key="Str.Empty.NoDuplicates.Title">No duplicate objects</sys:String>
+    <sys:String x:Key="Str.Empty.NoDuplicates.Hint">Duplicate groups will appear here after analysis.</sys:String>
+    <sys:String x:Key="Str.Empty.NoOutput.Title">Waiting for logs</sys:String>
+    <sys:String x:Key="Str.Empty.NoOutput.Hint">Pipeline output appears here after you start analysis.</sys:String>
+    <sys:String x:Key="Str.Empty.NoIssues.Title">No quality issues</sys:String>
+    <sys:String x:Key="Str.Empty.NoIssues.Hint">The current result has no quality violations.</sys:String>
+    <sys:String x:Key="Str.Empty.NoTrend.Title">No quality trend yet</sys:String>
+    <sys:String x:Key="Str.Empty.NoTrend.Hint">Quality snapshots appear here after saved jobs.</sys:String>
+    <sys:String x:Key="Str.Empty.NoJobs.Title">No jobs yet</sys:String>
+    <sys:String x:Key="Str.Empty.NoJobs.Hint">Local analysis jobs will appear here.</sys:String>
+    <sys:String x:Key="Str.Empty.NoReports.Title">No reports yet</sys:String>
+    <sys:String x:Key="Str.Empty.NoReports.Hint">Reports appear here after analysis. Reload JSON or export CSV.</sys:String>
+
+    <sys:String x:Key="Str.Output.Title">pipeline · stdout</sys:String>
+    <sys:String x:Key="Str.Deep.Hint">Pick a dimension. Disabled items show as not generated.</sys:String>
+    <sys:String x:Key="Str.Deep.Placeholder">Pick a dimension above.&#x0a;&#x0a;Disabled deep analysis shows as not generated.</sys:String>
+    <sys:String x:Key="Str.Deep.Correlation">Correlation</sys:String>
+    <sys:String x:Key="Str.Deep.Fuzzy">Fuzzy dedup</sys:String>
+    <sys:String x:Key="Str.Deep.Patterns">String patterns</sys:String>
+    <sys:String x:Key="Str.Deep.Unicode">Unicode</sys:String>
+    <sys:String x:Key="Str.Deep.TimeSeries">Time series</sys:String>
+    <sys:String x:Key="Str.Deep.Distribution">Distribution drift</sys:String>
+    <sys:String x:Key="Str.Deep.Sampling">Sampling confidence</sys:String>
+    <sys:String x:Key="Str.Insights.Hint">Lineage, impact, and regression from the local result.</sys:String>
+    <sys:String x:Key="Str.Insights.Placeholder">Pick a dimension above.</sys:String>
+    <sys:String x:Key="Str.Insights.Lineage">Lineage</sys:String>
+    <sys:String x:Key="Str.Insights.Impact">Impact</sys:String>
+    <sys:String x:Key="Str.Insights.SchemaImpact">Schema impact</sys:String>
+    <sys:String x:Key="Str.Insights.Regression">Regression</sys:String>
+
+    <sys:String x:Key="Str.Quality.Baseline">Quality baseline</sys:String>
+    <sys:String x:Key="Str.Quality.BaselineHint">Store minimum quality thresholds per source and evaluate the current result.</sys:String>
+    <sys:String x:Key="Str.Quality.Trend">Quality trend</sys:String>
+    <sys:String x:Key="Str.Quality.Load">Load</sys:String>
+    <sys:String x:Key="Str.Quality.Save">Save</sys:String>
+    <sys:String x:Key="Str.Quality.Delete">Delete</sys:String>
+    <sys:String x:Key="Str.Quality.Evaluate">Evaluate</sys:String>
+    <sys:String x:Key="Str.Quality.EvalPlaceholder">Evaluation output appears here.</sys:String>
+    <sys:String x:Key="Str.Quality.Source">Source</sys:String>
+    <sys:String x:Key="Str.Quality.Anomaly">Anomaly control</sys:String>
+
+    <sys:String x:Key="Str.Jobs.Hint">Double-click a job for details.</sys:String>
+    <sys:String x:Key="Str.Jobs.Refresh">Refresh</sys:String>
+    <sys:String x:Key="Str.Jobs.Details">Double-click a job for details.</sys:String>
+    <sys:String x:Key="Str.Reports.Hint">Double-click JSON to reload into the workbench.</sys:String>
+    <sys:String x:Key="Str.Reports.ExportCsv">Export CSV</sys:String>
+    <sys:String x:Key="Str.Reports.OpenLocation">Show in Explorer</sys:String>
+    <sys:String x:Key="Str.Reports.Refresh">Refresh</sys:String>
+    <sys:String x:Key="Str.Reports.Details">Select a report for details.</sys:String>
+
+    <sys:String x:Key="Str.Detail.Title">Field values</sys:String>
+    <sys:String x:Key="Str.Detail.CopyAll">Copy all</sys:String>
+    <sys:String x:Key="Str.Detail.ExportCsv">Export CSV</sys:String>
+    <sys:String x:Key="Str.Detail.Close">Close</sys:String>
+
+    <sys:String x:Key="Str.Settings.Title">Settings</sys:String>
+    <sys:String x:Key="Str.Settings.Subtitle">Language, theme, and display</sys:String>
+    <sys:String x:Key="Str.Settings.Language">Language</sys:String>
+    <sys:String x:Key="Str.Settings.Theme">Theme</sys:String>
+
 </ResourceDictionary>

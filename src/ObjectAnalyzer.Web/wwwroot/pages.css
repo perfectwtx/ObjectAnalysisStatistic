@@ -2,18 +2,18 @@
 
 :root {
     --oa-page-max-width: 1440px;
-    --oa-page-gutter: clamp(1rem, 2.4vw, 2.25rem);
-    --oa-page-top: clamp(1.5rem, 3vw, 2.5rem);
-    --oa-page-bottom: 3.5rem;
-    --oa-control-height: 42px;
+    --oa-page-gutter: clamp(0.9rem, 1.6vw, 1.15rem);
+    --oa-page-top: clamp(0.9rem, 1.8vw, 1.25rem);
+    --oa-page-bottom: 2rem;
+    --oa-control-height: 32px;
 }
 
 .page main { min-width: 0; flex: 1; }
 .page main > .content { min-height: 100vh; }
 .page main > .content > .container, .page main > .content > .container-fluid { width: min(100%, var(--oa-page-max-width)); margin-inline: auto; padding-inline: var(--oa-page-gutter); padding-top: var(--oa-page-top) !important; padding-bottom: var(--oa-page-bottom) !important; }
-.page main > .content > .container > .d-flex:first-child, .page main > .content > .container-fluid > .d-flex:first-child { min-height: 76px; margin-bottom: 2rem !important; padding-bottom: 1.35rem; border-bottom: 1px solid var(--oa-border); gap: 1rem; }
-.page main h1 { color: var(--oa-text-1); font-size: clamp(1.55rem, 2vw, 2rem); font-weight: 760; letter-spacing: -.028em; line-height: 1.2; }
-.page main h2 { color: var(--oa-text-1); font-size: 1.3rem; font-weight: 720; letter-spacing: -.018em; }
+.page main > .content > .container > .d-flex:first-child, .page main > .content > .container-fluid > .d-flex:first-child { min-height: 48px; margin-bottom: 1rem !important; padding-bottom: 0.75rem; border-bottom: 1px solid var(--oa-border); gap: 0.75rem; }
+.page main h1 { color: var(--oa-text-1); font-size: clamp(1.2rem, 1.5vw, 1.4rem); font-weight: 650; letter-spacing: -.02em; line-height: 1.25; }
+.page main h2 { color: var(--oa-text-1); font-size: 1.05rem; font-weight: 650; letter-spacing: -.01em; }
 .page main h3, .page main h4, .page main h5 { color: var(--oa-text-1); font-weight: 680; }
 .page main p.text-muted, .page main .text-muted { color: var(--oa-text-2) !important; }
 .page main h1 + p, .page main h2 + p, .page main h3 + p { margin-top: .45rem !important; line-height: 1.55; }
