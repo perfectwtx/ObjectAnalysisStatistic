@@ -70,6 +70,22 @@
     <sys:String x:Key="Str.Analyze.ReportFormat">报告格式</sys:String>
     <sys:String x:Key="Str.Analyze.Cancel">取消</sys:String>
 
+    <sys:String x:Key="Str.Menu.File">文件</sys:String>
+    <sys:String x:Key="Str.Menu.Analyze">分析</sys:String>
+    <sys:String x:Key="Str.Menu.View">查看</sys:String>
+    <sys:String x:Key="Str.Menu.Exit">退出</sys:String>
+    <sys:String x:Key="Str.Analyze.ReportFolder">报告目录</sys:String>
+    <sys:String x:Key="Str.Analyze.Options">分析选项</sys:String>
+    <sys:String x:Key="Str.Analyze.OptionsHint">开启深度分析会增加耗时与内存；默认仅做字段统计与质量检查。</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.Correlation">相关性矩阵</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.StringPatterns">字符串模式</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.Unicode">Unicode 卫生</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.TimeSeries">时间序列</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.Distribution">分布快照</sys:String>
+    <sys:String x:Key="Str.Analyze.FuzzyField">模糊去重字段（可选）</sys:String>
+    <sys:String x:Key="Str.Analyze.FuzzyFieldHint">填写字段名后启用模糊去重，例如 email 或 name</sys:String>
+    <sys:String x:Key="Str.Analyze.SampleReservoir">采样容量 SampleReservoir（0=全量）</sys:String>
+
     <sys:String x:Key="Str.Status.WaitingFile">等待选择文件</sys:String>
     <sys:String x:Key="Str.Status.FileSelected">已选择文件，等待开始分析</sys:String>
     <sys:String x:Key="Str.Status.FileDropped">已通过拖拽选择文件，等待开始分析</sys:String>

@@ -22,8 +22,8 @@
 
   <!-- Materialize Assets/app.ico from GenerateAppIcon.ps1 before compile -->
   <Target Name="GenerateAppIcon" BeforeTargets="BeforeCompile">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Assets\GenerateAppIcon.ps1&quot;"
-          Condition="Exists('$(MSBuildProjectDirectory)\Assets\GenerateAppIcon.ps1') And !Exists('$(MSBuildProjectDirectory)\Assets\app.ico')"
+    <Exec Command='powershell -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\Assets\GenerateAppIcon.ps1"'
+          Condition="'$(OS)' == 'Windows_NT' And Exists('$(MSBuildProjectDirectory)\Assets\GenerateAppIcon.ps1') And !Exists('$(MSBuildProjectDirectory)\Assets\app.ico')"
           IgnoreExitCode="false" />
   </Target>
 

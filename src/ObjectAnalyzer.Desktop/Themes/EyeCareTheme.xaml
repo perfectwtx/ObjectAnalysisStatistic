@@ -22,6 +22,7 @@
     <SolidColorBrush x:Key="Brush.ConsoleBg" Color="#2A2924"/>
     <SolidColorBrush x:Key="Brush.ConsoleFg" Color="#E8E2D0"/>
     <SolidColorBrush x:Key="Brush.InputBg" Color="#F7F3E8"/>
+    <SolidColorBrush x:Key="Brush.AccentGlow" Color="#D4E0C8"/>
 
     <!-- Align common WPF-UI / system brushes so content area follows eye-care -->
     <SolidColorBrush x:Key="ApplicationBackgroundBrush" Color="#E8E4D4"/>

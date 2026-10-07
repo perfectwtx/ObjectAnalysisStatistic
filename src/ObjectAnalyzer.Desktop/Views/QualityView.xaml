@@ -9,7 +9,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <ui:Card Margin="0,0,0,12" Padding="16">
+        <ui:Card Margin="0,0,0,12" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -86,7 +86,7 @@
             </Grid>
         </ui:Card>
 
-        <ui:Card Grid.Row="1" Padding="16">
+        <ui:Card Grid.Row="1" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>

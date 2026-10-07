@@ -70,6 +70,22 @@
     <sys:String x:Key="Str.Analyze.ReportFormat">Report format</sys:String>
     <sys:String x:Key="Str.Analyze.Cancel">Cancel</sys:String>
 
+    <sys:String x:Key="Str.Menu.File">File</sys:String>
+    <sys:String x:Key="Str.Menu.Analyze">Analyze</sys:String>
+    <sys:String x:Key="Str.Menu.View">View</sys:String>
+    <sys:String x:Key="Str.Menu.Exit">Exit</sys:String>
+    <sys:String x:Key="Str.Analyze.ReportFolder">Report folder</sys:String>
+    <sys:String x:Key="Str.Analyze.Options">Options</sys:String>
+    <sys:String x:Key="Str.Analyze.OptionsHint">Deep analysis uses more time and memory. Default is field stats and quality checks only.</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.Correlation">Correlation matrix</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.StringPatterns">String patterns</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.Unicode">Unicode hygiene</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.TimeSeries">Time series</sys:String>
+    <sys:String x:Key="Str.Analyze.Opt.Distribution">Distribution snapshot</sys:String>
+    <sys:String x:Key="Str.Analyze.FuzzyField">Fuzzy dedup field (optional)</sys:String>
+    <sys:String x:Key="Str.Analyze.FuzzyFieldHint">Set a field name to enable fuzzy dedup, e.g. email or name</sys:String>
+    <sys:String x:Key="Str.Analyze.SampleReservoir">SampleReservoir (0 = all)</sys:String>
+
     <sys:String x:Key="Str.Status.WaitingFile">Waiting for a file</sys:String>
     <sys:String x:Key="Str.Status.FileSelected">File selected, ready to analyze</sys:String>
     <sys:String x:Key="Str.Status.FileDropped">File dropped, ready to analyze</sys:String>

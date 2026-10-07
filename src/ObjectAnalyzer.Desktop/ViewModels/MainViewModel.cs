@@ -42,10 +42,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public string InputPath { get => _inputPath; set => Set(ref _inputPath, value); }
+    public string InputPath
+    {
+        get => _inputPath;
+        set
+        {
+            if (Set(ref _inputPath, value))
+                OnPropertyChanged(nameof(DisplayFileName));
+        }
+    }
     public string RulesPath { get => _rulesPath; set => Set(ref _rulesPath, value); }
     public string ReportFormat { get => _reportFormat; set => Set(ref _reportFormat, value); }
     public string Status { get => _status; private set => Set(ref _status, value); }
+    public string DisplayFileName =>
+        string.IsNullOrWhiteSpace(_inputPath) ? "—" : Path.GetFileName(_inputPath);
     public string ReportPath { get => _reportPath; private set => Set(ref _reportPath, value); }
     public int Progress { get => _progress; private set => Set(ref _progress, value); }
     public bool IsBusy { get => _isBusy; private set => Set(ref _isBusy, value); }

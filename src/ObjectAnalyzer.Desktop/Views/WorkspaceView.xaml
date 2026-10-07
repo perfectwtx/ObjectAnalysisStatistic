@@ -7,7 +7,7 @@
             <TextBlock Text="{DynamicResource Str.Tab.Workspace}" Style="{StaticResource PageTitle}"/>
             <TextBlock Text="{DynamicResource Str.Workspace.Subtitle}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,16"/>
 
-            <ui:Card Padding="16" Margin="0,0,0,12">
+            <ui:Card Padding="10" Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Str.Language}" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{DynamicResource Str.Workspace.LanguageHint}" Style="{StaticResource SectionHint}"/>
@@ -22,7 +22,7 @@
                 </StackPanel>
             </ui:Card>
 
-            <ui:Card Padding="16" Margin="0,0,0,12">
+            <ui:Card Padding="10" Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Str.Theme}" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{DynamicResource Str.Workspace.ThemeHint}" Style="{StaticResource SectionHint}"/>
@@ -43,7 +43,7 @@
                 </StackPanel>
             </ui:Card>
 
-            <ui:Card Padding="16" Margin="0,0,0,12">
+            <ui:Card Padding="10" Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Str.Workspace.LocalTitle}" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{DynamicResource Str.Workspace.LocalHint}" Style="{StaticResource SectionHint}"/>
@@ -95,7 +95,7 @@
                 </StackPanel>
             </ui:Card>
 
-            <ui:Card Padding="16">
+            <ui:Card Padding="10">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Str.Workspace.RuntimeTitle}" Style="{StaticResource SectionTitle}"/>
                     <Grid Margin="0,12,0,0">

@@ -7,7 +7,7 @@
             <TextBlock Text="设置" Style="{StaticResource PageTitle}"/>
             <TextBlock Text="语言、主题与显示偏好" Style="{StaticResource PageSubtitle}" Margin="0,0,0,16"/>
 
-            <ui:Card Padding="16" Margin="0,0,0,12">
+            <ui:Card Padding="10" Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="界面语言" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="切换后界面文案立即更新。" Style="{StaticResource SectionHint}"/>
@@ -16,7 +16,7 @@
                 </StackPanel>
             </ui:Card>
 
-            <ui:Card Padding="16">
+            <ui:Card Padding="10">
                 <StackPanel>
                     <TextBlock Text="主题外观" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="支持浅色、深色、跟随系统与护眼模式。" Style="{StaticResource SectionHint}"/>
