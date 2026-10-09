@@ -2,7 +2,7 @@
 
 ObjectAnalyzer Desktop 是基于 WPF + [WPF UI](https://github.com/lepoco/wpfui) 的 Windows 本地分析工作台，直接复用 ObjectAnalyzer.Core，不需要启动 Web 或 API。
 
-界面按专业工具布局组织：标题栏、菜单栏、工具栏、齐平导航、工作区、状态栏。色板为炭灰底 + 钢蓝强调色，圆角与内边距保持紧凑，避免消费级卡片堆叠。
+界面按专业工具布局组织：标题栏、菜单栏、工具栏、齐平导航、工作区、状态栏。色板为近黑底 + 钢蓝强调色，面板圆角 6px，避免消费级卡片堆叠。
 
 ## 本地运行
 
@@ -45,7 +45,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 
 - **WPF UI (lepoco)**：`FluentWindow`、`TitleBar`、Fluent 按钮与控件样式。
 - **工具壳层**：标准菜单 + 工具栏 + 齐平侧栏 + 底部状态栏（进度、当前文件）。
-- **自有主题资源**：`Brush.*` 与护眼色板由 `Themes/*.xaml` 提供，深色/浅色强调色为钢蓝（`#6B9DFF` / `#2F5F9E`），并与 WPF UI 的 `ApplicationThemeManager` 同步。
+- **自有主题资源**：`Brush.*` 与护眼色板由 `Themes/*.xaml` 提供，深色/浅色强调色为钢蓝（`#8EB0FF` / `#2F5F9E`），并与 WPF UI 的 `ApplicationThemeManager` 同步。
 - **本地化**：`Localization/Strings.*.xaml` + `LocalizationService`。
 
 ## 页签分组
@@ -58,7 +58,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 | **质量** | 质量问题、质量基线与趋势 |
 | **历史** | 作业中心、报告、工作区 |
 
-无数据时，列表类页面会显示空状态说明，而不是空白表格。
+无数据时，列表类页面会显示空状态说明，而不是空白表格。结果页使用齐平工具表：顶栏标题/过滤/操作，下方表格贴边，不再用圆角卡片堆叠。
 
 ## 语言
 
@@ -67,9 +67,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 - **中文**（默认）
 - **English**
 
-切换后主界面标题、按钮、页签等会立即切换，并写入 `ui-settings.json`。
-
-> 说明：部分子页面内的固定文案仍可能以中文为主，后续可继续补全字符串资源。
+切换后主界面标题、按钮、页签、列头与空状态会立即切换，并写入 `ui-settings.json`。
 
 ## 主题
 
@@ -78,7 +76,7 @@ dotnet run --project src/ObjectAnalyzer.Desktop
 | 模式 | 说明 |
 |------|------|
 | **浅色** | WPF UI Light + 自有浅色钢蓝色板 |
-| **深色** | WPF UI Dark + 自有炭灰 / 钢蓝色板 |
+| **深色** | WPF UI Dark + 自有近黑 / 钢蓝色板 |
 | **跟随系统** | 跟随 Windows 应用浅色/深色，系统变更时自动同步 |
 | **护眼** | WPF UI Light 窗体 + 柔和绿纸色板 |
 

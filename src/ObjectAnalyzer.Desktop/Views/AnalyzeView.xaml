@@ -4,13 +4,6 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
-            <DockPanel Margin="0,0,0,10">
-                <TextBlock DockPanel.Dock="Bottom"
-                           Text="{DynamicResource Str.Analyze.PageSubtitle}"
-                           Style="{StaticResource PageSubtitle}"/>
-                <TextBlock Text="{DynamicResource Str.Analyze.PageTitle}" Style="{StaticResource PageTitle}"/>
-            </DockPanel>
-
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -20,9 +13,7 @@
 
                 <Border Style="{StaticResource HudPanel}">
                     <StackPanel>
-                        <TextBlock Text="{DynamicResource Str.Analyze.DataFile}" Style="{StaticResource SectionTitle}"/>
-                        <TextBlock Text="{DynamicResource Str.Analyze.DataFileHint}"
-                                   Style="{StaticResource SectionHint}"/>
+                        <TextBlock Text="{DynamicResource Str.Analyze.DataFile}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
                         <TextBlock Text="{DynamicResource Str.Analyze.FilePath}" Style="{StaticResource FieldLabel}"/>
                         <Grid Margin="0,0,0,8">
@@ -54,9 +45,7 @@
 
                 <Border Grid.Column="2" Style="{StaticResource HudPanel}">
                     <StackPanel>
-                        <TextBlock Text="{DynamicResource Str.Analyze.RulesOutput}" Style="{StaticResource SectionTitle}"/>
-                        <TextBlock Text="{DynamicResource Str.Analyze.RulesHint}"
-                                   Style="{StaticResource SectionHint}"/>
+                        <TextBlock Text="{DynamicResource Str.Analyze.RulesOutput}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
                         <TextBlock Text="{DynamicResource Str.Analyze.RulesFile}" Style="{StaticResource FieldLabel}"/>
                         <Grid Margin="0,0,0,8">
@@ -94,9 +83,7 @@
 
             <Border Style="{StaticResource HudPanel}" Margin="0,0,0,8">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Analyze.Options}" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="{DynamicResource Str.Analyze.OptionsHint}"
-                               Style="{StaticResource SectionHint}"/>
+                    <TextBlock Text="{DynamicResource Str.Analyze.Options}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
                     <WrapPanel Margin="0,0,0,8">
                         <CheckBox Content="{DynamicResource Str.Analyze.Opt.Correlation}" IsChecked="{Binding EnableCorrelation}" Margin="0,0,16,6"/>
@@ -127,18 +114,17 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource HudPanel}">
+            <Border Style="{StaticResource ToolPage}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{DynamicResource Str.CurrentTask}" Style="{StaticResource SectionTitle}" Margin="0,0,0,6"/>
+                    <StackPanel VerticalAlignment="Center" Margin="10,8">
                         <TextBlock Text="{Binding Status}"
-                                   FontSize="13"
-                                   FontWeight="Medium"
+                                   FontSize="12"
+                                   FontFamily="Cascadia Mono, Consolas, Segoe UI"
                                    Foreground="{DynamicResource Brush.TextPrimary}"/>
                         <ProgressBar Style="{StaticResource CyanProgressBar}"
                                      Margin="0,8,16,4"
@@ -151,7 +137,7 @@
                                    ToolTip="{Binding ReportPath}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
                         <ui:Button x:Name="AnalyzeButton"
                                    Content="{DynamicResource Str.StartAnalysis}"
                                    Appearance="Primary"

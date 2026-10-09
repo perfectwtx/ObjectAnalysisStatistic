@@ -4,11 +4,7 @@
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
@@ -16,10 +12,15 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock Text="重复分析" Style="{StaticResource SectionTitle}"/>
-                <TextBlock Text="{Binding DuplicateSummary}" Style="{StaticResource SectionHint}"/>
-            </StackPanel>
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right"
+                               Text="{Binding DuplicateSummary}"
+                               Style="{StaticResource SectionHint}"
+                               Margin="12,0,0,0"/>
+                    <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.Duplicates}" Style="{StaticResource SectionTitle}"/>
+                </DockPanel>
+            </Border>
 
             <DataGrid Grid.Row="1"
                       AutoGenerateColumns="False"
@@ -29,17 +30,16 @@
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasDuplicates, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="对象哈希/摘要" Binding="{Binding Key}" Width="3*"/>
-                    <DataGridTextColumn Header="重复次数" Binding="{Binding Count}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Key}" Binding="{Binding Key}" Width="3*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.DupCount}" Binding="{Binding Count}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
-                                  Glyph="⧉"
-                                  Title="未发现重复对象"
-                                  Hint="分析完成后，若存在重复对象组，将在此列出摘要与重复次数。"
+                                  Title="{DynamicResource Str.Empty.NoDuplicates.Title}"
+                                  Hint="{DynamicResource Str.Empty.NoDuplicates.Hint}"
                                   Visibility="{Binding HasDuplicates, Converter={StaticResource InverseBoolToVis}}"/>
         </Grid>
     </Border>

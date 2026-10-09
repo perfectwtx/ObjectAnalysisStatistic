@@ -4,46 +4,34 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderSubtle}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <StackPanel Margin="0,0,0,10" HorizontalAlignment="Left" VerticalAlignment="Top">
-                <TextBlock Text="深度分析" Style="{StaticResource SectionTitle}"/>
-                <TextBlock Text="选择分析维度查看详细结果。未启用的项会明确显示“未生成”。"
-                           Style="{StaticResource SectionHint}"/>
-            </StackPanel>
-            <WrapPanel Grid.Row="1" Margin="0,0,0,12" HorizontalAlignment="Left">
-                <ui:Button Content="相关性" Click="ShowCorrelation_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="模糊去重" Click="ShowFuzzy_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="字符串模式" Click="ShowPatterns_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="Unicode" Click="ShowUnicode_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="时间序列" Click="ShowTimeSeries_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="分布漂移" Click="ShowDistribution_Click" Margin="0,0,8,8"/>
-                <ui:Button Content="采样置信度" Click="ShowSampling_Click" Margin="0,0,0,8"/>
-            </WrapPanel>
-            <TextBox Grid.Row="2"
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <DockPanel>
+                    <WrapPanel DockPanel.Dock="Right">
+                        <ui:Button Content="{DynamicResource Str.Deep.Correlation}" Click="ShowCorrelation_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Fuzzy}" Click="ShowFuzzy_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Patterns}" Click="ShowPatterns_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Unicode}" Click="ShowUnicode_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.TimeSeries}" Click="ShowTimeSeries_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Distribution}" Click="ShowDistribution_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Sampling}" Click="ShowSampling_Click" Height="26" Padding="10,0" FontSize="12"/>
+                    </WrapPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.DeepAnalysis}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Deep.Hint}" Style="{StaticResource SectionHint}"/>
+                </DockPanel>
+            </Border>
+            <TextBox Grid.Row="1"
                      x:Name="ResultTextBox"
-                     IsReadOnly="True"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
+                     Style="{StaticResource TerminalTextBox}"
                      VerticalAlignment="Stretch"
-                     FontFamily="Cascadia Mono, Consolas"
-                     FontSize="12"
-                     Padding="14"
-                     Background="{DynamicResource Brush.ConsoleBg}"
-                     Foreground="{DynamicResource Brush.ConsoleFg}"
-                     Text="请选择上方分析维度。&#x0a;&#x0a;未启用的深度分析会明确显示“未生成”。"/>
+                     Text="{DynamicResource Str.Deep.Placeholder}"/>
         </Grid>
     </Border>
 </UserControl>

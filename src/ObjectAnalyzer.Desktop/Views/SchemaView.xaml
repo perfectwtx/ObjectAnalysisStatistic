@@ -4,11 +4,7 @@
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.Border}"
-            BorderThickness="1"
-            CornerRadius="2"
-            Padding="10"
+    <Border Style="{StaticResource ToolPage}"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid>
@@ -16,17 +12,16 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <DockPanel Margin="0,0,0,10">
-                <TextBox DockPanel.Dock="Right"
-                         Width="220"
-                         Style="{StaticResource PathTextBox}"
-                         Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="按字段名 / 类型 / 语义过滤"/>
-                <StackPanel>
-                    <TextBlock Text="Schema / 字段结构" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="搜索 · 双击查看取值详情" Style="{StaticResource SectionHint}"/>
-                </StackPanel>
-            </DockPanel>
+            <Border Style="{StaticResource ToolPageHeaderBar}">
+                <DockPanel>
+                    <TextBox DockPanel.Dock="Right"
+                             Width="220"
+                             Style="{StaticResource PathTextBox}"
+                             Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
+                    <TextBlock Text="{DynamicResource Str.Tab.Schema}" Style="{StaticResource SectionTitle}"/>
+                </DockPanel>
+            </Border>
 
             <DataGrid Grid.Row="1"
                       x:Name="FieldsGrid"
@@ -38,21 +33,20 @@
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="字段" Binding="{Binding FieldName}" Width="2*"/>
-                    <DataGridTextColumn Header="类型" Binding="{Binding PrimaryType}" Width="*"/>
-                    <DataGridTextColumn Header="覆盖率" Binding="{Binding CoverageText}" Width="*"/>
-                    <DataGridTextColumn Header="非空" Binding="{Binding Count}" Width="*"/>
-                    <DataGridTextColumn Header="空值" Binding="{Binding NullCount}" Width="*"/>
-                    <DataGridTextColumn Header="唯一值" Binding="{Binding DistinctCount}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Type}" Binding="{Binding PrimaryType}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Coverage}" Binding="{Binding CoverageText}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.NonNull}" Binding="{Binding Count}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Null}" Binding="{Binding NullCount}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Distinct}" Binding="{Binding DistinctCount}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <views:EmptyStateView Grid.Row="1"
                                   VerticalAlignment="Top"
                                   HorizontalAlignment="Stretch"
-                                  Glyph="▣"
-                                  Title="没有匹配的 Schema 字段"
-                                  Hint="调整搜索，或完成分析后再查看。"
+                                  Title="{DynamicResource Str.Empty.NoSchema.Title}"
+                                  Hint="{DynamicResource Str.Empty.NoSchema.Hint}"
                                   Visibility="{Binding HasFilteredFields, Converter={StaticResource InverseBoolToVis}}"/>
         </Grid>
     </Border>

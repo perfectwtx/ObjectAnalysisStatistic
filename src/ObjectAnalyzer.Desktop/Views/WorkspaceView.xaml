@@ -3,50 +3,53 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel MaxWidth="800" HorizontalAlignment="Left">
-            <TextBlock Text="{DynamicResource Str.Tab.Workspace}" Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="{DynamicResource Str.Workspace.Subtitle}" Style="{StaticResource PageSubtitle}" Margin="0,0,0,16"/>
+        <StackPanel MaxWidth="840" HorizontalAlignment="Left">
+            <DockPanel Margin="0,0,0,8">
+                <TextBlock Text="{DynamicResource Str.Tab.Workspace}" Style="{StaticResource PageTitle}"/>
+                <TextBlock Text="{DynamicResource Str.Workspace.Subtitle}" Style="{StaticResource SectionHint}"/>
+            </DockPanel>
 
-            <ui:Card Padding="10" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Language}" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="{DynamicResource Str.Workspace.LanguageHint}" Style="{StaticResource SectionHint}"/>
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="LangZhRadio" GroupName="Language" Margin="0,0,20,0"
-                                     Content="{DynamicResource Str.Lang.Zh}"
-                                     Checked="LanguageRadio_Checked"/>
-                        <RadioButton x:Name="LangEnRadio" GroupName="Language"
-                                     Content="{DynamicResource Str.Lang.En}"
-                                     Checked="LanguageRadio_Checked"/>
-                    </StackPanel>
-                </StackPanel>
-            </ui:Card>
-
-            <ui:Card Padding="10" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Theme}" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="{DynamicResource Str.Workspace.ThemeHint}" Style="{StaticResource SectionHint}"/>
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <RadioButton x:Name="ThemeLightRadio" GroupName="Theme" Margin="0,0,0,8"
-                                     Content="{DynamicResource Str.Theme.Light}"
-                                     Checked="ThemeRadio_Checked"/>
-                        <RadioButton x:Name="ThemeDarkRadio" GroupName="Theme" Margin="0,0,0,8"
-                                     Content="{DynamicResource Str.Theme.Dark}"
-                                     Checked="ThemeRadio_Checked"/>
-                        <RadioButton x:Name="ThemeSystemRadio" GroupName="Theme" Margin="0,0,0,8"
-                                     Content="{DynamicResource Str.Theme.System}"
-                                     Checked="ThemeRadio_Checked"/>
-                        <RadioButton x:Name="ThemeEyeCareRadio" GroupName="Theme"
-                                     Content="{DynamicResource Str.Theme.EyeCare}"
-                                     Checked="ThemeRadio_Checked"/>
+                        <TextBlock Text="{DynamicResource Str.Language}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="LangZhRadio" GroupName="Language" Margin="0,0,20,0"
+                                         Content="{DynamicResource Str.Lang.Zh}"
+                                         Checked="LanguageRadio_Checked"/>
+                            <RadioButton x:Name="LangEnRadio" GroupName="Language"
+                                         Content="{DynamicResource Str.Lang.En}"
+                                         Checked="LanguageRadio_Checked"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </ui:Card>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="{DynamicResource Str.Theme}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
+                        <WrapPanel>
+                            <RadioButton x:Name="ThemeLightRadio" GroupName="Theme" Margin="0,0,16,6"
+                                         Content="{DynamicResource Str.Theme.Light}"
+                                         Checked="ThemeRadio_Checked"/>
+                            <RadioButton x:Name="ThemeDarkRadio" GroupName="Theme" Margin="0,0,16,6"
+                                         Content="{DynamicResource Str.Theme.Dark}"
+                                         Checked="ThemeRadio_Checked"/>
+                            <RadioButton x:Name="ThemeSystemRadio" GroupName="Theme" Margin="0,0,16,6"
+                                         Content="{DynamicResource Str.Theme.System}"
+                                         Checked="ThemeRadio_Checked"/>
+                            <RadioButton x:Name="ThemeEyeCareRadio" GroupName="Theme" Margin="0,0,0,6"
+                                         Content="{DynamicResource Str.Theme.EyeCare}"
+                                         Checked="ThemeRadio_Checked"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-            <ui:Card Padding="10" Margin="0,0,0,12">
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,8">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Workspace.LocalTitle}" Style="{StaticResource SectionTitle}"/>
-                    <TextBlock Text="{DynamicResource Str.Workspace.LocalHint}" Style="{StaticResource SectionHint}"/>
+                    <TextBlock Text="{DynamicResource Str.Workspace.LocalTitle}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
                     <Grid>
                         <Grid.RowDefinitions>
@@ -61,44 +64,48 @@
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Row="0" Text="{DynamicResource Str.Workspace.DataDir}" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.TextLabel}" FontSize="13"/>
+                                   Style="{StaticResource FieldLabel}" Margin="0,0,8,8"/>
                         <TextBox Grid.Row="0" Grid.Column="1" x:Name="DataDirectoryTextBox"
-                                 IsReadOnly="True" Margin="0,0,10,10"/>
+                                 Style="{StaticResource PathTextBox}"
+                                 IsReadOnly="True" Margin="0,0,8,8"/>
                         <ui:Button Grid.Row="0" Grid.Column="2" Content="{DynamicResource Str.Workspace.OpenDir}" Click="OpenDataDirectory_Click"
-                                Margin="0,0,0,10">
+                                   Height="28" Padding="10,0" FontSize="12" Margin="0,0,0,8">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="FolderOpen24"/>
                             </ui:Button.Icon>
                         </ui:Button>
 
                         <TextBlock Grid.Row="1" Text="{DynamicResource Str.Workspace.Database}" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.TextLabel}" FontSize="13"/>
+                                   Style="{StaticResource FieldLabel}" Margin="0,0,8,8"/>
                         <TextBox Grid.Row="1" Grid.Column="1" x:Name="DatabasePathTextBox"
-                                 IsReadOnly="True" Margin="0,0,10,10"/>
+                                 Style="{StaticResource PathTextBox}"
+                                 IsReadOnly="True" Margin="0,0,8,8"/>
                         <ui:Button Grid.Row="1" Grid.Column="2" Content="{DynamicResource Str.Workspace.OpenLocation}" Click="OpenDatabaseLocation_Click"
-                                Margin="0,0,0,10">
+                                   Height="28" Padding="10,0" FontSize="12" Margin="0,0,0,8">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="FolderOpen24"/>
                             </ui:Button.Icon>
                         </ui:Button>
 
                         <TextBlock Grid.Row="2" Text="{DynamicResource Str.Workspace.ReportsDir}" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource Brush.TextLabel}" FontSize="13"/>
+                                   Style="{StaticResource FieldLabel}" Margin="0,0,8,0"/>
                         <TextBox Grid.Row="2" Grid.Column="1" x:Name="ReportsDirectoryTextBox"
-                                 IsReadOnly="True" Margin="0,0,10,0"/>
-                        <ui:Button Grid.Row="2" Grid.Column="2" Content="{DynamicResource Str.Workspace.OpenDir}" Click="OpenReportsDirectory_Click" Margin="0">
+                                 Style="{StaticResource PathTextBox}"
+                                 IsReadOnly="True" Margin="0,0,8,0"/>
+                        <ui:Button Grid.Row="2" Grid.Column="2" Content="{DynamicResource Str.Workspace.OpenDir}" Click="OpenReportsDirectory_Click"
+                                   Height="28" Padding="10,0" FontSize="12">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="FolderOpen24"/>
                             </ui:Button.Icon>
                         </ui:Button>
                     </Grid>
                 </StackPanel>
-            </ui:Card>
+            </Border>
 
-            <ui:Card Padding="10">
+            <Border Style="{StaticResource HudPanel}">
                 <StackPanel>
-                    <TextBlock Text="{DynamicResource Str.Workspace.RuntimeTitle}" Style="{StaticResource SectionTitle}"/>
-                    <Grid Margin="0,12,0,0">
+                    <TextBlock Text="{DynamicResource Str.Workspace.RuntimeTitle}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
+                    <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -110,21 +117,25 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{DynamicResource Str.Workspace.AppVersion}" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,0,10"/>
+                        <TextBlock Grid.Row="0" Text="{DynamicResource Str.Workspace.AppVersion}" Style="{StaticResource FieldLabel}"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" x:Name="AppVersionTextBlock"
-                                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,10"/>
-                        <TextBlock Grid.Row="1" Text=".NET" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,0,10"/>
+                                   FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,8"/>
+                        <TextBlock Grid.Row="1" Text=".NET" Style="{StaticResource FieldLabel}"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" x:Name="DotnetVersionTextBlock"
-                                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,10"/>
-                        <TextBlock Grid.Row="2" Text="{DynamicResource Str.Workspace.OS}" Foreground="{DynamicResource Brush.TextSecondary}" Margin="0,0,0,10"/>
+                                   FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,8"/>
+                        <TextBlock Grid.Row="2" Text="{DynamicResource Str.Workspace.OS}" Style="{StaticResource FieldLabel}"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" x:Name="OsVersionTextBlock"
-                                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,10" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="3" Text="{DynamicResource Str.Workspace.Runtime}" Foreground="{DynamicResource Brush.TextSecondary}"/>
+                                   FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                   Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="3" Text="{DynamicResource Str.Workspace.Runtime}" Style="{StaticResource FieldLabel}"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" x:Name="RuntimeTextBlock"
+                                   FontFamily="Cascadia Mono, Consolas" FontSize="12"
                                    Foreground="{DynamicResource Brush.TextPrimary}"/>
                     </Grid>
                 </StackPanel>
-            </ui:Card>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
