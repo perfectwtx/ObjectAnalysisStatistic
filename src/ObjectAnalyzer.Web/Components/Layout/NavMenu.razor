@@ -1,12 +1,9 @@
 <aside class="oa-sidebar @(_mobileMenuOpen ? "is-open" : "")" aria-label="主导航">
     <div class="oa-sidebar__brand">
         <a class="oa-sidebar__brand-link" href="/" @onclick="CloseMobileMenu" aria-label="ObjectAnalyzer 首页">
-            <span class="oa-sidebar__logo">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V6h4.2v12H4Zm6 0V9h4.2v9H10Zm6 0V4h4v14h-4Z"/></svg>
-            </span>
+            <span class="oa-sidebar__logo" aria-hidden="true">OA</span>
             <span class="oa-sidebar__brand-copy">
-                <strong>ObjectAnalyzer</strong>
-                <small>Data Intelligence</small>
+                <strong>Object Analyzer</strong>
             </span>
         </a>
         <button class="oa-sidebar__mobile-close" type="button" aria-label="关闭导航菜单" @onclick="CloseMobileMenu">×</button>

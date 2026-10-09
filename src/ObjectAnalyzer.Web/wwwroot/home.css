@@ -30,7 +30,7 @@
 .app-shell .upload-area p { font-size: .78rem; }
 .app-shell .upload-area small { font-size: .7rem; }
 .app-shell .uploaded-file { margin-top: .55rem; padding: .4rem .55rem; font-size: .75rem; }
-.app-shell .side-group-run { padding: .75rem; background: linear-gradient(180deg, var(--oa-accent-soft), var(--oa-surface-2)); border-color: var(--oa-accent-border); }
+.app-shell .side-group-run { padding: .75rem; background: var(--oa-surface); border-color: var(--oa-border); }
 .app-shell .side-group-run .config-actions { margin-top: 0; }
 .app-shell .side-group-run .btn-lg { min-height: 40px; padding: .55rem 1rem; font-size: .88rem; }
 .app-shell .progress-status { margin-top: .45rem; font-size: .76rem; }
@@ -97,12 +97,12 @@
 }
 .app-shell .summary-cards .card {
     border-color: var(--oa-border);
-    box-shadow: var(--oa-shadow-sm);
-    transition: transform .16s ease, box-shadow .16s ease;
+    box-shadow: none;
 }
 .app-shell .summary-cards .card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--oa-shadow-md);
+    transform: none;
+    box-shadow: none;
+    border-color: var(--oa-border-strong);
 }
 .app-shell .charts-section .chart-box {
     border: 1px solid var(--oa-border);

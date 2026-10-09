@@ -6,26 +6,26 @@
 
 /* ─── 1. 设计令牌 ─── */
 :root {
-    --oa-font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "PingFang SC",
+    --oa-font-sans: "Manrope", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "PingFang SC",
         "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-    --oa-font-mono: ui-monospace, "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
+    --oa-font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
 
-    --oa-accent: #2f5f9e;
-    --oa-accent-strong: #244a7c;
-    --oa-accent-soft: #e8eef7;
+    --oa-accent: #2c5ea8;
+    --oa-accent-strong: #214984;
+    --oa-accent-soft: #e8eef8;
     --oa-accent-border: #c5d4ea;
     --oa-on-accent: #ffffff;
 
-    --oa-bg: #f5f6fa;
+    --oa-bg: #f4f6f8;
     --oa-surface: #ffffff;
-    --oa-surface-2: #f8f9fc;
-    --oa-surface-3: #eef0f6;
-    --oa-border: #e4e7ef;
-    --oa-border-strong: #d4d8e3;
+    --oa-surface-2: #f7f8fa;
+    --oa-surface-3: #eef1f5;
+    --oa-border: #e3e6ec;
+    --oa-border-strong: #d0d5de;
 
-    --oa-text-1: #171e2e;
-    --oa-text-2: #5a6478;
-    --oa-text-3: #9aa3b5;
+    --oa-text-1: #141820;
+    --oa-text-2: #5c6573;
+    --oa-text-3: #8b93a1;
 
     --oa-success: #16a34a;
     --oa-success-soft: #e8f7ee;
@@ -45,37 +45,37 @@
     --oa-warning-bg: var(--oa-warning-soft);
     --oa-danger-bg: var(--oa-danger-soft);
 
-    --oa-radius-sm: 2px;
-    --oa-radius-md: 4px;
-    --oa-radius-lg: 6px;
-    --oa-radius-xl: 8px;
+    --oa-radius-sm: 6px;
+    --oa-radius-md: 8px;
+    --oa-radius-lg: 10px;
+    --oa-radius-xl: 14px;
 
-    --oa-shadow-sm: 0 1px 0 rgba(23, 30, 46, 0.05);
-    --oa-shadow-md: 0 1px 2px rgba(23, 30, 46, 0.07);
-    --oa-shadow-lg: 0 2px 8px rgba(23, 30, 46, 0.08);
-    --oa-ring: 0 0 0 2px rgba(47, 95, 158, 0.22);
+    --oa-shadow-sm: 0 1px 0 rgba(20, 24, 32, 0.04);
+    --oa-shadow-md: 0 8px 24px rgba(20, 24, 32, 0.06);
+    --oa-shadow-lg: 0 16px 40px rgba(20, 24, 32, 0.1);
+    --oa-ring: 0 0 0 3px rgba(44, 94, 168, 0.22);
 
-    --oa-header-bg: rgba(255, 255, 255, 0.82);
-    --oa-grid-line: #eceef4;
+    --oa-header-bg: rgba(255, 255, 255, 0.86);
+    --oa-grid-line: #eceef2;
 }
 
 [data-bs-theme="dark"] {
-    --oa-accent: #6b9dff;
-    --oa-accent-strong: #8bb3ff;
-    --oa-accent-soft: rgba(107, 157, 255, 0.13);
-    --oa-accent-border: rgba(107, 157, 255, 0.35);
-    --oa-on-accent: #06121f;
+    --oa-accent: #8eb0ff;
+    --oa-accent-strong: #b7cdff;
+    --oa-accent-soft: rgba(142, 176, 255, 0.14);
+    --oa-accent-border: rgba(142, 176, 255, 0.32);
+    --oa-on-accent: #0b1220;
 
-    --oa-bg: #0f1420;
-    --oa-surface: #161d2e;
-    --oa-surface-2: #1a2234;
-    --oa-surface-3: #212a40;
-    --oa-border: #2a3348;
-    --oa-border-strong: #3a4460;
+    --oa-bg: #090b10;
+    --oa-surface: #12151c;
+    --oa-surface-2: #181c25;
+    --oa-surface-3: #222733;
+    --oa-border: #262b36;
+    --oa-border-strong: #3a4150;
 
-    --oa-text-1: #e7ebf4;
-    --oa-text-2: #a7b0c4;
-    --oa-text-3: #6d7789;
+    --oa-text-1: #f4f6fb;
+    --oa-text-2: #a3abba;
+    --oa-text-3: #7b8496;
 
     --oa-success: #4ade80;
     --oa-success-soft: rgba(74, 222, 128, 0.12);
@@ -94,13 +94,13 @@
     --oa-warning-bg: var(--oa-warning-soft);
     --oa-danger-bg: var(--oa-danger-soft);
 
-    --oa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --oa-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 28px -18px rgba(0, 0, 0, 0.55);
-    --oa-shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.45), 0 24px 48px -24px rgba(0, 0, 0, 0.6);
-    --oa-ring: 0 0 0 2px rgba(107, 157, 255, 0.35);
+    --oa-shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.28);
+    --oa-shadow-md: 0 10px 28px rgba(0, 0, 0, 0.32);
+    --oa-shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.42);
+    --oa-ring: 0 0 0 3px rgba(142, 176, 255, 0.28);
 
-    --oa-header-bg: rgba(15, 20, 32, 0.82);
-    --oa-grid-line: #232c42;
+    --oa-header-bg: rgba(18, 21, 28, 0.88);
+    --oa-grid-line: #222733;
 }
 
 /* ─── 2. 基础 ─── */
@@ -113,10 +113,7 @@ html {
 }
 
 body {
-    background:
-        radial-gradient(1200px 400px at 80% -10%, rgba(47, 95, 158, 0.06), transparent 60%),
-        radial-gradient(900px 380px at -10% 0%, rgba(47, 95, 158, 0.04), transparent 55%),
-        var(--oa-bg);
+    background: var(--oa-bg);
     color: var(--oa-text-1);
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.25s ease, color 0.25s ease;
@@ -127,7 +124,7 @@ h1:focus {
 }
 
 ::selection {
-    background: rgba(47, 95, 158, 0.22);
+    background: rgba(44, 94, 168, 0.22);
 }
 
 * {
