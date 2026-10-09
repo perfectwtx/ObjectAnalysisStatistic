@@ -73,30 +73,7 @@
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="0,0,0,1"
                 Padding="6,4">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{DynamicResource Str.Language}"
-                               Style="{StaticResource FieldLabel}"
-                               Margin="0,0,6,0"
-                               VerticalAlignment="Center"/>
-                    <ComboBox x:Name="LanguageComboBox"
-                              Width="108"
-                              Height="26"
-                              FontSize="12"
-                              Margin="0,0,10,0"
-                              SelectionChanged="LanguageComboBox_SelectionChanged"/>
-                    <TextBlock Text="{DynamicResource Str.Theme}"
-                               Style="{StaticResource FieldLabel}"
-                               Margin="0,0,6,0"
-                               VerticalAlignment="Center"/>
-                    <ComboBox x:Name="ThemeComboBox"
-                              Width="120"
-                              Height="26"
-                              FontSize="12"
-                              SelectionChanged="ThemeComboBox_SelectionChanged"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <ui:Button x:Name="ToolOpenButton"
                                Content="{DynamicResource Str.SelectFile}"
                                Click="MenuOpenFile_Click"
@@ -156,7 +133,6 @@
                         </ui:Button.Icon>
                     </ui:Button>
                 </StackPanel>
-            </DockPanel>
         </Border>
 
         <Grid Grid.Row="3">

@@ -27,7 +27,6 @@ public partial class MainWindow : FluentWindow
     private readonly Dictionary<string, FrameworkElement> _pages = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _analysisCancellation;
     private bool _navWired;
-    private bool _suppressPrefs;
 
     private AnalyzeView AnalyzeViewControl => (AnalyzeView)_pages["analyze"];
     private QualityView QualityViewControl => (QualityView)_pages["quality"];
@@ -72,8 +71,6 @@ public partial class MainWindow : FluentWindow
         ReportsViewControl.ReportLoadRequested += (_, e) => LoadReport(e.Path);
 
         Loaded += MainWindow_Loaded;
-        LocalizationService.LanguageChanged += (_, _) => Dispatcher.Invoke(RefreshPreferenceCombos);
-        ThemeService.ThemeChanged += (_, _) => Dispatcher.Invoke(RefreshPreferenceCombos);
 
         InputBindings.Add(new KeyBinding(new WindowRelayCommand(SelectFile), new KeyGesture(Key.O, ModifierKeys.Control)));
         InputBindings.Add(new KeyBinding(new WindowRelayCommand(() => _ = RunAnalysisAsync()), new KeyGesture(Key.F5)));
@@ -109,7 +106,6 @@ public partial class MainWindow : FluentWindow
         try
         {
             WireNavigation();
-            PopulatePreferenceCombos();
             NavigateTo("analyze");
             NavAnalyze.IsActive = true;
 
@@ -598,85 +594,6 @@ public partial class MainWindow : FluentWindow
         MenuAnalyzeItem.IsEnabled = !busy;
         MenuCancelItem.IsEnabled = busy;
         ToolOpenButton.IsEnabled = !busy;
-    }
-
-    private void PopulatePreferenceCombos()
-    {
-        _suppressPrefs = true;
-        try
-        {
-            LanguageComboBox.Items.Clear();
-            LanguageComboBox.Items.Add(new ComboBoxItem
-            {
-                Content = LocalizationService.Get("Str.Lang.Zh", "中文"),
-                Tag = AppLanguage.Chinese,
-                IsSelected = LocalizationService.Current == AppLanguage.Chinese
-            });
-            LanguageComboBox.Items.Add(new ComboBoxItem
-            {
-                Content = LocalizationService.Get("Str.Lang.En", "English"),
-                Tag = AppLanguage.English,
-                IsSelected = LocalizationService.Current == AppLanguage.English
-            });
-
-            ThemeComboBox.Items.Clear();
-            AddThemeItem(AppThemeMode.Light, "Str.Theme.Light", "浅色");
-            AddThemeItem(AppThemeMode.Dark, "Str.Theme.Dark", "深色");
-            AddThemeItem(AppThemeMode.System, "Str.Theme.System", "跟随系统");
-            AddThemeItem(AppThemeMode.EyeCare, "Str.Theme.EyeCare", "护眼");
-        }
-        finally
-        {
-            _suppressPrefs = false;
-        }
-    }
-
-    private void AddThemeItem(AppThemeMode mode, string key, string fallback)
-    {
-        ThemeComboBox.Items.Add(new ComboBoxItem
-        {
-            Content = LocalizationService.Get(key, fallback),
-            Tag = mode,
-            IsSelected = ThemeService.Mode == mode
-        });
-    }
-
-    private void RefreshPreferenceCombos()
-    {
-        if (!IsLoaded)
-            return;
-
-        PopulatePreferenceCombos();
-    }
-
-    private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressPrefs)
-            return;
-
-        if (LanguageComboBox.SelectedItem is not ComboBoxItem { Tag: AppLanguage language })
-            return;
-
-        if (language == LocalizationService.Current)
-            return;
-
-        LocalizationService.Apply(language);
-        _viewModel.SetStatus(LocalizationService.Get("Str.Status.LanguageApplied", "已切换语言"));
-    }
-
-    private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressPrefs)
-            return;
-
-        if (ThemeComboBox.SelectedItem is not ComboBoxItem { Tag: AppThemeMode mode })
-            return;
-
-        if (mode == ThemeService.Mode)
-            return;
-
-        ThemeService.Apply(mode);
-        _viewModel.SetStatus(LocalizationService.Get("Str.Status.ThemeApplied", "已切换主题"));
     }
 
     private sealed class WindowRelayCommand : ICommand
