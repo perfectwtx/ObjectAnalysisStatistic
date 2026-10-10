@@ -99,7 +99,8 @@ public static class ThemeService
 
         try
         {
-            ApplicationThemeManager.Apply(wpfUiTheme, WindowBackdropType.Mica);
+            ApplicationThemeManager.Apply(wpfUiTheme, WindowBackdropType.Mica, updateAccent: false);
+            ApplicationAccentColorManager.Apply(AccentFor(mode), wpfUiTheme);
         }
         catch
         {
@@ -138,6 +139,17 @@ public static class ThemeService
         dictionaries.Add(themeDict);
 
         ApplyWindowChrome();
+    }
+
+    private static Color AccentFor(AppThemeMode mode)
+    {
+        if (mode == AppThemeMode.EyeCare)
+            return Color.FromRgb(0x5B, 0x7C, 0x4E);
+
+        bool dark = mode == AppThemeMode.Dark || (mode == AppThemeMode.System && IsSystemDark());
+        return dark
+            ? Color.FromRgb(0x8E, 0xB0, 0xFF)
+            : Color.FromRgb(0x2C, 0x5E, 0xA8);
     }
 
     private static void ApplyWindowChrome()

@@ -10,8 +10,8 @@
     <SolidColorBrush x:Key="Brush.TextSecondary" Color="#52525B"/>
     <SolidColorBrush x:Key="Brush.TextMuted" Color="#8B8F9C"/>
     <SolidColorBrush x:Key="Brush.TextLabel" Color="#3F3F46"/>
-    <SolidColorBrush x:Key="Brush.Primary" Color="#2F5F9E"/>
-    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#274E84"/>
+    <SolidColorBrush x:Key="Brush.Primary" Color="#2C5EA8"/>
+    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="#214984"/>
     <SolidColorBrush x:Key="Brush.Danger" Color="#DC2626"/>
     <SolidColorBrush x:Key="Brush.DangerBorder" Color="#FECACA"/>
     <SolidColorBrush x:Key="Brush.Success" Color="#059669"/>

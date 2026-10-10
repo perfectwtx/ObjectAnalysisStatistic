@@ -225,8 +225,8 @@
             </Border>
 
             <Border Grid.Column="1"
-                    Background="{DynamicResource Brush.Bg}"
-                    Padding="10,8">
+                    Background="{DynamicResource Brush.Surface}"
+                    Padding="0">
                 <ContentControl x:Name="PageHost"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
@@ -236,11 +236,11 @@
         </Grid>
 
         <Border Grid.Row="4"
-                Height="24"
+                Height="28"
                 Background="{DynamicResource Brush.HeaderBg}"
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="0,1,0,0"
-                Padding="8,0">
+                Padding="10,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -274,6 +274,7 @@
                              Height="4"
                              Margin="12,0"
                              VerticalAlignment="Center"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
                              Value="{Binding Progress, Mode=OneWay}"/>
 
                 <TextBlock Grid.Column="3"
