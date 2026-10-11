@@ -21,7 +21,7 @@
                         <ui:Button Content="{DynamicResource Str.Reports.ExportCsv}" Click="ExportCsv_Click"
                                    Height="30" Padding="12,0" FontSize="12" Margin="0,0,6,0"/>
                         <ui:Button Content="{DynamicResource Str.Reports.OpenLocation}" Click="OpenReport_Click"
-                                   Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                                   Height="30" Padding="12,0" FontSize="12" Margin="0,0,6,0"/>
                         <ui:Button Content="{DynamicResource Str.Reports.Refresh}" Click="RefreshReports_Click"
                                    Height="26" Padding="10,0" FontSize="12">
                             <ui:Button.Icon>
