@@ -15,11 +15,11 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Border Style="{StaticResource ToolPageHeaderBar}">
+            <Border Style="{StaticResource ToolPageHeaderBar}" Padding="12,8">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <ui:Button Content="{DynamicResource Str.Reports.ExportCsv}" Click="ExportCsv_Click"
-                                   Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                                   Height="30" Padding="12,0" FontSize="12" Margin="0,0,6,0"/>
                         <ui:Button Content="{DynamicResource Str.Reports.OpenLocation}" Click="OpenReport_Click"
                                    Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
                         <ui:Button Content="{DynamicResource Str.Reports.Refresh}" Click="RefreshReports_Click"
@@ -35,6 +35,9 @@
             </Border>
 
             <DataGrid Grid.Row="1"
+                      Margin="10"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
                       x:Name="ReportHistoryList"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
