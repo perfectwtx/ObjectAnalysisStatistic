@@ -38,6 +38,7 @@
 
                         <TextBlock Text="{DynamicResource Str.RecentFiles}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox ItemsSource="{Binding RecentFiles}"
+                                  MinHeight="32"
                                   SelectionChanged="RecentFiles_SelectionChanged"
                                   MaxDropDownHeight="240"/>
                     </StackPanel>
@@ -58,7 +59,7 @@
                                      Text="{Binding RulesPath, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="{Binding RulesPath}"/>
                             <ui:Button Grid.Column="1" Content="{DynamicResource Str.Analyze.SelectRules}" Click="SelectRules_Click"
-                                       Margin="8,0,0,0" Height="28" Padding="10,0" FontSize="12">
+                                       Margin="8,0,0,0" Height="32" Padding="12,0" FontSize="12">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="DocumentBulletList24"/>
                                 </ui:Button.Icon>
@@ -67,6 +68,7 @@
 
                         <TextBlock Text="{DynamicResource Str.Analyze.ReportFormat}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox x:Name="ReportFormatComboBox"
+                                  MinHeight="32"
                                   Width="180"
                                   HorizontalAlignment="Left"
                                   SelectedIndex="0"
