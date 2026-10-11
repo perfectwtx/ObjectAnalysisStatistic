@@ -116,20 +116,21 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource ToolPage}" Margin="0,0,0,2">
+            <Border Style="{StaticResource ToolPage}" Margin="0,0,0,2" Padding="10,8">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <StackPanel VerticalAlignment="Center" Margin="10,8">
+                    <StackPanel Grid.Row="0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Status}"
                                    FontSize="12"
                                    FontFamily="Cascadia Mono, Consolas, Segoe UI"
                                    Foreground="{DynamicResource Brush.TextPrimary}"/>
                         <ProgressBar Style="{StaticResource CyanProgressBar}"
-                                     Margin="0,8,16,4"
+                                     MinHeight="6"
+                                     Margin="0,8,0,4"
                                      Value="{Binding Progress, Mode=OneWay}"/>
                         <TextBlock Text="{Binding ReportPath}"
                                    Foreground="{DynamicResource Brush.TextMuted}"
@@ -139,7 +140,9 @@
                                    ToolTip="{Binding ReportPath}"/>
                     </StackPanel>
 
-                    <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <WrapPanel Grid.Row="1"
+                               HorizontalAlignment="Right"
+                               Margin="0,10,0,0">
                         <ui:Button x:Name="AnalyzeButton"
                                    Content="{DynamicResource Str.StartAnalysis}"
                                    Appearance="Primary"
