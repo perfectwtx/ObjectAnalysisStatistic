@@ -57,7 +57,7 @@
 
                 <WrapPanel Grid.Row="2">
                     <ui:Button Content="{DynamicResource Str.Quality.Load}" Click="LoadBaseline_Click" Height="32" Padding="12,0" FontSize="12" Margin="0,0,6,0"/>
-                    <ui:Button Content="{DynamicResource Str.Quality.Save}" Click="SaveBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Save}" Click="SaveBaseline_Click" Height="32" Padding="12,0" FontSize="12" Margin="0,0,6,0"/>
                     <ui:Button Content="{DynamicResource Str.Quality.Delete}" Appearance="Danger" Click="DeleteBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
                     <ui:Button Content="{DynamicResource Str.Quality.Evaluate}" Appearance="Primary" Click="EvaluateBaseline_Click" Height="28" Padding="10,0" FontSize="12"/>
                 </WrapPanel>
