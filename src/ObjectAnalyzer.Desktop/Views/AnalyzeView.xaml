@@ -114,7 +114,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource ToolPage}">
+            <Border Style="{StaticResource ToolPage}" Margin="0,0,0,2">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -176,7 +176,7 @@
                         </ui:Button>
                         <ui:Button Content="{DynamicResource Str.Analyze.ReportFolder}"
                                    Click="OpenReportFolder_Click"
-                                   Height="28"
+                                   Height="32"
                                    Padding="12,0"
                                    FontSize="12">
                             <ui:Button.Icon>
