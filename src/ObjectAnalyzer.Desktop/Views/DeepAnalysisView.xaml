@@ -12,10 +12,10 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Border Style="{StaticResource ToolPageHeaderBar}">
+            <Border Style="{StaticResource ToolPageHeaderBar}" Padding="12,8">
                 <DockPanel>
                     <WrapPanel DockPanel.Dock="Right">
-                        <ui:Button Content="{DynamicResource Str.Deep.Correlation}" Click="ShowCorrelation_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Correlation}" Click="ShowCorrelation_Click" Height="30" Padding="12,0" FontSize="12" Margin="0,0,4,0"/>
                         <ui:Button Content="{DynamicResource Str.Deep.Fuzzy}" Click="ShowFuzzy_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
                         <ui:Button Content="{DynamicResource Str.Deep.Patterns}" Click="ShowPatterns_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
                         <ui:Button Content="{DynamicResource Str.Deep.Unicode}" Click="ShowUnicode_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
@@ -28,6 +28,7 @@
                 </DockPanel>
             </Border>
             <TextBox Grid.Row="1"
+                     Margin="10"
                      x:Name="ResultTextBox"
                      Style="{StaticResource TerminalTextBox}"
                      VerticalAlignment="Stretch"
