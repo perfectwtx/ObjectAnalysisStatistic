@@ -225,8 +225,8 @@
             </Border>
 
             <Border Grid.Column="1"
-                    Background="{DynamicResource Brush.Surface}"
-                    Padding="0">
+                    Background="{DynamicResource Brush.Bg}"
+                    Padding="10">
                 <ContentControl x:Name="PageHost"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
