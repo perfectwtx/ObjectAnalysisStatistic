@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         Title="{DynamicResource Str.AppTitle}"
-        Width="1360" Height="860"
-        MinWidth="1100" MinHeight="700"
+        Width="1440" Height="900"
+        MinWidth="1120" MinHeight="720"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="None"
         WindowStartupLocation="CenterScreen"
@@ -28,8 +28,8 @@
         <Menu Grid.Row="1"
               Background="{DynamicResource Brush.HeaderBg}"
               Foreground="{DynamicResource Brush.TextPrimary}"
-              FontSize="12"
-              Padding="6,2">
+              FontSize="13"
+              Padding="10,3">
             <MenuItem Header="{DynamicResource Str.Menu.File}">
                 <MenuItem Header="{DynamicResource Str.SelectFile}" Click="MenuOpenFile_Click" InputGestureText="Ctrl+O"/>
                 <MenuItem Header="{DynamicResource Str.Analyze.SelectRules}" Click="MenuSelectRules_Click"/>
@@ -72,13 +72,13 @@
                 Background="{DynamicResource Brush.Surface}"
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="0,0,0,1"
-                Padding="6,4">
+                Padding="10,6">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <ui:Button x:Name="ToolOpenButton"
                                Content="{DynamicResource Str.SelectFile}"
                                Click="MenuOpenFile_Click"
-                               Height="28"
-                               Padding="10,0"
+                               Height="30"
+                               Padding="12,0"
                                FontSize="12">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="FolderOpen24"/>
@@ -137,7 +137,7 @@
 
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="196"/>
+                <ColumnDefinition Width="208"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -147,7 +147,7 @@
                     BorderThickness="0,0,1,0">
                 <ui:NavigationView x:Name="RootNavigation"
                                    PaneDisplayMode="Left"
-                                   OpenPaneLength="196"
+                                   OpenPaneLength="208"
                                    IsPaneOpen="True"
                                    IsBackButtonVisible="Collapsed"
                                    IsPaneToggleVisible="False"

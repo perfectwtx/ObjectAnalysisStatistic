@@ -8,7 +8,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Style="{StaticResource KpiStrip}" Margin="0,0,0,8">
+        <Border Style="{StaticResource KpiStrip}" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -52,7 +52,8 @@
                 <Border Style="{StaticResource ToolPageHeaderBar}">
                     <DockPanel>
                         <TextBox DockPanel.Dock="Right"
-                                 Width="220"
+                                 Width="260"
+                                 MinHeight="30"
                                  Style="{StaticResource PathTextBox}"
                                  Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
@@ -67,6 +68,10 @@
                           CanUserAddRows="False"
                           ItemsSource="{Binding FilteredFields}"
                           MouseDoubleClick="FieldsGrid_MouseDoubleClick"
+                          MinRowHeight="30"
+                          RowHeaderWidth="0"
+                          EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True"
                           Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2*"/>

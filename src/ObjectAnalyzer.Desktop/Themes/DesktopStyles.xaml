@@ -5,7 +5,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="CornerRadius" Value="2"/>
         <Setter Property="Padding" Value="10"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
@@ -14,7 +14,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="CornerRadius" Value="2"/>
         <Setter Property="Padding" Value="10,8"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
@@ -23,7 +23,7 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="CornerRadius" Value="2"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
@@ -196,7 +196,7 @@
         <Setter Property="CanUserResizeRows" Value="False"/>
         <Setter Property="RowHeaderWidth" Value="0"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
-        <Setter Property="RowHeight" Value="26"/>
+        <Setter Property="RowHeight" Value="30"/>
         <Setter Property="FontSize" Value="12"/>
     </Style>
 
@@ -206,7 +206,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderSubtle}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
         <Setter Property="Padding" Value="8,5"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
     </Style>
