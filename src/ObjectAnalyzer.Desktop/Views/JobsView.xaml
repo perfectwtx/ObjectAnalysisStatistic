@@ -41,7 +41,10 @@
                       ItemsSource="{Binding Jobs}"
                       MouseDoubleClick="JobGrid_DoubleClick"
                       VerticalAlignment="Stretch"
-                      Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}">
+                      Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      RowHeaderWidth="0">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Started}" Binding="{Binding StartedText}" Width="150"/>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Source}" Binding="{Binding SourceName}" Width="230"/>
