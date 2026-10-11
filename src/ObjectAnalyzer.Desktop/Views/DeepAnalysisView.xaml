@@ -16,7 +16,7 @@
                 <DockPanel>
                     <WrapPanel DockPanel.Dock="Right">
                         <ui:Button Content="{DynamicResource Str.Deep.Correlation}" Click="ShowCorrelation_Click" Height="30" Padding="12,0" FontSize="12" Margin="0,0,4,0"/>
-                        <ui:Button Content="{DynamicResource Str.Deep.Fuzzy}" Click="ShowFuzzy_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Deep.Fuzzy}" Click="ShowFuzzy_Click" Height="30" Padding="12,0" FontSize="12" Margin="0,0,4,0"/>
                         <ui:Button Content="{DynamicResource Str.Deep.Patterns}" Click="ShowPatterns_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
                         <ui:Button Content="{DynamicResource Str.Deep.Unicode}" Click="ShowUnicode_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
                         <ui:Button Content="{DynamicResource Str.Deep.TimeSeries}" Click="ShowTimeSeries_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
@@ -31,6 +31,10 @@
                      Margin="10"
                      x:Name="ResultTextBox"
                      Style="{StaticResource TerminalTextBox}"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
                      VerticalAlignment="Stretch"
                      Text="{DynamicResource Str.Deep.Placeholder}"/>
         </Grid>
