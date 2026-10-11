@@ -63,20 +63,17 @@
 
                 <DataGrid Grid.Row="1"
                       Margin="0"
+                      x:Name="FieldsGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      ItemsSource="{Binding FilteredFields}"
+                      MouseDoubleClick="FieldsGrid_MouseDoubleClick"
+                      MinRowHeight="30"
                       RowHeaderWidth="0"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
-                          x:Name="FieldsGrid"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          CanUserAddRows="False"
-                          ItemsSource="{Binding FilteredFields}"
-                          MouseDoubleClick="FieldsGrid_MouseDoubleClick"
-                          MinRowHeight="30"
-                          RowHeaderWidth="0"
-                          EnableRowVirtualization="True"
-                          EnableColumnVirtualization="True"
-                          Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
+                      Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Type}" Binding="{Binding PrimaryType}" Width="*"/>
