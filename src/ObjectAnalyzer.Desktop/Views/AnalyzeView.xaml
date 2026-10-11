@@ -139,7 +139,7 @@
                                    ToolTip="{Binding ReportPath}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
                         <ui:Button x:Name="AnalyzeButton"
                                    Content="{DynamicResource Str.StartAnalysis}"
                                    Appearance="Primary"
@@ -185,7 +185,7 @@
                                 <ui:SymbolIcon Symbol="FolderOpen24"/>
                             </ui:Button.Icon>
                         </ui:Button>
-                    </StackPanel>
+                    </WrapPanel>
                 </Grid>
             </Border>
         </StackPanel>
