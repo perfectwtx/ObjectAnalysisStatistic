@@ -76,6 +76,10 @@
                       RowHeaderWidth="0"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                       Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2*"/>
@@ -88,6 +92,7 @@
                 </DataGrid>
 
                 <views:EmptyStateView Grid.Row="1"
+                                      HorizontalAlignment="Stretch"
                                       VerticalAlignment="Top"
                                       Title="{DynamicResource Str.Empty.NoFields.Title}"
                                       Hint="{DynamicResource Str.Empty.NoFields.Hint}"
