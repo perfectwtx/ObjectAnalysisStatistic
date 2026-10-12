@@ -16,7 +16,8 @@
         <Border Style="{StaticResource ToolPageHeaderBar}">
             <StackPanel>
                 <TextBlock x:Name="TitleText" FontSize="13" FontWeight="SemiBold"
-                           Foreground="{DynamicResource Brush.TextPrimary}"/>
+                           Foreground="{DynamicResource Brush.TextPrimary}"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                 <TextBlock x:Name="MetaText" Margin="0,2,0,0" FontSize="11"
                            Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
                 <TextBlock x:Name="TruncationText" Margin="0,4,0,0" FontSize="11"
@@ -30,7 +31,15 @@
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"
-                      HeadersVisibility="Column">
+                      HeadersVisibility="Column"
+                      RowHeaderWidth="0"
+                      MinRowHeight="30"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Value}" Binding="{Binding Value}" Width="3*"/>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count}" Width="*"/>
@@ -40,11 +49,11 @@
         </Border>
 
         <Border Grid.Row="2" Padding="10,8">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="{DynamicResource Str.Detail.CopyAll}" Height="28" Padding="12,0" FontSize="12" Margin="0,0,6,0" Click="CopyAll_Click"/>
-                <Button Content="{DynamicResource Str.Detail.ExportCsv}" Height="28" Padding="12,0" FontSize="12" Margin="0,0,6,0" Click="ExportCsv_Click"/>
-                <Button Content="{DynamicResource Str.Detail.Close}" Height="28" Padding="14,0" FontSize="12" Click="Close_Click"/>
-            </StackPanel>
+            <WrapPanel HorizontalAlignment="Right">
+                <Button Content="{DynamicResource Str.Detail.CopyAll}" Height="28" Padding="12,0" FontSize="12" Margin="0,0,6,4" Click="CopyAll_Click"/>
+                <Button Content="{DynamicResource Str.Detail.ExportCsv}" Height="28" Padding="12,0" FontSize="12" Margin="0,0,6,4" Click="ExportCsv_Click"/>
+                <Button Content="{DynamicResource Str.Detail.Close}" Height="28" Padding="14,0" FontSize="12" Margin="0,0,0,4" Click="Close_Click"/>
+            </WrapPanel>
         </Border>
     </Grid>
 </Window>
