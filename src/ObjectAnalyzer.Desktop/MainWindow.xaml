@@ -79,7 +79,8 @@
                                Click="MenuOpenFile_Click"
                                Height="30"
                                Padding="12,0"
-                               FontSize="12">
+                               FontSize="12"
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="FolderOpen24"/>
                         </ui:Button.Icon>
@@ -91,7 +92,8 @@
                                Click="MenuAnalyze_Click"
                                Height="28"
                                Padding="10,0"
-                               FontSize="12">
+                               FontSize="12"
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Play24"/>
                         </ui:Button.Icon>
@@ -103,7 +105,7 @@
                                Height="28"
                                Padding="10,0"
                                FontSize="12"
-                               Margin="4,0,0,0"
+                               Margin="0,0,6,4"
                                IsEnabled="False">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Dismiss24"/>
@@ -116,7 +118,8 @@
                                Height="28"
                                Padding="10,0"
                                FontSize="12"
-                               IsEnabled="{Binding HasReport}">
+                               IsEnabled="{Binding HasReport}"
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Document24"/>
                         </ui:Button.Icon>
@@ -127,7 +130,7 @@
                                Height="28"
                                Padding="10,0"
                                FontSize="12"
-                               Margin="4,0,0,0">
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Folder24"/>
                         </ui:Button.Icon>
