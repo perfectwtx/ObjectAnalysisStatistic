@@ -73,7 +73,7 @@
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="0,0,0,1"
                 Padding="10,6">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <WrapPanel VerticalAlignment="Center">
                     <ui:Button x:Name="ToolOpenButton"
                                Content="{DynamicResource Str.SelectFile}"
                                Click="MenuOpenFile_Click"
@@ -84,7 +84,7 @@
                             <ui:SymbolIcon Symbol="FolderOpen24"/>
                         </ui:Button.Icon>
                     </ui:Button>
-                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4"/>
+                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4,6,8"/>
                     <ui:Button x:Name="ToolAnalyzeButton"
                                Content="{DynamicResource Str.StartAnalysis}"
                                Appearance="Primary"
@@ -109,7 +109,7 @@
                             <ui:SymbolIcon Symbol="Dismiss24"/>
                         </ui:Button.Icon>
                     </ui:Button>
-                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4"/>
+                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4,6,8"/>
                     <ui:Button x:Name="ToolReportButton"
                                Content="{DynamicResource Str.OpenReport}"
                                Click="MenuOpenReport_Click"
@@ -132,7 +132,7 @@
                             <ui:SymbolIcon Symbol="Folder24"/>
                         </ui:Button.Icon>
                     </ui:Button>
-                </StackPanel>
+            </WrapPanel>
         </Border>
 
         <Grid Grid.Row="3">
