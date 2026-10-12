@@ -44,6 +44,9 @@
                       Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
                       RowHeaderWidth="0">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Started}" Binding="{Binding StartedText}" Width="150"/>
