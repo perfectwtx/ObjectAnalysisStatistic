@@ -266,7 +266,10 @@
                                FontSize="11"
                                FontFamily="Cascadia Mono, Consolas, Segoe UI"
                                Foreground="{DynamicResource Brush.TextSecondary}"
-                               VerticalAlignment="Center"/>
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="520"
+                               ToolTip="{Binding Status}"/>
                 </StackPanel>
 
                 <ProgressBar Grid.Column="2"
