@@ -85,6 +85,11 @@
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserAddRows="False"
+                          RowHeaderWidth="0"
+                          EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
                           ItemsSource="{Binding QualityTrend}"
                           Visibility="{Binding HasQualityTrend, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
