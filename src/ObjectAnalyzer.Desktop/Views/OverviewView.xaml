@@ -53,6 +53,9 @@
                     <DockPanel>
                         <TextBox DockPanel.Dock="Right"
                                  Width="260"
+                                 MinWidth="140"
+                                 MaxWidth="260"
+                                 HorizontalAlignment="Right"
                                  MinHeight="30"
                                  Style="{StaticResource PathTextBox}"
                                  Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
