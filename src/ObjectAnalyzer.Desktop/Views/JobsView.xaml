@@ -15,13 +15,13 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Border Style="{StaticResource ToolPageHeaderBar}">
+            <Border Style="{StaticResource ToolPageHeaderBar}" Padding="12,8">
                 <DockPanel>
                     <ui:Button DockPanel.Dock="Right"
                                Content="{DynamicResource Str.Jobs.Refresh}"
                                Click="RefreshJobs_Click"
-                               Height="26"
-                               Padding="10,0"
+                               Height="30"
+                               Padding="12,0"
                                FontSize="12">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="ArrowSync24"/>
@@ -33,6 +33,7 @@
             </Border>
 
             <DataGrid Grid.Row="1"
+                      Margin="10"
                       x:Name="JobGrid"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
@@ -40,7 +41,13 @@
                       ItemsSource="{Binding Jobs}"
                       MouseDoubleClick="JobGrid_DoubleClick"
                       VerticalAlignment="Stretch"
-                      Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}">
+                      Visibility="{Binding HasJobs, Converter={StaticResource BoolToVis}}"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
+                      RowHeaderWidth="0">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Started}" Binding="{Binding StartedText}" Width="150"/>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Source}" Binding="{Binding SourceName}" Width="230"/>

@@ -2,16 +2,16 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel>
-            <Grid Margin="0,0,0,10">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="10">
+            <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Style="{StaticResource HudPanel}" Padding="16">
+                <Border Style="{StaticResource HudPanel}" Padding="14">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource Str.Analyze.DataFile}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
@@ -29,7 +29,7 @@
                                      DragOver="InputPathTextBox_DragOver"
                                      Drop="InputPathTextBox_Drop"/>
                             <ui:Button Grid.Column="1" Content="{DynamicResource Str.SelectFile}" Click="SelectFile_Click"
-                                       Margin="8,0,0,0" Height="28" Padding="10,0" FontSize="12">
+                                       Margin="8,0,0,0" Height="32" Padding="12,0" FontSize="12">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="FolderOpen24"/>
                                 </ui:Button.Icon>
@@ -38,12 +38,13 @@
 
                         <TextBlock Text="{DynamicResource Str.RecentFiles}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox ItemsSource="{Binding RecentFiles}"
+                                  MinHeight="32"
                                   SelectionChanged="RecentFiles_SelectionChanged"
                                   MaxDropDownHeight="240"/>
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2" Style="{StaticResource HudPanel}">
+                <Border Grid.Column="2" Style="{StaticResource HudPanel}" Padding="14">
                     <StackPanel>
                         <TextBlock Text="{DynamicResource Str.Analyze.RulesOutput}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
@@ -58,7 +59,7 @@
                                      Text="{Binding RulesPath, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="{Binding RulesPath}"/>
                             <ui:Button Grid.Column="1" Content="{DynamicResource Str.Analyze.SelectRules}" Click="SelectRules_Click"
-                                       Margin="8,0,0,0" Height="28" Padding="10,0" FontSize="12">
+                                       Margin="8,0,0,0" Height="32" Padding="12,0" FontSize="12">
                                 <ui:Button.Icon>
                                     <ui:SymbolIcon Symbol="DocumentBulletList24"/>
                                 </ui:Button.Icon>
@@ -67,6 +68,7 @@
 
                         <TextBlock Text="{DynamicResource Str.Analyze.ReportFormat}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox x:Name="ReportFormatComboBox"
+                                  MinHeight="32"
                                   Width="180"
                                   HorizontalAlignment="Left"
                                   SelectedIndex="0"
@@ -81,7 +83,7 @@
                 </Border>
             </Grid>
 
-            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,8">
+            <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12" Padding="14">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource Str.Analyze.Options}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
 
@@ -114,20 +116,21 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource ToolPage}">
+            <Border Style="{StaticResource ToolPage}" Margin="0,0,0,2" Padding="10,8">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <StackPanel VerticalAlignment="Center" Margin="10,8">
+                    <StackPanel Grid.Row="0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Status}"
                                    FontSize="12"
                                    FontFamily="Cascadia Mono, Consolas, Segoe UI"
                                    Foreground="{DynamicResource Brush.TextPrimary}"/>
                         <ProgressBar Style="{StaticResource CyanProgressBar}"
-                                     Margin="0,8,16,4"
+                                     MinHeight="6"
+                                     Margin="0,8,0,4"
                                      Value="{Binding Progress, Mode=OneWay}"/>
                         <TextBlock Text="{Binding ReportPath}"
                                    Foreground="{DynamicResource Brush.TextMuted}"
@@ -137,12 +140,14 @@
                                    ToolTip="{Binding ReportPath}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <WrapPanel Grid.Row="1"
+                               HorizontalAlignment="Right"
+                               Margin="0,10,0,0">
                         <ui:Button x:Name="AnalyzeButton"
                                    Content="{DynamicResource Str.StartAnalysis}"
                                    Appearance="Primary"
                                    Click="Analyze_Click"
-                                   Height="28"
+                                   Height="32"
                                    Margin="8,0,6,0"
                                    Padding="12,0"
                                    FontSize="12">
@@ -154,7 +159,7 @@
                                    Content="{DynamicResource Str.Analyze.Cancel}"
                                    Appearance="Danger"
                                    Click="CancelAnalysis_Click"
-                                   Height="28"
+                                   Height="32"
                                    IsEnabled="False"
                                    Margin="0,0,6,0"
                                    Padding="12,0"
@@ -165,7 +170,7 @@
                         </ui:Button>
                         <ui:Button Content="{DynamicResource Str.OpenReport}"
                                    Click="OpenReport_Click"
-                                   Height="28"
+                                   Height="32"
                                    Margin="0,0,6,0"
                                    Padding="12,0"
                                    FontSize="12"
@@ -176,14 +181,14 @@
                         </ui:Button>
                         <ui:Button Content="{DynamicResource Str.Analyze.ReportFolder}"
                                    Click="OpenReportFolder_Click"
-                                   Height="28"
+                                   Height="32"
                                    Padding="12,0"
                                    FontSize="12">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="FolderOpen24"/>
                             </ui:Button.Icon>
                         </ui:Button>
-                    </StackPanel>
+                    </WrapPanel>
                 </Grid>
             </Border>
         </StackPanel>

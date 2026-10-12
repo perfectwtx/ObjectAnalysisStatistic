@@ -3,13 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views">
-    <Grid>
+    <Grid Margin="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Style="{StaticResource HudPanel}" Margin="0,0,0,8">
+        <Border Style="{StaticResource HudPanel}" Margin="0,0,0,12" Padding="14">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -23,52 +23,43 @@
                     <TextBlock Text="{DynamicResource Str.Quality.BaselineHint}" Style="{StaticResource SectionHint}"/>
                 </DockPanel>
 
-                <Grid Grid.Row="1" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <WrapPanel Grid.Row="1" Margin="0,0,0,12" Orientation="Horizontal">
 
-                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                    <StackPanel Width="220" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Quality.Source}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding BaselineSourceName, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                    <StackPanel Width="132" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Col.Overall}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumOverallScore, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                    <StackPanel Width="132" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Col.Completeness}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumCompleteness, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                    <StackPanel Width="132" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Col.Validity}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumValidity, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="4" Margin="0,0,8,0">
+                    <StackPanel Width="132" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Col.Uniqueness}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumUniqueness, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="5" Margin="0,0,8,0">
+                    <StackPanel Width="132" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Col.Consistency}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumConsistency, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="6">
+                    <StackPanel Width="132" Margin="0,0,12,10">
                         <TextBlock Text="{DynamicResource Str.Quality.Anomaly}" Style="{StaticResource FieldLabel}"/>
                         <TextBox Style="{StaticResource PathTextBox}" Text="{Binding MinimumAnomalyControl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                </Grid>
+                </WrapPanel>
 
                 <WrapPanel Grid.Row="2">
-                    <ui:Button Content="{DynamicResource Str.Quality.Load}" Click="LoadBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
-                    <ui:Button Content="{DynamicResource Str.Quality.Save}" Click="SaveBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
-                    <ui:Button Content="{DynamicResource Str.Quality.Delete}" Appearance="Danger" Click="DeleteBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,0"/>
-                    <ui:Button Content="{DynamicResource Str.Quality.Evaluate}" Appearance="Primary" Click="EvaluateBaseline_Click" Height="28" Padding="10,0" FontSize="12"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Load}" Click="LoadBaseline_Click" Height="32" Padding="12,0" FontSize="12" Margin="0,0,6,4"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Save}" Click="SaveBaseline_Click" Height="32" Padding="12,0" FontSize="12" Margin="0,0,6,4"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Delete}" Appearance="Danger" Click="DeleteBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,6,4"/>
+                    <ui:Button Content="{DynamicResource Str.Quality.Evaluate}" Appearance="Primary" Click="EvaluateBaseline_Click" Height="28" Padding="10,0" FontSize="12" Margin="0,0,0,4"/>
                 </WrapPanel>
 
                 <TextBox Grid.Row="3"
@@ -80,7 +71,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Style="{StaticResource ToolPage}">
+        <Border Grid.Row="1" Style="{StaticResource ToolPage}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -94,6 +85,13 @@
                           AutoGenerateColumns="False"
                           IsReadOnly="True"
                           CanUserAddRows="False"
+                          RowHeaderWidth="0"
+                          EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          ScrollViewer.CanContentScroll="True"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
                           ItemsSource="{Binding QualityTrend}"
                           Visibility="{Binding HasQualityTrend, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>

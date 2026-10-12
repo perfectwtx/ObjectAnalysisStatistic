@@ -73,25 +73,27 @@
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="0,0,0,1"
                 Padding="10,6">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <WrapPanel VerticalAlignment="Center">
                     <ui:Button x:Name="ToolOpenButton"
                                Content="{DynamicResource Str.SelectFile}"
                                Click="MenuOpenFile_Click"
                                Height="30"
                                Padding="12,0"
-                               FontSize="12">
+                               FontSize="12"
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="FolderOpen24"/>
                         </ui:Button.Icon>
                     </ui:Button>
-                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4"/>
+                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4,6,8"/>
                     <ui:Button x:Name="ToolAnalyzeButton"
                                Content="{DynamicResource Str.StartAnalysis}"
                                Appearance="Primary"
                                Click="MenuAnalyze_Click"
                                Height="28"
                                Padding="10,0"
-                               FontSize="12">
+                               FontSize="12"
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Play24"/>
                         </ui:Button.Icon>
@@ -103,20 +105,21 @@
                                Height="28"
                                Padding="10,0"
                                FontSize="12"
-                               Margin="4,0,0,0"
+                               Margin="0,0,6,4"
                                IsEnabled="False">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Dismiss24"/>
                         </ui:Button.Icon>
                     </ui:Button>
-                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4"/>
+                    <Border Width="1" Background="{DynamicResource Brush.Border}" Margin="6,4,6,8"/>
                     <ui:Button x:Name="ToolReportButton"
                                Content="{DynamicResource Str.OpenReport}"
                                Click="MenuOpenReport_Click"
                                Height="28"
                                Padding="10,0"
                                FontSize="12"
-                               IsEnabled="{Binding HasReport}">
+                               IsEnabled="{Binding HasReport}"
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Document24"/>
                         </ui:Button.Icon>
@@ -127,12 +130,12 @@
                                Height="28"
                                Padding="10,0"
                                FontSize="12"
-                               Margin="4,0,0,0">
+                               Margin="0,0,6,4">
                         <ui:Button.Icon>
                             <ui:SymbolIcon Symbol="Folder24"/>
                         </ui:Button.Icon>
                     </ui:Button>
-                </StackPanel>
+            </WrapPanel>
         </Border>
 
         <Grid Grid.Row="3">
@@ -225,8 +228,8 @@
             </Border>
 
             <Border Grid.Column="1"
-                    Background="{DynamicResource Brush.Surface}"
-                    Padding="0">
+                    Background="{DynamicResource Brush.Bg}"
+                    Padding="10">
                 <ContentControl x:Name="PageHost"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
@@ -266,7 +269,10 @@
                                FontSize="11"
                                FontFamily="Cascadia Mono, Consolas, Segoe UI"
                                Foreground="{DynamicResource Brush.TextSecondary}"
-                               VerticalAlignment="Center"/>
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="520"
+                               ToolTip="{Binding Status}"/>
                 </StackPanel>
 
                 <ProgressBar Grid.Column="2"
