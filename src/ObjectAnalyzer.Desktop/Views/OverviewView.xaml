@@ -70,9 +70,8 @@
                           ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Auto"
                           Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Type}" Binding="{Binding PrimaryType}" Width="*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Coverage}" Binding="{Binding CoverageText}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2.5*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Coverage}" Binding="{Binding CoverageText}" Width="1.2*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.NonNull}" Binding="{Binding Count}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Null}" Binding="{Binding NullCount}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Distinct}" Binding="{Binding DistinctCount}" Width="*"/>
