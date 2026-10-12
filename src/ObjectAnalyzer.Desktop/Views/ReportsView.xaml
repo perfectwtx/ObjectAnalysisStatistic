@@ -40,6 +40,9 @@
                       Margin="10"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
                       x:Name="ReportHistoryList"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
@@ -48,6 +51,7 @@
                       SelectionChanged="ReportHistory_SelectionChanged"
                       MouseDoubleClick="ReportHistory_DoubleClick"
                       VerticalAlignment="Stretch"
+                      RowHeaderWidth="0"
                       Visibility="{Binding HasReports, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Name}" Binding="{Binding Name}" Width="2*"/>
