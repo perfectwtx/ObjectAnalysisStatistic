@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel MaxWidth="960" Margin="12" HorizontalAlignment="Left">
+        <StackPanel MaxWidth="960" Margin="12" HorizontalAlignment="Stretch">
             <DockPanel Margin="0,0,0,8">
                 <TextBlock Text="{DynamicResource Str.Tab.Workspace}" Style="{StaticResource PageTitle}"/>
                 <TextBlock Text="{DynamicResource Str.Workspace.Subtitle}" Style="{StaticResource SectionHint}"/>
