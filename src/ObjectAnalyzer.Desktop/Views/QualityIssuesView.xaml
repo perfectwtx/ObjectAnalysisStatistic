@@ -22,12 +22,44 @@
                       CanUserAddRows="False"
                       ItemsSource="{Binding Issues}"
                       VerticalAlignment="Stretch"
+                      RowHeaderWidth="0"
+                      MinRowHeight="30"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                       Visibility="{Binding HasIssues, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="220"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Rule}" Binding="{Binding Check}" Width="150"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count}" Width="90"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Message}" Binding="{Binding Message}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="220">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding FieldName}"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Rule}" Binding="{Binding Check}" Width="150">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding Check}"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="90"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Message}" Binding="{Binding Message}" Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding Message}"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                 </DataGrid.Columns>
             </DataGrid>
 
