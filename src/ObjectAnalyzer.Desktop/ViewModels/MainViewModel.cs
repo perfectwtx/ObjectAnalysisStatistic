@@ -407,6 +407,11 @@ public sealed class DesktopFieldRow
     public long Count { get; }
     public long NullCount { get; }
     public long? DistinctCount { get; }
+    public string DistinctDisplayText => DistinctCount is not long distinct
+        ? "—"
+        : DistinctApproximate
+            ? $"≈ {distinct:N0}"
+            : distinct.ToString("N0", CultureInfo.InvariantCulture);
     public bool DistinctApproximate { get; }
     public bool ValueCountsTruncated { get; }
     public string? SemanticType { get; }

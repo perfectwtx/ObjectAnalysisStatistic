@@ -4,50 +4,115 @@
              xmlns:views="clr-namespace:ObjectAnalyzer.Desktop.Views"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
-    <Border Style="{StaticResource ToolPage}"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <Border Style="{StaticResource ToolPageHeaderBar}">
-                <DockPanel>
-                    <TextBox DockPanel.Dock="Right"
-                             Width="220"
-                             Style="{StaticResource PathTextBox}"
-                             Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
-                    <TextBlock Text="{DynamicResource Str.Tab.Schema}" Style="{StaticResource SectionTitle}"/>
-                </DockPanel>
-            </Border>
-
-            <DataGrid Grid.Row="1"
-                      x:Name="FieldsGrid"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      CanUserAddRows="False"
-                      ItemsSource="{Binding FilteredFields}"
-                      MouseDoubleClick="FieldsGrid_MouseDoubleClick"
-                      VerticalAlignment="Stretch"
-                      Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Type}" Binding="{Binding PrimaryType}" Width="*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Coverage}" Binding="{Binding CoverageText}" Width="*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.NonNull}" Binding="{Binding Count}" Width="*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Null}" Binding="{Binding NullCount}" Width="*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Distinct}" Binding="{Binding DistinctCount}" Width="*"/>
-                </DataGrid.Columns>
-            </DataGrid>
-
-            <views:EmptyStateView Grid.Row="1"
-                                  VerticalAlignment="Top"
-                                  HorizontalAlignment="Stretch"
-                                  Title="{DynamicResource Str.Empty.NoSchema.Title}"
-                                  Hint="{DynamicResource Str.Empty.NoSchema.Hint}"
-                                  Visibility="{Binding HasFilteredFields, Converter={StaticResource InverseBoolToVis}}"/>
-        </Grid>
-    </Border>
+    <Grid Margin="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Border Style="{StaticResource KpiStrip}" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource KpiCell}">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource Str.Metric.Objects}" Style="{StaticResource MetricLabel}"/>
+                        <TextBlock Text="{Binding TotalObjects, StringFormat={}{0:N0}}" Style="{StaticResource MetricValue}"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource KpiCell}">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource Str.Schema.FieldCount}" Style="{StaticResource MetricLabel}"/>
+                        <TextBlock Text="{Binding FieldCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricValue}"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource KpiCellLast}">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource Str.Schema.Source}" Style="{StaticResource MetricLabel}"/>
+                        <TextBlock Text="{Binding DisplayFileName}" Style="{StaticResource MetricValue}"
+                                   FontSize="13" TextTrimming="CharacterEllipsis" ToolTip="{Binding InputPath}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+        <Border Grid.Row="1" Style="{StaticResource ToolPage}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Style="{StaticResource ToolPageHeaderBar}">
+                    <DockPanel LastChildFill="True">
+                        <TextBox DockPanel.Dock="Right" Width="220" MinWidth="140" MaxWidth="220"
+                                 HorizontalAlignment="Right" MinHeight="30" Margin="12,0,0,0"
+                                 Style="{StaticResource PathTextBox}"
+                                 Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource Str.Tab.Schema}" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Text="{DynamicResource Str.Schema.Description}"
+                                       Margin="0,3,0,0" FontSize="11"
+                                       Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <DataGrid Grid.Row="1" x:Name="FieldsGrid" AutoGenerateColumns="False"
+                          IsReadOnly="True" CanUserAddRows="False" ItemsSource="{Binding FilteredFields}"
+                          MouseDoubleClick="FieldsGrid_MouseDoubleClick" VerticalAlignment="Stretch"
+                          RowHeaderWidth="0" MinRowHeight="32" EnableRowVirtualization="True"
+                          EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.FieldName}" Binding="{Binding FieldName}" Width="2*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding FieldName}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.InferredType}" Binding="{Binding PrimaryType}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding PrimaryType}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.SemanticType}" Binding="{Binding SemanticType}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NonNull}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.Null}" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.Distinct}" Binding="{Binding DistinctDisplayText}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeText, TargetNullValue=—, FallbackValue=—}" Width="1.4*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <views:EmptyStateView Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                                      Title="{DynamicResource Str.Empty.NoSchema.Title}"
+                                      Hint="{DynamicResource Str.Empty.NoSchema.Hint}"
+                                      Visibility="{Binding HasFilteredFields, Converter={StaticResource InverseBoolToVis}}"/>
+            </Grid>
+        </Border>
+    </Grid>
 </UserControl>

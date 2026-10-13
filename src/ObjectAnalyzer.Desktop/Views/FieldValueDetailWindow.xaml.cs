@@ -27,7 +27,9 @@ public partial class FieldValueDetailWindow : Window
         };
 
         if (field.DistinctCount is long distinct)
-            parts.Add(field.DistinctApproximate ? $"唯一值：≈{distinct:N0}" : $"唯一值：{distinct:N0}");
+            parts.Add(field.DistinctApproximate ? $"唯一值：约 {distinct:N0}" : $"唯一值：{distinct:N0}");
+        else
+            parts.Add("唯一值：未知");
 
         if (!string.IsNullOrWhiteSpace(field.SemanticType))
             parts.Add($"语义：{field.SemanticType}");
@@ -39,7 +41,7 @@ public partial class FieldValueDetailWindow : Window
             parts.Add(field.QuantilesText!);
 
         if (field.Types.Count > 0)
-            parts.Add("类型分布：" + string.Join(", ", field.Types.Select(t => $"{t.TypeName}={t.Count}")));
+            parts.Add("类型分布：" + string.Join(", ", field.Types.Select(t => $"{t.TypeName}={t.Count:N0}")));
 
         MetaText.Text = string.Join("  ·  ", parts);
 
@@ -47,7 +49,7 @@ public partial class FieldValueDetailWindow : Window
         {
             TruncationText.Visibility = Visibility.Visible;
             TruncationText.Text =
-                "提示：唯一值超过分析阈值，以下为已采样/保留的取值分布（可能含 [Other values] 汇总桶），并非全部原始值。";
+                "部分结果：取值数量超过分析阈值，表格仅展示已保留的取值（可能包含 [Other values] 汇总桶），不能视为完整明细。复制或导出也只包含当前保留的这些取值。";
         }
 
         ValuesGrid.ItemsSource = field.Values;

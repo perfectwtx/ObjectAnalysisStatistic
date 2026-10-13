@@ -201,4 +201,17 @@
     <sys:String x:Key="Str.Settings.Language">Language</sys:String>
     <sys:String x:Key="Str.Settings.Theme">Theme</sys:String>
 
+    <sys:String x:Key="Str.Schema.Source">Source file</sys:String>
+    <sys:String x:Key="Str.Schema.FieldCount">Total fields</sys:String>
+    <sys:String x:Key="Str.Schema.Description">Inspect field structure, inferred types, nulls, and uniqueness. Double-click a field to explore its value distribution.</sys:String>
+    <sys:String x:Key="Str.Schema.FieldName">Field name</sys:String>
+    <sys:String x:Key="Str.Schema.InferredType">Inferred type</sys:String>
+    <sys:String x:Key="Str.Schema.SemanticType">Semantic type</sys:String>
+    <sys:String x:Key="Str.Schema.NonNull">Non-null values</sys:String>
+    <sys:String x:Key="Str.Schema.Null">Null values</sys:String>
+    <sys:String x:Key="Str.Schema.Distinct">Distinct values</sys:String>
+    <sys:String x:Key="Str.Schema.NumericRange">Numeric range</sys:String>
+    <sys:String x:Key="Str.Schema.Unrecognized">Unrecognized</sys:String>
+    <sys:String x:Key="Str.Schema.NotApplicable">N/A</sys:String>
+    <sys:String x:Key="Str.Overview.Description">Data quality at a glance: field coverage, nulls, and duplicates. Visit Schema for detailed field structure.</sys:String>
 </ResourceDictionary>

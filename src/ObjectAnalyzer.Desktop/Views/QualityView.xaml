@@ -86,6 +86,7 @@
                           IsReadOnly="True"
                           CanUserAddRows="False"
                           RowHeaderWidth="0"
+                          MinRowHeight="30"
                           EnableRowVirtualization="True"
                           EnableColumnVirtualization="True"
                           VirtualizingPanel.IsVirtualizing="True"
@@ -95,16 +96,31 @@
                           ItemsSource="{Binding QualityTrend}"
                           Visibility="{Binding HasQualityTrend, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Time}" Binding="{Binding TimeText}" Width="150"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Source}" Binding="{Binding SourceName}" Width="220"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Time}" Binding="{Binding TimeText}" Width="150">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="ToolTip" Value="{Binding TimeText}"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.Source}" Binding="{Binding SourceName}" Width="220">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding SourceName}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Overall}" Binding="{Binding OverallText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Completeness}" Binding="{Binding CompletenessText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Validity}" Binding="{Binding ValidityText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Uniqueness}" Binding="{Binding UniquenessText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Consistency}" Binding="{Binding ConsistencyText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Anomaly}" Binding="{Binding AnomalyControlText}" Width="90"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Metric.Objects}" Binding="{Binding TotalObjects}" Width="90"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.IssueCount}" Binding="{Binding IssueCount}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Metric.Objects}" Binding="{Binding TotalObjects, StringFormat={}{0:N0}}" Width="90"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.IssueCount}" Binding="{Binding IssueCount, StringFormat={}{0:N0}}" Width="80"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
