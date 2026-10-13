@@ -97,7 +97,7 @@
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.NonNull}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.Null}" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.Distinct}" Binding="{Binding DistinctDisplayText}" Width="*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeText}" Width="1.4*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeText, TargetNullValue=—, FallbackValue=—}" Width="1.4*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
