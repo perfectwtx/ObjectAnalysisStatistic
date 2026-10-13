@@ -41,8 +41,16 @@
                       ScrollViewer.CanContentScroll="True"
                       ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Value}" Binding="{Binding Value}" Width="3*"/>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count}" Width="*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Value}" Binding="{Binding Value}" Width="3*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding Value}"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Share}" Binding="{Binding ShareText}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
