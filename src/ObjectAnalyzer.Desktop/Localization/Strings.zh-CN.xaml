@@ -201,4 +201,17 @@
     <sys:String x:Key="Str.Settings.Language">界面语言</sys:String>
     <sys:String x:Key="Str.Settings.Theme">主题外观</sys:String>
 
+    <sys:String x:Key="Str.Schema.Source">当前数据源</sys:String>
+    <sys:String x:Key="Str.Schema.FieldCount">字段总数</sys:String>
+    <sys:String x:Key="Str.Schema.Description">字段结构检查 · 推断类型 · 空值与唯一性 · 双击查看取值分布</sys:String>
+    <sys:String x:Key="Str.Schema.FieldName">字段名称</sys:String>
+    <sys:String x:Key="Str.Schema.InferredType">推断类型</sys:String>
+    <sys:String x:Key="Str.Schema.SemanticType">语义类型</sys:String>
+    <sys:String x:Key="Str.Schema.NonNull">非空值</sys:String>
+    <sys:String x:Key="Str.Schema.Null">空值</sys:String>
+    <sys:String x:Key="Str.Schema.Distinct">唯一值</sys:String>
+    <sys:String x:Key="Str.Schema.NumericRange">数值范围</sys:String>
+    <sys:String x:Key="Str.Schema.Unrecognized">未识别</sys:String>
+    <sys:String x:Key="Str.Schema.NotApplicable">不适用</sys:String>
+    <sys:String x:Key="Str.Overview.Description">整体数据与质量速览 · 查看字段覆盖率、空值和重复情况；字段结构详情请前往 Schema</sys:String>
 </ResourceDictionary>
