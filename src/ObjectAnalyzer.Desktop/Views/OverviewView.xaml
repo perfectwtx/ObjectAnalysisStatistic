@@ -56,7 +56,7 @@
                                  ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
                         <StackPanel>
                             <TextBlock Text="{DynamicResource Str.Overview.Fields}" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Text="整体数据与质量速览 · 查看字段覆盖率、空值和重复情况；字段结构详情请前往 Schema"
+                            <TextBlock Text="{DynamicResource Str.Overview.Description}"
                                        Margin="0,3,0,0" FontSize="11"
                                        Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
                         </StackPanel>
