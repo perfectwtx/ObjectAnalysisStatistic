@@ -408,9 +408,9 @@ public sealed class DesktopFieldRow
     public long NullCount { get; }
     public long? DistinctCount { get; }
     public string DistinctDisplayText => DistinctCount is not long distinct
-        ? "未知"
+        ? "—"
         : DistinctApproximate
-            ? $"约 {distinct:N0}"
+            ? $"≈ {distinct:N0}"
             : distinct.ToString("N0", CultureInfo.InvariantCulture);
     public bool DistinctApproximate { get; }
     public bool ValueCountsTruncated { get; }
