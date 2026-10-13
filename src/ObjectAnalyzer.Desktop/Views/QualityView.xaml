@@ -103,8 +103,8 @@
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Uniqueness}" Binding="{Binding UniquenessText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Consistency}" Binding="{Binding ConsistencyText}" Width="80"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Col.Anomaly}" Binding="{Binding AnomalyControlText}" Width="90"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Metric.Objects}" Binding="{Binding TotalObjects}" Width="90"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.IssueCount}" Binding="{Binding IssueCount}" Width="80"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Metric.Objects}" Binding="{Binding TotalObjects, StringFormat={}{0:N0}}" Width="90"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Col.IssueCount}" Binding="{Binding IssueCount, StringFormat={}{0:N0}}" Width="80"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
