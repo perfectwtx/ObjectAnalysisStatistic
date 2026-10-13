@@ -5,7 +5,7 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
     <Grid Margin="0">
-        <Border Style="{StaticResource ToolPage">
+        <Border Style="{StaticResource ToolPage}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
