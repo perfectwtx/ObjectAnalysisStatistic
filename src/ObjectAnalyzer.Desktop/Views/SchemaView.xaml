@@ -5,58 +5,39 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
     <Grid Margin="0">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <Border Style="{StaticResource KpiStrip}" Margin="0,0,0,10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
-                <Border Style="{StaticResource KpiCell}">
-                    <StackPanel>
-                        <TextBlock Text="{DynamicResource Str.Metric.Objects}" Style="{StaticResource MetricLabel}"/>
-                        <TextBlock Text="{Binding TotalObjects, StringFormat={}{0:N0}}" Style="{StaticResource MetricValue}"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="1" Style="{StaticResource KpiCell}">
-                    <StackPanel>
-                        <TextBlock Text="{DynamicResource Str.Schema.FieldCount}" Style="{StaticResource MetricLabel}"/>
-                        <TextBlock Text="{Binding FieldCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricValue}"/>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="2" Style="{StaticResource KpiCellLast}">
-                    <StackPanel>
-                        <TextBlock Text="{DynamicResource Str.Schema.Source}" Style="{StaticResource MetricLabel}"/>
-                        <TextBlock Text="{Binding DisplayFileName}" Style="{StaticResource MetricValue}"
-                                   FontSize="13" TextTrimming="CharacterEllipsis" ToolTip="{Binding InputPath}"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </Border>
-        <Border Grid.Row="1" Style="{StaticResource ToolPage}">
+        <Border Style="{StaticResource ToolPage}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource ToolPageHeaderBar}">
-                    <DockPanel LastChildFill="True">
-                        <TextBox DockPanel.Dock="Right" Width="220" MinWidth="140" MaxWidth="220"
-                                 HorizontalAlignment="Right" MinHeight="30" Margin="12,0,0,0"
-                                 Style="{StaticResource PathTextBox}"
-                                 Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
-                        <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                             <TextBlock Text="{DynamicResource Str.Tab.Schema}" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Text="{DynamicResource Str.Schema.Description}"
                                        Margin="0,3,0,0" FontSize="11"
                                        Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBlock Text="{DynamicResource Str.Schema.Source}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11"/>
+                                <TextBlock Text="{Binding DisplayFileName}" Margin="6,0,0,0" FontSize="11"
+                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                           MaxWidth="360" ToolTip="{Binding InputPath}"/>
+                                <TextBlock Text="  ·  " Foreground="{DynamicResource Brush.TextMuted}" FontSize="11"/>
+                                <TextBlock Text="{Binding FieldCount, StringFormat={}{0:N0}}" FontSize="11" FontWeight="SemiBold" Margin="0,0,4,0"/>
+                                <TextBlock Text="{DynamicResource Str.Schema.FieldCount}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11"/>
+                            </StackPanel>
                         </StackPanel>
-                    </DockPanel>
+                        <TextBox Grid.Column="1" Width="220" MinWidth="140" MaxWidth="220"
+                                 VerticalAlignment="Top" MinHeight="30" Margin="12,0,0,0"
+                                 Style="{StaticResource PathTextBox}"
+                                 Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
+                    </Grid>
                 </Border>
                 <DataGrid Grid.Row="1" x:Name="FieldsGrid" AutoGenerateColumns="False"
                           IsReadOnly="True" CanUserAddRows="False" ItemsSource="{Binding FilteredFields}"
