@@ -66,12 +66,21 @@
                           ScrollViewer.HorizontalScrollBarVisibility="Auto"
                           Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="字段名称" Binding="{Binding FieldName}" Width="2*"/>
+                        <DataGridTextColumn Header="字段名称" Binding="{Binding FieldName}" Width="2*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding FieldName}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="推断类型" Binding="{Binding PrimaryType}" Width="*"/>
-                        <DataGridTextColumn Header="语义类型" Binding="{Binding SemanticType}" Width="*"/>
-                        <DataGridTextColumn Header="非空值" Binding="{Binding Count}" Width="*"/>
-                        <DataGridTextColumn Header="空值" Binding="{Binding NullCount}" Width="*"/>
-                        <DataGridTextColumn Header="唯一值" Binding="{Binding DistinctCount}" Width="*"/>
+                        <DataGridTextColumn Header="语义类型" Binding="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}" Width="*"/>
+                        <DataGridTextColumn Header="非空值" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="空值" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="唯一值" Binding="{Binding DistinctCount, TargetNullValue=未知, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="数值范围" Binding="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}" Width="1.4*"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <views:EmptyStateView Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch"
