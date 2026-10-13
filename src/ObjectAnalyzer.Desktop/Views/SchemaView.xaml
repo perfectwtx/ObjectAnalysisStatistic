@@ -75,12 +75,36 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="推断类型" Binding="{Binding PrimaryType}" Width="*"/>
-                        <DataGridTextColumn Header="语义类型" Binding="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}" Width="*"/>
+                        <DataGridTextColumn Header="推断类型" Binding="{Binding PrimaryType}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding PrimaryType}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="语义类型" Binding="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="非空值" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="空值" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="唯一值" Binding="{Binding DistinctDisplayText}" Width="*"/>
-                        <DataGridTextColumn Header="数值范围" Binding="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}" Width="1.4*"/>
+                        <DataGridTextColumn Header="数值范围" Binding="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}" Width="1.4*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    <Setter Property="ToolTip" Value="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
                 <views:EmptyStateView Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch"
