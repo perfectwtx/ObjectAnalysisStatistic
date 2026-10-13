@@ -18,19 +18,19 @@
                 </Grid.ColumnDefinitions>
                 <Border Style="{StaticResource KpiCell}">
                     <StackPanel>
-                        <TextBlock Text="对象总数" Style="{StaticResource MetricLabel}"/>
+                        <TextBlock Text="{DynamicResource Str.Metric.Objects}" Style="{StaticResource MetricLabel}"/>
                         <TextBlock Text="{Binding TotalObjects, StringFormat={}{0:N0}}" Style="{StaticResource MetricValue}"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="1" Style="{StaticResource KpiCell}">
                     <StackPanel>
-                        <TextBlock Text="字段总数" Style="{StaticResource MetricLabel}"/>
+                        <TextBlock Text="{DynamicResource Str.Schema.FieldCount}" Style="{StaticResource MetricLabel}"/>
                         <TextBlock Text="{Binding FieldCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricValue}"/>
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="2" Style="{StaticResource KpiCellLast}">
                     <StackPanel>
-                        <TextBlock Text="当前数据源" Style="{StaticResource MetricLabel}"/>
+                        <TextBlock Text="{DynamicResource Str.Schema.Source}" Style="{StaticResource MetricLabel}"/>
                         <TextBlock Text="{Binding DisplayFileName}" Style="{StaticResource MetricValue}"
                                    FontSize="13" TextTrimming="CharacterEllipsis" ToolTip="{Binding InputPath}"/>
                     </StackPanel>
@@ -52,7 +52,7 @@
                                  ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
                         <StackPanel>
                             <TextBlock Text="{DynamicResource Str.Tab.Schema}" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Text="字段结构检查 · 推断类型 · 空值与唯一性 · 双击查看取值分布"
+                            <TextBlock Text="{DynamicResource Str.Schema.Description}"
                                        Margin="0,3,0,0" FontSize="11"
                                        Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
                         </StackPanel>
@@ -67,7 +67,7 @@
                           ScrollViewer.HorizontalScrollBarVisibility="Auto"
                           Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="字段名称" Binding="{Binding FieldName}" Width="2*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.FieldName}" Binding="{Binding FieldName}" Width="2*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -76,7 +76,7 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="推断类型" Binding="{Binding PrimaryType}" Width="*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.InferredType}" Binding="{Binding PrimaryType}" Width="*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -85,7 +85,7 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="语义类型" Binding="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}" Width="*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.SemanticType}" Binding="{Binding SemanticType}" Width="*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -94,10 +94,10 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="非空值" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
-                        <DataGridTextColumn Header="空值" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
-                        <DataGridTextColumn Header="唯一值" Binding="{Binding DistinctDisplayText}" Width="*"/>
-                        <DataGridTextColumn Header="数值范围" Binding="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}" Width="1.4*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NonNull}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.Null}" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.Distinct}" Binding="{Binding DistinctDisplayText}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeText}" Width="1.4*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
