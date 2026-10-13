@@ -13,17 +13,21 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <Border Style="{StaticResource ToolPageHeaderBar}">
-                <TextBlock Text="{DynamicResource Str.Tab.Issues}" Style="{StaticResource SectionTitle}"/>
+                <DockPanel>
+                    <TextBlock Text="{DynamicResource Str.Tab.Issues}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.QualityIssues.Hint}" Style="{StaticResource SectionHint}"/>
+                </DockPanel>
             </Border>
 
             <DataGrid Grid.Row="1"
+                      Margin="10"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"
                       ItemsSource="{Binding Issues}"
                       VerticalAlignment="Stretch"
                       RowHeaderWidth="0"
-                      MinRowHeight="30"
+                      MinRowHeight="32"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
                       VirtualizingPanel.IsVirtualizing="True"
@@ -50,7 +54,15 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="90"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Count}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,0,8,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.Message}" Binding="{Binding Message}" Width="*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
