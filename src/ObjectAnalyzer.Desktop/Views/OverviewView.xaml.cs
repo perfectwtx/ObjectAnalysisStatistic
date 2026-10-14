@@ -12,10 +12,13 @@ public partial class OverviewView : UserControl
         InitializeComponent();
     }
 
-    private void FieldsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void FieldCards_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (FieldsGrid.SelectedItem is not DesktopFieldRow field)
+        if (e.OriginalSource is not FrameworkElement element
+            || element.DataContext is not DesktopFieldRow field)
+        {
             return;
+        }
 
         var owner = Window.GetWindow(this);
         var dialog = new FieldValueDetailWindow(field)
