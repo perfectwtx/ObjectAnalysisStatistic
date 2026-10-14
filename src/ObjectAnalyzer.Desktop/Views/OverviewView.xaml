@@ -65,7 +65,7 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
-                    <ItemsControl ItemsSource="{Binding FilteredFields}">
+                    <ItemsControl ItemsSource="{Binding FilteredFields}" MouseDoubleClick="FieldCards_MouseDoubleClick">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Horizontal" IsItemsHost="True"/>
@@ -73,7 +73,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="270" MinHeight="142" Margin="0,0,10,10" Padding="14"
+                                <Border Width="270" MinHeight="160" Margin="0,0,10,10" Padding="14"
                                         Background="{DynamicResource Brush.Surface}"
                                         BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                                         CornerRadius="6">
