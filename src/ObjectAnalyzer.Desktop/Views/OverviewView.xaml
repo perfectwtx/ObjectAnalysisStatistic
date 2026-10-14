@@ -62,29 +62,84 @@
                         </StackPanel>
                     </DockPanel>
                 </Border>
-                <DataGrid Grid.Row="1" Margin="0" x:Name="FieldsGrid" AutoGenerateColumns="False"
-                          IsReadOnly="True" CanUserAddRows="False" ItemsSource="{Binding FilteredFields}"
-                          MouseDoubleClick="FieldsGrid_MouseDoubleClick" MinRowHeight="30" RowHeaderWidth="0"
-                          EnableRowVirtualization="True" EnableColumnVirtualization="True"
-                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
-                          ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                          Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Field}" Binding="{Binding FieldName}" Width="2.5*">
-                            <DataGridTextColumn.ElementStyle>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    <Setter Property="ToolTip" Value="{Binding FieldName}"/>
-                                    <Setter Property="VerticalAlignment" Value="Center"/>
-                                </Style>
-                            </DataGridTextColumn.ElementStyle>
-                        </DataGridTextColumn>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Coverage}" Binding="{Binding CoverageText}" Width="1.2*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.NonNull}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Null}" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Col.Distinct}" Binding="{Binding DistinctDisplayText}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl ItemsSource="{Binding FilteredFields}" MouseDoubleClick="FieldCards_MouseDoubleClick">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" IsItemsHost="True"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="270" MinHeight="160" Margin="0,0,10,10" Padding="14"
+                                        Background="{DynamicResource Brush.Surface}"
+                                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                                        CornerRadius="6">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CoverageText}"
+                                                       FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Brush.Text}"
+                                                       Margin="12,0,0,0"/>
+                                            <TextBlock Text="{Binding FieldName}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding FieldName}"
+                                                       Foreground="{DynamicResource Brush.Text}"/>
+                                        </DockPanel>
+                                        <ProgressBar Grid.Row="1" Margin="0,10,0,0" Height="6"
+                                                     Minimum="0" Maximum="1" Value="{Binding CoverageRatio}"
+                                                     IsHitTestVisible="False" BorderThickness="0"/>
+                                        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                                            <WrapPanel>
+                                                <Border Background="{DynamicResource Brush.RowAlt}" BorderBrush="{DynamicResource Brush.Border}"
+                                                        BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,6,6">
+                                                    <TextBlock Text="{Binding PrimaryType}" FontSize="10"
+                                                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                </Border>
+                                                <Border Background="{DynamicResource Brush.RowAlt}" BorderBrush="{DynamicResource Brush.Border}"
+                                                        BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,0,6">
+                                                    <TextBlock Text="{Binding SemanticType}" FontSize="10"
+                                                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                </Border>
+                                            </WrapPanel>
+                                            <Grid Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{DynamicResource Str.Col.NonNull}" FontSize="10"
+                                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                <TextBlock Text="{Binding Count, StringFormat={}{0:N0}}" Margin="0,4,0,0"
+                                                           FontSize="13" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{DynamicResource Str.Col.Null}" FontSize="10"
+                                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                <TextBlock Text="{Binding NullCount, StringFormat={}{0:N0}}" Margin="0,4,0,0"
+                                                           FontSize="13" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="{DynamicResource Str.Col.Distinct}" FontSize="10"
+                                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                                <TextBlock Text="{Binding DistinctDisplayText}" Margin="0,4,0,0"
+                                                           FontSize="13" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
                 <views:EmptyStateView Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Top"
                                       Title="{DynamicResource Str.Empty.NoFields.Title}"
                                       Hint="{DynamicResource Str.Empty.NoFields.Hint}"

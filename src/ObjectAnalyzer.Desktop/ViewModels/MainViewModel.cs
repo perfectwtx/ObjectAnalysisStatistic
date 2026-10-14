@@ -404,6 +404,7 @@ public sealed class DesktopFieldRow
     public string FieldName { get; }
     public string PrimaryType { get; }
     public string CoverageText { get; }
+    public double CoverageRatio { get; }
     public long Count { get; }
     public long NullCount { get; }
     public long? DistinctCount { get; }
@@ -425,6 +426,7 @@ public sealed class DesktopFieldRow
         FieldName = source.FieldName;
         PrimaryType = source.PrimaryType;
         CoverageText = source.Coverage.ToString("P1", CultureInfo.InvariantCulture);
+        CoverageRatio = Math.Clamp(source.Coverage, 0d, 1d);
         Count = source.Count;
         NullCount = source.NullCount;
         DistinctCount = source.DistinctCount;
