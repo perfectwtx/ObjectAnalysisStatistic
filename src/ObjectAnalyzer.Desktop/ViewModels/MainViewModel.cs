@@ -174,11 +174,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasOutput));
     }
 
+    private const int MaxOutputCharacters = 200_000;
+
     public void AppendOutput(string message)
     {
-        OutputText = string.IsNullOrEmpty(OutputText)
+        if (string.IsNullOrEmpty(message))
+            return;
+
+        string combined = string.IsNullOrEmpty(OutputText)
             ? message
             : OutputText + Environment.NewLine + message;
+
+        // 大文件分析时持续拼接完整控制台输出会让字符串不断增长并反复复制。
+        // 仅保留尾部诊断信息，避免 UI 日志本身耗尽内存。
+        if (combined.Length > MaxOutputCharacters)
+        {
+            const string marker = "[较早的输出已省略，以限制日志内存占用]";
+            int start = combined.Length - (MaxOutputCharacters - marker.Length - Environment.NewLine.Length);
+            int lineBreak = combined.IndexOf(Environment.NewLine, Math.Max(0, start), StringComparison.Ordinal);
+            if (lineBreak >= 0 && lineBreak + Environment.NewLine.Length < combined.Length)
+                start = lineBreak + Environment.NewLine.Length;
+            combined = marker + Environment.NewLine + combined[start..];
+        }
+
+        OutputText = combined;
         OnPropertyChanged(nameof(HasOutput));
     }
 
