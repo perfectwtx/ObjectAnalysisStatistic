@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,6 +33,11 @@ public partial class MainWindow : FluentWindow
     private QualityView QualityViewControl => (QualityView)_pages["quality"];
     private JobsView JobsViewControl => (JobsView)_pages["jobs"];
     private ReportsView ReportsViewControl => (ReportsView)_pages["reports"];
+
+    private static string L(string key, string fallback) => LocalizationService.Get(key, fallback);
+
+    private static string Lf(string key, string fallback, params object[] args) =>
+        string.Format(CultureInfo.CurrentCulture, LocalizationService.Get(key, fallback), args);
 
     public MainWindow()
     {
@@ -122,7 +128,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            _viewModel.SetStatus($"本地历史初始化失败：{ex.Message}");
+            _viewModel.SetStatus(Lf("Str.Status.HistoryInitFailed", "本地历史初始化失败：{0}", ex.Message));
         }
     }
 
@@ -190,7 +196,7 @@ public partial class MainWindow : FluentWindow
     {
         var dialog = new OpenFileDialog
         {
-            Title = "选择规则文件",
+            Title = L("Str.Dialog.SelectRulesTitle", "选择规则文件"),
             Filter = "Rules|*.json;*.jsonc;*.yaml;*.yml|All|*.*",
             CheckFileExists = true
         };
@@ -236,7 +242,7 @@ public partial class MainWindow : FluentWindow
         {
             _viewModel.SetRecentFiles(_viewModel.RecentFiles.Where(File.Exists));
             RecentFilesService.Save(_viewModel.RecentFiles);
-            _viewModel.SetStatus("最近文件已失效，请重新选择文件");
+            _viewModel.SetStatus(L("Str.Status.RecentFileInvalid", "最近文件已失效，请重新选择文件"));
             return;
         }
 
@@ -282,7 +288,9 @@ public partial class MainWindow : FluentWindow
             : _viewModel.RulesPath.Trim();
         if (rulesPath is not null && !File.Exists(rulesPath))
         {
-            MessageBox.Show(this, "规则文件不存在，请重新选择。", "无法开始分析",
+            MessageBox.Show(this,
+                L("Str.Dialog.RulesFileMissing", "规则文件不存在，请重新选择。"),
+                L("Str.Dialog.CannotStart", "无法开始分析"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -324,22 +332,22 @@ public partial class MainWindow : FluentWindow
             }
             else if (result.ExitCode == 0)
             {
-                _viewModel.SetStatus("分析完成（非 JSON 报告，工作台字段统计可能为空）");
+                _viewModel.SetStatus(L("Str.Status.CompletedNonJson", "分析完成（非 JSON 报告，工作台字段统计可能为空）"));
                 _viewModel.SetProgress(100);
             }
             else
             {
-                _viewModel.SetFailed($"分析结束，退出码 {result.ExitCode}");
+                _viewModel.SetFailed(Lf("Str.Status.ExitedWithCode", "分析结束，退出码 {0}", result.ExitCode));
             }
         }
         catch (OperationCanceledException)
         {
-            _viewModel.SetFailed("分析已取消");
+            _viewModel.SetFailed(L("Str.Status.Canceled", "分析已取消"));
         }
         catch (Exception ex)
         {
             _viewModel.SetFailed(ex.Message);
-            _viewModel.AppendOutput($"错误: {ex.Message}");
+            _viewModel.AppendOutput($"{L("Str.Output.ErrorPrefix", "错误: ")}{ex.Message}");
         }
         finally
         {
@@ -365,7 +373,7 @@ public partial class MainWindow : FluentWindow
         if (_analysisCancellation is null)
             return;
 
-        _viewModel.SetStatus("正在取消分析...");
+        _viewModel.SetStatus(L("Str.Status.Canceling", "正在取消分析..."));
         _analysisCancellation.Cancel();
     }
 
@@ -398,18 +406,22 @@ public partial class MainWindow : FluentWindow
         {
             if (!reportPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                MessageBox.Show(this, "工作台仅支持回读 JSON 分析报告。", "无法打开报告",
+                MessageBox.Show(this,
+                    L("Str.Dialog.JsonReportOnly", "工作台仅支持回读 JSON 分析报告。"),
+                    L("Str.Dialog.CannotOpenReport", "无法打开报告"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var result = LocalAnalysisService.LoadResult(reportPath);
             _viewModel.Load(result, reportPath);
-            _viewModel.SetStatus($"已加载历史报告：{Path.GetFileName(reportPath)}");
+            _viewModel.SetStatus(Lf("Str.Status.ReportLoaded", "已加载历史报告：{0}", Path.GetFileName(reportPath)));
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"报告读取失败：{ex.Message}", "无法打开报告",
+            MessageBox.Show(this,
+                Lf("Str.Dialog.ReportLoadFailed", "报告读取失败：{0}", ex.Message),
+                L("Str.Dialog.CannotOpenReport", "无法打开报告"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -429,11 +441,13 @@ public partial class MainWindow : FluentWindow
         try
         {
             await RefreshPlatformDataAsync();
-            _viewModel.SetStatus("作业历史已刷新");
+            _viewModel.SetStatus(L("Str.Status.JobsRefreshed", "作业历史已刷新"));
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"作业历史读取失败：{ex.Message}", "刷新失败",
+            MessageBox.Show(this,
+                Lf("Str.Dialog.JobsLoadFailed", "作业历史读取失败：{0}", ex.Message),
+                L("Str.Dialog.RefreshFailed", "刷新失败"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -443,11 +457,13 @@ public partial class MainWindow : FluentWindow
         try
         {
             await LoadBaselineAsync();
-            _viewModel.SetStatus("质量基线已读取");
+            _viewModel.SetStatus(L("Str.Status.BaselineLoaded", "质量基线已读取"));
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"质量基线读取失败：{ex.Message}", "读取失败",
+            MessageBox.Show(this,
+                Lf("Str.Dialog.BaselineLoadFailed", "质量基线读取失败：{0}", ex.Message),
+                L("Str.Dialog.LoadFailed", "读取失败"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -456,7 +472,8 @@ public partial class MainWindow : FluentWindow
     {
         if (!_viewModel.TryBuildBaseline(out var baseline, out var error) || baseline is null)
         {
-            MessageBox.Show(this, error, "无法保存质量基线",
+            MessageBox.Show(this, error,
+                L("Str.Dialog.CannotSaveBaseline", "无法保存质量基线"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -465,11 +482,13 @@ public partial class MainWindow : FluentWindow
         {
             await _platformService.InitializeAsync();
             await _platformService.BaselineStore.SaveAsync(baseline);
-            _viewModel.SetStatus($"质量基线已保存：{baseline.SourceName}");
+            _viewModel.SetStatus(Lf("Str.Status.BaselineSaved", "质量基线已保存：{0}", baseline.SourceName));
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"质量基线保存失败：{ex.Message}", "保存失败",
+            MessageBox.Show(this,
+                Lf("Str.Dialog.BaselineSaveFailed", "质量基线保存失败：{0}", ex.Message),
+                L("Str.Dialog.SaveFailed", "保存失败"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -479,7 +498,9 @@ public partial class MainWindow : FluentWindow
         string sourceName = ResolveSourceName();
         if (string.IsNullOrWhiteSpace(sourceName))
         {
-            MessageBox.Show(this, "请先指定数据源名称。", "无法删除",
+            MessageBox.Show(this,
+                L("Str.Dialog.NeedSourceName", "请先指定数据源名称。"),
+                L("Str.Dialog.CannotDelete", "无法删除"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -489,11 +510,13 @@ public partial class MainWindow : FluentWindow
             await _platformService.InitializeAsync();
             await _platformService.BaselineStore.DeleteAsync(sourceName);
             _viewModel.SetBaseline(null, sourceName);
-            _viewModel.SetStatus($"质量基线已删除：{sourceName}");
+            _viewModel.SetStatus(Lf("Str.Status.BaselineDeleted", "质量基线已删除：{0}", sourceName));
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"质量基线删除失败：{ex.Message}", "删除失败",
+            MessageBox.Show(this,
+                Lf("Str.Dialog.BaselineDeleteFailed", "质量基线删除失败：{0}", ex.Message),
+                L("Str.Dialog.DeleteFailed", "删除失败"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

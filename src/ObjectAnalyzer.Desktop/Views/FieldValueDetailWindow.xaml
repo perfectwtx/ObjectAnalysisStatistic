@@ -58,9 +58,9 @@
 
         <Border Grid.Row="2" Padding="10,8">
             <WrapPanel HorizontalAlignment="Right">
-                <Button Content="{DynamicResource Str.Detail.CopyAll}" Height="28" Padding="12,0" FontSize="12" Margin="0,0,6,4" Click="CopyAll_Click"/>
-                <Button Content="{DynamicResource Str.Detail.ExportCsv}" Height="28" Padding="12,0" FontSize="12" Margin="0,0,6,4" Click="ExportCsv_Click"/>
-                <Button Content="{DynamicResource Str.Detail.Close}" Height="28" Padding="14,0" FontSize="12" Margin="0,0,0,4" Click="Close_Click"/>
+                <Button Content="{DynamicResource Str.Detail.CopyAll}" Height="30" Padding="12,0" FontSize="12" Margin="0,0,6,4" Click="CopyAll_Click"/>
+                <Button Content="{DynamicResource Str.Detail.ExportCsv}" Height="30" Padding="12,0" FontSize="12" Margin="0,0,6,4" Click="ExportCsv_Click"/>
+                <Button Content="{DynamicResource Str.Detail.Close}" Height="30" Padding="12,0" FontSize="12" Margin="0,0,0,4" Click="Close_Click"/>
             </WrapPanel>
         </Border>
     </Grid>

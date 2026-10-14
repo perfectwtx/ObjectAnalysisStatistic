@@ -416,7 +416,12 @@ public sealed class DesktopFieldRow
     public bool DistinctApproximate { get; }
     public bool ValueCountsTruncated { get; }
     public string? SemanticType { get; }
+    public string SemanticTypeDisplay =>
+        SemanticType ?? LocalizationService.Get("Str.Schema.Unrecognized", "未识别");
     public string? NumericRangeText { get; }
+    public string NumericRangeDisplay => NumericRangeText ?? "—";
+    public string NumericRangeTooltip =>
+        NumericRangeText ?? LocalizationService.Get("Str.Schema.NotApplicable", "不适用");
     public string? QuantilesText { get; }
     public IReadOnlyList<DesktopFieldValueRow> Values { get; }
     public IReadOnlyList<DesktopFieldTypeRow> Types { get; }

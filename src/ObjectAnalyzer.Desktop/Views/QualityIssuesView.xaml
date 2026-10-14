@@ -17,6 +17,7 @@
             </Border>
 
             <DataGrid Grid.Row="1"
+                      Margin="10"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"

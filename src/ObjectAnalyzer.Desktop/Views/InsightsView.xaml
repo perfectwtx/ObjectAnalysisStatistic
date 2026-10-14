@@ -15,16 +15,17 @@
             <Border Style="{StaticResource ToolPageHeaderBar}">
                 <DockPanel>
                     <WrapPanel DockPanel.Dock="Right">
-                        <ui:Button Content="{DynamicResource Str.Insights.Lineage}" Click="ShowLineage_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
-                        <ui:Button Content="{DynamicResource Str.Insights.Impact}" Click="ShowImpact_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
-                        <ui:Button Content="{DynamicResource Str.Insights.SchemaImpact}" Click="ShowSchemaImpact_Click" Height="26" Padding="10,0" FontSize="12" Margin="0,0,4,0"/>
-                        <ui:Button Content="{DynamicResource Str.Insights.Regression}" Click="ShowRegression_Click" Height="26" Padding="10,0" FontSize="12"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.Lineage}" Click="ShowLineage_Click" Height="30" Padding="12,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.Impact}" Click="ShowImpact_Click" Height="30" Padding="12,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.SchemaImpact}" Click="ShowSchemaImpact_Click" Height="30" Padding="12,0" FontSize="12" Margin="0,0,4,0"/>
+                        <ui:Button Content="{DynamicResource Str.Insights.Regression}" Click="ShowRegression_Click" Height="30" Padding="12,0" FontSize="12"/>
                     </WrapPanel>
                     <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.Insights}" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{DynamicResource Str.Insights.Hint}" Style="{StaticResource SectionHint}"/>
                 </DockPanel>
             </Border>
             <TextBox Grid.Row="1"
+                     Margin="10"
                      x:Name="ResultTextBox"
                      Style="{StaticResource TerminalTextBox}"
                      VerticalAlignment="Stretch"

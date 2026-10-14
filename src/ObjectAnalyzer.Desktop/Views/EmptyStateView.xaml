@@ -5,23 +5,23 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Top">
     <Border Background="Transparent"
-            Padding="12,10"
+            Padding="24,20"
             HorizontalAlignment="Stretch"
-            VerticalAlignment="Top">
-        <StackPanel HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
+            VerticalAlignment="Stretch">
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
                     MaxWidth="560">
             <TextBlock Text="{Binding Title, ElementName=Root}"
                        FontSize="13"
                        FontWeight="SemiBold"
-                       HorizontalAlignment="Left"
-                       TextAlignment="Left"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
                        Foreground="{DynamicResource Brush.TextPrimary}"/>
             <TextBlock Text="{Binding Hint, ElementName=Root}"
                        FontSize="12"
-                       Margin="0,2,0,0"
-                       HorizontalAlignment="Left"
-                       TextAlignment="Left"
+                       Margin="0,4,0,0"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
                        TextWrapping="Wrap"
                        Foreground="{DynamicResource Brush.TextMuted}"/>
         </StackPanel>

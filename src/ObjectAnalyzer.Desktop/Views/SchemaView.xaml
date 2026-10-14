@@ -39,7 +39,7 @@
                                  ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
                     </Grid>
                 </Border>
-                <DataGrid Grid.Row="1" x:Name="FieldsGrid" AutoGenerateColumns="False"
+                <DataGrid Grid.Row="1" x:Name="FieldsGrid" Margin="10" AutoGenerateColumns="False"
                           IsReadOnly="True" CanUserAddRows="False" ItemsSource="{Binding FilteredFields}"
                           MouseDoubleClick="FieldsGrid_MouseDoubleClick" VerticalAlignment="Stretch"
                           RowHeaderWidth="0" MinRowHeight="32" EnableRowVirtualization="True"
@@ -66,11 +66,11 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="{DynamicResource Str.Schema.SemanticType}" Binding="{Binding SemanticType}" Width="*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.SemanticType}" Binding="{Binding SemanticTypeDisplay}" Width="*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    <Setter Property="ToolTip" Value="{Binding SemanticType, TargetNullValue=未识别, FallbackValue=未识别}"/>
+                                    <Setter Property="ToolTip" Value="{Binding SemanticTypeDisplay}"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
@@ -78,11 +78,11 @@
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.NonNull}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.Null}" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.Distinct}" Binding="{Binding DistinctDisplayText}" Width="*"/>
-                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeText, TargetNullValue=—, FallbackValue=—}" Width="1.4*">
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeDisplay}" Width="1.4*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    <Setter Property="ToolTip" Value="{Binding NumericRangeText, TargetNullValue=不适用, FallbackValue=不适用}"/>
+                                    <Setter Property="ToolTip" Value="{Binding NumericRangeTooltip}"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
