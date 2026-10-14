@@ -97,14 +97,13 @@
                                                      IsHitTestVisible="False" BorderThickness="0"/>
                                         <StackPanel Grid.Row="2" Margin="0,10,0,0">
                                             <WrapPanel>
-                                                <Border Background="{DynamicResource Brush.SurfaceAlt}" BorderBrush="{DynamicResource Brush.Border}"
+                                                <Border Background="{DynamicResource Brush.RowAlt}" BorderBrush="{DynamicResource Brush.Border}"
                                                         BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,6,6">
                                                     <TextBlock Text="{Binding PrimaryType}" FontSize="10"
                                                                Foreground="{DynamicResource Brush.TextMuted}"/>
                                                 </Border>
-                                                <Border Background="{DynamicResource Brush.SurfaceAlt}" BorderBrush="{DynamicResource Brush.Border}"
-                                                        BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,0,6"
-                                                        Visibility="{Binding SemanticType, Converter={StaticResource StringToVisibilityConverter}}">
+                                                <Border Background="{DynamicResource Brush.RowAlt}" BorderBrush="{DynamicResource Brush.Border}"
+                                                        BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,0,6">
                                                     <TextBlock Text="{Binding SemanticType}" FontSize="10"
                                                                Foreground="{DynamicResource Brush.TextMuted}"/>
                                                 </Border>
