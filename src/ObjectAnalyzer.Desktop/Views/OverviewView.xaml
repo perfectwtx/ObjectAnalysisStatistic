@@ -93,7 +93,7 @@
                                                        Foreground="{DynamicResource Brush.Text}"/>
                                         </DockPanel>
                                         <ProgressBar Grid.Row="1" Margin="0,10,0,0" Height="6"
-                                                     Minimum="0" Maximum="1" Value="{Binding CoverageRatio}"
+                                                     Minimum="0" Maximum="1" Value="{Binding CoverageRatio, Mode=OneWay}"
                                                      IsHitTestVisible="False" BorderThickness="0"/>
                                         <StackPanel Grid.Row="2" Margin="0,10,0,0">
                                             <WrapPanel>
