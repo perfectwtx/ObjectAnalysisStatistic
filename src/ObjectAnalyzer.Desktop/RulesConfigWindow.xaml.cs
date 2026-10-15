@@ -1,6 +1,9 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Windows;
 using Microsoft.Win32;
 using ObjectAnalyzer.Analysis;
@@ -43,11 +46,15 @@ public partial class RulesConfigWindow : Window
     """;
 
     private string? _currentPath;
+    private readonly ObservableCollection<FieldRuleRow> _fieldRows = new();
+    private bool _loadingForm;
+    private static readonly JsonSerializerOptions s_formJsonOptions = new() { WriteIndented = true };
     public string? SavedRulesPath { get; private set; }
 
     public RulesConfigWindow(string? rulesPath)
     {
         InitializeComponent();
+        FieldsGrid.ItemsSource = _fieldRows;
         _currentPath = string.IsNullOrWhiteSpace(rulesPath) ? null : rulesPath;
         PathTextBlock.Text = _currentPath is null ? "尚未选择规则文件" : _currentPath;
 
@@ -56,6 +63,7 @@ public partial class RulesConfigWindow : Window
             try
             {
                 RulesTextBox.Text = File.ReadAllText(_currentPath);
+                LoadFormFromJson(RulesTextBox.Text);
             }
             catch (Exception ex)
             {
@@ -66,6 +74,7 @@ public partial class RulesConfigWindow : Window
         else
         {
             RulesTextBox.Text = Template;
+            LoadFormFromJson(RulesTextBox.Text);
         }
     }
 
@@ -74,6 +83,7 @@ public partial class RulesConfigWindow : Window
         if (ConfirmDiscardIfChanged())
         {
             RulesTextBox.Text = Template;
+            LoadFormFromJson(RulesTextBox.Text);
             ValidationTextBlock.Text = "已载入示例模板。请按实际数据字段调整后校验。";
         }
     }
@@ -93,6 +103,7 @@ public partial class RulesConfigWindow : Window
         try
         {
             RulesTextBox.Text = File.ReadAllText(dialog.FileName);
+            LoadFormFromJson(RulesTextBox.Text);
             _currentPath = dialog.FileName;
             PathTextBlock.Text = _currentPath;
             ValidationTextBlock.Text = "已导入文件，保存前请执行校验。";
@@ -105,8 +116,203 @@ public partial class RulesConfigWindow : Window
 
     private void Validate_Click(object sender, RoutedEventArgs e) => ValidateRules(showSuccess: true);
 
+    private void AddField_Click(object sender, RoutedEventArgs e)
+    {
+        _fieldRows.Add(new FieldRuleRow { Name = "newField" });
+        FieldsGrid.SelectedIndex = _fieldRows.Count - 1;
+        FieldsGrid.ScrollIntoView(FieldsGrid.SelectedItem);
+    }
+
+    private void RemoveField_Click(object sender, RoutedEventArgs e)
+    {
+        if (FieldsGrid.SelectedItem is FieldRuleRow row)
+            _fieldRows.Remove(row);
+    }
+
+    private void LoadFormFromJson(string text)
+    {
+        _loadingForm = true;
+        try
+        {
+            var root = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            }) as JsonObject;
+
+            var runtime = root?["runtime"] as JsonObject;
+            FlattenCheckBox.IsChecked = runtime?["flatten"]?.GetValue<bool>() ?? true;
+
+            _fieldRows.Clear();
+            if (root?["fields"] is JsonObject fields)
+            {
+                foreach (var item in fields)
+                {
+                    var rule = item.Value as JsonObject;
+                    _fieldRows.Add(new FieldRuleRow
+                    {
+                        Name = item.Key,
+                        Required = rule?["required"]?.GetValue<bool>() ?? false,
+                        Unique = rule?["unique"]?.GetValue<bool>() ?? false,
+                        MinValue = ReadNumber(rule?["minValue"]),
+                        MaxValue = ReadNumber(rule?["maxValue"]),
+                        NullRateMax = ReadNumber(rule?["nullRateMax"]),
+                        Pattern = rule?["pattern"]?.GetValue<string>() ?? string.Empty
+                    });
+                }
+            }
+
+            var expectations = root?["expectations"] as JsonObject;
+            MinRowCountTextBox.Text = expectations?["minRowCount"]?.ToString() ?? string.Empty;
+            MaxDuplicateRateTextBox.Text = expectations?["maxDuplicateRate"]?.ToString() ?? string.Empty;
+        }
+        catch
+        {
+            // Invalid JSON remains editable in the advanced tab; validation will show the precise error.
+        }
+        finally
+        {
+            _loadingForm = false;
+        }
+    }
+
+    private void SyncFormToJson()
+    {
+        if (_loadingForm)
+            return;
+
+        var root = JsonNode.Parse(RulesTextBox.Text, documentOptions: new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        }) as JsonObject ?? new JsonObject();
+
+        var runtime = root["runtime"] as JsonObject ?? new JsonObject();
+        runtime["flatten"] = FlattenCheckBox.IsChecked == true;
+        root["runtime"] = runtime;
+
+        var fields = root["fields"] as JsonObject ?? new JsonObject();
+        foreach (var row in _fieldRows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Name))
+                throw new InvalidOperationException("字段路径不能为空。");
+
+            var rule = fields[row.Name] as JsonObject ?? new JsonObject();
+            rule["required"] = row.Required;
+            rule["unique"] = row.Unique;
+            SetNumber(rule, "minValue", row.MinValue, row.Name);
+            SetNumber(rule, "maxValue", row.MaxValue, row.Name);
+            SetNumber(rule, "nullRateMax", row.NullRateMax, row.Name);
+
+            if (string.IsNullOrWhiteSpace(row.Pattern))
+                rule.Remove("pattern");
+            else
+                rule["pattern"] = row.Pattern;
+
+            fields[row.Name] = rule;
+        }
+
+        // 表单删除的字段也从 JSON 移除；保留非表单字段规则以免丢失高级配置。
+        var visibleNames = _fieldRows.Select(x => x.Name).ToHashSet(StringComparer.Ordinal);
+        var originallySimpleNames = fields
+            .Where(x => x.Value is JsonObject obj &&
+                        (obj.ContainsKey("required") || obj.ContainsKey("unique") ||
+                         obj.ContainsKey("minValue") || obj.ContainsKey("maxValue") ||
+                         obj.ContainsKey("nullRateMax") || obj.ContainsKey("pattern")))
+            .Select(x => x.Key)
+            .ToList();
+
+        // 只删除明确从表格移除、且仅包含表单支持属性的字段。
+        foreach (var name in originallySimpleNames.Where(name => !visibleNames.Contains(name)).ToList())
+        {
+            if (fields[name] is JsonObject obj &&
+                obj.All(p => p.Key is "required" or "unique" or "minValue" or "maxValue" or "nullRateMax" or "pattern"))
+                fields.Remove(name);
+        }
+
+        root["fields"] = fields;
+
+        var expectations = root["expectations"] as JsonObject ?? new JsonObject();
+        SetInteger(expectations, "minRowCount", MinRowCountTextBox.Text);
+        SetDecimal(expectations, "maxDuplicateRate", MaxDuplicateRateTextBox.Text);
+        root["expectations"] = expectations;
+
+        RulesTextBox.Text = root.ToJsonString(s_formJsonOptions);
+    }
+
+    private static double? ReadNumber(JsonNode? node) =>
+        double.TryParse(node?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : null;
+
+    private static void SetNumber(JsonObject target, string key, string? text, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            target.Remove(key);
+            return;
+        }
+
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
+            throw new InvalidOperationException($"字段“{fieldName}”的 {key} 必须是有效数字。");
+
+        if (key == "nullRateMax" && (value < 0 || value > 1))
+            throw new InvalidOperationException($"字段“{fieldName}”的 nullRateMax 必须在 0 到 1 之间。");
+
+        target[key] = value;
+    }
+
+    private static void SetInteger(JsonObject target, string key, string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            target.Remove(key);
+            return;
+        }
+
+        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) || value < 0)
+            throw new InvalidOperationException($"{key} 必须是大于或等于 0 的整数。");
+
+        target[key] = value;
+    }
+
+    private static void SetDecimal(JsonObject target, string key, string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            target.Remove(key);
+            return;
+        }
+
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ||
+            !double.IsFinite(value) || value < 0 || value > 1)
+            throw new InvalidOperationException($"{key} 必须是 0 到 1 之间的数字。");
+
+        target[key] = value;
+    }
+
+    private sealed class FieldRuleRow
+    {
+        public string Name { get; set; } = string.Empty;
+        public bool Required { get; set; }
+        public bool Unique { get; set; }
+        public string? MinValue { get; set; }
+        public string? MaxValue { get; set; }
+        public string? NullRateMax { get; set; }
+        public string Pattern { get; set; } = string.Empty;
+    }
+
     private bool ValidateRules(bool showSuccess)
     {
+        try
+        {
+            SyncFormToJson();
+        }
+        catch (Exception ex)
+        {
+            ValidationTextBlock.Text = $"表单配置错误：{ex.Message}";
+            return false;
+        }
+
         string text = RulesTextBox.Text;
         if (string.IsNullOrWhiteSpace(text))
         {
