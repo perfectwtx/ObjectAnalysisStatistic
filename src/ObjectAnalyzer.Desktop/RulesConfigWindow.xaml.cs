@@ -197,7 +197,7 @@ public partial class RulesConfigWindow : Window
                     if (jsonc[next] == '/' && next + 1 < jsonc.Length && jsonc[next + 1] == '/')
                     {
                         next += 2;
-                        while (next < jsonc.Length && jsonc[next] != '\\n' && jsonc[next] != '\\r')
+                        while (next < jsonc.Length && jsonc[next] != '\n' && jsonc[next] != '\r')
                             next++;
                         continue;
                     }
