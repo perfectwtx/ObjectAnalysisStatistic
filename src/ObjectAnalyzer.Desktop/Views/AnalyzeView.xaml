@@ -66,6 +66,12 @@
                             </ui:Button>
                         </Grid>
 
+                        <ui:Button Content="规则配置…" Click="ConfigureRules_Click" HorizontalAlignment="Left" Height="30" Padding="12,0" Margin="0,0,0,10">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="Settings24"/>
+                            </ui:Button.Icon>
+                        </ui:Button>
+
                         <TextBlock Text="{DynamicResource Str.Analyze.ReportFormat}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox x:Name="ReportFormatComboBox"
                                   MinHeight="32"
