@@ -22,7 +22,7 @@ public partial class RulesConfigWindow : Window
       "fields": {
         "gender": { "enumValues": ["Male", "Female", "Unknown"] },
         "age": { "required": true, "minValue": 0, "maxValue": 120 },
-        "email": { "pattern": "\\\\S+@\\\\S+", "required": true },
+        "email": { "pattern": "\\S+@\\S+", "required": true },
         "id": { "unique": true },
 
         // 缺失值与显式 null 都会计入空值率
@@ -186,8 +186,33 @@ public partial class RulesConfigWindow : Window
             if (ch == ',')
             {
                 int next = i + 1;
-                while (next < jsonc.Length && char.IsWhiteSpace(jsonc[next]))
-                    next++;
+                while (next < jsonc.Length)
+                {
+                    if (char.IsWhiteSpace(jsonc[next]))
+                    {
+                        next++;
+                        continue;
+                    }
+
+                    if (jsonc[next] == '/' && next + 1 < jsonc.Length && jsonc[next + 1] == '/')
+                    {
+                        next += 2;
+                        while (next < jsonc.Length && jsonc[next] != '\\n' && jsonc[next] != '\\r')
+                            next++;
+                        continue;
+                    }
+
+                    if (jsonc[next] == '/' && next + 1 < jsonc.Length && jsonc[next + 1] == '*')
+                    {
+                        next += 2;
+                        while (next + 1 < jsonc.Length && !(jsonc[next] == '*' && jsonc[next + 1] == '/'))
+                            next++;
+                        next = Math.Min(jsonc.Length, next + 2);
+                        continue;
+                    }
+
+                    break;
+                }
 
                 if (next < jsonc.Length && (jsonc[next] == '}' || jsonc[next] == ']'))
                     continue;
