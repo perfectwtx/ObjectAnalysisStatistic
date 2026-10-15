@@ -75,7 +75,7 @@ public partial class RulesConfigWindow : Window
         }
         else
         {
-            RulesTextBox.Text = Template;
+            RulesTextBox.Text = RulesTemplate;
             LoadFormFromJson(RulesTextBox.Text);
         }
     }
@@ -552,7 +552,7 @@ public partial class RulesConfigWindow : Window
 
     private bool ConfirmDiscardIfChanged()
     {
-        if (string.IsNullOrWhiteSpace(RulesTextBox.Text) || RulesTextBox.Text == Template)
+        if (string.IsNullOrWhiteSpace(RulesTextBox.Text) || RulesTextBox.Text == RulesTemplate)
             return true;
 
         return MessageBox.Show(
