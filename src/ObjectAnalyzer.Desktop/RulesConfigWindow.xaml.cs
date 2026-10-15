@@ -48,6 +48,8 @@ public partial class RulesConfigWindow : Window
     private string? _currentPath;
     private readonly ObservableCollection<FieldRuleRow> _fieldRows = new();
     private bool _loadingForm;
+    private bool _writingJson;
+    private bool _advancedEdited;
     private static readonly JsonSerializerOptions s_formJsonOptions = new() { WriteIndented = true };
     public string? SavedRulesPath { get; private set; }
 
@@ -116,6 +118,46 @@ public partial class RulesConfigWindow : Window
 
     private void Validate_Click(object sender, RoutedEventArgs e) => ValidateRules(showSuccess: true);
 
+    private void RulesTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!_writingJson && IsLoaded)
+            _advancedEdited = true;
+    }
+
+    private void SyncJsonToForm_Click(object sender, RoutedEventArgs e)
+    {
+        LoadFormFromJson(RulesTextBox.Text);
+        _advancedEdited = false;
+        ValidationTextBlock.Text = "已从高级 JSONC 刷新表单。";
+    }
+
+    private void ConfigTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || !ReferenceEquals(e.OriginalSource, ConfigTabs))
+            return;
+
+        if (ConfigTabs.SelectedItem is System.Windows.Controls.TabItem tab &&
+            Equals(tab.Header?.ToString(), "高级 JSONC"))
+        {
+            if (!_advancedEdited)
+            {
+                try
+                {
+                    SyncFormToJson(force: true);
+                }
+                catch (Exception ex)
+                {
+                    ValidationTextBlock.Text = $"表单配置错误：{ex.Message}";
+                }
+            }
+        }
+        else if (_advancedEdited)
+        {
+            LoadFormFromJson(RulesTextBox.Text);
+            _advancedEdited = false;
+        }
+    }
+
     private void AddField_Click(object sender, RoutedEventArgs e)
     {
         _fieldRows.Add(new FieldRuleRow { Name = "newField" });
@@ -176,9 +218,9 @@ public partial class RulesConfigWindow : Window
         }
     }
 
-    private void SyncFormToJson()
+    private void SyncFormToJson(bool force = false)
     {
-        if (_loadingForm)
+        if (_loadingForm || (_advancedEdited && !force))
             return;
 
         var root = JsonNode.Parse(RulesTextBox.Text, documentOptions: new JsonDocumentOptions
@@ -249,7 +291,16 @@ public partial class RulesConfigWindow : Window
         SetInteger(expectations, "minRowCount", MinRowCountTextBox.Text);
         SetDecimal(expectations, "maxDuplicateRate", MaxDuplicateRateTextBox.Text);
 
-        RulesTextBox.Text = root.ToJsonString(s_formJsonOptions);
+        _writingJson = true;
+        try
+        {
+            RulesTextBox.Text = root.ToJsonString(s_formJsonOptions);
+            _advancedEdited = false;
+        }
+        finally
+        {
+            _writingJson = false;
+        }
     }
 
     private static double? ReadNumber(JsonNode? node) =>
