@@ -19,7 +19,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="规则与运行配置" FontSize="22" FontWeight="SemiBold"/>
             <TextBlock Margin="0,5,0,0" TextWrapping="Wrap" Opacity="0.75"
-                       Text="使用与 Web 端一致的规则 JSON：runtime 控制解析行为，fields 定义字段约束，valueParsers 配置单元格解析，expectations 定义数据集质量门槛。支持 // 和 /* */ 注释。"/>
+                       Text="可视化配置常用规则，也可在高级编辑器中维护 Web 端兼容的完整 JSONC。保存前会执行 Core 规则校验。"/>
         </StackPanel>
 
         <WrapPanel Grid.Row="1" Margin="0,0,0,10">
@@ -29,21 +29,86 @@
             <Button Content="保存到…" Click="SaveAs_Click" Padding="14,6"/>
         </WrapPanel>
 
-        <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="1">
-            <TextBox x:Name="RulesTextBox"
-                     FontFamily="Consolas"
-                     FontSize="13"
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     TextWrapping="NoWrap"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"
-                     SpellCheck.IsEnabled="False"
-                     BorderThickness="0"
-                     Padding="12"
-                     Background="{DynamicResource Brush.Surface}"
-                     Foreground="{DynamicResource Brush.TextPrimary}"/>
-        </Border>
+        <TabControl x:Name="ConfigTabs" Grid.Row="2">
+            <TabItem Header="Runtime">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16" MaxWidth="680" HorizontalAlignment="Left">
+                        <TextBlock Text="数据解析与展开" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        <CheckBox x:Name="FlattenCheckBox" Content="展开嵌套对象字段（runtime.flatten）" Margin="0,0,0,10"/>
+                        <TextBlock Text="此选项控制嵌套对象的展开方式。其他 Runtime 参数会保留在高级 JSONC 配置中。"
+                                   TextWrapping="Wrap" Opacity="0.7"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Rules">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                        <TextBlock Text="字段质量规则" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="每行配置一个字段。数值范围、必填、唯一性、正则和空值率为常用规则；其他字段规则可在高级 JSONC 中编辑。"
+                                   TextWrapping="Wrap" Opacity="0.7" Margin="0,4,0,0"/>
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button Content="新增字段" Click="AddField_Click" Padding="12,5" Margin="0,0,8,0"/>
+                            <Button Content="删除选中" Click="RemoveField_Click" Padding="12,5"/>
+                        </WrapPanel>
+                    </StackPanel>
+                    <DataGrid x:Name="FieldsGrid" Grid.Row="1" AutoGenerateColumns="False"
+                              CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="False"
+                              HeadersVisibility="Column" SelectionMode="Single"
+                              GridLinesVisibility="Horizontal" MinHeight="180">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="字段路径" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                            <DataGridCheckBoxColumn Header="必填" Binding="{Binding Required, UpdateSourceTrigger=PropertyChanged}" Width="65"/>
+                            <DataGridCheckBoxColumn Header="唯一" Binding="{Binding Unique, UpdateSourceTrigger=PropertyChanged}" Width="65"/>
+                            <DataGridTextColumn Header="最小值" Binding="{Binding MinValue, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                            <DataGridTextColumn Header="最大值" Binding="{Binding MaxValue, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                            <DataGridTextColumn Header="空值率上限" Binding="{Binding NullRateMax, UpdateSourceTrigger=PropertyChanged}" Width="100"/>
+                            <DataGridTextColumn Header="正则" Binding="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Features">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16" MaxWidth="680" HorizontalAlignment="Left">
+                        <TextBlock Text="数据集质量门槛" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="190"/>
+                                <ColumnDefinition Width="180"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="最小行数（minRowCount）" VerticalAlignment="Center" Margin="0,0,12,12"/>
+                            <TextBox x:Name="MinRowCountTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,12" Padding="6,4"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="最大重复率（0～1）" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBox x:Name="MaxDuplicateRateTextBox" Grid.Row="1" Grid.Column="1" Padding="6,4"/>
+                        </Grid>
+                        <TextBlock Margin="0,12,0,0" Text="高级特征开关与其他分析参数暂时保留在高级 JSONC 或分析页面中，避免桌面表单覆盖尚未映射的配置。"
+                                   TextWrapping="Wrap" Opacity="0.7"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="高级 JSONC">
+                <Grid Margin="8">
+                    <TextBox x:Name="RulesTextBox"
+                             FontFamily="Consolas" FontSize="13"
+                             AcceptsReturn="True" AcceptsTab="True"
+                             TextWrapping="NoWrap"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             SpellCheck.IsEnabled="False"
+                             Padding="12"
+                             Background="{DynamicResource Brush.Surface}"
+                             Foreground="{DynamicResource Brush.TextPrimary}"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <Border Grid.Row="3" Margin="0,10,0,0" Padding="10" CornerRadius="6"
                 Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
