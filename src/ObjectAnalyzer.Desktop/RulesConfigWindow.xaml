@@ -29,7 +29,7 @@
             <Button Content="保存到…" Click="SaveAs_Click" Padding="14,6"/>
         </WrapPanel>
 
-        <TabControl x:Name="ConfigTabs" Grid.Row="2">
+        <TabControl x:Name="ConfigTabs" Grid.Row="2" SelectionChanged="ConfigTabs_SelectionChanged">
             <TabItem Header="Runtime">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16" MaxWidth="680" HorizontalAlignment="Left">
@@ -96,7 +96,10 @@
             </TabItem>
             <TabItem Header="高级 JSONC">
                 <Grid Margin="8">
-                    <TextBox x:Name="RulesTextBox"
+                    <DockPanel>
+                        <Button DockPanel.Dock="Top" Content="从 JSONC 同步到表单" Click="SyncJsonToForm_Click"
+                                HorizontalAlignment="Left" Padding="12,5" Margin="0,0,0,8"/>
+                        <TextBox x:Name="RulesTextBox" TextChanged="RulesTextBox_TextChanged"
                              FontFamily="Consolas" FontSize="13"
                              AcceptsReturn="True" AcceptsTab="True"
                              TextWrapping="NoWrap"
@@ -106,6 +109,7 @@
                              Padding="12"
                              Background="{DynamicResource Brush.Surface}"
                              Foreground="{DynamicResource Brush.TextPrimary}"/>
+                    </DockPanel>
                 </Grid>
             </TabItem>
         </TabControl>
