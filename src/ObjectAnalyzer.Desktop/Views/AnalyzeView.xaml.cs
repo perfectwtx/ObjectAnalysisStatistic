@@ -7,6 +7,7 @@ public partial class AnalyzeView : UserControl
 {
     public event EventHandler? SelectFileRequested;
     public event EventHandler? SelectRulesRequested;
+    public event EventHandler? ConfigureRulesRequested;
     public event EventHandler? AnalyzeRequested;
     public event EventHandler? CancelRequested;
     public event EventHandler? OpenReportRequested;
@@ -37,6 +38,9 @@ public partial class AnalyzeView : UserControl
 
     private void SelectRules_Click(object sender, RoutedEventArgs e) =>
         SelectRulesRequested?.Invoke(this, EventArgs.Empty);
+
+    private void ConfigureRules_Click(object sender, RoutedEventArgs e) =>
+        ConfigureRulesRequested?.Invoke(this, EventArgs.Empty);
 
     private void Analyze_Click(object sender, RoutedEventArgs e) =>
         AnalyzeRequested?.Invoke(this, EventArgs.Empty);
