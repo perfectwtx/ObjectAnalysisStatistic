@@ -187,11 +187,20 @@ public partial class RulesConfigWindow : Window
             AllowTrailingCommas = true
         }) as JsonObject ?? new JsonObject();
 
-        var runtime = root["runtime"] as JsonObject ?? new JsonObject();
+        var runtime = root["runtime"] as JsonObject;
+        if (runtime is null)
+        {
+            runtime = new JsonObject();
+            root["runtime"] = runtime;
+        }
         runtime["flatten"] = FlattenCheckBox.IsChecked == true;
-        root["runtime"] = runtime;
 
-        var fields = root["fields"] as JsonObject ?? new JsonObject();
+        var fields = root["fields"] as JsonObject;
+        if (fields is null)
+        {
+            fields = new JsonObject();
+            root["fields"] = fields;
+        }
         foreach (var row in _fieldRows)
         {
             if (string.IsNullOrWhiteSpace(row.Name))
@@ -209,7 +218,8 @@ public partial class RulesConfigWindow : Window
             else
                 rule["pattern"] = row.Pattern;
 
-            fields[row.Name] = rule;
+            if (fields[row.Name] is null)
+                fields[row.Name] = rule;
         }
 
         // 表单删除的字段也从 JSON 移除；保留非表单字段规则以免丢失高级配置。
@@ -230,12 +240,14 @@ public partial class RulesConfigWindow : Window
                 fields.Remove(name);
         }
 
-        root["fields"] = fields;
-
-        var expectations = root["expectations"] as JsonObject ?? new JsonObject();
+        var expectations = root["expectations"] as JsonObject;
+        if (expectations is null)
+        {
+            expectations = new JsonObject();
+            root["expectations"] = expectations;
+        }
         SetInteger(expectations, "minRowCount", MinRowCountTextBox.Text);
         SetDecimal(expectations, "maxDuplicateRate", MaxDuplicateRateTextBox.Text);
-        root["expectations"] = expectations;
 
         RulesTextBox.Text = root.ToJsonString(s_formJsonOptions);
     }
