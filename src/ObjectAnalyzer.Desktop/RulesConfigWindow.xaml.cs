@@ -14,37 +14,31 @@ public partial class RulesConfigWindow : Window
 
     private const string Template = """
     {
-      // Runtime：解析和运行时行为
+      // Runtime：控制数据展开与解析行为
       "runtime": {
-        "flatten": true,
-        "csvInferNumbers": true
+        "flatten": true
       },
 
-      // 字段规则：字段路径可以使用点号，例如 address.city
       "fields": {
-        "id": {
-          "required": true,
-          "unique": true
-        },
-        "age": {
-          "primaryType": "Number",
-          "required": true,
-          "minValue": 0,
-          "maxValue": 120
-        },
-        "email": {
-          "pattern": "^[^@]+@[^@]+$",
-          "nullRateMax": 0.05
-        }
+        "gender": { "enumValues": ["Male", "Female", "Unknown"] },
+        "age": { "required": true, "minValue": 0, "maxValue": 120 },
+        "email": { "pattern": "\\\\S+@\\\\S+", "required": true },
+        "id": { "unique": true },
+
+        // 缺失值与显式 null 都会计入空值率
+        "address.district": { "nullRateMax": 0.2 },
+
+        // 将字符串先按 JSON 解析，再展开子字段
+        "line": { "transform": { "parse": "json" } },
+        "line.body": { "transform": { "parse": "json" } }
       },
 
-      // 数据集级质量期望
-      "expectations": {
-        "minRowCount": 1,
-        "maxDuplicateRate": 0.05
-      }
+      // Excel/CSV：指定列按 JSON 解析后再统计
+      // "valueParsers": [
+      //   { "source": "payload", "parseType": "auto", "flatten": true, "header": 1 }
+      // ],
 
-      // 可选：valueParsers 可配置 CSV/Excel 列的 JSON 解析规则
+      "expectations": { "minRowCount": 3, "maxDuplicateRate": 0 }
     }
     """;
 
@@ -135,7 +129,10 @@ public partial class RulesConfigWindow : Window
                 return false;
             }
 
-            var rules = JsonSerializer.Deserialize<AnalysisRules>(text, AnalysisRules.RulesJsonOptions);
+            // Web 端允许 JSONC 尾随逗号，但 Core 的统一反序列化选项不允许。
+            // 本地校验先去除尾随逗号，再用 Core 的权威模型检查字段类型与结构。
+            var normalizedText = RemoveTrailingCommas(text);
+            var rules = JsonSerializer.Deserialize<AnalysisRules>(normalizedText, AnalysisRules.RulesJsonOptions);
             if (rules is null)
             {
                 ValidationTextBlock.Text = "规则 JSON 未能解析为有效配置。";
@@ -155,6 +152,51 @@ public partial class RulesConfigWindow : Window
             ValidationTextBlock.Text = $"规则校验失败：{ex.Message}";
             return false;
         }
+    }
+
+    private static string RemoveTrailingCommas(string jsonc)
+    {
+        // JSON 字符串内部可能包含逗号，扫描时必须跳过字符串与转义字符。
+        var result = new StringBuilder(jsonc.Length);
+        bool inString = false;
+        bool escaped = false;
+
+        for (int i = 0; i < jsonc.Length; i++)
+        {
+            char ch = jsonc[i];
+            if (inString)
+            {
+                result.Append(ch);
+                if (escaped)
+                    escaped = false;
+                else if (ch == '\\\\')
+                    escaped = true;
+                else if (ch == '"')
+                    inString = false;
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inString = true;
+                result.Append(ch);
+                continue;
+            }
+
+            if (ch == ',')
+            {
+                int next = i + 1;
+                while (next < jsonc.Length && char.IsWhiteSpace(jsonc[next]))
+                    next++;
+
+                if (next < jsonc.Length && (jsonc[next] == '}' || jsonc[next] == ']'))
+                    continue;
+            }
+
+            result.Append(ch);
+        }
+
+        return result.ToString();
     }
 
     private void SaveAs_Click(object sender, RoutedEventArgs e)
