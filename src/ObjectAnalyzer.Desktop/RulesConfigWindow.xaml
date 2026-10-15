@@ -1,0 +1,62 @@
+<Window x:Class="ObjectAnalyzer.Desktop.RulesConfigWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="规则与运行配置"
+        Width="980" Height="760"
+        MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Bg}"
+        Foreground="{DynamicResource Brush.TextPrimary}">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="规则与运行配置" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Margin="0,5,0,0" TextWrapping="Wrap" Opacity="0.75"
+                       Text="使用与 Web 端一致的规则 JSON：runtime 控制解析行为，fields 定义字段约束，valueParsers 配置单元格解析，expectations 定义数据集质量门槛。支持 // 和 /* */ 注释。"/>
+        </StackPanel>
+
+        <WrapPanel Grid.Row="1" Margin="0,0,0,10">
+            <Button Content="加载模板" Click="Template_Click" Padding="14,6" Margin="0,0,8,0"/>
+            <Button Content="导入规则…" Click="Import_Click" Padding="14,6" Margin="0,0,8,0"/>
+            <Button Content="校验规则" Click="Validate_Click" Padding="14,6" Margin="0,0,8,0"/>
+            <Button Content="保存到…" Click="SaveAs_Click" Padding="14,6"/>
+        </WrapPanel>
+
+        <Border Grid.Row="2" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="8" Padding="1">
+            <TextBox x:Name="RulesTextBox"
+                     FontFamily="Consolas"
+                     FontSize="13"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     TextWrapping="NoWrap"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     SpellCheck.IsEnabled="False"
+                     BorderThickness="0"
+                     Padding="12"
+                     Background="{DynamicResource Brush.Surface}"
+                     Foreground="{DynamicResource Brush.TextPrimary}"/>
+        </Border>
+
+        <Border Grid.Row="3" Margin="0,10,0,0" Padding="10" CornerRadius="6"
+                Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1">
+            <TextBlock x:Name="ValidationTextBlock" Text="请先校验规则，再保存并应用。" TextWrapping="Wrap"/>
+        </Border>
+
+        <DockPanel Grid.Row="4" Margin="0,14,0,0" LastChildFill="False">
+            <TextBlock x:Name="PathTextBlock" DockPanel.Dock="Left" VerticalAlignment="Center"
+                       MaxWidth="580" TextTrimming="CharacterEllipsis" Opacity="0.7"/>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="取消" IsCancel="True" Padding="18,7" Margin="0,0,8,0"/>
+                <Button Content="保存并应用" IsDefault="True" Click="SaveAndApply_Click" Padding="18,7" FontWeight="SemiBold"/>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>
