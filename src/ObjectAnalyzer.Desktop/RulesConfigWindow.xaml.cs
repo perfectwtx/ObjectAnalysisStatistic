@@ -15,7 +15,7 @@ public partial class RulesConfigWindow : Window
 {
     private const string DefaultFileName = "rules.jsonc";
 
-    private const string Template = """
+    private const string RulesTemplate = """
     {
       // Runtime：控制数据展开与解析行为
       "runtime": {
@@ -70,7 +70,7 @@ public partial class RulesConfigWindow : Window
             catch (Exception ex)
             {
                 ValidationTextBlock.Text = $"读取规则文件失败：{ex.Message}";
-                RulesTextBox.Text = Template;
+                RulesTextBox.Text = RulesTemplate;
             }
         }
         else
@@ -303,9 +303,9 @@ public partial class RulesConfigWindow : Window
         }
     }
 
-    private static double? ReadNumber(JsonNode? node) =>
+    private static string? ReadNumber(JsonNode? node) =>
         double.TryParse(node?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
-            ? value : null;
+            ? value.ToString(CultureInfo.InvariantCulture) : null;
 
     private static void SetNumber(JsonObject target, string key, string? text, string fieldName)
     {
