@@ -84,7 +84,7 @@ public partial class RulesConfigWindow : Window
     {
         if (ConfirmDiscardIfChanged())
         {
-            RulesTextBox.Text = Template;
+            RulesTextBox.Text = RulesTemplate;
             LoadFormFromJson(RulesTextBox.Text);
             ValidationTextBlock.Text = "已载入示例模板。请按实际数据字段调整后校验。";
         }
