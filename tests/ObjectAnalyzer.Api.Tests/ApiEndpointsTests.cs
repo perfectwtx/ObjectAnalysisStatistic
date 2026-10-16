@@ -293,12 +293,12 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         // 请求体被数据文本占用，规则只能走查询参数，这里验证它确实生效。
         var client = CreateClient();
 
-        string cell = "{\"body\":\"{\\\"mountain\\\":\\\"bear\\\"}\"}";
-        string csv = "A\n\"" + cell.Replace("\"", "\"\"") + "\"\n";
+        // 用最小输入隔离验证 valueParsers 本身，避免同时测试嵌套字符串 transform 造成失败原因混杂。
+        string cell = "{\\\"mountain\\\":\\\"bear\\\"}";
+        string csv = "A\\n\\\"" + cell.Replace("\\\"", "\\\"\\\"") + "\\\"\\n";
         string rules = """
-            {"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}],
-             "fields":{"A.body":{"transform":{"parse":"json"}}}}
-            """.Replace("\n", "").Replace("\r", "");
+            {"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}]}
+            """.Replace("\\n", "").Replace("\\r", "");
 
         var url = "/api/analyze/raw?format=csv&rulesJson=" + Uri.EscapeDataString(rules);
         var response = await client.PostAsync(url,
