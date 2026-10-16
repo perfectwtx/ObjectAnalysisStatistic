@@ -48,7 +48,7 @@
                     </Grid.RowDefinitions>
                     <StackPanel Grid.Row="0" Margin="0,0,0,10">
                         <TextBlock Text="字段质量规则" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="每行配置一个字段。数值范围、必填、唯一性、正则和空值率为常用规则；其他字段规则可在高级 JSONC 中编辑。"
+                        <TextBlock Text="每行配置一个字段，路径不可重复。改名会保留该行的枚举、转换和 PII 等高级规则；删除会移除整条规则。"
                                    TextWrapping="Wrap" Opacity="0.7" Margin="0,4,0,0"/>
                         <WrapPanel Margin="0,8,0,0">
                             <Button Content="新增字段" Click="AddField_Click" Padding="12,5" Margin="0,0,8,0"/>
@@ -124,7 +124,7 @@
                        MaxWidth="580" TextTrimming="CharacterEllipsis" Opacity="0.7"/>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button Content="取消" IsCancel="True" Padding="18,7" Margin="0,0,8,0"/>
-                <Button Content="保存并应用" IsDefault="True" Click="SaveAndApply_Click" Padding="18,7" FontWeight="SemiBold"/>
+                <Button Content="保存并应用" Click="SaveAndApply_Click" Padding="18,7" FontWeight="SemiBold"/>
             </StackPanel>
         </DockPanel>
     </Grid>
