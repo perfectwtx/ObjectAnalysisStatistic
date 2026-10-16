@@ -313,7 +313,7 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
             .EnumerateArray()
             .Select(f => f.GetProperty("fieldName").GetString())
             .ToList();
-        Assert.Contains("A.body.mountain", names);
+        Assert.Contains("A.mountain", names);
     }
 
     [Fact]
