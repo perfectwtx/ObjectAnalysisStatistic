@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 using ObjectAnalyzer.Desktop.Services;
 
@@ -26,6 +27,9 @@ public partial class RulesConfigWindow : Window
     public RulesConfigWindow(string? rulesPath)
     {
         InitializeComponent();
+        AddHandler(TextCompositionManager.PreviewTextInputEvent, new TextCompositionEventHandler(NumericTextInput));
+        AddHandler(Keyboard.PreviewKeyDownEvent, new KeyEventHandler(NumericKeyDown));
+        DataObject.AddPastingHandler(this, NumericPaste);
         if (!string.IsNullOrWhiteSpace(rulesPath) && File.Exists(rulesPath))
         {
             try
@@ -68,6 +72,23 @@ public partial class RulesConfigWindow : Window
             var document = RulesEditorDocument.Parse(RulesTextBox.Text);
             _document = document;
             FieldsGrid.ItemsSource = document.Fields;
+            FieldsGrid.SelectedIndex = document.Fields.Count > 0 ? 0 : -1;
+            ParsersList.ItemsSource = document.ValueParsers;
+            RuntimeOptionsPanel.Children.Clear();
+            var titles = new Dictionary<string, string>
+            {
+                [""] = "解析与字段过滤", ["sampling"] = "采样", ["jsonPath"] = "JSONPath 投影",
+                ["schema"] = "结构快照与差异", ["distribution"] = "分布漂移", ["pii"] = "敏感信息与合规",
+                ["gates"] = "质量门禁", ["deepAnalysis"] = "深度分析", ["checkpoint"] = "检查点与增量分析",
+                ["memory"] = "内存预算", ["progress"] = "运行进度", ["audit"] = "审计日志", ["outputs"] = "报告输出"
+            };
+            foreach (var group in document.RuntimeOptions.GroupBy(o => o.Path.Contains('.') ? o.Path.Split('.')[0] : ""))
+                RuntimeOptionsPanel.Children.Add(new Expander
+                {
+                    Header = titles.GetValueOrDefault(group.Key, group.Key), IsExpanded = group.Key is "" or "sampling",
+                    Margin = new Thickness(0, 6, 0, 6),
+                    Content = new ItemsControl { ItemsSource = group, ItemTemplate = (DataTemplate)FindResource("OptionTemplate") }
+                });
             FlattenCheckBox.IsChecked = document.Flatten;
             MinRowCountTextBox.Text = document.MinRowCount;
             MaxDuplicateRateTextBox.Text = document.MaxDuplicateRate;
@@ -177,6 +198,52 @@ public partial class RulesConfigWindow : Window
     {
         if (_document is not null && FieldsGrid.SelectedItem is RulesEditorField row)
             _document.Fields.Remove(row);
+    }
+
+    private static bool IsNumericEditor(TextBox box, out bool integer)
+    {
+        integer = box.Tag as string == "Integer" || box.DataContext is RulesEditorOption { IsInteger: true };
+        return integer || box.Tag as string == "Number" || box.DataContext is RulesEditorOption { IsNumeric: true };
+    }
+
+    private static bool AcceptsInsertion(TextBox box, string text, bool integer) =>
+        RulesEditorOption.AcceptsNumericInput(box.Text.Remove(box.SelectionStart, box.SelectionLength)
+            .Insert(box.SelectionStart, text), integer);
+
+    private void NumericTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (e.OriginalSource is TextBox box && IsNumericEditor(box, out var integer))
+            e.Handled = !AcceptsInsertion(box, e.Text, integer);
+    }
+
+    private void NumericKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && e.OriginalSource is TextBox box && IsNumericEditor(box, out _))
+            e.Handled = true;
+    }
+
+    private void NumericPaste(object sender, DataObjectPastingEventArgs e)
+    {
+        if (e.OriginalSource is not TextBox box || !IsNumericEditor(box, out var integer)) return;
+        if (e.DataObject.GetData(DataFormats.UnicodeText) is not string text || !AcceptsInsertion(box, text, integer))
+            e.CancelCommand();
+    }
+
+    private void FieldsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, FieldsGrid) || FieldDetailsScrollViewer is null)
+            return;
+        FieldDetailsTitle.Text = FieldsGrid.SelectedItem is RulesEditorField row ? row.Name : "请先选择一个字段";
+        // A new selection starts at its first setting, not the previous field's scroll position.
+        FieldDetailsScrollViewer.ScrollToTop();
+    }
+
+    private void AddParser_Click(object sender, RoutedEventArgs e) => _document?.ValueParsers.Add(new RulesEditorParser());
+
+    private void RemoveParser_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: RulesEditorParser parser })
+            _document?.ValueParsers.Remove(parser);
     }
 
     private void Template_Click(object sender, RoutedEventArgs e)
