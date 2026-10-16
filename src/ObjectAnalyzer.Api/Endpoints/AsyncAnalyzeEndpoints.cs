@@ -324,6 +324,25 @@ public static class AsyncAnalyzeEndpoints
                 var ct = http.RequestAborted;
                 while (true)
                 {
+                    // Use the same terminal authority as polling: persistence may finish
+                    // before the background task publishes its terminal Registry snapshot.
+                    if (Guid.TryParse(jobId, out var terminalJobId))
+                    {
+                        var terminalJob = await historyStore.GetAsync(terminalJobId, ct);
+                        if (terminalJob is not null && terminalJob.Status is
+                            (AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled))
+                        {
+                            var response = ToResponse(terminalJob);
+                            await WriteEventAsync("complete", JsonSerializer.Serialize(new
+                            {
+                                processedObjects = response.ProcessedObjects,
+                                status = response.Status.ToString(),
+                                error = response.Error
+                            }, s_sseJsonOptions), ct);
+                            return;
+                        }
+                    }
+
                     var snap = AnalysisJobRegistry.Instance.Get(jobId);
                     if (snap is not null)
                     {
