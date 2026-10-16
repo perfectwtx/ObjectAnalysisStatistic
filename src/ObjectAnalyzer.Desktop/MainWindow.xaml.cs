@@ -60,6 +60,7 @@ public partial class MainWindow : FluentWindow
 
         AnalyzeViewControl.SelectFileRequested += (_, _) => SelectFile();
         AnalyzeViewControl.SelectRulesRequested += (_, _) => SelectRules();
+        AnalyzeViewControl.ConfigureRulesRequested += (_, _) => ConfigureRules();
         AnalyzeViewControl.AnalyzeRequested += async (_, _) => await RunAnalysisAsync();
         AnalyzeViewControl.CancelRequested += (_, _) => CancelAnalysis();
         AnalyzeViewControl.OpenReportRequested += (_, _) => OpenReport();
@@ -189,6 +190,20 @@ public partial class MainWindow : FluentWindow
             SetInputFile(
                 dialog.FileName,
                 LocalizationService.Get("Str.Status.FileSelected", "已选择文件，等待开始分析"));
+        }
+    }
+
+    private void ConfigureRules()
+    {
+        var window = new RulesConfigWindow(_viewModel.RulesPath)
+        {
+            Owner = this
+        };
+
+        if (window.ShowDialog() == true && !string.IsNullOrWhiteSpace(window.SavedRulesPath))
+        {
+            _viewModel.RulesPath = window.SavedRulesPath;
+            _viewModel.SetStatus($"规则配置已保存：{Path.GetFileName(window.SavedRulesPath)}");
         }
     }
 

@@ -24,7 +24,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddOpenApi();
 
-var historyDbPath = Path.Combine(AppContext.BaseDirectory, "data", "objectanalyzer.db");
+var historyDbPath = builder.Configuration["Platform:DatabasePath"]
+    ?? Path.Combine(AppContext.BaseDirectory, "data", "objectanalyzer.db");
 builder.Services.AddAnalysisPlatform(historyDbPath);
 
 var app = builder.Build();

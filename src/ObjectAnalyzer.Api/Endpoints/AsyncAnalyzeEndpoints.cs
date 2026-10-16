@@ -270,7 +270,7 @@ public static class AsyncAnalyzeEndpoints
                 if (job is not null)
                 {
                     if (job.Status is AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled)
-                        return TypedResults.Ok(ToResponse(job));
+                        return TypedResults.Ok(ToResponse(job, AnalysisJobRegistry.Instance.Get(jobId)));
 
                     var runningSnap = AnalysisJobRegistry.Instance.Get(jobId);
                     if (runningSnap is not null)
@@ -324,6 +324,25 @@ public static class AsyncAnalyzeEndpoints
                 var ct = http.RequestAborted;
                 while (true)
                 {
+                    // Use the same terminal authority as polling: persistence may finish
+                    // before the background task publishes its terminal Registry snapshot.
+                    if (Guid.TryParse(jobId, out var terminalJobId))
+                    {
+                        var terminalJob = await historyStore.GetAsync(terminalJobId, ct);
+                        if (terminalJob is not null && terminalJob.Status is
+                            (AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled))
+                        {
+                            var response = ToResponse(terminalJob);
+                            await WriteEventAsync("complete", JsonSerializer.Serialize(new
+                            {
+                                processedObjects = response.ProcessedObjects,
+                                status = response.Status.ToString(),
+                                error = response.Error
+                            }, s_sseJsonOptions), ct);
+                            return;
+                        }
+                    }
+
                     var snap = AnalysisJobRegistry.Instance.Get(jobId);
                     if (snap is not null)
                     {
@@ -437,7 +456,7 @@ public static class AsyncAnalyzeEndpoints
             Pii: AnalyzePiiView.From(snap.Pii));
     }
 
-    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJob job)
+    private static AnalyzeJobSnapshotResponse ToResponse(AnalysisJob job, AnalysisJobSnapshot? runtime = null)
     {
         var status = job.Status switch
         {
@@ -475,10 +494,10 @@ public static class AsyncAnalyzeEndpoints
             ProgressText: null,
             ProcessedObjects: job.TotalObjects,
             Result: result,
-            Preview: null,
+            Preview: status == AnalysisStatus.Completed ? runtime?.Preview : null,
             Error: job.Status == AnalysisJobStatus.Failed ? job.ErrorMessage : null,
-            PiiRedacted: true,
-            Pii: null);
+            PiiRedacted: status == AnalysisStatus.Completed ? runtime?.PiiRedacted ?? true : true,
+            Pii: status == AnalysisStatus.Completed ? AnalyzePiiView.From(runtime?.Pii) : null);
     }
 
     private static async Task RunJob(
@@ -506,7 +525,13 @@ public static class AsyncAnalyzeEndpoints
                 token => Task.Run(
                     () => AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge),
                     token),
-                static value => value.Result,
+                value =>
+                {
+                    // Publish delivery metadata before CompleteAsync commits the terminal state.
+                    // Status and Result remain authoritative in the persistent history.
+                    AnalysisJobRegistry.Instance.StageOutput(jobId, value.Preview, value.PiiRedacted, value.Pii);
+                    return value.Result;
+                },
                 options,
                 jobCts.Token);
 

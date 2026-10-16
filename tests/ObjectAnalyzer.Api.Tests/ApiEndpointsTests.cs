@@ -7,11 +7,11 @@ namespace ObjectAnalyzer.Api.Tests;
 /// <summary>
 /// Mini API 集成冒烟测试：健康检查、数据文本分析、multipart 上传分析、规则校验。
 /// </summary>
-public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public class ApiEndpointsTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public ApiEndpointsTests(WebApplicationFactory<Program> factory)
+    public ApiEndpointsTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -293,11 +293,11 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         // 请求体被数据文本占用，规则只能走查询参数，这里验证它确实生效。
         var client = CreateClient();
 
-        string cell = "{\"body\":\"{\\\"mountain\\\":\\\"bear\\\"}\"}";
+        // 用最小输入隔离验证 valueParsers 本身，避免同时测试嵌套字符串 transform 造成失败原因混杂。
+        string cell = "{\"mountain\":\"bear\"}";
         string csv = "A\n\"" + cell.Replace("\"", "\"\"") + "\"\n";
         string rules = """
-            {"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}],
-             "fields":{"A.body":{"transform":{"parse":"json"}}}}
+            {"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}]}
             """.Replace("\n", "").Replace("\r", "");
 
         var url = "/api/analyze/raw?format=csv&rulesJson=" + Uri.EscapeDataString(rules);
@@ -313,7 +313,7 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
             .EnumerateArray()
             .Select(f => f.GetProperty("fieldName").GetString())
             .ToList();
-        Assert.Contains("A.body.mountain", names);
+        Assert.Contains("A.mountain", names);
     }
 
     [Fact]

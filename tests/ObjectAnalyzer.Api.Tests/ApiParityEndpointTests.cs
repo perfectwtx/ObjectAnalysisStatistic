@@ -9,11 +9,11 @@ namespace ObjectAnalyzer.Api.Tests;
 /// Web/API 功能对齐后的查询端点契约测试。
 /// 除了空数据路由冒烟测试，还通过真实异步分析作业验证详情类接口的响应形状。
 /// </summary>
-public sealed class ApiParityEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ApiParityEndpointTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public ApiParityEndpointTests(WebApplicationFactory<Program> factory)
+    public ApiParityEndpointTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
     }

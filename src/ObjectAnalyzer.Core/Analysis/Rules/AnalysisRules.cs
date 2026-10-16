@@ -10,12 +10,13 @@ namespace ObjectAnalyzer.Analysis;
 public class AnalysisRules
 {
     /// <summary>
-    /// 规则文件反序列化选项：允许 // 注释（参考模板 samples/rules_full_reference.jsonc 可直接使用）
+    /// 规则文件反序列化选项：允许 JSONC 注释与尾随逗号（参考模板 samples/rules_full_reference.jsonc 可直接使用）
     /// 与大小写不敏感匹配。全项目统一的规则读取入口。
     /// </summary>
     public static readonly JsonSerializerOptions RulesJsonOptions = new()
     {
         ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
         PropertyNameCaseInsensitive = true
     };
 

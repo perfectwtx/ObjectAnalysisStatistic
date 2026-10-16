@@ -15,7 +15,12 @@ public sealed class AsyncAnalyzeEndpointTests : IClassFixture<AsyncAnalyzeWebApp
 {
     private readonly AsyncAnalyzeWebApplicationFactory _factory;
 
-    public AsyncAnalyzeEndpointTests(AsyncAnalyzeWebApplicationFactory factory) => _factory = factory;
+    public AsyncAnalyzeEndpointTests(AsyncAnalyzeWebApplicationFactory factory)
+    {
+        _factory = factory;
+        // Finish startup recovery before seeding a currently running job.
+        _ = factory.Services;
+    }
 
     [Fact]
     public async Task GetAsyncJob_WhenRegistryHasNoSnapshot_FallsBackToPersistedCompletedJob()
@@ -108,6 +113,47 @@ public sealed class AsyncAnalyzeEndpointTests : IClassFixture<AsyncAnalyzeWebApp
         Assert.Equal(5, body.GetProperty("result").GetProperty("totalObjects").GetInt64());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetAsyncJob_PersistedCompletion_PreservesStagedDeliveryMetadata(bool runtimeCompleted)
+    {
+        var result = new AnalysisResult { TotalObjects = 3 };
+        var job = new AnalysisJob
+        {
+            Id = Guid.NewGuid(),
+            SourceName = "delivery.json",
+            SourceType = "json",
+            Status = AnalysisJobStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow.AddMinutes(-1),
+            CompletedAtUtc = DateTime.UtcNow,
+            TotalObjects = 3,
+            ResultJson = JsonSerializer.Serialize(result)
+        };
+        _factory.Store.Set(job);
+
+        var id = job.Id.ToString("N");
+        using var cts = new CancellationTokenSource();
+        var registry = AnalysisJobRegistry.Instance;
+        registry.Register(id, cts, new AnalysisJobMeta(job.SourceName, "json", null, DateTimeOffset.UtcNow));
+        var preview = new[] { new Dictionary<string, object?> { ["value"] = "sample" } };
+        var pii = PiiPolicy.Resolve(result);
+        registry.StageOutput(id, preview, piiRedacted: false, pii);
+        if (runtimeCompleted)
+            registry.Complete(id, result, preview, piiRedacted: false, pii);
+
+        using var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/analyze/async/{id}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Completed", body.GetProperty("status").GetString());
+        Assert.Equal(3, body.GetProperty("processedObjects").GetInt64());
+        Assert.Equal("sample", body.GetProperty("preview")[0].GetProperty("value").GetString());
+        Assert.False(body.GetProperty("piiRedacted").GetBoolean());
+        Assert.Equal(0, body.GetProperty("pii").GetProperty("fieldCount").GetInt32());
+        registry.Complete(id, result, preview, piiRedacted: false, pii);
+    }
+
     [Fact]
     public async Task GetAsyncJob_WhenPersistedJobDoesNotExist_ReturnsNotFound()
     {
@@ -191,12 +237,13 @@ public sealed class AsyncAnalyzeEndpointTests : IClassFixture<AsyncAnalyzeWebApp
     }
 }
 
-public sealed class AsyncAnalyzeWebApplicationFactory : WebApplicationFactory<Program>
+public sealed class AsyncAnalyzeWebApplicationFactory : IsolatedApiWebApplicationFactory
 {
     public InMemoryAsyncHistoryStore Store { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        base.ConfigureWebHost(builder);
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IAnalysisHistoryStore>();
