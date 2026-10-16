@@ -265,23 +265,11 @@ public partial class RulesConfigWindow : Window
                 fields[row.Name] = rule;
         }
 
-        // 表单删除的字段也从 JSON 移除；保留非表单字段规则以免丢失高级配置。
+        // 表格展示了所有字段规则。字段被删除或改名后，应同步移除旧键，
+        // 包括仅含 enumValues、transform 等高级属性的规则，避免旧规则悄悄残留。
         var visibleNames = _fieldRows.Select(x => x.Name).ToHashSet(StringComparer.Ordinal);
-        var originallySimpleNames = fields
-            .Where(x => x.Value is JsonObject obj &&
-                        (obj.ContainsKey("required") || obj.ContainsKey("unique") ||
-                         obj.ContainsKey("minValue") || obj.ContainsKey("maxValue") ||
-                         obj.ContainsKey("nullRateMax") || obj.ContainsKey("pattern")))
-            .Select(x => x.Key)
-            .ToList();
-
-        // 只删除明确从表格移除、且仅包含表单支持属性的字段。
-        foreach (var name in originallySimpleNames.Where(name => !visibleNames.Contains(name)).ToList())
-        {
-            if (fields[name] is JsonObject obj &&
-                obj.All(p => p.Key is "required" or "unique" or "minValue" or "maxValue" or "nullRateMax" or "pattern"))
-                fields.Remove(name);
-        }
+        foreach (var name in fields.Select(x => x.Key).Where(name => !visibleNames.Contains(name)).ToList())
+            fields.Remove(name);
 
         var expectations = root["expectations"] as JsonObject;
         if (expectations is null)
