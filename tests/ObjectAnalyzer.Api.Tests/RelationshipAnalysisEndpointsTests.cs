@@ -11,11 +11,11 @@ using ObjectAnalyzer.Platform;
 namespace ObjectAnalyzer.Api.Tests;
 
 /// <summary>关系分析相关 API 的边界集成测试。</summary>
-public class RelationshipAnalysisEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public class RelationshipAnalysisEndpointsTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public RelationshipAnalysisEndpointsTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public RelationshipAnalysisEndpointsTests(IsolatedApiWebApplicationFactory factory) => _factory = factory;
 
     [Fact]
     public async Task Lineage_MissingJob_ReturnsNotFound()
@@ -162,12 +162,13 @@ public sealed class RelationshipAnalysisSuccessfulEndpointsTests : IClassFixture
 }
 
 /// <summary>为关系分析成功响应测试提供隔离的内存历史存储。</summary>
-public sealed class RelationshipAnalysisWebApplicationFactory : WebApplicationFactory<Program>
+public sealed class RelationshipAnalysisWebApplicationFactory : IsolatedApiWebApplicationFactory
 {
     public InMemoryRelationshipHistoryStore Store { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        base.ConfigureWebHost(builder);
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IAnalysisHistoryStore>();

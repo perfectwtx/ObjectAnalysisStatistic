@@ -9,11 +9,11 @@ namespace ObjectAnalyzer.Api.Tests;
 /// 出站打码契约测试：分析端点的响应（结果 + 数据预览）默认已按 PII 策略打码；
 /// piiOff=true 显式关闭时返回原始值并以 piiRedacted=false 留痕。
 /// </summary>
-public class PiiRedactionEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class PiiRedactionEndpointTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public PiiRedactionEndpointTests(WebApplicationFactory<Program> factory)
+    public PiiRedactionEndpointTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
     }

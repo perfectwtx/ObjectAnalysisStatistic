@@ -93,12 +93,39 @@
     <sys:String x:Key="Str.Status.FileFromRecent">Loaded from recent files, ready to analyze</sys:String>
     <sys:String x:Key="Str.Status.ThemeApplied">Theme updated</sys:String>
     <sys:String x:Key="Str.Status.LanguageApplied">Language updated</sys:String>
+    <sys:String x:Key="Str.Status.HistoryInitFailed">Failed to initialize local history: {0}</sys:String>
+    <sys:String x:Key="Str.Status.RecentFileInvalid">The recent file no longer exists. Please select a file again.</sys:String>
+    <sys:String x:Key="Str.Status.CompletedNonJson">Analysis completed (non-JSON report; field statistics may be empty)</sys:String>
+    <sys:String x:Key="Str.Status.ExitedWithCode">Analysis finished with exit code {0}</sys:String>
+    <sys:String x:Key="Str.Status.Canceled">Analysis canceled</sys:String>
+    <sys:String x:Key="Str.Status.Canceling">Canceling analysis...</sys:String>
+    <sys:String x:Key="Str.Status.ReportLoaded">Loaded report: {0}</sys:String>
+    <sys:String x:Key="Str.Status.JobsRefreshed">Job history refreshed</sys:String>
+    <sys:String x:Key="Str.Status.BaselineLoaded">Quality baseline loaded</sys:String>
+    <sys:String x:Key="Str.Status.BaselineSaved">Quality baseline saved: {0}</sys:String>
+    <sys:String x:Key="Str.Status.BaselineDeleted">Quality baseline deleted: {0}</sys:String>
 
     <sys:String x:Key="Str.Dialog.SelectFileTitle">Select a data file to analyze</sys:String>
     <sys:String x:Key="Str.Dialog.UnsupportedFile">The dropped file type is not supported.</sys:String>
     <sys:String x:Key="Str.Dialog.CannotSelectFile">Cannot select file</sys:String>
     <sys:String x:Key="Str.Dialog.NeedExistingFile">Please select an existing data file.</sys:String>
     <sys:String x:Key="Str.Dialog.CannotStart">Cannot start analysis</sys:String>
+    <sys:String x:Key="Str.Dialog.SelectRulesTitle">Select a rules file</sys:String>
+    <sys:String x:Key="Str.Dialog.RulesFileMissing">The rules file does not exist. Please select it again.</sys:String>
+    <sys:String x:Key="Str.Dialog.JsonReportOnly">The workbench can only reload JSON analysis reports.</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotOpenReport">Cannot open report</sys:String>
+    <sys:String x:Key="Str.Dialog.ReportLoadFailed">Failed to read report: {0}</sys:String>
+    <sys:String x:Key="Str.Dialog.RefreshFailed">Refresh failed</sys:String>
+    <sys:String x:Key="Str.Dialog.JobsLoadFailed">Failed to read job history: {0}</sys:String>
+    <sys:String x:Key="Str.Dialog.LoadFailed">Load failed</sys:String>
+    <sys:String x:Key="Str.Dialog.BaselineLoadFailed">Failed to read quality baseline: {0}</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotSaveBaseline">Cannot save quality baseline</sys:String>
+    <sys:String x:Key="Str.Dialog.SaveFailed">Save failed</sys:String>
+    <sys:String x:Key="Str.Dialog.BaselineSaveFailed">Failed to save quality baseline: {0}</sys:String>
+    <sys:String x:Key="Str.Dialog.NeedSourceName">Please specify a source name first.</sys:String>
+    <sys:String x:Key="Str.Dialog.CannotDelete">Cannot delete</sys:String>
+    <sys:String x:Key="Str.Dialog.DeleteFailed">Delete failed</sys:String>
+    <sys:String x:Key="Str.Dialog.BaselineDeleteFailed">Failed to delete quality baseline: {0}</sys:String>
 
     <sys:String x:Key="Str.Metric.Objects">Objects</sys:String>
     <sys:String x:Key="Str.Metric.Fields">Fields</sys:String>
@@ -156,6 +183,7 @@
     <sys:String x:Key="Str.Empty.NoReports.Hint">Reports appear here after analysis. Reload JSON or export CSV.</sys:String>
 
     <sys:String x:Key="Str.Output.Title">pipeline · stdout</sys:String>
+    <sys:String x:Key="Str.Output.ErrorPrefix">Error: </sys:String>
     <sys:String x:Key="Str.Deep.Hint">Pick a dimension. Disabled items show as not generated.</sys:String>
     <sys:String x:Key="Str.Deep.Placeholder">Pick a dimension above.&#x0a;&#x0a;Disabled deep analysis shows as not generated.</sys:String>
     <sys:String x:Key="Str.Deep.Correlation">Correlation</sys:String>

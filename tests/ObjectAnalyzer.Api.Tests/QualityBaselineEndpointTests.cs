@@ -6,11 +6,11 @@ using ObjectAnalyzer.Api;
 
 namespace ObjectAnalyzer.Api.Tests;
 
-public sealed class QualityBaselineEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class QualityBaselineEndpointTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public QualityBaselineEndpointTests(WebApplicationFactory<Program> factory)
+    public QualityBaselineEndpointTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
     }

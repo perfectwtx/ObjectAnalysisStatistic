@@ -7,11 +7,11 @@ namespace ObjectAnalyzer.Api.Tests;
 /// <summary>
 /// Mini API 集成冒烟测试：健康检查、数据文本分析、multipart 上传分析、规则校验。
 /// </summary>
-public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public class ApiEndpointsTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public ApiEndpointsTests(WebApplicationFactory<Program> factory)
+    public ApiEndpointsTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
     }

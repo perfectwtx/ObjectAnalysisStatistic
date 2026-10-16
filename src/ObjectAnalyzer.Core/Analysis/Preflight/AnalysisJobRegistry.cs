@@ -66,6 +66,14 @@ public sealed class AnalysisJobRegistry
         Interlocked.Exchange(ref job.ProcessedObjects, processedObjects);
     }
 
+    /// <summary>Stage delivery metadata before persistence publishes the completed job.</summary>
+    public void StageOutput(string jobId, IReadOnlyList<Dictionary<string, object?>> preview,
+        bool piiRedacted, PiiPolicy pii)
+    {
+        if (_jobs.TryGetValue(jobId, out var job))
+            job.StageOutput(preview, piiRedacted, pii);
+    }
+
     public void Complete(string jobId, AnalysisResult result)
         => Complete(jobId, result, preview: null);
 
@@ -167,6 +175,18 @@ public sealed class AnalysisJobRegistry
                 {
                     return false;
                 }
+            }
+        }
+
+        public void StageOutput(IReadOnlyList<Dictionary<string, object?>> preview,
+            bool piiRedacted, PiiPolicy pii)
+        {
+            lock (_sync)
+            {
+                if (Status != AnalysisStatus.Running) return;
+                Preview = preview;
+                PiiRedacted = piiRedacted;
+                Pii = pii;
             }
         }
 

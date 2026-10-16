@@ -25,7 +25,7 @@
                         <ui:Button Content="{DynamicResource Str.Reports.OpenLocation}" Click="OpenReport_Click"
                                    Height="30" Padding="12,0" FontSize="12" Margin="0,0,6,4"/>
                         <ui:Button Content="{DynamicResource Str.Reports.Refresh}" Click="RefreshReports_Click"
-                                   Height="30" Padding="10,0" FontSize="12" Margin="0,0,0,4">
+                                   Height="30" Padding="12,0" FontSize="12" Margin="0,0,0,4">
                             <ui:Button.Icon>
                                 <ui:SymbolIcon Symbol="ArrowSync24"/>
                             </ui:Button.Icon>
@@ -45,7 +45,6 @@
                       ScrollViewer.CanContentScroll="True"
                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
                       MinRowHeight="32"
-                      RowHeaderWidth="0"
                       x:Name="ReportHistoryList"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
