@@ -248,7 +248,8 @@ public partial class RulesConfigWindow : Window
             if (string.IsNullOrWhiteSpace(row.Name))
                 throw new InvalidOperationException("字段路径不能为空。");
 
-            var rule = fields[row.Name] as JsonObject ?? new JsonObject();
+            var existingRule = fields[row.Name] as JsonObject;
+            var rule = existingRule ?? new JsonObject();
             rule["required"] = row.Required;
             rule["unique"] = row.Unique;
             SetNumber(rule, "minValue", row.MinValue, row.Name);
@@ -260,7 +261,7 @@ public partial class RulesConfigWindow : Window
             else
                 rule["pattern"] = row.Pattern;
 
-            if (fields[row.Name] is null)
+            if (existingRule is null)
                 fields[row.Name] = rule;
         }
 
