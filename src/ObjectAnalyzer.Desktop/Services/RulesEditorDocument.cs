@@ -119,7 +119,7 @@ public sealed class RulesEditorDocument
             WriteNumber(rule, "minValue", row.MinValue);
             WriteNumber(rule, "maxValue", row.MaxValue);
             WriteNumber(rule, "nullRateMax", row.NullRateMax);
-            Write(rule, "pattern", string.IsNullOrWhiteSpace(row.Pattern) ? null : JsonValue.Create(row.Pattern));
+            Write(rule, "pattern", string.IsNullOrEmpty(row.Pattern) ? null : JsonValue.Create(row.Pattern));
             fields.Add(row.Name, rule);
         }
         Write(root, "fields", fields);
@@ -135,9 +135,8 @@ public sealed class RulesEditorDocument
         }
         WriteNumber(expectations, "maxDuplicateRate", MaxDuplicateRate);
         Write(root, "expectations", expectations);
-        var text = root.ToJsonString(s_jsonOptions);
-        Validate(text);
-        return text;
+        // Semantic errors remain editable in JSONC; only validation/save blocks them.
+        return root.ToJsonString(s_jsonOptions);
     }
 
     public static AnalysisRules Validate(string text)

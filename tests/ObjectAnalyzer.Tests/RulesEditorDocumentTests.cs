@@ -151,6 +151,24 @@ public sealed class RulesEditorDocumentTests
     }
 
     [Fact]
+    public void FormSync_PreservesUnknownPropertiesForRepairInAdvancedEditor()
+    {
+        var document = RulesEditorDocument.Parse("""{"fields":{"a":{"requird":true}}}""");
+        document.Fields[0].Name = "renamed";
+        var text = document.ToJson();
+        Assert.True(JsonNode.Parse(text)!["fields"]!["renamed"]!["requird"]!.GetValue<bool>());
+        Assert.Throws<InvalidOperationException>(() => RulesEditorDocument.Validate(text));
+    }
+
+    [Fact]
+    public void EditingOtherValues_PreservesWhitespaceRegex()
+    {
+        var document = RulesEditorDocument.Parse("""{"fields":{"a":{"pattern":" "}}}""");
+        document.Fields[0].Required = true;
+        Assert.Equal(" ", RulesEditorDocument.Validate(document.ToJson()).Fields["a"].Pattern);
+    }
+
+    [Fact]
     public void FormFingerprint_ChangesForEditsButNotJsonFormatting()
     {
         var document = RulesEditorDocument.Parse("{\"fields\":{\"a\":{}}}");
