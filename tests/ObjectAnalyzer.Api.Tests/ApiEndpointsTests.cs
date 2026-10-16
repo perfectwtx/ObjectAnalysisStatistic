@@ -294,11 +294,11 @@ public class ApiEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         var client = CreateClient();
 
         // 用最小输入隔离验证 valueParsers 本身，避免同时测试嵌套字符串 transform 造成失败原因混杂。
-        string cell = "{\\\"mountain\\\":\\\"bear\\\"}";
-        string csv = "A\\n\\\"" + cell.Replace("\\\"", "\\\"\\\"") + "\\\"\\n";
+        string cell = "{\"mountain\":\"bear\"}";
+        string csv = "A\n\"" + cell.Replace("\"", "\"\"") + "\"\n";
         string rules = """
             {"runtime":{"flatten":true},"valueParsers":[{"source":"A","parseType":"json","header":1}]}
-            """.Replace("\\n", "").Replace("\\r", "");
+            """.Replace("\n", "").Replace("\r", "");
 
         var url = "/api/analyze/raw?format=csv&rulesJson=" + Uri.EscapeDataString(rules);
         var response = await client.PostAsync(url,
