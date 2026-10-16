@@ -6,11 +6,11 @@ using ObjectAnalyzer.Api;
 
 namespace ObjectAnalyzer.Api.Tests;
 
-public sealed class IssueEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class IssueEndpointTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public IssueEndpointTests(WebApplicationFactory<Program> factory)
+    public IssueEndpointTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
     }

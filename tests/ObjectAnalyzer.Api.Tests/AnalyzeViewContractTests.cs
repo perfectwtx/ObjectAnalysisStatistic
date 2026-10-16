@@ -11,11 +11,11 @@ namespace ObjectAnalyzer.Api.Tests;
 /// W8 v2 契约验收：五页面视图响应（概览 / 预览 / 字段 / 深度分析 / 质量）+ 异步作业进度与 SSE 事件流。
 /// React 前端按本组测试锁定的形状消费。
 /// </summary>
-public class AnalyzeViewContractTests : IClassFixture<WebApplicationFactory<Program>>
+public class AnalyzeViewContractTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public AnalyzeViewContractTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public AnalyzeViewContractTests(IsolatedApiWebApplicationFactory factory) => _factory = factory;
 
     private HttpClient CreateClient() => _factory.CreateClient();
 

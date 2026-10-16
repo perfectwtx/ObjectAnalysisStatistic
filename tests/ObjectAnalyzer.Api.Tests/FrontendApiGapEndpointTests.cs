@@ -7,11 +7,11 @@ using ObjectAnalyzer.Api;
 namespace ObjectAnalyzer.Api.Tests;
 
 /// <summary>根据前端 gaps 文档覆盖新增 API、路径别名与运营接口的契约测试。</summary>
-public sealed class FrontendApiGapEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class FrontendApiGapEndpointTests : IClassFixture<IsolatedApiWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly IsolatedApiWebApplicationFactory _factory;
 
-    public FrontendApiGapEndpointTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public FrontendApiGapEndpointTests(IsolatedApiWebApplicationFactory factory) => _factory = factory;
 
     private HttpClient CreateClient() => _factory.CreateClient();
 
