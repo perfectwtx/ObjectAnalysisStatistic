@@ -37,9 +37,9 @@ public partial class RulesConfigWindow : Window
       },
 
       // Excel/CSV：指定列按 JSON 解析后再统计
-      // "valueParsers": [
-      //   { "source": "payload", "parseType": "auto", "flatten": true, "header": 1 }
-      // ],
+      "valueParsers": [
+        { "source": "payload", "parseType": "auto", "flatten": true, "header": 1 }
+      ],
 
       "expectations": { "minRowCount": 3, "maxDuplicateRate": 0 }
     }
