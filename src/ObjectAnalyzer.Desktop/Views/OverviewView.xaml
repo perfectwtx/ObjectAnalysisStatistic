@@ -41,121 +41,62 @@
                 </Border>
             </Grid>
         </Border>
-        <Border Grid.Row="1" Style="{StaticResource ToolPage}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border Style="{StaticResource ToolPageHeaderBar}">
-                    <DockPanel LastChildFill="True">
-                        <TextBox DockPanel.Dock="Right" Width="260" MinWidth="140" MaxWidth="260"
-                                 HorizontalAlignment="Right" MinHeight="30" Margin="12,0,0,0"
-                                 Style="{StaticResource PathTextBox}"
-                                 Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
-                        <StackPanel>
-                            <TextBlock Text="{DynamicResource Str.Overview.Fields}" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Text="{DynamicResource Str.Overview.Description}"
-                                       Margin="0,3,0,0" FontSize="11"
-                                       Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </DockPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <Border Style="{StaticResource ToolPageHeaderBar}" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource Str.Overview.Summary}" Style="{StaticResource SectionTitle}"/>
+                        <TextBlock Text="{DynamicResource Str.Overview.Description}" Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
+                    </StackPanel>
                 </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Visibility="{Binding HasFilteredFields, Converter={StaticResource BoolToVis}}">
-                    <ItemsControl ItemsSource="{Binding FilteredFields}" MouseDoubleClick="FieldCards_MouseDoubleClick">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" IsItemsHost="True"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Width="270" MinHeight="160" Margin="0,0,10,10" Padding="14"
-                                        BorderThickness="1"
-                                        CornerRadius="6" Cursor="Hand">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.Surface}"/>
-                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Primary}"/>
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.RowAlt}"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                        </Grid.RowDefinitions>
-                                        <DockPanel LastChildFill="True">
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CoverageText}"
-                                                       FontSize="12" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource Brush.TextPrimary}"
-                                                       Margin="12,0,0,0"/>
-                                            <TextBlock Text="{Binding FieldName}" FontSize="13" FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding FieldName}"
-                                                       Foreground="{DynamicResource Brush.TextPrimary}"/>
-                                        </DockPanel>
-                                        <ProgressBar Grid.Row="1" Margin="0,10,0,0" Height="6"
-                                                     Minimum="0" Maximum="1" Value="{Binding CoverageRatio, Mode=OneWay}"
-                                                     IsHitTestVisible="False" BorderThickness="0"/>
-                                        <StackPanel Grid.Row="2" Margin="0,10,0,0">
-                                            <WrapPanel>
-                                                <Border Background="{DynamicResource Brush.RowAlt}" BorderBrush="{DynamicResource Brush.Border}"
-                                                        BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,6,6">
-                                                    <TextBlock Text="{Binding PrimaryType}" FontSize="10"
-                                                               Foreground="{DynamicResource Brush.TextMuted}"/>
-                                                </Border>
-                                                <Border Background="{DynamicResource Brush.RowAlt}" BorderBrush="{DynamicResource Brush.Border}"
-                                                        BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,0,6">
-                                                    <TextBlock Text="{Binding SemanticType}" FontSize="10"
-                                                               Foreground="{DynamicResource Brush.TextMuted}"/>
-                                                </Border>
-                                            </WrapPanel>
-                                            <Grid Margin="0,4,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="{DynamicResource Str.Col.NonNull}" FontSize="10"
-                                                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                                                <TextBlock Text="{Binding Count, StringFormat={}{0:N0}}" Margin="0,4,0,0"
-                                                           FontSize="13" FontWeight="SemiBold"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1">
-                                                <TextBlock Text="{DynamicResource Str.Col.Null}" FontSize="10"
-                                                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                                                <TextBlock Text="{Binding NullCount, StringFormat={}{0:N0}}" Margin="0,4,0,0"
-                                                           FontSize="13" FontWeight="SemiBold"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="{DynamicResource Str.Col.Distinct}" FontSize="10"
-                                                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                                                <TextBlock Text="{Binding DistinctDisplayText}" Margin="0,4,0,0"
-                                                           FontSize="13" FontWeight="SemiBold"/>
-                                            </StackPanel>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
+                <StackPanel Visibility="{Binding HasFields, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource KpiStrip}" Margin="0,0,0,16">
+                        <UniformGrid Columns="3">
+                            <Border Style="{StaticResource KpiCell}"><StackPanel>
+                                <TextBlock Text="{DynamicResource Str.Overview.AverageCoverage}" Style="{StaticResource MetricLabel}"/>
+                                <TextBlock Text="{Binding AverageCoverageText}" Style="{StaticResource MetricValue}"/>
+                            </StackPanel></Border>
+                            <Border Style="{StaticResource KpiCell}"><StackPanel>
+                                <TextBlock Text="{DynamicResource Str.Overview.FullCoverage}" Style="{StaticResource MetricLabel}"/>
+                                <TextBlock Text="{Binding FullCoverageFields}" Style="{StaticResource MetricValue}"/>
+                            </StackPanel></Border>
+                            <Border Style="{StaticResource KpiCellLast}"><StackPanel>
+                                <TextBlock Text="{DynamicResource Str.Overview.WithNulls}" Style="{StaticResource MetricLabel}"/>
+                                <TextBlock Text="{Binding FieldsWithNulls}" Style="{StaticResource MetricValue}"/>
+                            </StackPanel></Border>
+                        </UniformGrid>
+                    </Border>
+                    <TextBlock Text="{DynamicResource Str.Overview.Types}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding FieldTypeSummary}" Margin="0,0,0,18">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <Border BorderBrush="{DynamicResource Brush.Border}" Background="{DynamicResource Brush.Surface}" BorderThickness="1" CornerRadius="6" Padding="16,12" Margin="0,0,10,8" MinWidth="130">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding TypeName}" Foreground="{DynamicResource Brush.TextMuted}"/>
+                                    <TextBlock Text="{Binding Count}" FontSize="22" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
-                </ScrollViewer>
-                <views:EmptyStateView Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Top"
-                                      Title="{DynamicResource Str.Empty.NoFields.Title}"
-                                      Hint="{DynamicResource Str.Empty.NoFields.Hint}"
-                                      Visibility="{Binding HasFilteredFields, Converter={StaticResource InverseBoolToVis}}"/>
-            </Grid>
-        </Border>
+                    <TextBlock Text="{DynamicResource Str.Overview.Gaps}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Overview.GapsHint}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11" Margin="0,4,0,10" TextWrapping="Wrap"/>
+                    <ItemsControl ItemsSource="{Binding LowestCoverageFields}" MouseDoubleClick="FieldCards_MouseDoubleClick">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="12" Background="{DynamicResource Brush.Surface}" Cursor="Hand">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="75"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding FieldName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding FieldName}" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                    <ProgressBar Grid.Column="1" Height="6" Minimum="0" Maximum="1" Value="{Binding CoverageRatio, Mode=OneWay}" IsHitTestVisible="False"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding CoverageText}" HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{DynamicResource Str.Overview.NoGaps}" Margin="12" Foreground="{DynamicResource Brush.TextMuted}" Visibility="{Binding HasCoverageGaps, Converter={StaticResource InverseBoolToVis}}"/>
+                    <TextBlock Text="{DynamicResource Str.Overview.CoverageNote}" Margin="0,14,0,0" FontSize="11" Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <views:EmptyStateView Title="{DynamicResource Str.Overview.EmptyTitle}" Hint="{DynamicResource Str.Overview.EmptyHint}" Visibility="{Binding HasFields, Converter={StaticResource InverseBoolToVis}}"/>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

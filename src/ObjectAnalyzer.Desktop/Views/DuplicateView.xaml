@@ -19,6 +19,7 @@
                                Style="{StaticResource SectionHint}"
                                Margin="12,0,0,0"/>
                     <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Str.Tab.Duplicates}" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{DynamicResource Str.Duplicate.Hint}" Style="{StaticResource SectionHint}"/>
                 </DockPanel>
             </Border>
 
@@ -28,10 +29,19 @@
                       IsReadOnly="True"
                       CanUserAddRows="False"
                       ItemsSource="{Binding Duplicates}"
+                      MouseDoubleClick="Duplicates_MouseDoubleClick"
                       VerticalAlignment="Stretch"
                       Visibility="{Binding HasDuplicates, Converter={StaticResource BoolToVis}}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="{DynamicResource Str.Col.Key}" Binding="{Binding Key}" Width="3*"/>
+                    <DataGridTextColumn Header="{DynamicResource Str.Col.Key}" Binding="{Binding Key}" Width="3*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="NoWrap"/>
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="{DynamicResource Str.Col.DupCount}" Binding="{Binding Count}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>

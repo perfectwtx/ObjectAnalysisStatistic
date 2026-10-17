@@ -91,6 +91,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool HasReport => File.Exists(_reportPath);
 
     public bool HasFields => Fields.Count > 0;
+    public string AverageCoverageText => HasFields
+        ? Fields.Average(f => f.CoverageRatio).ToString("P1", CultureInfo.InvariantCulture) : "—";
+    public int FullCoverageFields => Fields.Count(f => f.CoverageRatio >= 1);
+    public int FieldsWithNulls => Fields.Count(f => f.NullCount > 0);
+    public IEnumerable<DesktopFieldRow> LowestCoverageFields => Fields
+        .Where(f => f.CoverageRatio < 1)
+        .OrderBy(f => f.CoverageRatio).ThenBy(f => f.FieldName, StringComparer.OrdinalIgnoreCase).Take(5);
+    public bool HasCoverageGaps => Fields.Any(f => f.CoverageRatio < 1);
+    public IEnumerable<DesktopFieldTypeRow> FieldTypeSummary => Fields
+        .GroupBy(f => f.PrimaryType).OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
+        .Select(g => new DesktopFieldTypeRow(g.Key, g.Count()));
     public bool HasFilteredFields => FilteredFields.Count > 0;
     public bool HasDuplicates => Duplicates.Count > 0;
     public bool HasIssues => Issues.Count > 0;
@@ -365,6 +376,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void RaiseCollectionStateChanged()
     {
+        OnPropertyChanged(nameof(AverageCoverageText));
+        OnPropertyChanged(nameof(FullCoverageFields));
+        OnPropertyChanged(nameof(FieldsWithNulls));
+        OnPropertyChanged(nameof(LowestCoverageFields));
+        OnPropertyChanged(nameof(HasCoverageGaps));
+        OnPropertyChanged(nameof(FieldTypeSummary));
         OnPropertyChanged(nameof(HasFields));
         OnPropertyChanged(nameof(HasFilteredFields));
         OnPropertyChanged(nameof(HasDuplicates));
@@ -407,6 +424,7 @@ public sealed class DesktopFieldRow
     public double CoverageRatio { get; }
     public long Count { get; }
     public long NullCount { get; }
+    public long NonNullCount => Math.Max(0, Count - NullCount);
     public long? DistinctCount { get; }
     public string DistinctDisplayText => DistinctCount is not long distinct
         ? "—"
@@ -489,11 +507,14 @@ public sealed class DesktopFieldTypeRow
 public sealed class DesktopDuplicateRow
 {
     public string Key { get; }
+    public string FullJson { get; }
     public long Count { get; }
 
     public DesktopDuplicateRow(DuplicateObjectStatistic source)
     {
-        Key = source.ObjectJson.Length > 120 ? source.ObjectJson[..120] + "..." : source.ObjectJson;
+        FullJson = source.ObjectJson;
+        string summary = string.Join(" ", source.ObjectJson.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        Key = summary.Length > 120 ? summary[..120] + "…" : summary;
         Count = source.Count;
     }
 }

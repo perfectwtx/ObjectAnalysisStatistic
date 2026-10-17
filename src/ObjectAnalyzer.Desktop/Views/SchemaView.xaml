@@ -32,11 +32,14 @@
                                 <TextBlock Text="{DynamicResource Str.Schema.FieldCount}" Foreground="{DynamicResource Brush.TextMuted}" FontSize="11"/>
                             </StackPanel>
                         </StackPanel>
-                        <TextBox Grid.Column="1" Width="220" MinWidth="140" MaxWidth="220"
-                                 VerticalAlignment="Top" MinHeight="30" Margin="12,0,0,0"
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                        <TextBlock Text="{DynamicResource Str.Filter.Tooltip}" FontSize="11" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,0,0,4"/>
+                        <TextBox Width="220" MinWidth="140" MaxWidth="220"
+                                 VerticalAlignment="Top" MinHeight="30"
                                  Style="{StaticResource PathTextBox}"
                                  Text="{Binding FieldFilter, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{DynamicResource Str.Filter.Tooltip}"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
                 <DataGrid Grid.Row="1" x:Name="FieldsGrid" Margin="10" AutoGenerateColumns="False"
@@ -75,7 +78,7 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NonNull}" Binding="{Binding Count, StringFormat={}{0:N0}}" Width="*"/>
+                        <DataGridTextColumn Header="{DynamicResource Str.Schema.NonNull}" Binding="{Binding NonNullCount, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.Null}" Binding="{Binding NullCount, StringFormat={}{0:N0}}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.Distinct}" Binding="{Binding DistinctDisplayText}" Width="*"/>
                         <DataGridTextColumn Header="{DynamicResource Str.Schema.NumericRange}" Binding="{Binding NumericRangeDisplay}" Width="1.4*">

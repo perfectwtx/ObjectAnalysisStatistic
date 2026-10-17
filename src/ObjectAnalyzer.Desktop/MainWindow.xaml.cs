@@ -57,6 +57,8 @@ public partial class MainWindow : FluentWindow
         AppIcon.EnsureFileBesideAssembly();
 
         BuildPages();
+        ((DeepAnalysisView)_pages["deep"]).ConfigureRequested += (_, _) => NavigateTo("analyze");
+        ((InsightsView)_pages["insights"]).OpenReportsRequested += (_, _) => NavigateTo("reports");
 
         AnalyzeViewControl.SelectFileRequested += (_, _) => SelectFile();
         AnalyzeViewControl.SelectRulesRequested += (_, _) => SelectRules();

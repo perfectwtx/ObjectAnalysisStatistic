@@ -198,8 +198,13 @@ internal sealed class DesktopConsole : IAnalysisConsole
     private static string StripMarkup(string value) =>
         System.Text.RegularExpressions.Regex.Replace(
             value,
-            @"\[/?[a-zA-Z0-9 #;,.:-]+\]",
-            string.Empty);
+            @"\[\[|\]\]|\[(?:/|/?(?:bold|dim|italic|underline|invert|strikethrough|red|green|blue|yellow|grey|gray|white|black|cyan|magenta|orange\d*|#\w+)(?:[ a-zA-Z0-9#;,.():-]*)?)\]",
+            match => match.Value switch
+            {
+                "[[" => "[",
+                "]]" => "]",
+                _ => string.Empty
+            });
 }
 
 internal sealed class DesktopProgressReporter : IProgressReporter
