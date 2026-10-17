@@ -28,6 +28,7 @@
     <sys:String x:Key="Str.Tab.Insights">Lineage / Impact / Comparison</sys:String>
     <sys:String x:Key="Str.Tab.Output">Output</sys:String>
     <sys:String x:Key="Str.Tab.Issues">Issues</sys:String>
+    <sys:String x:Key="Str.QualityIssues.Hint">Review quality-rule findings by field; hover to read the full message.</sys:String>
     <sys:String x:Key="Str.Tab.QualityBaseline">Baseline and trend</sys:String>
     <sys:String x:Key="Str.Tab.Jobs">Jobs</sys:String>
     <sys:String x:Key="Str.Tab.Reports">Reports</sys:String>

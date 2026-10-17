@@ -43,6 +43,8 @@
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      MinRowHeight="32"
                       x:Name="ReportHistoryList"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"

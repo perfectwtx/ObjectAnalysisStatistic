@@ -28,6 +28,7 @@
     <sys:String x:Key="Str.Tab.Insights">血缘 / 影响 / 比较</sys:String>
     <sys:String x:Key="Str.Tab.Output">分析输出</sys:String>
     <sys:String x:Key="Str.Tab.Issues">质量问题</sys:String>
+    <sys:String x:Key="Str.QualityIssues.Hint">按字段查看质量规则命中情况；悬停可查看完整说明。</sys:String>
     <sys:String x:Key="Str.Tab.QualityBaseline">质量基线与趋势</sys:String>
     <sys:String x:Key="Str.Tab.Jobs">作业中心</sys:String>
     <sys:String x:Key="Str.Tab.Reports">报告</sys:String>
