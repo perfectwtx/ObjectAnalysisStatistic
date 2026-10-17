@@ -30,59 +30,25 @@ public static partial class SchemaExporter
 
     private static JsonObject BuildJsonSchemaProperties(SchemaNode node)
     {
-        var propsObj = new JsonObject();
-        foreach (var propKvp in node.Properties)
+        var properties = new JsonObject();
+        foreach (var pair in node.Properties) properties[pair.Key] = BuildJsonSchemaNode(pair.Value);
+        return properties;
+    }
+
+    private static JsonObject BuildJsonSchemaNode(SchemaNode node)
+    {
+        string type = node.Kind switch { "Object" => "object", "Array" => "array", _ => node.JsonSchemaBaseType };
+        var definition = new JsonObject();
+        definition["type"] = node.IsNullable ? new JsonArray { type, "null" } : JsonValue.Create(type);
+        if (node.Kind == "Object")
         {
-            string childName = propKvp.Key;
-            var childNode = propKvp.Value;
-            var propDef = new JsonObject();
-
-            if (childNode.Kind == "Object")
-            {
-                if (childNode.IsNullable)
-                    propDef["type"] = new JsonArray { "object", "null" };
-                else
-                    propDef["type"] = "object";
-
-                propDef["properties"] = BuildJsonSchemaProperties(childNode);
-                propDef["required"] = BuildJsonSchemaRequired(childNode);
-            }
-            else if (childNode.Kind == "Array")
-            {
-                if (childNode.IsNullable)
-                    propDef["type"] = new JsonArray { "array", "null" };
-                else
-                    propDef["type"] = "array";
-
-                var itemDef = new JsonObject();
-                if (childNode.ElementNode?.Kind == "Object")
-                {
-                    itemDef["type"] = "object";
-                    itemDef["properties"] = BuildJsonSchemaProperties(childNode.ElementNode);
-                    itemDef["required"] = BuildJsonSchemaRequired(childNode.ElementNode);
-                }
-                else
-                {
-                    itemDef["type"] = childNode.ElementNode?.JsonSchemaBaseType ?? "string";
-                    if (childNode.ElementNode?.Format != null)
-                        itemDef["format"] = childNode.ElementNode.Format;
-                }
-                propDef["items"] = itemDef;
-            }
-            else
-            {
-                if (childNode.IsNullable)
-                    propDef["type"] = new JsonArray { childNode.JsonSchemaBaseType, "null" };
-                else
-                    propDef["type"] = childNode.JsonSchemaBaseType;
-
-                if (childNode.Format != null)
-                    propDef["format"] = childNode.Format;
-            }
-
-            propsObj[childName] = propDef;
+            definition["properties"] = BuildJsonSchemaProperties(node);
+            definition["required"] = BuildJsonSchemaRequired(node);
         }
-        return propsObj;
+        else if (node.Kind == "Array")
+            definition["items"] = node.ElementNode is null ? new JsonObject() : BuildJsonSchemaNode(node.ElementNode);
+        else if (node.Format is not null) definition["format"] = node.Format;
+        return definition;
     }
 
     private static JsonArray BuildJsonSchemaRequired(SchemaNode node)

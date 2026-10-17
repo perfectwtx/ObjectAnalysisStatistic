@@ -1,4 +1,4 @@
-﻿namespace ObjectAnalyzer.Analysis;
+namespace ObjectAnalyzer.Analysis;
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -90,7 +90,7 @@ public class AnalysisResult
             ObjectRelationships ??= new List<ObjectRelationship>();
             var byKey = ObjectRelationships.ToDictionary(
                 x => $"{x.Kind}\n{x.Path}",
-                StringComparer.OrdinalIgnoreCase);
+                StringComparer.Ordinal);
             foreach (var incoming in other.ObjectRelationships)
             {
                 string key = $"{incoming.Kind}\n{incoming.Path}";
@@ -109,7 +109,7 @@ public class AnalysisResult
                 existing.NonNullCount += incoming.NonNullCount;
                 foreach (var field in incoming.TargetFields)
                 {
-                    if (!existing.TargetFields.Contains(field, StringComparer.OrdinalIgnoreCase)
+                    if (!existing.TargetFields.Contains(field, StringComparer.Ordinal)
                         && existing.TargetFields.Count < 50)
                     {
                         existing.TargetFields.Add(field);

@@ -19,7 +19,7 @@ public static partial class SchemaExporter
         sb.AppendLine(" * 由 ObjectAnalyzer 自动生成的 TypeScript 接口声明");
         sb.AppendLine(" */");
 
-        GenerateTypeScriptInterfaces(rootTree, interfaceName, sb);
+        GenerateTypeScriptInterfaces(rootTree, interfaceName, sb, new HashSet<string>(StringComparer.Ordinal));
 
         return sb.ToString();
     }
@@ -28,57 +28,29 @@ public static partial class SchemaExporter
     //  TypeScript Generator
     // ─────────────────────────────────────────────
 
-    private static string GenerateTypeScriptInterfaces(SchemaNode node, string interfaceName, StringBuilder sb)
+    private static string GenerateTypeScriptInterfaces(SchemaNode node, string interfaceName, StringBuilder sb, HashSet<string> names)
     {
-        // 递归先生成子 DTO 接口
-        foreach (var propKvp in node.Properties)
+        interfaceName = UniqueIdentifier(interfaceName, names);
+        var members = new List<string>();
+        foreach (var pair in node.Properties)
         {
-            var childNode = propKvp.Value;
-            string sanitizedPropName = SanitizeIdentifier(propKvp.Key);
-
-            if (childNode.Kind == "Object")
-            {
-                GenerateTypeScriptInterfaces(childNode, $"{sanitizedPropName}Dto", sb);
-            }
-            else if (childNode.Kind == "Array" && childNode.ElementNode?.Kind == "Object")
-            {
-                GenerateTypeScriptInterfaces(childNode.ElementNode, $"{sanitizedPropName}ItemDto", sb);
-            }
+            string type = TypeScriptNodeType(pair.Value, SanitizeIdentifier(pair.Key), sb, names);
+            string optional = pair.Value.IsNullable ? "?" : "";
+            members.Add($"  {FormatTsPropertyName(pair.Key)}{optional}: {type};");
         }
-
         sb.AppendLine(CultureInfo.InvariantCulture, $"export interface {interfaceName} {{");
-        foreach (var propKvp in node.Properties)
-        {
-            string childName = propKvp.Key;
-            var childNode = propKvp.Value;
-            string sanitizedPropName = SanitizeIdentifier(childName);
-            string optional = childNode.IsNullable ? "?" : "";
-            string fieldType;
-
-            if (childNode.Kind == "Object")
-            {
-                fieldType = $"{sanitizedPropName}Dto";
-            }
-            else if (childNode.Kind == "Array")
-            {
-                string elemType = childNode.ElementNode?.Kind == "Object"
-                    ? $"{sanitizedPropName}ItemDto"
-                    : (childNode.ElementNode?.TsBaseType ?? "string");
-                fieldType = $"{elemType}[]";
-            }
-            else
-            {
-                fieldType = childNode.TsBaseType;
-            }
-
-            string formattedPropName = FormatTsPropertyName(childName);
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {formattedPropName}{optional}: {fieldType};");
-        }
+        foreach (string member in members) sb.AppendLine(member);
         sb.AppendLine("}");
         sb.AppendLine();
-
         return interfaceName;
     }
+
+    private static string TypeScriptNodeType(SchemaNode node, string hint, StringBuilder sb, HashSet<string> names) => node.Kind switch
+    {
+        "Object" => GenerateTypeScriptInterfaces(node, hint + "Dto", sb, names),
+        "Array" => (node.ElementNode is null ? "string" : TypeScriptNodeType(node.ElementNode, hint + "Item", sb, names)) + "[]",
+        _ => node.TsBaseType
+    };
 
     private static string MapToTsBaseType(FieldStatistic field)
     {
@@ -95,6 +67,6 @@ public static partial class SchemaExporter
         if (string.IsNullOrEmpty(name)) return "\"\"";
         bool isValid = (char.IsLetter(name[0]) || name[0] == '_' || name[0] == '$') &&
                        name.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '$');
-        return isValid ? name : $"\"{name}\"";
+        return isValid ? name : System.Text.Json.JsonSerializer.Serialize(name);
     }
 }

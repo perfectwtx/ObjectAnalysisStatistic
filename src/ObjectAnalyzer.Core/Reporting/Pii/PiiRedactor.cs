@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace ObjectAnalyzer.Reporting;
 
@@ -112,7 +112,9 @@ public static class PiiRedactor
 
         foreach (var kvp in source.ValueCounts)
         {
-            string masked = MaskKey(kvp.Key) ?? kvp.Key;
+            RecordValue masked = kvp.Key.Kind == RecordValueKind.Null
+                ? RecordValue.Null
+                : RecordValue.FromString(MaskKey(kvp.Key.ToDisplayString()) ?? kvp.Key.ToDisplayString());
             clone.ValueCounts[masked] = clone.ValueCounts.GetValueOrDefault(masked) + kvp.Value;
         }
 

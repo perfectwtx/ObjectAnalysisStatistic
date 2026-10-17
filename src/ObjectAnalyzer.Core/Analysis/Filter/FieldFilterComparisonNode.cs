@@ -11,7 +11,7 @@ internal sealed class FieldFilterComparisonNode : FieldFilterNode
 
     public override bool Evaluate(Dictionary<string, object?> obj)
     {
-        bool present = TryGetValueIgnoreCase(obj, Field, out object? value);
+        bool present = obj.TryGetValue(Field, out object? value);
         if (!present) value = null;
 
         return Op switch
@@ -53,6 +53,7 @@ internal sealed class FieldFilterComparisonNode : FieldFilterNode
     {
         num = 0;
         if (value == null) return false;
+        if (value is RecordValue typed) return typed.TryGetDouble(out num);
         if (value is double d) { num = d; return true; }
         if (value is float f) { num = f; return true; }
         if (value is int i) { num = i; return true; }
@@ -77,22 +78,6 @@ internal sealed class FieldFilterComparisonNode : FieldFilterNode
             return TryGetNumber(value, out double vnum)
                 && Math.Abs(vnum - operand.Number.Value) < 1e-12;
         return value?.ToString() == operand.Text;
-    }
-
-    private static bool TryGetValueIgnoreCase(Dictionary<string, object?> obj, string field, out object? value)
-    {
-        if (obj.TryGetValue(field, out value))
-            return true;
-        foreach (var kv in obj)
-        {
-            if (string.Equals(kv.Key, field, StringComparison.OrdinalIgnoreCase))
-            {
-                value = kv.Value;
-                return true;
-            }
-        }
-        value = null;
-        return false;
     }
 
     /// <summary>比较结果: 正数（更大）、负数（更小）、0（相等）。数值不适用时按字符串比较。</summary>

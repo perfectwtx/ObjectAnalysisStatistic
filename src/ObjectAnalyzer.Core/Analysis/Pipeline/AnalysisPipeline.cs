@@ -468,8 +468,8 @@ public static class AnalysisPipeline
     {
         if (string.IsNullOrWhiteSpace(fields))
             return null;
-        return fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        return FieldPath.ParseList(fields).Select(path => path.ToString())
+            .Distinct(StringComparer.Ordinal)
             .ToList();
     }
 

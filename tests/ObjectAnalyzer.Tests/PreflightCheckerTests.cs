@@ -146,12 +146,12 @@ public class PreflightCheckerTests
 
     [Fact]
     [Trait("Category", "Preflight")]
-    public void Build_CaseInsensitive()
+    public void Build_CaseSensitive()
     {
-        // 大小写不敏感：name ≡ Name ≡ NAME
+        // 预检与正式分析使用相同的大小写敏感路径身份。
         var result = PreflightChecker.Build(CasedRuleFields, LowerCasedSampleFields);
-        Assert.False(result.HasWarning);
-        Assert.Equal(2, result.MatchedRuleFields.Count);
+        Assert.True(result.HasWarning);
+        Assert.Empty(result.MatchedRuleFields);
     }
 
     [Fact]

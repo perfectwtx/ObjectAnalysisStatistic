@@ -34,10 +34,9 @@ public sealed class PiiReport
 
             // 按出现次数倒序取样本；次数相同时按字典序升序，保证多线程合并后的非确定性顺序下也能稳定复现
             string? sample = stat.ValueCounts
-                .Where(kv => kv.Key != "[Other values]")
                 .OrderByDescending(kv => kv.Value)
-                .ThenBy(kv => kv.Key, StringComparer.Ordinal)
-                .Select(kv => kv.Key)
+                .ThenBy(kv => kv.Key.CanonicalKey, StringComparer.Ordinal)
+                .Select(kv => kv.Key.ToDisplayString())
                 .FirstOrDefault();
 
             string categoryKey = mask.Category.ToString().ToLowerInvariant();
@@ -52,7 +51,7 @@ public sealed class PiiReport
                 HighSeverity = mask.HighSeverity,
                 Count = stat.Count,
                 Coverage = stat.Coverage,
-                DistinctValues = stat.ValueCounts.Keys.Count(k => k != "[Other values]"),
+                DistinctValues = stat.ValueCounts.Count,
                 MaskedSample = sample != null ? mask.Apply(sample) : null
             });
         }

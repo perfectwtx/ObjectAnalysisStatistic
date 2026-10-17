@@ -38,7 +38,7 @@ var maxValuesOption = new Option<int>(
 
 var maxTrackedValuesOption = new Option<int>(
     aliases: CliAliases.MaxTrackedValues,
-    description: "分析引擎每字段实际跟踪的唯一值上限，超出部分归入 [Other values] 桶（影响内存占用与 valueCounts 精度）。",
+    description: "分析引擎每字段实际跟踪的唯一值上限，超出部分独立记录为 OtherValueCount（影响内存占用与 valueCounts 精度）。",
     getDefaultValue: () => 1000);
 
 var generateTestExcelOption = new Option<bool>(

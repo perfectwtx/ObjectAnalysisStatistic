@@ -464,9 +464,9 @@ public sealed class DesktopFieldRow
         long denom = Count > 0 ? Count : 1;
         Values = source.ValueCounts
             .OrderByDescending(x => x.Value)
-            .ThenBy(x => x.Key, StringComparer.Ordinal)
+            .ThenBy(x => x.Key.CanonicalKey, StringComparer.Ordinal)
             .Select(x => new DesktopFieldValueRow(
-                x.Key,
+                x.Key.ToDisplayString(),
                 x.Value,
                 (double)x.Value / denom))
             .ToList();

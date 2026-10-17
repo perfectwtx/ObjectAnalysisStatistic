@@ -19,7 +19,7 @@ public class AnalyzeViewContractTests : IClassFixture<IsolatedApiWebApplicationF
 
     private HttpClient CreateClient() => _factory.CreateClient();
 
-    private static readonly string[] s_expectedPreviewColumns = ["name", "age"];
+    private static readonly string[] s_expectedPreviewColumns = ["age", "name"];
 
     private const string DataJson = """[{"name":"alice","age":30},{"name":"bob","age":25},{"name":"carol","age":41}]""";
     private const string RulesJson = """{"fields":{"age":{"primaryType":"Number","minValue":26}},"runtime":{"gates":{"failOnViolations":true}}}""";

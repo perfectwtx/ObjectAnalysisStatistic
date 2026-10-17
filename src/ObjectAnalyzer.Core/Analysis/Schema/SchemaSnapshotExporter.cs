@@ -11,7 +11,7 @@ namespace ObjectAnalyzer.Analysis;
 public static class SchemaSnapshotExporter
 {
     /// <summary>当前导出器版本（与 SchemaSnapshot.SnapshotVersion 同步）。</summary>
-    public const string CurrentVersion = "1.0";
+    public const string CurrentVersion = "2.0";
 
     private static readonly JsonSerializerOptions s_writeOptions = new()
     {

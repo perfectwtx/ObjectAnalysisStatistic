@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Text;
@@ -13,6 +13,22 @@ public static partial class ObjectAnalyzer
     private const int MaxTrackedUniqueValues = 1000;
     private const int ChunkSize = 10000;
     private const int MaxStoredDuplicateJsons = 10000;
+
+    /// <summary>Typed entry point. Literal property names and structural paths remain unambiguous.</summary>
+    public static AnalysisResult AnalyzeRecords(
+        IEnumerable<IReadOnlyDictionary<FieldPath, RecordValue>> records,
+        AnalysisRules? rules = null,
+        ParallelOptions? parallelOptions = null,
+        AdvancedAnalysisOptions? features = null,
+        IProgress<long>? progress = null,
+        int? maxTrackedValues = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        return Analyze(records.Select(record => record.ToDictionary(
+            p => p.Key.ToString(), p => p.Value.ToObject(), StringComparer.Ordinal)),
+            rules, parallelOptions, features, progress, maxTrackedValues, cancellationToken);
+    }
 
     // 常用语义识别正则表达式（预编译提升性能）
     private static readonly Regex RegexDateTime = new(
@@ -110,6 +126,8 @@ public static partial class ObjectAnalyzer
     {
         // W8：每字段唯一值跟踪上限可由宿主配置（--max-tracked-values），缺省沿用引擎常量
         int maxTracked = maxTrackedValues ?? MaxTrackedUniqueValues;
+        var pathCache = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        var fieldRules = rules?.Fields.ToDictionary(p => FieldPath.Parse(p.Key).ToString(), p => p.Value, StringComparer.Ordinal);
         var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
         var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
 
@@ -143,6 +161,11 @@ public static partial class ObjectAnalyzer
 
                     globalStat.Count += localStat.Count;
                     globalStat.ValueCountsTruncated |= localStat.ValueCountsTruncated;
+                    globalStat.OtherValueCount += localStat.OtherValueCount;
+                    globalStat.NumbersAreIntegral &= localStat.NumbersAreIntegral;
+                    globalStat.NumbersFitInt64 &= localStat.NumbersFitInt64;
+                    globalStat.NumbersFitDecimal &= localStat.NumbersFitDecimal;
+                    globalStat.NumbersFitDouble &= localStat.NumbersFitDouble;
 
                     foreach (var tc in localStat.TypeCounts)
                     {
@@ -155,7 +178,7 @@ public static partial class ObjectAnalyzer
                         if (ShouldTruncate(globalStat, vc.Key, maxTracked))
                         {
                             globalStat.ValueCountsTruncated = true;
-                            globalStat.ValueCounts["[Other values]"] = globalStat.ValueCounts.GetValueOrDefault("[Other values]") + vc.Value;
+                            globalStat.OtherValueCount += vc.Value;
                         }
                         else
                         {
@@ -244,8 +267,14 @@ public static partial class ObjectAnalyzer
                     localState.TotalObjects++;
 
                     // Fix #9: Array.Sort avoids LINQ lambda allocations in the per-object hot path
-                    var sortedEntries = obj.ToArray();
+                    var sortedEntries = obj.Select(pair => KeyValuePair.Create(
+                        pathCache.GetOrAdd(pair.Key, static key => FieldPath.Parse(key).ToString()), pair.Value)).ToArray();
                     Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
+                    for (int i = 1; i < sortedEntries.Length; i++)
+                    {
+                        if (sortedEntries[i - 1].Key == sortedEntries[i].Key)
+                            throw new InvalidDataException($"Duplicate structural field path: {sortedEntries[i].Key}");
+                    }
 
                     // 深度分析 相关性收集：每对象一行 (field → double?) 样本；
                     // 仅在 features.EnableCorrelation 为 true 时分配，避免默认路径上增加 GC 压力。
@@ -260,15 +289,17 @@ public static partial class ObjectAnalyzer
                     {
                         string fieldName = kv.Key;
                         object? value = kv.Value;
-                        string valStr = FormatValue(value);
+                        var typedValue = RecordValue.FromObject(value);
+                        string valStr = typedValue.ToDisplayString();
+                        string identity = typedValue.CanonicalKey;
 
                         WriteAsciiNumber(writer, fieldName.Length);
                         WriteByte(writer, (byte)':');
                         WriteUtf8(writer, fieldName);
                         WriteByte(writer, (byte)'=');
-                        WriteAsciiNumber(writer, valStr.Length);
+                        WriteAsciiNumber(writer, identity.Length);
                         WriteByte(writer, (byte)':');
-                        WriteUtf8(writer, valStr);
+                        WriteUtf8(writer, identity);
 
                         if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
                         {
@@ -284,28 +315,36 @@ public static partial class ObjectAnalyzer
 
                         stat.Count++;
 
-                        string valType = GetValueType(value);
+                        string valType = typedValue.Kind.ToString();
                         stat.TypeCounts[valType] = stat.TypeCounts.GetValueOrDefault(valType) + 1;
                         if (valType == "Null") stat.NullCount++;
 
-                        if (ShouldTruncate(stat, valStr, maxTracked))
+                        if (typedValue.Kind == RecordValueKind.Number)
+                        {
+                            stat.NumbersAreIntegral &= typedValue.IsInteger;
+                            stat.NumbersFitInt64 &= typedValue.FitsInt64;
+                            stat.NumbersFitDecimal &= typedValue.FitsDecimal;
+                            stat.NumbersFitDouble &= typedValue.FitsDouble;
+                        }
+                        if (ShouldTruncate(stat, typedValue, maxTracked))
                         {
                             stat.ValueCountsTruncated = true;
-                            stat.ValueCounts["[Other values]"] = stat.ValueCounts.GetValueOrDefault("[Other values]") + 1;
+                            stat.OtherValueCount++;
                         }
                         else
                         {
-                            stat.ValueCounts[valStr] = stat.ValueCounts.GetValueOrDefault(valStr) + 1;
+                            stat.ValueCounts[typedValue] = stat.ValueCounts.GetValueOrDefault(typedValue) + 1;
                         }
 
                         // 收集数值与字符串度量指标
-                        RecordValueMetrics(value, valStr, fieldName, metrics);
+                        metrics.AddDistinct(identity);
+                        RecordValueMetrics(value, fieldName, metrics);
 
                         // 深度分析 增强：相关性 / 模式 / 卫生（仅在 features 启用时执行）
                         RecordFeatureMetrics(localState, value, valStr, fieldName, correlationRow, features);
 
                         // 质量检查 v2：minValue/maxValue 越界精确计数（热路径，不受唯一值截断影响）
-                        if (rules != null && rules.Fields.TryGetValue(fieldName, out FieldRule? qualityRule))
+                        if (fieldRules != null && fieldRules.TryGetValue(fieldName, out FieldRule? qualityRule))
                         {
                             if (value != null
                                 && (qualityRule.MinValue.HasValue || qualityRule.MaxValue.HasValue)
@@ -479,7 +518,7 @@ public static partial class ObjectAnalyzer
 
                 // distinct 值计数：未截断时用精确值；截断时退化为 HyperLogLog 近似估计
                 stat.RangeViolationCount = metrics.RangeViolationCount;
-                long exactDistinct = stat.ValueCounts.Keys.Count(k => k != "[Other values]");
+                long exactDistinct = stat.ValueCounts.Count;
                 if (!stat.ValueCountsTruncated)
                 {
                     stat.DistinctCount = exactDistinct;
@@ -492,7 +531,7 @@ public static partial class ObjectAnalyzer
             }
 
             // 应用配置规则
-            if (rules != null && rules.Fields.TryGetValue(stat.FieldName, out var rule))
+            if (fieldRules != null && fieldRules.TryGetValue(stat.FieldName, out var rule))
             {
                 stat.AppliedRule = rule;
 
@@ -761,12 +800,9 @@ public static partial class ObjectAnalyzer
         return count;
     }
 
-    private static void RecordValueMetrics(object? value, string valStr, string fieldName, InternalFieldMetrics metrics)
+    private static void RecordValueMetrics(object? value, string fieldName, InternalFieldMetrics metrics)
     {
         if (value == null) return;
-
-        // 0. distinct 值 HyperLogLog（所有非空标量值，与 ValueCounts 同域）
-        metrics.AddDistinct(valStr);
 
         // 1. 数值统计（Welford 均值/M2 + 分位数草图 + 对数直方图）
         if (TryGetDoubleValue(value, out double dVal))
@@ -935,13 +971,16 @@ public static partial class ObjectAnalyzer
 
     private static bool TryGetDoubleValue(object val, out double result)
     {
-        if (val is double d) { result = d; return true; }
-        if (val is float f) { result = f; return true; }
+        if (val is RecordValue typed) return typed.TryGetDouble(out result);
+        if (val is double d) { result = d; return double.IsFinite(d); }
+        if (val is float f) { result = f; return float.IsFinite(f); }
         if (val is int i) { result = i; return true; }
         if (val is long l) { result = l; return true; }
         if (val is decimal dec) { result = (double)dec; return true; }
         if (val is byte b) { result = b; return true; }
         if (val is short s) { result = s; return true; }
+        if (val is sbyte sb) { result = sb; return true; }
+        if (val is ushort us) { result = us; return true; }
         if (val is uint ui) { result = ui; return true; }
         if (val is ulong ul) { result = ul; return true; }
 
@@ -1038,7 +1077,7 @@ public static partial class ObjectAnalyzer
             {
                 sortedDict[kv.Key] = kv.Value;
             }
-            return JsonSerializer.Serialize(sortedDict, JsonSharedOptions.Write);
+            return RecordValue.FromObject(sortedDict).ToJsonString(indented: true);
         }
         catch
         {
@@ -1077,46 +1116,6 @@ public static partial class ObjectAnalyzer
             yield return chunk;
     }
 
-    private static string GetValueType(object? value)
-    {
-        if (value == null) return "Null";
-        if (value is bool) return "Boolean";
-        
-        if (value is sbyte || value is byte || value is short || value is ushort || 
-            value is int || value is uint || value is long || value is ulong || 
-            value is float || value is double || value is decimal)
-        {
-            return "Number";
-        }
-        
-        if (value is string) return "String";
-        if (value is IDictionary<string, object?> || value is System.Dynamic.ExpandoObject) return "Object";
-        if (value is System.Collections.IEnumerable) return "Array";
-        
-        return value.GetType().Name;
-    }
-
-    private static string FormatValue(object? value)
-    {
-        if (value == null) return "null";
-        if (value is string s) return s;
-        
-        if (value is IDictionary<string, object?> || (value is System.Collections.IEnumerable and not string))
-        {
-            try
-            {
-                // 热路径使用紧凑序列化：更短、更快，且 ValueCounts 键不含换行
-                return JsonSerializer.Serialize(value, JsonSharedOptions.WriteCompact);
-            }
-            catch
-            {
-                return value.ToString() ?? "";
-            }
-        }
-        
-        return value.ToString() ?? "";
-    }
-
     private static string SafeToString(object? value)
     {
         if (value == null) return "null";
@@ -1125,13 +1124,8 @@ public static partial class ObjectAnalyzer
         catch { return "[unserializable]"; }
     }
 
-    private static bool ShouldTruncate(FieldStatistic stat, string value, int maxTracked)
-    {
-        if (stat.ValueCounts.ContainsKey(value)) return false;
-        int tracked = stat.ValueCounts.Count -
-            (stat.ValueCounts.ContainsKey("[Other values]") ? 1 : 0);
-        return tracked >= maxTracked;
-    }
+    private static bool ShouldTruncate(FieldStatistic stat, RecordValue value, int maxTracked)
+        => !stat.ValueCounts.ContainsKey(value) && stat.ValueCounts.Count >= maxTracked;
 
     private static string InferPrimaryTypeFromEnum(List<System.Text.Json.JsonElement> enumElements)
     {
@@ -1147,52 +1141,12 @@ public static partial class ObjectAnalyzer
         return "String";
     }
 
-    private static void ValidateEnumValues(FieldStatistic stat, List<System.Text.Json.JsonElement> enumElements)
+    private static void ValidateEnumValues(FieldStatistic stat, List<JsonElement> enumElements)
     {
-        var enumStrings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var enumNumbers = new HashSet<double>();
-
-        foreach (var elem in enumElements)
+        var allowed = enumElements.Select(RecordValue.FromJsonElement).ToHashSet();
+        foreach (var actual in stat.ValueCounts.Keys)
         {
-            switch (elem.ValueKind)
-            {
-                case JsonValueKind.String:
-                    var strVal = elem.GetString();
-                    if (strVal != null) enumStrings.Add(strVal);
-                    break;
-                case JsonValueKind.Number:
-                    if (elem.TryGetDouble(out double numVal)) enumNumbers.Add(numVal);
-                    break;
-                default:
-                    var raw = elem.GetRawText();
-                    if (raw != null) enumStrings.Add(raw);
-                    break;
-            }
+            if (!allowed.Contains(actual)) stat.AddEnumViolation(actual.ToDisplayString());
         }
-
-        foreach (var actualValue in stat.ValueCounts.Keys)
-        {
-            if (actualValue == "[Other values]") continue;
-
-            if (IsEnumMatch(actualValue, enumStrings, enumNumbers))
-                continue;
-
-            stat.AddEnumViolation(actualValue); // Fix #8: use internal encapsulated method
-        }
-    }
-
-    private static bool IsEnumMatch(string value, HashSet<string> enumStrings, HashSet<double> enumNumbers)
-    {
-        if (enumStrings.Contains(value))
-            return true;
-
-        if (double.TryParse(value, System.Globalization.NumberStyles.Any,
-            System.Globalization.CultureInfo.InvariantCulture, out double actualNum))
-        {
-            if (enumNumbers.Contains(actualNum))
-                return true;
-        }
-
-        return false;
     }
 }

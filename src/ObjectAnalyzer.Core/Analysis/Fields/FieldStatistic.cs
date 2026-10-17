@@ -7,6 +7,8 @@ using System.Text.Json.Serialization;
 public class FieldStatistic
 {
     public string FieldName { get; set; } = "";
+    [JsonIgnore]
+    public FieldPath Path => FieldPath.Parse(FieldName);
     public long Count { get; set; }
     public double Coverage { get; set; } // 字段在所有对象中的覆盖率 (0.0 - 1.0)
 
@@ -24,10 +26,21 @@ public class FieldStatistic
     /// <remarks>
     /// 由分析器在内部填充，外部调用者应视为只读。
     /// </remarks>
-    public Dictionary<string, long> ValueCounts { get; set; } = new();
+    public Dictionary<RecordValue, long> ValueCounts { get; set; } = new();
+
+    /// <summary>Occurrences omitted from ValueCounts; never represented as a synthetic data value.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public long OtherValueCount { get; set; }
+
+    /// <summary>True only when every observed numeric value is integral, including untracked values.</summary>
+    public bool NumbersAreIntegral { get; set; } = true;
+    /// <summary>Lossless numeric output representations, accumulated over all observed numeric values.</summary>
+    public bool NumbersFitInt64 { get; set; } = true;
+    public bool NumbersFitDecimal { get; set; } = true;
+    public bool NumbersFitDouble { get; set; } = true;
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public bool ValueCountsTruncated { get; set; } // 唯一值超阈值被裁剪到 [Other values] 桶
+    public bool ValueCountsTruncated { get; set; }
 
     // 数值统计
     public double? MinNumber { get; set; }
@@ -165,7 +178,7 @@ public class FieldStatistic
     {
         var clone = (FieldStatistic)MemberwiseClone();
         clone.TypeCounts = new Dictionary<string, long>(TypeCounts);
-        clone.ValueCounts = new Dictionary<string, long>();
+        clone.ValueCounts = new Dictionary<RecordValue, long>();
         clone.Histogram = Histogram is null
             ? null
             : Histogram.Select(b => new NumericHistogramBucket { From = b.From, To = b.To, Count = b.Count }).ToList();
@@ -325,6 +338,11 @@ public class FieldStatistic
 
         // ValueCounts
         if (other.ValueCountsTruncated) ValueCountsTruncated = true;
+        OtherValueCount += other.OtherValueCount;
+        NumbersAreIntegral &= other.NumbersAreIntegral;
+        NumbersFitInt64 &= other.NumbersFitInt64;
+        NumbersFitDecimal &= other.NumbersFitDecimal;
+        NumbersFitDouble &= other.NumbersFitDouble;
         foreach (var kv in other.ValueCounts)
         {
             ValueCounts[kv.Key] = ValueCounts.GetValueOrDefault(kv.Key) + kv.Value;

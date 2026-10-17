@@ -9,30 +9,30 @@ public static class DataLineageBuilder
 
         var source = relationships
             .Where(x => !string.IsNullOrWhiteSpace(x.Path))
-            .GroupBy(x => $"{x.Kind}\n{x.Path}", StringComparer.OrdinalIgnoreCase)
+            .GroupBy(x => $"{x.Kind}\n{x.Path}", StringComparer.Ordinal)
             .Select(x => x.OrderByDescending(r => r.OccurrenceCount).First())
-            .OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x.Path, StringComparer.Ordinal)
             .ToList();
 
         var nodes = source
             .Select(x => new DataLineageNode(
                 x.Path,
                 x.Kind,
-                x.Path.Count(c => c == '.') + 1,
+                FieldPath.Parse(x.Path).Segments.Length,
                 x.OccurrenceCount,
                 x.TargetFields.ToList()))
             .ToList();
 
         var edges = new List<DataLineageEdge>();
-        var nodePaths = new HashSet<string>(nodes.Select(x => x.Path), StringComparer.OrdinalIgnoreCase);
+        var nodePaths = new HashSet<string>(nodes.Select(x => x.Path), StringComparer.Ordinal);
 
         foreach (var node in nodes)
         {
-            var lastSeparator = node.Path.LastIndexOf('.');
-            if (lastSeparator < 0)
+            var path = FieldPath.Parse(node.Path);
+            if (path.Segments.Length <= 1)
                 continue;
 
-            var parent = node.Path[..lastSeparator];
+            var parent = path.Parent.ToString();
             if (nodePaths.Contains(parent))
             {
                 edges.Add(new DataLineageEdge(
@@ -49,13 +49,13 @@ public static class DataLineageBuilder
                 if (string.IsNullOrWhiteSpace(field))
                     continue;
 
-                var fieldPath = $"{relationship.Path}.{field}";
+                var fieldPath = FieldPath.Parse(relationship.Path).AppendProperty(field).ToString();
                 if (nodePaths.Add(fieldPath))
                 {
                     nodes.Add(new DataLineageNode(
                         fieldPath,
                         "Field",
-                        fieldPath.Count(c => c == '.') + 1,
+                        FieldPath.Parse(fieldPath).Segments.Length,
                         relationship.OccurrenceCount,
                         Array.Empty<string>()));
                 }

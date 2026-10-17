@@ -392,7 +392,7 @@ public class FieldTransformTests
         var city = result.FieldStatistics.First(f => f.FieldName == "payload.city");
         Assert.Equal("上海", city.ValueCounts.Keys.Single());
         var age = result.FieldStatistics.First(f => f.FieldName == "payload.age");
-        Assert.Equal("30", age.ValueCounts.Keys.Single());
+        Assert.Equal(ObjectAnalyzer.Data.RecordValue.FromObject(30), age.ValueCounts.Keys.Single());
     }
 
     [Fact]

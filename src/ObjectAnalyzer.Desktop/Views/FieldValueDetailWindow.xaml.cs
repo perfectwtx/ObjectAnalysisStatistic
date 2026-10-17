@@ -49,7 +49,7 @@ public partial class FieldValueDetailWindow : Window
         {
             TruncationText.Visibility = Visibility.Visible;
             TruncationText.Text =
-                "部分结果：取值数量超过分析阈值，表格仅展示已保留的取值（可能包含 [Other values] 汇总桶），不能视为完整明细。复制或导出也只包含当前保留的这些取值。";
+                "部分结果：取值数量超过分析阈值，表格仅展示已保留的取值，不能视为完整明细。复制或导出也只包含当前保留的这些取值。";
         }
 
         ValuesGrid.ItemsSource = field.Values;

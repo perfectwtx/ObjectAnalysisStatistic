@@ -20,7 +20,7 @@ public static partial class SchemaExporter
         public string? Format { get; set; }
         public bool IsNullable { get; set; }
         public FieldStatistic? Field { get; set; }
-        public Dictionary<string, SchemaNode> Properties { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, SchemaNode> Properties { get; } = new(StringComparer.Ordinal);
         public SchemaNode? ElementNode { get; set; }
     }
 
@@ -55,86 +55,27 @@ public static partial class SchemaExporter
 
         foreach (var field in result.FieldStatistics)
         {
-            string[] parts = field.FieldName.Split('.');
+            var segments = FieldPath.Parse(field.FieldName).Segments;
             SchemaNode current = root;
-
-            for (int i = 0; i < parts.Length; i++)
+            for (int i = 0; i < segments.Length; i++)
             {
-                string part = parts[i];
-                bool isLast = (i == parts.Length - 1);
-
-                // 解析段: "tags[0]" -> baseName="tags", arrayLevels=1; "matrix[0][0]" -> arrayLevels=2
-                string baseName = part;
-                int arrayLevels = 0;
-                int bracket = part.IndexOf('[');
-                if (bracket >= 0)
+                var segment = segments[i];
+                if (segment.IsIndex)
                 {
-                    baseName = part.Substring(0, bracket);
-                    arrayLevels = part.Count(ch => ch == '[');
-                }
-
-                if (arrayLevels > 0)
-                {
-                    // 数组段
-                    if (!current.Properties.TryGetValue(baseName, out var arrNode))
-                    {
-                        arrNode = new SchemaNode
-                        {
-                            NodeName = baseName,
-                            Kind = "Array",
-                            IsNullable = field.NullAppeared
-                        };
-                        current.Properties[baseName] = arrNode;
-                    }
-
-                    SchemaNode element = arrNode.ElementNode ??= new SchemaNode { NodeName = "Item", Kind = "Primitive" };
-
-                    // 多层数组: "matrix[0][0]" -> 中间层元素本身也是数组
-                    for (int level = 1; level < arrayLevels; level++)
-                    {
-                        if (element.Kind != "Array")
-                        {
-                            element.Kind = "Array";
-                            element.Properties.Clear();
-                        }
-                        element.ElementNode ??= new SchemaNode { NodeName = "Item", Kind = "Primitive" };
-                        element = element.ElementNode;
-                    }
-
-                    if (!isLast && element.Kind == "Primitive")
-                    {
-                        // 之后还有子段（如 "tags[0].name"）：元素升级为对象
-                        element.Kind = "Object";
-                    }
-
-                    if (isLast)
-                    {
-                        ApplyFieldType(element, field);
-                    }
-
-                    current = element;
+                    current.Kind = "Array";
+                    current = current.ElementNode ??= new SchemaNode { NodeName = "Item" };
                 }
                 else
                 {
-                    // 普通对象段
-                    if (!current.Properties.TryGetValue(part, out var objNode))
+                    current.Kind = "Object";
+                    if (!current.Properties.TryGetValue(segment.Name!, out var child))
                     {
-                        objNode = new SchemaNode
-                        {
-                            NodeName = part,
-                            Kind = "Object",
-                            IsNullable = isLast ? field.NullAppeared : (field.Coverage < 1.0 || field.NullAppeared)
-                        };
-                        current.Properties[part] = objNode;
+                        child = new SchemaNode { NodeName = segment.Name!, IsNullable = field.Coverage < 1 || field.NullAppeared };
+                        current.Properties.Add(segment.Name!, child);
                     }
-
-                    if (isLast)
-                    {
-                        ApplyFieldType(objNode, field);
-                    }
-
-                    current = objNode;
+                    current = child;
                 }
+                if (i == segments.Length - 1) ApplyFieldType(current, field);
             }
         }
 

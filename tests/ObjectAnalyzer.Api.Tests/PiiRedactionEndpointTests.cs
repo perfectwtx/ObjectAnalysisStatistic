@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using ObjectAnalyzer.Data;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -46,8 +47,8 @@ public class PiiRedactionEndpointTests : IClassFixture<IsolatedApiWebApplication
 
         // 结果值分布已打码
         var phone = FieldStat(body, "Phone");
-        Assert.Contains("138****1234", phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
-        Assert.DoesNotContain("13812341234", phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.Contains(RecordValue.FromString("138****1234").CanonicalKey, phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.DoesNotContain(RecordValue.FromString("13812341234").CanonicalKey, phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
 
         // 数据预览同样打码（这是此前 API 路径完全缺失的覆盖）
         var previewPhone = body.GetProperty("preview").GetProperty("rows")[0].GetProperty("Phone").GetString();
@@ -79,8 +80,8 @@ public class PiiRedactionEndpointTests : IClassFixture<IsolatedApiWebApplication
         Assert.False(body.GetProperty("piiRedacted").GetBoolean());
 
         var phone = FieldStat(body, "Phone");
-        Assert.Contains("13812341234", phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
-        Assert.DoesNotContain("138****1234", phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.Contains(RecordValue.FromString("13812341234").CanonicalKey, phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.DoesNotContain(RecordValue.FromString("138****1234").CanonicalKey, phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
 
         var previewPhone = body.GetProperty("preview").GetProperty("rows")[0].GetProperty("Phone").GetString();
         Assert.Equal("13812341234", previewPhone);
@@ -126,8 +127,8 @@ public class PiiRedactionEndpointTests : IClassFixture<IsolatedApiWebApplication
 
         Assert.True(body.GetProperty("piiRedacted").GetBoolean());
         var internalId = FieldStat(body, "internalId");
-        Assert.Contains("ID***01", internalId.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
-        Assert.DoesNotContain("ID-1001", internalId.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.Contains(RecordValue.FromString("ID***01").CanonicalKey, internalId.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.DoesNotContain(RecordValue.FromString("ID-1001").CanonicalKey, internalId.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
 
         // 规则声明的自定义敏感字段：label / isCustom / keep 前后缀来自规则解析
         var piiInternalId = body.GetProperty("pii").GetProperty("fields").EnumerateArray()
@@ -194,7 +195,7 @@ public class PiiRedactionEndpointTests : IClassFixture<IsolatedApiWebApplication
         Assert.Equal(1, body.GetProperty("pii").GetProperty("fieldCount").GetInt32());
 
         var phone = FieldStat(body, "Phone");
-        Assert.Contains("138****1234", phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
+        Assert.Contains(RecordValue.FromString("138****1234").CanonicalKey, phone.GetProperty("valueCounts").EnumerateObject().Select(p => p.Name));
         // 异步快照的 preview 是裸行数组（与同步端点的 {columns, rows} 包装视图不同，既有契约如此）
         Assert.Equal("138****1234", body.GetProperty("preview")[0].GetProperty("Phone").GetString());
     }

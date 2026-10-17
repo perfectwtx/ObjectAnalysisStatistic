@@ -30,111 +30,18 @@ internal static ExcelType ResolveExcelType(Stream stream)
 
 internal static Dictionary<string, object?> ParseJsonElement(JsonElement element, bool flatten)
 {
-    var target = new Dictionary<string, object?>();
-    if (flatten)
-    {
-        FlattenJson(element, "", target);
-    }
-    else
-    {
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in element.EnumerateObject())
-                target[property.Name] = ConvertJsonElement(property.Value);
-        }
-    }
-    return target;
+    return RecordNormalizer.Normalize(RecordValue.FromJsonElement(element), flatten)
+        .ToDictionary(p => p.Key.ToString(), p => p.Value.ToObject(), StringComparer.Ordinal);
 }
 
-internal static void FlattenJson(JsonElement element, string prefix, Dictionary<string, object?> target)
+internal static object? ConvertJsonElement(JsonElement element) => RecordValue.FromJsonElement(element).ToObject();
+
+internal static Dictionary<string, object?> EncodeRecordKeys(Dictionary<string, object?> record) =>
+    record.ToDictionary(p => FieldPath.Property(p.Key).ToString(), p => p.Value, StringComparer.Ordinal);
+
+internal static void FlattenValue(RecordValue value, FieldPath path, Dictionary<string, object?> target)
 {
-    switch (element.ValueKind)
-    {
-        case JsonValueKind.Object:
-            foreach (var property in element.EnumerateObject())
-            {
-                string name = string.IsNullOrEmpty(prefix) ? property.Name : $"{prefix}.{property.Name}";
-                FlattenJson(property.Value, name, target);
-            }
-            break;
-
-        case JsonValueKind.Array:
-            int index = 0;
-            foreach (var item in element.EnumerateArray())
-            {
-                string name = $"{prefix}[{index}]";
-                FlattenJson(item, name, target);
-                index++;
-            }
-            break;
-
-        case JsonValueKind.String:
-            target[prefix] = element.GetString();
-            break;
-
-        case JsonValueKind.Number:
-            if (element.TryGetInt64(out long l))
-                target[prefix] = l;
-            else if (element.TryGetDouble(out double d))
-                target[prefix] = d;
-            else
-                target[prefix] = element.GetRawText();
-            break;
-
-        case JsonValueKind.True:
-            target[prefix] = true;
-            break;
-
-        case JsonValueKind.False:
-            target[prefix] = false;
-            break;
-
-        case JsonValueKind.Null:
-            target[prefix] = null;
-            break;
-
-        default:
-            target[prefix] = element.GetRawText();
-            break;
-    }
-}
-
-internal static object? ConvertJsonElement(JsonElement element)
-{
-    switch (element.ValueKind)
-    {
-        case JsonValueKind.Object:
-            var dict = new Dictionary<string, object?>();
-            foreach (var property in element.EnumerateObject())
-                dict[property.Name] = ConvertJsonElement(property.Value);
-            return dict;
-
-        case JsonValueKind.Array:
-            var list = new List<object?>();
-            foreach (var item in element.EnumerateArray())
-                list.Add(ConvertJsonElement(item));
-            return list;
-
-        case JsonValueKind.String:
-            return element.GetString();
-
-        case JsonValueKind.Number:
-            if (element.TryGetInt64(out long l)) return l;
-            if (element.TryGetDouble(out double d)) return d;
-            return element.GetRawText();
-
-        case JsonValueKind.True:
-            return true;
-
-        case JsonValueKind.False:
-            return false;
-
-        case JsonValueKind.Null:
-            return null;
-
-        default:
-            return element.GetRawText();
-    }
+    foreach (var pair in RecordNormalizer.Flatten(value, path)) target[pair.Key.ToString()] = pair.Value.ToObject();
 }
 
 internal static Dictionary<string, object?> ConvertXElement(XElement element, int depth)
@@ -206,7 +113,8 @@ internal static object? ConvertYamlValue(object? value, int depth)
 internal static Dictionary<string, object?> FlattenObjectDict(Dictionary<string, object?> source)
 {
     var result = new Dictionary<string, object?>();
-    FlattenObjectDictInto(source, "", result);
+    foreach (var pair in RecordNormalizer.Normalize(RecordValue.FromObject(source)))
+        result.Add(pair.Key.ToString(), pair.Value.ToObject());
     return result;
 }
 
@@ -216,32 +124,6 @@ internal static void FlattenObjectDictInto(
     Dictionary<string, object?> target,
     int depth = 0)
 {
-    // 防御深层嵌套导致 StackOverflowException
-    if (depth > 1000)
-        throw new InvalidDataException("对象嵌套层级过深，超过 1000 层限制。");
-
-    foreach (var kvp in source)
-    {
-        string key = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}.{kvp.Key}";
-        switch (kvp.Value)
-        {
-            case Dictionary<string, object?> nested:
-                FlattenObjectDictInto(nested, key, target, depth + 1);
-                break;
-            case System.Collections.IList list:
-                for (int i = 0; i < list.Count; i++)
-                {
-                    string indexedKey = $"{key}[{i}]";
-                    if (list[i] is Dictionary<string, object?> itemDict)
-                        FlattenObjectDictInto(itemDict, indexedKey, target, depth + 1);
-                    else
-                        target[indexedKey] = list[i];
-                }
-                break;
-            default:
-                target[key] = kvp.Value;
-                break;
-        }
-    }
+    FlattenValue(RecordValue.FromObject(source), FieldPath.Parse(prefix), target);
 }
 }

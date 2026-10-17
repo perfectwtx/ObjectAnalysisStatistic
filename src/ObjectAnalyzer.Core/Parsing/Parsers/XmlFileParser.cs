@@ -39,7 +39,7 @@ internal sealed class XmlFileParser : IFileParser
                 dataIndex++;
                 continue; // P6.2：跳过前 StartFromLine 个根子元素
             }
-            yield return ParserHelpers.ConvertXElement(element, 0);
+            yield return ParserHelpers.EncodeRecordKeys(ParserHelpers.ConvertXElement(element, 0));
         }
     }
 }

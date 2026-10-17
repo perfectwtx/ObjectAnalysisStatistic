@@ -25,7 +25,7 @@ public static class PreflightChecker
     public const int MaxDisplayedSampleFields = 20;
 
     /// <summary>
-    /// 入口：解析数据文件取样 → 与规则文件里的字段名做大小写不敏感 + 父路径比对。
+    /// 入口：解析数据文件取样 → 与规则文件里的字段名做区分大小写 + 父路径比对。
     /// 返回结构化的 <see cref="PreflightResult"/>，由调用方决定如何渲染。
     /// </summary>
     /// <param name="dataFilePath">数据文件路径（CLI / API / Web 各自管理生命周期）。</param>
@@ -65,13 +65,12 @@ public static class PreflightChecker
     /// 单元测试只覆盖这一段，不依赖文件 IO。
     /// </summary>
     /// <remarks>
-    /// 大小写不敏感比对（与 <see cref="Rules.FieldTransformProcessor"/> 的 _selectedFields 行为一致）；
+    /// 区分大小写比对（与 <see cref="Rules.FieldTransformProcessor"/> 的 _selectedFields 行为一致）；
     /// 当样本字段为空（如空文件 / 单条空对象）也视为"无匹配"，因为我们没法验证规则是否适用。
     ///
     /// 父路径匹配：当规则字段带 <c>parse:json</c> 时，FieldTransformProcessor 会把值展平成
     /// <c>A.body.foo</c> / <c>A.body.bar</c> 等子字段，原始的 <c>A.body</c> 名字在结果中已被替换。
-    /// 约定：规则字段 X 命中结果字段 Y，当且仅当 Y == X（完全相等）或 Y 以 "X." 开头
-    /// （X 是 Y 的父路径），与方案 D（结果页兜底警告）保持同一套判定语义。
+    /// 约定：规则字段 X 命中结果字段 Y，当且仅当 X 是 Y 的结构化路径前缀，包含数组索引段。
     /// </remarks>
     public static PreflightResult Build(
         IEnumerable<string> ruleFieldNames,
@@ -93,31 +92,20 @@ public static class PreflightChecker
 
         // 2) 样本字段去重 + 限长展示
         var sampleFields = new List<string>();
-        var sampleSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sampleSeen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var f in sampleFieldNames)
         {
             if (string.IsNullOrWhiteSpace(f)) continue;
             if (sampleSeen.Add(f)) sampleFields.Add(f);
         }
 
-        // 3) 比对：大小写不敏感 + 父路径匹配
+        // 3) 比对：区分大小写 + 父路径匹配
         var matched = new List<string>();
         var unmatched = new List<string>();
         foreach (var f in ruleFields)
         {
-            bool isMatched = sampleSeen.Contains(f);
-            if (!isMatched)
-            {
-                string prefix = f + ".";
-                foreach (var s in sampleFields)
-                {
-                    if (s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isMatched = true;
-                        break;
-                    }
-                }
-            }
+            var rulePath = FieldPath.Parse(f);
+            bool isMatched = sampleFields.Any(s => rulePath.IsPrefixOf(FieldPath.Parse(s)));
             if (isMatched) matched.Add(f); else unmatched.Add(f);
         }
 
@@ -144,7 +132,7 @@ public static class PreflightChecker
         string format,
         int sampleSize)
     {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
         var ordered = new List<string>();
         int taken = 0;
         foreach (var record in FileParsers.ParseByFormat(dataFilePath, format, parseOptions))

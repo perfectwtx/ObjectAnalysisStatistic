@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 
 namespace ObjectAnalyzer.Reporting;
@@ -153,7 +153,7 @@ public static class MarkdownReportExporter
             }
             string topValues = string.Join("<br>", stat.ValueCounts
                 .OrderByDescending(v => v.Value).Take(5)
-                .Select(v => $"`{EscapeMd(Truncate(v.Key, 40))}` ×{v.Value}"));
+                .Select(v => $"`{EscapeMd(Truncate(v.Key.ToDisplayString(), 40))}` ×{v.Value}"));
 
             writer.Write("| `");
             writer.Write(EscapeMd(stat.FieldName));

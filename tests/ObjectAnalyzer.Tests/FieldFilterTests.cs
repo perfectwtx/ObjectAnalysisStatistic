@@ -172,7 +172,7 @@ public class FieldFilterTests
     [Fact]
     public void Mixed_Keywords_AreCaseInsensitive()
     {
-        var filter = new FieldFilter("age > 18 and status IN ['active'] or name like 'zh%'");
+        var filter = new FieldFilter("Age > 18 and Status IN ['active'] or Name like 'zh%'");
         Assert.True(filter.Evaluate(Obj(age: 30, status: "active")));
         Assert.True(filter.Evaluate(Obj(name: "Zhang")));
         Assert.False(filter.Evaluate(Obj(age: 10, status: "disabled", name: "Li")));
@@ -344,7 +344,7 @@ public class FieldFilterTests
             Obj(age: 25, status: "active")
         };
 
-        var processor = new FieldTransformProcessor(null, filterExpression: "status == 'active'");
+        var processor = new FieldTransformProcessor(null, filterExpression: "Status == 'active'");
         var result = Analyze(processor.Wrap(objects));
 
         Assert.Equal(2, result.TotalObjects);

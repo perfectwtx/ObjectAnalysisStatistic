@@ -20,7 +20,7 @@ public static partial class SchemaExporter
 
         // 递归生成所有嵌套 DTO record 和主 record
         var generatedRecords = new List<RecordDeclarationSyntax>();
-        GenerateCSharpRecordNodes(rootTree, className, generatedRecords);
+        GenerateCSharpRecordNodes(rootTree, className, generatedRecords, new HashSet<string>(StringComparer.Ordinal));
 
         foreach (var rec in generatedRecords)
         {
@@ -43,8 +43,10 @@ public static partial class SchemaExporter
     private static string GenerateCSharpRecordNodes(
         SchemaNode node,
         string className,
-        List<RecordDeclarationSyntax> recordList)
+        List<RecordDeclarationSyntax> recordList, HashSet<string> typeNames)
     {
+        className = UniqueIdentifier(className, typeNames);
+        var memberNames = new HashSet<string>(StringComparer.Ordinal) { className, "EqualityContract", "Clone", "PrintMembers" };
         var recordDecl = SyntaxFactory.RecordDeclaration(
             SyntaxFactory.Token(SyntaxKind.RecordKeyword),
             className)
@@ -56,32 +58,8 @@ public static partial class SchemaExporter
         {
             string childName = propKvp.Key;
             var childNode = propKvp.Value;
-            string sanitizedPropName = SanitizeIdentifier(childName);
-            string fieldTypeName;
-
-            if (childNode.Kind == "Object")
-            {
-                string dtoClassName = $"{sanitizedPropName}Dto";
-                GenerateCSharpRecordNodes(childNode, dtoClassName, recordList);
-                fieldTypeName = childNode.IsNullable ? $"{dtoClassName}?" : dtoClassName;
-            }
-            else if (childNode.Kind == "Array")
-            {
-                string elemType = childNode.ElementNode != null && childNode.ElementNode.Kind == "Object"
-                    ? GenerateCSharpRecordNodes(childNode.ElementNode, $"{sanitizedPropName}ItemDto", recordList)
-                    : (childNode.ElementNode?.CSharpBaseType ?? "string");
-
-                fieldTypeName = $"{elemType}[]";
-                if (childNode.IsNullable) fieldTypeName += "?";
-            }
-            else
-            {
-                fieldTypeName = childNode.CSharpBaseType;
-                if (childNode.IsNullable && !fieldTypeName.EndsWith('?'))
-                {
-                    fieldTypeName += "?";
-                }
-            }
+            string sanitizedPropName = UniqueIdentifier(SanitizeIdentifier(childName), memberNames);
+            string fieldTypeName = CSharpNodeType(childNode, sanitizedPropName, recordList, typeNames);
 
             var propertyDecl = SyntaxFactory.PropertyDeclaration(
                 SyntaxFactory.ParseTypeName(fieldTypeName),
@@ -93,6 +71,12 @@ public static partial class SchemaExporter
                     SyntaxFactory.AccessorDeclaration(SyntaxKind.InitAccessorDeclaration)
                         .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)));
 
+            propertyDecl = propertyDecl.AddAttributeLists(SyntaxFactory.AttributeList(
+                SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Attribute(
+                    SyntaxFactory.ParseName("System.Text.Json.Serialization.JsonPropertyName"))
+                    .WithArgumentList(SyntaxFactory.AttributeArgumentList(
+                        SyntaxFactory.SingletonSeparatedList(SyntaxFactory.AttributeArgument(
+                            SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(childName)))))))));
             recordDecl = recordDecl.AddMembers(propertyDecl);
         }
 
@@ -104,11 +88,40 @@ public static partial class SchemaExporter
     //  Type Mapping Helpers
     // ─────────────────────────────────────────────
 
+    private static string CSharpNodeType(SchemaNode node, string hint, List<RecordDeclarationSyntax> records, HashSet<string> names)
+    {
+        string type = node.Kind switch
+        {
+            "Object" => GenerateCSharpRecordNodes(node, hint + "Dto", records, names),
+            "Array" => (node.ElementNode is null ? "string" : CSharpNodeType(node.ElementNode, hint + "Item", records, names)) + "[]",
+            _ => node.CSharpBaseType
+        };
+        return node.IsNullable && !type.EndsWith('?') ? type + "?" : type;
+    }
+
+    private static string UniqueIdentifier(string candidate, HashSet<string> used)
+    {
+        string name = candidate;
+        for (int suffix = 2; !used.Add(name); suffix++) name = candidate + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return name;
+    }
+
     private static string MapToCSharpBaseType(FieldStatistic field)
     {
         if (field.SemanticType == "DateTime") return "DateTime";
         if (field.SemanticType == "UUID") return "Guid";
-        if (field.PrimaryType == "Number") return field.AvgNumber.HasValue && field.AvgNumber.Value % 1 != 0 ? "double" : "long";
+        if (field.PrimaryType == "Number")
+        {
+            if (field.NumbersAreIntegral && field.NumbersFitInt64) return "long";
+            if (field.NumbersFitDouble) return "double";
+            if (field.NumbersFitDecimal) return "decimal";
+            return "System.Text.Json.JsonElement";
+        }
+        if (field.PrimaryType is "DateTime" or "DateTimeOffset" or "Guid") return field.PrimaryType;
+        if (field.PrimaryType == "Date") return "DateOnly";
+        if (field.PrimaryType == "Time") return "TimeOnly";
+        if (field.PrimaryType == "Duration") return "TimeSpan";
+        if (field.PrimaryType == "Binary") return "byte[]";
         if (field.PrimaryType == "Boolean") return "bool";
         if (field.PrimaryType == "Array") return "object[]";
         if (field.PrimaryType == "Object") return "object";

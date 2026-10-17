@@ -51,7 +51,7 @@ public static class RulesFromSchema
 
         foreach (var prop in props.EnumerateObject())
         {
-            string path = prefix.Length == 0 ? prop.Name : $"{prefix}.{prop.Name}";
+            string path = FieldPath.Parse(prefix).AppendProperty(prop.Name).ToString();
             // 每个属性独立副本：兄弟属性重复引用同一个 $defs 是合法的（菱形引用），不能共享环路守卫
             ConvertProperty(prop.Value, path, required.Contains(prop.Name), fields, skipped, root, new HashSet<string>(visiting));
         }

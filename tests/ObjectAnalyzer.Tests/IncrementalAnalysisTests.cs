@@ -41,7 +41,7 @@ public class IncrementalAnalysisTests
             snapshot.SaveTo(path);
 
             var loaded = AnalyzerSnapshot.LoadFrom(path);
-            Assert.Equal("object-analyzer.snapshot/v1", loaded.Schema);
+            Assert.Equal("object-analyzer.snapshot/v2", loaded.Schema);
             Assert.Equal("C:\\data\\big.jsonl", loaded.SourcePath);
             Assert.Equal("jsonl", loaded.SourceFormat);
             Assert.Equal(12345, loaded.SourcePosition);
@@ -200,14 +200,14 @@ public class IncrementalAnalysisTests
             FieldName = "k",
             Count = 5,
             TypeCounts = new Dictionary<string, long> { ["Number"] = 3, ["String"] = 2 },
-            ValueCounts = new Dictionary<string, long> { ["v1"] = 3, ["v2"] = 2 }
+            ValueCounts = new Dictionary<ObjectAnalyzer.Data.RecordValue, long> { ["v1"] = 3, ["v2"] = 2 }
         };
         var b = new FieldStatistic
         {
             FieldName = "k",
             Count = 4,
             TypeCounts = new Dictionary<string, long> { ["Number"] = 2, ["Boolean"] = 2 },
-            ValueCounts = new Dictionary<string, long> { ["v1"] = 1, ["v3"] = 3 }
+            ValueCounts = new Dictionary<ObjectAnalyzer.Data.RecordValue, long> { ["v1"] = 1, ["v3"] = 3 }
         };
 
         a.MergeFrom(b);

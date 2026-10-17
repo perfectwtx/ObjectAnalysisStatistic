@@ -283,7 +283,7 @@ public class ApiEndpointsTests : IClassFixture<IsolatedApiWebApplicationFactory>
         Assert.DoesNotContain("A", names);
 
         var mountain = stats.Single(f => f.GetProperty("fieldName").GetString() == "A.body.mountain");
-        Assert.Equal("bear", mountain.GetProperty("valueCounts").EnumerateObject().Single().Name);
+        Assert.Equal(ObjectAnalyzer.Data.RecordValue.FromString("bear").CanonicalKey, mountain.GetProperty("valueCounts").EnumerateObject().Single().Name);
     }
 
     [Fact]

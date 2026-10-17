@@ -21,6 +21,8 @@ public static class SchemaDiffer
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(current);
+        if (baseline.SnapshotVersion != "2.0" || current.SnapshotVersion != "2.0")
+            throw new InvalidDataException("Snapshot version 2.0 is required. Re-analyze legacy sources to rebuild typed value identities and field paths.");
 
         var diff = new SchemaDiff
         {

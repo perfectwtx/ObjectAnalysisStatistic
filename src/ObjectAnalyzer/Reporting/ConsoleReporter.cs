@@ -187,13 +187,13 @@ public sealed class ConsoleReporter : IResultPresenter
                     break;
                 }
 
-                string displayVal = val.Key;
+                string displayVal = val.Key.ToDisplayString();
                 if (displayVal.Length > 50)
                     displayVal = string.Concat(displayVal.AsSpan(0, 47), "...");
                 displayVal = displayVal.Replace("\r", "\\r").Replace("\n", "\\n");
 
                 bool isDefault = stat.DefaultValueRepresentation != null &&
-                    string.Equals(val.Key, stat.DefaultValueRepresentation, StringComparison.OrdinalIgnoreCase);
+                    string.Equals(val.Key.ToDisplayString(), stat.DefaultValueRepresentation, StringComparison.OrdinalIgnoreCase);
 
                 string valMarkup = isDefault
                     ? $"[green]{Markup.Escape(displayVal)} [bold][[默认值]][/][/] " // Fix #7: was Unicode-escaped \u9ed8\u8ba4\u503c

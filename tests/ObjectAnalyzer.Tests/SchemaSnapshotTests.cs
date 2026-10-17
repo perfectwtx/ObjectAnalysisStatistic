@@ -34,7 +34,7 @@ public class SchemaSnapshotTests
         Assert.Equal("id", snapshot.Fields[0].Path);
         Assert.Equal("name", snapshot.Fields[1].Path);
         Assert.Equal("createdAt", snapshot.Fields[2].Path);
-        Assert.Equal("1.0", snapshot.SnapshotVersion);
+        Assert.Equal("2.0", snapshot.SnapshotVersion);
         Assert.Equal("src.json", snapshot.Source);
     }
 

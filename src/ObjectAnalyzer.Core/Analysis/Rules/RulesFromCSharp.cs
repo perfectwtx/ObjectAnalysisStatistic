@@ -166,7 +166,7 @@ public static class RulesFromCSharp
                 warnings.Add($"{memberName} 的初始化器不是字面量，defaultValue 未生成。");
         }
 
-        fields[key ?? memberName] = rule;
+        fields[FieldPath.Property(key ?? memberName).ToString()] = rule;
     }
 
     private static string Normalize(string typeText)

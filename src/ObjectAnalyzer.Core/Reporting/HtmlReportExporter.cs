@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 
 namespace ObjectAnalyzer.Reporting;
@@ -176,7 +176,7 @@ public static class HtmlReportExporter
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"{t.Key}({t.Value})"));
             string topValues = string.Join(", ", stat.ValueCounts
                 .OrderByDescending(v => v.Value).Take(3)
-                .Select(v => $"{Escape(Truncate(v.Key, 30))} ×{v.Value.ToString(CultureInfo.InvariantCulture)}"));
+                .Select(v => $"{Escape(Truncate(v.Key.ToDisplayString(), 30))} ×{v.Value.ToString(CultureInfo.InvariantCulture)}"));
 
             string coveragePct = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture);
             string ruleInfo = stat.AppliedRule != null ? "<span class=\"rule-badge\">已应用</span>" : "";

@@ -40,7 +40,7 @@ public static class ImpactAnalysisBuilder
         if (diff is null)
             return new ImpactAnalysis(Array.Empty<ImpactedNode>(), ImpactLevel.Low, 0);
 
-        var changedPaths = new Dictionary<string, ImpactLevel>(StringComparer.OrdinalIgnoreCase);
+        var changedPaths = new Dictionary<string, ImpactLevel>(StringComparer.Ordinal);
         foreach (var field in diff.RemovedFields)
             changedPaths[field.Path] = Max(changedPaths.GetValueOrDefault(field.Path), ImpactLevel.Critical);
 
@@ -71,7 +71,7 @@ public static class ImpactAnalysisBuilder
             {
                 foreach (var change in changedPaths)
                 {
-                    if (string.Equals(node.Path, change.Key, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(node.Path, change.Key, StringComparison.Ordinal))
                         continue;
 
                     if (IsDescendant(node.Path, change.Key))
@@ -100,10 +100,10 @@ public static class ImpactAnalysisBuilder
         }
 
         var distinct = nodes
-            .GroupBy(x => $"{x.Type}\n{x.Path}", StringComparer.OrdinalIgnoreCase)
+            .GroupBy(x => $"{x.Type}\n{x.Path}", StringComparer.Ordinal)
             .Select(g => g.OrderByDescending(x => x.Level).First())
             .OrderByDescending(x => x.Level)
-            .ThenBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Path, StringComparer.Ordinal)
             .ToList();
 
         var highest = distinct.Count == 0 ? ImpactLevel.Low : distinct.Max(x => x.Level);
@@ -111,7 +111,8 @@ public static class ImpactAnalysisBuilder
     }
 
     private static bool IsDescendant(string path, string parent)
-        => path.StartsWith(parent + ".", StringComparison.OrdinalIgnoreCase);
+        => FieldPath.Parse(parent) is var ancestor && FieldPath.Parse(path) is var descendant
+            && ancestor.Segments.Length < descendant.Segments.Length && ancestor.IsPrefixOf(descendant);
 
     private static ImpactLevel Lower(ImpactLevel level)
         => level switch

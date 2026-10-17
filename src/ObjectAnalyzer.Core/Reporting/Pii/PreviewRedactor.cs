@@ -43,6 +43,8 @@ public static class PreviewRedactor
     {
         if (value is null)
             return null;
+        if (value is RecordValue typed && typed.Kind is not (RecordValueKind.Array or RecordValueKind.Object))
+            return typed.Kind == RecordValueKind.Null ? null : policy.Apply(field, typed.ToDisplayString());
         if (value is string s)
             return policy.Apply(field, s);
         if (value is bool or char or byte or sbyte or short or ushort or int or uint or long or ulong

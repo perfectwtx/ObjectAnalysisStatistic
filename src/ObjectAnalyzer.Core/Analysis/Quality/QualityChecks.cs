@@ -14,8 +14,6 @@ public static class QualityChecks
     /// <summary>每条违规携带的最大样本数。</summary>
     public const int MaxSamples = 5;
 
-    private const string NullKey = "null";
-    private const string TruncationKey = "[Other values]";
 
     private static readonly ConcurrentDictionary<string, Regex> PatternCache = new();
 
@@ -98,14 +96,14 @@ public static class QualityChecks
         {
             foreach (var key in stat.ValueCounts.Keys)
             {
-                if (key == NullKey || key == TruncationKey)
+                if (key.Kind != RecordValueKind.Number)
                     continue;
                 if (samples.Count >= MaxSamples)
                     break;
-                if (double.TryParse(key, NumberStyles.Any, CultureInfo.InvariantCulture, out double v)
+                if (key.TryGetDouble(out double v)
                     && (v < min || v > max))
                 {
-                    samples.Add(key);
+                    samples.Add(key.ToDisplayString());
                 }
             }
         }
@@ -114,14 +112,14 @@ public static class QualityChecks
             // 截断时尽力从已跟踪的唯一值中取样（全量扫描至取满；截断表 ≤1000 条，开销可忽略）
             foreach (var key in stat.ValueCounts.Keys)
             {
-                if (key == NullKey || key == TruncationKey)
+                if (key.Kind != RecordValueKind.Number)
                     continue;
                 if (samples.Count >= MaxSamples)
                     break;
-                if (double.TryParse(key, NumberStyles.Any, CultureInfo.InvariantCulture, out double v)
+                if (key.TryGetDouble(out double v)
                     && (v < min || v > max))
                 {
-                    samples.Add(key);
+                    samples.Add(key.ToDisplayString());
                 }
             }
         }
@@ -145,8 +143,8 @@ public static class QualityChecks
 
         foreach (var kv in stat.ValueCounts)
         {
-            string value = kv.Key;
-            if (value == TruncationKey || value == NullKey)
+            string value = kv.Key.ToDisplayString();
+            if (kv.Key.Kind == RecordValueKind.Null)
                 continue;
 
             if (regex.IsMatch(value))
@@ -233,7 +231,7 @@ public static class QualityChecks
                 {
                     if (samples.Count >= MaxSamples)
                         break;
-                    if (kv.Key is TruncationKey or NullKey || kv.Value <= 1)
+                    if (kv.Key.Kind == RecordValueKind.Null || kv.Value <= 1)
                         continue;
                     samples.Add($"{kv.Key}×{kv.Value}");
                 }
@@ -241,8 +239,8 @@ public static class QualityChecks
         }
         else if (stat.DistinctCount.HasValue)
         {
-            // 截断：HyperLogLog 近似（HLL 未纳入 null，直接与非空数比较）
-            duplicates = Math.Max(0, nonNull - stat.DistinctCount!.Value);
+            // 截断：HyperLogLog 近似（HLL 与精确频次使用相同值域，扣除 null 后与非空数比较）
+            duplicates = Math.Max(0, nonNull - (stat.DistinctCount!.Value - (nullCount > 0 ? 1 : 0)));
             approximate = true;
         }
         else

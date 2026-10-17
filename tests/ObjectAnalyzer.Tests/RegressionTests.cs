@@ -156,7 +156,7 @@ public class RegressionTests
     }
 
     [Fact]
-    public void Analyze_OtherValuesBucket_DoesNotConsumeCapSlot()
+    public void Analyze_OverflowDoesNotConsumeValueSlot()
     {
         // 回归测试：[Other values] 哨兵键不应占用 1000 个唯一值追踪名额
         const int distinct = 1001;
@@ -172,8 +172,8 @@ public class RegressionTests
         var stat = result.FieldStatistics.First(f => f.FieldName == "F");
 
         Assert.True(stat.ValueCountsTruncated);
-        Assert.True(stat.ValueCounts.ContainsKey("[Other values]"));
-        // 1000 个真实唯一值 + 1 个哨兵键
-        Assert.Equal(1001, stat.ValueCounts.Count);
+        Assert.Equal(2, stat.OtherValueCount);
+        // 仅保留真实值，溢出计数不占用值名额。
+        Assert.Equal(1000, stat.ValueCounts.Count);
     }
 }

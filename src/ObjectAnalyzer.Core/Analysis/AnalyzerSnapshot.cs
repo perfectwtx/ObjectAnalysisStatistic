@@ -13,12 +13,12 @@ namespace ObjectAnalyzer.Analysis;
 /// - <c>--baseline &lt;JSON&gt;</c>：把历史 AnalysisResult JSON 作为基线，本次只分析新数据后合并。
 ///
 /// 文件格式：NDJSON-of-1（顶层 JSON 对象）—— 与现有 <c>--output ... .json</c> 报告格式互不干扰。
-/// Schema: object-analyzer.snapshot/v1
+/// Schema: object-analyzer.snapshot/v2
 /// </summary>
 public sealed class AnalyzerSnapshot
 {
     [JsonPropertyName("schema")]
-    public string Schema { get; set; } = "object-analyzer.snapshot/v1";
+    public string Schema { get; set; } = "object-analyzer.snapshot/v2";
 
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -85,10 +85,10 @@ public sealed class AnalyzerSnapshot
         using var fs = File.OpenRead(path);
         var snapshot = JsonSerializer.Deserialize<AnalyzerSnapshot>(fs, ReadOptions)
             ?? throw new InvalidDataException($"无法从 {path} 解析 AnalyzerSnapshot（反序列化结果为 null）");
-        if (!snapshot.Schema.StartsWith("object-analyzer.snapshot/", StringComparison.Ordinal))
+        if (snapshot.Schema != "object-analyzer.snapshot/v2")
         {
             throw new InvalidDataException(
-                $"AnalyzerSnapshot schema 不兼容：'{snapshot.Schema}'，期望 'object-analyzer.snapshot/v*'。");
+                $"AnalyzerSnapshot schema 不兼容：'{snapshot.Schema}'，期望 'object-analyzer.snapshot/v2'。旧版值身份与路径无法无损迁移，请重新分析数据源。");
         }
         return snapshot;
     }

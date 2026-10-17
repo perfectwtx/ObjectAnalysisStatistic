@@ -18,7 +18,7 @@ public sealed class DistributionSnapshot
 {
     /// <summary>快照格式版本。</summary>
     [JsonPropertyName("snapshotVersion")]
-    public string SnapshotVersion { get; set; } = "1.0";
+    public string SnapshotVersion { get; set; } = "2.0";
 
     /// <summary>生成时间（UTC）。</summary>
     [JsonPropertyName("createdAt")]

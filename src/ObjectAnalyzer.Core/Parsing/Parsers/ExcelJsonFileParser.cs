@@ -121,7 +121,7 @@ internal sealed class ExcelJsonFileParser : IFileParser
             if (admitRow is not null && !admitRow(rowIndex))
                 continue; // 未选中行：连 JSON 单元格都不解析
 
-            var record = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            var record = new Dictionary<string, object?>(StringComparer.Ordinal);
             foreach (var state in states)
             {
                 if (!state.Bound || rowIndex <= state.HeaderRow)
@@ -139,7 +139,7 @@ internal sealed class ExcelJsonFileParser : IFileParser
                 if (state.Config.Flatten ?? options.Flatten)
                     AddFlattenedParsedValue(record, sourceKey, parsedValue);
                 else
-                    record[sourceKey] = parsedValue;
+                    record[FieldPath.Property(sourceKey).ToString()] = parsedValue;
             }
 
             if (record.Count > 0)
@@ -174,33 +174,7 @@ internal sealed class ExcelJsonFileParser : IFileParser
 
     private static void AddFlattenedParsedValue(Dictionary<string, object?> result, string sourceKey, object? parsedValue)
     {
-        if (parsedValue == null)
-            return;
-
-        switch (parsedValue)
-        {
-            case Dictionary<string, object?> nestedDict:
-                ParserHelpers.FlattenObjectDictInto(nestedDict, sourceKey, result, 0);
-                break;
-            case IList list:
-                for (int i = 0; i < list.Count; i++)
-                {
-                    string indexedKey = $"{sourceKey}[{i}]";
-                    var item = list[i];
-                    if (item is Dictionary<string, object?> itemDict)
-                    {
-                        ParserHelpers.FlattenObjectDictInto(itemDict, indexedKey, result, 0);
-                    }
-                    else
-                    {
-                        result[indexedKey] = item;
-                    }
-                }
-                break;
-            default:
-                result[sourceKey] = parsedValue;
-                break;
-        }
+        ParserHelpers.FlattenValue(RecordValue.FromObject(parsedValue), FieldPath.Property(sourceKey), result);
     }
 
     private static object? ParseValueByType(object? value, string parseType, string sourceKey, long rowIndex, ParseOptions options)

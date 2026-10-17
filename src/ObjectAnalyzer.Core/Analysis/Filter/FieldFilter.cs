@@ -43,6 +43,24 @@ public sealed class FieldFilter(string expression)
 
             if (c == '(') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.LParen)); i++; continue; }
             if (c == ')') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.RParen)); i++; continue; }
+            if (tokens.Count == 0 || tokens[^1].Kind is FieldFilterTokenKind.LParen or FieldFilterTokenKind.And or FieldFilterTokenKind.Or)
+            {
+                int start = i;
+                bool quoted = false;
+                bool escaped = false;
+                while (i < len)
+                {
+                    char next = expr[i];
+                    if (!quoted && (char.IsWhiteSpace(next) || next is '=' or '!' or '<' or '>' or '(' or ')')) break;
+                    i++;
+                    if (quoted && !escaped && next == '\\') { escaped = true; continue; }
+                    if (!escaped && next == '"') quoted = !quoted;
+                    escaped = false;
+                }
+                if (quoted || i == start) throw new FormatException($"Invalid field path at position {start}.");
+                tokens.Add(new FieldFilterToken(FieldFilterTokenKind.Identifier, FieldPath.Parse(expr[start..i]).ToString()));
+                continue;
+            }
             if (c == '[') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.LBracket)); i++; continue; }
             if (c == ']') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.RBracket)); i++; continue; }
             if (c == ',') { tokens.Add(new FieldFilterToken(FieldFilterTokenKind.Comma)); i++; continue; }

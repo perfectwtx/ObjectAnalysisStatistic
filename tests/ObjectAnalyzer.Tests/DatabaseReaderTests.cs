@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 
 namespace ObjectAnalyzer.Tests;
 
@@ -19,8 +19,8 @@ public class DatabaseReaderTests
             Assert.Equal(1L, first["id"]);
             Assert.Equal("Alice", first["name"]);
             Assert.Equal(1L, first["active"]);     // SQLite INTEGER -> long
-            Assert.Equal(9.5, first["score"]);     // REAL -> double
-            Assert.Equal("QUJD", first["photo"]);  // BLOB -> Base64
+            Assert.Equal(9.5m, first["score"]);    // 数值统一为无损 CLR 表示
+            Assert.Equal(new byte[] { 65, 66, 67 }, Assert.IsType<byte[]>(first["photo"])); // 保留二进制类型
 
             // DATETIME affinity columns read back as DateTime, normalized to ISO-8601 string
             string created = Assert.IsType<string>(first["created_at"]);
@@ -28,7 +28,7 @@ public class DatabaseReaderTests
 
             Assert.Equal(2L, rows[1]["id"]);
             Assert.Equal(0L, rows[1]["active"]);
-            Assert.Equal(8.0, rows[1]["score"]);
+            Assert.Equal(8L, rows[1]["score"]);
 
             // NULL row kept intact
             Assert.Equal(3L, rows[2]["id"]);

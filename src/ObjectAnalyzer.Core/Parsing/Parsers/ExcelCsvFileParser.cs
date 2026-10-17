@@ -113,7 +113,7 @@ internal sealed class ExcelCsvFileParser : IFileParser
             return rowDict;
 
         // 表头文本重复时后者覆盖前者（字典语义）；空表头单元格回退列字母
-        var renamed = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        var renamed = new Dictionary<string, object?>(StringComparer.Ordinal);
         foreach (var kvp in rowDict)
         {
             renamed[headerNames.TryGetValue(kvp.Key, out var name) && name.Length > 0 ? name : kvp.Key] = kvp.Value;
@@ -155,7 +155,7 @@ internal sealed class ExcelCsvFileParser : IFileParser
         foreach (var kvp in rowDict)
         {
             if (kvp.Key != null)
-                dict[kvp.Key] = convert ? CsvNumberInference.TryConvert(kvp.Value) : kvp.Value;
+                dict[FieldPath.Property(kvp.Key).ToString()] = convert ? CsvNumberInference.TryConvert(kvp.Value) : kvp.Value;
         }
         return dict;
     }

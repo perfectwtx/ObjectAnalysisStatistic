@@ -45,7 +45,7 @@ public class PerformanceImprovementsTests
     // ──────────────────────────────────────────────
 
     [Fact]
-    public void Analyze_HighCardinalityField_OtherValuesBucketUsed()
+    public void Analyze_HighCardinalityField_OverflowCountIsSeparate()
     {
         // Arrange – 生成 1200 个对象，每个对象有唯一的 Guid 值 → 超过 1000 阈值
         var objects = Enumerable.Range(0, 1200)
@@ -56,10 +56,11 @@ public class PerformanceImprovementsTests
         var result = Analyze(objects);
         var keyStat = result.FieldStatistics.First(f => f.FieldName == "Key");
 
-        // Assert: ValueCounts 不得超过 1001（1000 正常 + 1 个 [Other values] 桶）
-        Assert.True(keyStat.ValueCounts.Count <= 1001,
-            $"ValueCounts 应 ≤ 1001，实际为 {keyStat.ValueCounts.Count}");
-        Assert.Contains("[Other values]", keyStat.ValueCounts.Keys);
+        // 精确值保留最多 1000 项，其余次数独立累计。
+        Assert.True(keyStat.ValueCounts.Count <= 1000,
+            $"ValueCounts 应 ≤ 1000，实际为 {keyStat.ValueCounts.Count}");
+        Assert.True(keyStat.OtherValueCount > 0);
+        Assert.Equal(1200, keyStat.ValueCounts.Values.Sum() + keyStat.OtherValueCount);
     }
 
     // ──────────────────────────────────────────────

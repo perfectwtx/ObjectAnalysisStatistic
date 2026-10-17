@@ -18,7 +18,7 @@ public static class ObjectRelationshipAnalyzer
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(completed);
 
-        var states = new Dictionary<string, RelationshipState>(StringComparer.OrdinalIgnoreCase);
+        var states = new Dictionary<string, RelationshipState>(StringComparer.Ordinal);
         try
         {
             foreach (var item in source)
@@ -46,7 +46,7 @@ public static class ObjectRelationshipAnalyzer
 
         foreach (var pair in obj)
         {
-            string path = string.IsNullOrEmpty(prefix) ? pair.Key : $"{prefix}.{pair.Key}";
+            string path = depth == 0 ? FieldPath.Parse(pair.Key).ToString() : FieldPath.Parse(prefix).AppendProperty(pair.Key).ToString();
             if (pair.Value is null) continue;
 
             if (TryGetDictionary(pair.Value, out var nested))
@@ -113,7 +113,7 @@ public static class ObjectRelationshipAnalyzer
 
     private sealed class RelationshipState
     {
-        private readonly HashSet<string> _targetFields = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _targetFields = new(StringComparer.Ordinal);
 
         public RelationshipState(string path, string kind)
         {
@@ -140,7 +140,7 @@ public static class ObjectRelationshipAnalyzer
             OccurrenceCount = OccurrenceCount,
             NonNullCount = NonNullCount,
             TargetFieldCount = _targetFields.Count,
-            TargetFields = _targetFields.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList()
+            TargetFields = _targetFields.OrderBy(x => x, StringComparer.Ordinal).ToList()
         };
     }
 }

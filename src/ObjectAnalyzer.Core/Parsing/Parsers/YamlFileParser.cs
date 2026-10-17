@@ -29,14 +29,14 @@ internal sealed class YamlFileParser : IFileParser
                 {
                     var converted = ParserHelpers.ConvertYamlDict(dict, 0);
                     // Fix #4: respect options.Flatten for YAML (previously ignored)
-                    yield return options.Flatten ? ParserHelpers.FlattenObjectDict(converted) : converted;
+                    yield return options.Flatten ? ParserHelpers.FlattenObjectDict(converted) : ParserHelpers.EncodeRecordKeys(converted);
                 }
             }
         }
         else if (yamlResult is Dictionary<object, object> singleDict)
         {
             var converted = ParserHelpers.ConvertYamlDict(singleDict, 0);
-            yield return options.Flatten ? ParserHelpers.FlattenObjectDict(converted) : converted;
+            yield return options.Flatten ? ParserHelpers.FlattenObjectDict(converted) : ParserHelpers.EncodeRecordKeys(converted);
         }
         else
         {

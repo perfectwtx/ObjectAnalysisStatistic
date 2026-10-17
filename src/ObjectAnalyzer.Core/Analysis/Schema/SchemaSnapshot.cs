@@ -10,7 +10,7 @@ public sealed class SchemaSnapshot
 {
     /// <summary>快照格式版本（用于快照自身演进兼容）。</summary>
     [JsonPropertyName("snapshotVersion")]
-    public string SnapshotVersion { get; set; } = "1.0";
+    public string SnapshotVersion { get; set; } = "2.0";
 
     /// <summary>快照生成时间（UTC）。</summary>
     [JsonPropertyName("createdAt")]

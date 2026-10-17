@@ -37,11 +37,11 @@ public sealed class FieldTransformProcessor
         var explicitSelection = selectedFields as IReadOnlyCollection<string>;
         if (explicitSelection is { Count: > 0 })
         {
-            _selectedFields = new HashSet<string>(explicitSelection, StringComparer.OrdinalIgnoreCase);
+            _selectedFields = new HashSet<string>(explicitSelection.Select(x => FieldPath.Parse(x).ToString()), StringComparer.Ordinal);
         }
         else if (TryGetSelectedFields(rules?.Runtime) is { Count: > 0 } ruleFields)
         {
-            _selectedFields = new HashSet<string>(ruleFields, StringComparer.OrdinalIgnoreCase);
+            _selectedFields = new HashSet<string>(ruleFields.Select(x => FieldPath.Parse(x).ToString()), StringComparer.Ordinal);
         }
 
         string? ruleFilter = TryGetString(rules?.Runtime, "filter");
@@ -57,7 +57,7 @@ public sealed class FieldTransformProcessor
             {
                 if (rule.Transform == null) continue;
                 ValidateTransform(field, rule.Transform);
-                _transforms[field] = rule.Transform;
+                _transforms[FieldPath.Parse(field).ToString()] = rule.Transform;
             }
         }
     }
@@ -92,25 +92,7 @@ public sealed class FieldTransformProcessor
         return TransformAndSelect(objects);
     }
 
-    private bool IsSelectedKey(string key)
-    {
-        if (_selectedFields == null)
-            return true;
-
-        foreach (var selected in _selectedFields)
-        {
-            if (string.Equals(selected, key, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (selected.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase)
-                || selected.StartsWith(key + "[", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    private bool IsSelectedKey(string key) => IsSelectedKey(_selectedFields, key);
 
     private IEnumerable<Dictionary<string, object?>> TransformAndSelect(
         IEnumerable<Dictionary<string, object?>> objects)
@@ -284,7 +266,7 @@ public sealed class FieldTransformProcessor
             case JsonValueKind.Object:
                 foreach (var property in element.EnumerateObject())
                 {
-                    string name = string.IsNullOrEmpty(prefix) ? property.Name : $"{prefix}.{property.Name}";
+                    string name = FieldPath.Parse(prefix).AppendProperty(property.Name).ToString();
                     FlattenJsonWithSelection(property.Value, name, target, selectedFields);
                 }
                 break;
@@ -293,7 +275,7 @@ public sealed class FieldTransformProcessor
                 int index = 0;
                 foreach (var item in element.EnumerateArray())
                 {
-                    string name = $"{prefix}[{index}]";
+                    string name = FieldPath.Parse(prefix).AppendIndex(index).ToString();
                     FlattenJsonWithSelection(item, name, target, selectedFields);
                     index++;
                 }
@@ -331,75 +313,19 @@ public sealed class FieldTransformProcessor
 
     private static bool IsSelectedKey(HashSet<string>? selectedFields, string key)
     {
-        if (selectedFields == null)
-            return true;
-
-        foreach (var selected in selectedFields)
-        {
-            if (string.Equals(selected, key, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (selected.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase)
-                || selected.StartsWith(key + "[", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        if (selectedFields is null) return true;
+        var path = FieldPath.Parse(key);
+        return selectedFields.Any(selected => path.IsPrefixOf(FieldPath.Parse(selected)));
     }
 
     private static bool HasNestedSelection(HashSet<string> selectedFields, string key)
     {
-        foreach (var selected in selectedFields)
-        {
-            if (selected.StartsWith(key + ".", StringComparison.OrdinalIgnoreCase)
-                || selected.StartsWith(key + "[", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        var path = FieldPath.Parse(key);
+        return selectedFields.Any(selected => FieldPath.Parse(selected) is var child
+            && child.Segments.Length > path.Segments.Length && path.IsPrefixOf(child));
     }
 
-    private static object? ConvertJsonElementValue(JsonElement element)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Object:
-                var dict = new Dictionary<string, object?>();
-                foreach (var property in element.EnumerateObject())
-                    dict[property.Name] = ConvertJsonElementValue(property.Value);
-                return dict;
-
-            case JsonValueKind.Array:
-                var list = new List<object?>();
-                foreach (var item in element.EnumerateArray())
-                    list.Add(ConvertJsonElementValue(item));
-                return list;
-
-            case JsonValueKind.String:
-                return element.GetString();
-
-            case JsonValueKind.Number:
-                if (element.TryGetInt64(out long l)) return l;
-                if (element.TryGetDouble(out double d)) return d;
-                return element.GetRawText();
-
-            case JsonValueKind.True:
-                return true;
-
-            case JsonValueKind.False:
-                return false;
-
-            case JsonValueKind.Null:
-                return null;
-
-            default:
-                return element.GetRawText();
-        }
-    }
+    private static object? ConvertJsonElementValue(JsonElement element) => RecordValue.FromJsonElement(element).ToObject();
 
     private static bool TryApply(FieldTransform transform, object? value, out object? result)
     {

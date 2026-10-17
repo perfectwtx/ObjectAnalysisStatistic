@@ -11,7 +11,7 @@ namespace ObjectAnalyzer.Parsing;
 /// 数据库直连 (Live DB Ingestion)：通过 Connection String + SQL 查询直连
 /// PostgreSQL / MySQL / SQLite / SQL Server，利用 DbDataReader 惰性流式读取行，
 /// 无需先将数据库导出为 CSV/JSON 文件即可进行实时结构与质量分析。
-/// 每行被归一化为与文件解析一致的对象字典（数值→long/double、日期→ISO 字符串、Guid→字符串等），
+/// 每行通过统一值模型归一化，保留精确数值、日期、Guid 和二进制的类型身份，
 /// 从而可直接复用 ObjectAnalyzer 分析管道与 Schema 推断。
 /// </summary>
 public static class DatabaseReader
@@ -115,7 +115,7 @@ public static class DatabaseReader
             var row = new Dictionary<string, object?>(reader.FieldCount);
             for (int i = 0; i < reader.FieldCount; i++)
             {
-                row[reader.GetName(i)] = ConvertValue(reader.GetValue(i));
+                row[FieldPath.Property(reader.GetName(i)).ToString()] = ConvertValue(reader.GetValue(i));
             }
             yield return row;
         }
@@ -124,59 +124,7 @@ public static class DatabaseReader
     /// <summary>把数据库原生值归一化为与分析管道兼容的标量类型。</summary>
     private static object? ConvertValue(object? value)
     {
-        switch (value)
-        {
-            case null:
-            case DBNull:
-                return null;
-
-            case bool b:
-                return b;
-
-            case byte b:
-                return (long)b;
-            case sbyte b:
-                return (long)b;
-            case short s:
-                return (long)s;
-            case ushort s:
-                return (long)s;
-            case int i:
-                return (long)i;
-            case uint ui:
-                return (long)ui;
-            case long l:
-                return l;
-            case ulong ul:
-                return ul <= long.MaxValue ? (long)ul : (double)ul;
-
-            case float f:
-                return (double)f;
-            case double d:
-                return d;
-            case decimal m:
-                return (double)m;
-
-            case char c:
-                return c.ToString();
-            case string s:
-                return s;
-            case DateTime dt:
-                return dt.ToString("o", CultureInfo.InvariantCulture);
-            case DateTimeOffset dto:
-                return dto.ToString("o", CultureInfo.InvariantCulture);
-            case Guid g:
-                return g.ToString("D");
-            case TimeSpan ts:
-                return ts.ToString("c", CultureInfo.InvariantCulture);
-            case byte[] bytes:
-                return Convert.ToBase64String(bytes);
-            case Enum e:
-                return e.ToString();
-
-            default:
-                return value.ToString();
-        }
+        return RecordValue.FromObject(value).ToObject();
     }
 
     private static DbConnection CreateConnection(string connectionString, DatabaseProvider provider)
