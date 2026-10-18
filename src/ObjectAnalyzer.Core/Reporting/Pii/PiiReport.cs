@@ -22,22 +22,22 @@ public sealed class PiiReport
 
     public static PiiReport Build(AnalysisResult result)
     {
+        var policy = PiiPolicy.Resolve(result);
+        var projected = ResultProjection.Redact(result, policy);
         var fields = new List<PiiFieldReport>();
         var categoryCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         long piiValueCount = 0;
 
         foreach (var stat in result.FieldStatistics)
         {
-            var mask = PiiDetector.TryGetMaskFormat(stat.SemanticType, stat.AppliedRule);
+            var path = FieldPath.Parse(stat.FieldName);
+            var mask = policy.Find(path) ?? policy.MasksByField.FirstOrDefault(pair => path.IsPrefixOf(FieldPath.Parse(pair.Key))).Value;
             if (mask == null)
                 continue;
 
             // 按出现次数倒序取样本；次数相同时按字典序升序，保证多线程合并后的非确定性顺序下也能稳定复现
-            string? sample = stat.ValueCounts
-                .OrderByDescending(kv => kv.Value)
-                .ThenBy(kv => kv.Key.CanonicalKey, StringComparer.Ordinal)
-                .Select(kv => kv.Key.ToDisplayString())
-                .FirstOrDefault();
+            string? sample = ResultProjection.Values(projected.FieldStatistics.Single(field => field.FieldName == stat.FieldName))
+                .Select(value => value.Display).FirstOrDefault();
 
             string categoryKey = mask.Category.ToString().ToLowerInvariant();
             categoryCounts[categoryKey] = categoryCounts.GetValueOrDefault(categoryKey) + 1;
@@ -52,7 +52,7 @@ public sealed class PiiReport
                 Count = stat.Count,
                 Coverage = stat.Coverage,
                 DistinctValues = stat.ValueCounts.Count,
-                MaskedSample = sample != null ? mask.Apply(sample) : null
+                MaskedSample = sample
             });
         }
 

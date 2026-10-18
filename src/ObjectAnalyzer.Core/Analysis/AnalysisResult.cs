@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 /// <summary>Report projection. It carries no resumable calculation state or merge behavior.</summary>
 public class AnalysisResult
 {
+    public List<FieldPrivacyDirective>? PrivacyDirectives { get; set; }
+    public ResultProjectionInfo? Projection { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AnalysisReliability? Reliability { get; set; }
 

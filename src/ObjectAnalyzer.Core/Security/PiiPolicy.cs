@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+
 namespace ObjectAnalyzer.Analysis;
 
 /// <summary>
@@ -11,10 +13,27 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public sealed class PiiPolicy
 {
-    /// <summary>空策略：无任何敏感字段（出站打码零成本直通）。</summary>
+    /// <summary>空策略：没有已识别的敏感字段；出站投影仍生成独立副本。</summary>
     public static readonly PiiPolicy Empty = new(new Dictionary<string, PiiMaskFormat>(StringComparer.Ordinal));
 
-    private PiiPolicy(IReadOnlyDictionary<string, PiiMaskFormat> masksByField) => MasksByField = masksByField;
+    private readonly IReadOnlyList<(FieldPath Path, PiiMaskFormat? Mask)> _paths;
+    private PiiPolicy(IReadOnlyDictionary<string, PiiMaskFormat> masksByField, IEnumerable<string>? exemptions = null)
+    {
+        MasksByField = masksByField.ToFrozenDictionary(StringComparer.Ordinal);
+        _paths = masksByField.Select(pair => (FieldPath.Parse(pair.Key), (PiiMaskFormat?)pair.Value))
+            .Concat((exemptions ?? []).Select(path => (FieldPath.Parse(path), (PiiMaskFormat?)null)))
+            .OrderByDescending(item => item.Item1.Segments.Length).ToArray();
+    }
+    internal PiiMaskFormat? Find(FieldPath path)
+        => _paths.FirstOrDefault(item => item.Path.IsPrefixOf(path)).Mask;
+    internal bool Affects(FieldPath path) => Find(path) is not null || _paths.Any(item => item.Mask is not null && path.IsPrefixOf(item.Path));
+    internal static List<FieldPrivacyDirective>? Directives(AnalysisRules? rules)
+    {
+        var directives = rules?.Fields.Where(pair => pair.Value.Pii is not null || pair.Value.Redact == false)
+            .Select(pair => new FieldPrivacyDirective(FieldPath.Parse(pair.Key).ToString(),
+                PiiDetector.TryGetMaskFormat(null, pair.Value), pair.Value.Redact == false)).ToList();
+        return directives is { Count: > 0 } ? directives : null;
+    }
 
     /// <summary>字段名（flatten 后路径）→ 打码格式。</summary>
     public IReadOnlyDictionary<string, PiiMaskFormat> MasksByField { get; }
@@ -33,14 +52,26 @@ public sealed class PiiPolicy
     public static PiiPolicy Resolve(AnalysisResult result)
     {
         var masks = new Dictionary<string, PiiMaskFormat>(StringComparer.Ordinal);
+        var exemptions = new HashSet<string>(StringComparer.Ordinal);
+        var directives = (result.PrivacyDirectives ?? []).Concat(result.FieldStatistics
+            .Where(stat => stat.AppliedRule?.Pii is not null || stat.AppliedRule?.Redact == false)
+            .Select(stat => new FieldPrivacyDirective(FieldPath.Parse(stat.FieldName).ToString(),
+                PiiDetector.TryGetMaskFormat(null, stat.AppliedRule), stat.AppliedRule?.Redact == false))).ToList();
+        foreach (var directive in directives)
+        {
+            if (directive.Exempt) { exemptions.Add(directive.Field); masks.Remove(directive.Field); }
+            else if (directive.Mask is not null && !exemptions.Contains(directive.Field)) masks[directive.Field] = directive.Mask;
+        }
         foreach (var stat in result.FieldStatistics)
         {
+            var path = FieldPath.Parse(stat.FieldName);
+            // Automatic leaf inference cannot weaken an explicit parent mask or override its exemption.
+            if (directives.Any(directive => FieldPath.Parse(directive.Field).IsPrefixOf(path))) continue;
             var mask = PiiDetector.TryGetMaskFormat(stat.SemanticType, stat.AppliedRule);
-            if (mask != null)
-                masks[stat.FieldName] = mask;
+            if (mask is not null) masks[path.ToString()] = mask;
         }
 
-        return masks.Count == 0 ? Empty : new PiiPolicy(masks);
+        return masks.Count == 0 ? Empty : new PiiPolicy(masks, exemptions);
     }
 
     /// <summary>对某字段的一个字符串值应用打码；非敏感字段原样返回。</summary>
@@ -48,7 +79,7 @@ public sealed class PiiPolicy
     {
         if (value is null)
             return null;
-        return MasksByField.TryGetValue(fieldName, out var mask) ? mask.Apply(value) : value;
+        return Find(FieldPath.Parse(fieldName))?.Apply(value) ?? value;
     }
 
     /// <summary>逐字段输出解析后的打码元数据（按字段名排序），供 API 响应回显 / 异步快照复用。</summary>

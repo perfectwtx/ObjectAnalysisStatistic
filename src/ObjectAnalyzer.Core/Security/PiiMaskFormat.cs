@@ -44,7 +44,7 @@ public sealed class PiiMaskFormat
                 PiiCategory.Ssn => PiiDetector.Mask(value, PiiCategory.Ssn),
                 PiiCategory.Iban => PiiDetector.Mask(value, PiiCategory.Iban),
                 PiiCategory.Passport => PiiDetector.Mask(value, PiiCategory.Passport),
-                _ => value
+                _ => MaskAllChars(value, "*")
             };
         }
 

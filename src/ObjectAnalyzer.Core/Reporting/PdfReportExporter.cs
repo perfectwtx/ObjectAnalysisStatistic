@@ -17,8 +17,9 @@ public static class PdfReportExporter
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
+        if (redactPii) result = ResultProjection.Create(result).Result;
 
         var doc = Document.Create(c => Compose(c, result));
         doc.GeneratePdf(outputPath);
@@ -73,6 +74,8 @@ public static class PdfReportExporter
         {
             col.Spacing(12);
             col.Item().Element(c => SummarySection(c, r));
+            if (r.Projection is { Omitted.Count: > 0 } projection)
+                col.Item().Text("Delivery omissions: " + string.Join(", ", projection.Omitted));
             if (r.Reliability is { Limitations.Count: > 0 } reliability)
                 col.Item().Column(items =>
                 {
@@ -181,7 +184,7 @@ public static class PdfReportExporter
                     t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(s.PrimaryType);
                     string avg = s.MinNumber.HasValue ? $"{Fmt(s.AvgNumber)} / {Fmt(s.SumNumber, "G4")}" : "—";
                     t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(avg);
-                    var top3 = string.Join("  ·  ", s.ValueCounts.OrderByDescending(v => v.Value).Take(3).Select(v => $"{v.Key}×{v.Value}"));
+                    var top3 = string.Join("  ·  ", ResultProjection.Values(s).Take(3).Select(v => $"{v.Display}×{v.Count}"));
                     t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(top3).FontSize(8);
                 }
             });

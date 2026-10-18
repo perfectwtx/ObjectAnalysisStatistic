@@ -69,34 +69,34 @@ public static class ReportExporter
     {
         public string Format => "html";
         public bool CanHandle(string outputPath) => Path.GetExtension(outputPath).ToLowerInvariant() is ".html" or ".htm";
-        public void Save(AnalysisResult result, string outputPath) => HtmlReportExporter.Save(result, outputPath);
+        public void Save(AnalysisResult result, string outputPath) => HtmlReportExporter.Save(result, outputPath, redactPii: false);
     }
 
     private sealed class MarkdownResultExporter : IResultExporter
     {
         public string Format => "markdown";
         public bool CanHandle(string outputPath) => Path.GetExtension(outputPath).ToLowerInvariant() is ".md" or ".markdown";
-        public void Save(AnalysisResult result, string outputPath) => MarkdownReportExporter.Save(result, outputPath);
+        public void Save(AnalysisResult result, string outputPath) => MarkdownReportExporter.Save(result, outputPath, redactPii: false);
     }
 
     private sealed class CsvResultExporter : IResultExporter
     {
         public string Format => "csv";
         public bool CanHandle(string outputPath) => string.Equals(Path.GetExtension(outputPath), ".csv", StringComparison.OrdinalIgnoreCase);
-        public void Save(AnalysisResult result, string outputPath) => CsvReportExporter.Save(result, outputPath);
+        public void Save(AnalysisResult result, string outputPath) => CsvReportExporter.Save(result, outputPath, redactPii: false);
     }
 
     private sealed class ExcelResultExporter : IResultExporter
     {
         public string Format => "excel";
         public bool CanHandle(string outputPath) => string.Equals(Path.GetExtension(outputPath), ".xlsx", StringComparison.OrdinalIgnoreCase);
-        public void Save(AnalysisResult result, string outputPath) => ExcelReportExporter.Save(result, outputPath);
+        public void Save(AnalysisResult result, string outputPath) => ExcelReportExporter.Save(result, outputPath, redactPii: false);
     }
 
     private sealed class PdfResultExporter : IResultExporter
     {
         public string Format => "pdf";
         public bool CanHandle(string outputPath) => string.Equals(Path.GetExtension(outputPath), ".pdf", StringComparison.OrdinalIgnoreCase);
-        public void Save(AnalysisResult result, string outputPath) => PdfReportExporter.Save(result, outputPath);
+        public void Save(AnalysisResult result, string outputPath) => PdfReportExporter.Save(result, outputPath, redactPii: false);
     }
 }

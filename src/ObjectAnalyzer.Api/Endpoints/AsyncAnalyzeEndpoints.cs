@@ -471,7 +471,7 @@ public static class AsyncAnalyzeEndpoints
         {
             try
             {
-                result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+                result = global::ObjectAnalyzer.Reporting.ResultProjection.ReadStored(job.ResultJson);
             }
             catch (JsonException)
             {

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Analysis.Gates;
 using ObjectAnalyzer.Platform;
+using ObjectAnalyzer.Reporting;
 
 namespace ObjectAnalyzer.Api;
 
@@ -54,7 +55,7 @@ public static class QualityEndpoints
     private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetJobs(int? limit, IAnalysisHistoryStore store, CancellationToken cancellationToken)
     {
         var actualLimit = Math.Clamp(limit ?? 50, 1, 500);
-        return TypedResults.Ok(await store.GetRecentAsync(actualLimit, cancellationToken));
+        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>((await store.GetRecentAsync(actualLimit, cancellationToken)).Select(ResultProjection.Job).ToList());
     }
 
     private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetFieldJobs(IAnalysisHistoryStore store, CancellationToken cancellationToken)
@@ -63,13 +64,13 @@ public static class QualityEndpoints
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
             .ToList();
-        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>(jobs);
+        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>(jobs.Select(ResultProjection.Job).ToList());
     }
 
     private static async Task<Results<Ok<AnalysisJob>, NotFound<ErrorResponse>>> GetJob(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
     {
         var job = await store.GetAsync(jobId, cancellationToken);
-        return job is null ? TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}")) : TypedResults.Ok(job);
+        return job is null ? TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}")) : TypedResults.Ok(ResultProjection.Job(job));
     }
 
     private static async Task<Results<Ok<AnalysisResult>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetJobResult(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
@@ -82,7 +83,7 @@ public static class QualityEndpoints
             var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
             return result is null
                 ? TypedResults.BadRequest(new ErrorResponse("该分析作业的历史结果为空。"))
-                : TypedResults.Ok(result);
+                : TypedResults.Ok(global::ObjectAnalyzer.Reporting.ResultProjection.Create(result).Result);
         }
         catch (JsonException) { return TypedResults.BadRequest(new ErrorResponse("该分析作业的历史结果 JSON 无法解析。")); }
     }
@@ -122,12 +123,12 @@ public static class QualityEndpoints
             .ToList();
 
         return TypedResults.Ok(new AnalysisJobOverviewResponse(
-            job,
+            ResultProjection.Job(job),
             qualityMetrics,
             baselineEvaluation,
             gateResults,
-            qualityIssues,
-            result.SchemaDiff,
+            qualityIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList(),
+            ResultProjection.Create(result).Result.SchemaDiff,
             result.CorrelationMatrix,
             result.ObjectRelationships ?? new List<ObjectRelationship>()));
     }
@@ -153,7 +154,7 @@ public static class QualityEndpoints
         var topIssues = (await issues.GetByJobAsync(job.Id, cancellationToken)).OrderByDescending(x => x.Count).ThenBy(x => x.FieldName).Take(5).ToList();
         var gates = DeserializeList<QualityGateResult>(job.GateResultsJson);
         var metrics = result is null ? null : QualityMetricsCalculator.Calculate(result);
-        return TypedResults.Ok(new QualityDashboardResponse(job, metrics, snapshots, topIssues, gates));
+        return TypedResults.Ok(new QualityDashboardResponse(ResultProjection.Job(job), metrics, snapshots, topIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList(), gates));
     }
 
     private static async Task<Ok<IReadOnlyList<QualitySnapshot>>> GetTrend(string? sourceName, int? limit, IQualityHistoryQuery query, CancellationToken cancellationToken)
@@ -173,20 +174,20 @@ public static class QualityEndpoints
         catch (JsonException) { return TypedResults.BadRequest(new ErrorResponse("历史结果 JSON 无法解析。")); }
         if (result is null) return TypedResults.BadRequest(new ErrorResponse("历史结果为空。"));
 
-        var fields = result.FieldStatistics ?? new List<FieldStatistic>();
+        var fields = ResultProjection.Create(result).Result.FieldStatistics;
         var normalizedFields = await qualityHistory.GetFieldsByJobAsync(jobId, cancellationToken);
         var qualityIssues = await issues.GetByJobAsync(jobId, cancellationToken);
-        return TypedResults.Ok(new FieldQualityResponse(job, fields, normalizedFields, qualityIssues));
+        return TypedResults.Ok(new FieldQualityResponse(ResultProjection.Job(job), fields, normalizedFields, qualityIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList()));
     }
 
     private static async Task<Results<Ok<FieldCorrelationMatrix?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
-        => await GetResultProperty(jobId, result => result.CorrelationMatrix, history, cancellationToken);
+        => await GetResultProperty(jobId, result => global::ObjectAnalyzer.Reporting.ResultProjection.Create(result).Result.CorrelationMatrix, history, cancellationToken);
 
     private static async Task<Results<Ok<List<ObjectRelationship>?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetObjectRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
-        => await GetResultProperty(jobId, result => result.ObjectRelationships, history, cancellationToken);
+        => await GetResultProperty(jobId, result => global::ObjectAnalyzer.Reporting.ResultProjection.Create(result).Result.ObjectRelationships, history, cancellationToken);
 
     private static async Task<Results<Ok<SchemaDiff?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetSchemaImpact(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
-        => await GetResultProperty(jobId, result => result.SchemaDiff, history, cancellationToken);
+        => await GetResultProperty(jobId, result => global::ObjectAnalyzer.Reporting.ResultProjection.Create(result).Result.SchemaDiff, history, cancellationToken);
 
     private static async Task<Results<Ok<T?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetResultProperty<T>(
         Guid jobId,

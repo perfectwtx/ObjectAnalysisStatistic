@@ -108,6 +108,7 @@ public sealed class AnalysisAccumulator
         EnsureValid();
         var output = ObjectAnalyzer.Complete(this);
         output.Result.Reliability = BuildReliability(output.Result);
+        output.Result.PrivacyDirectives = PiiPolicy.Directives(Rules);
         output.Result.FilterExpression = FilterExpression;
         output.Result.ObjectRelationships = Clone(Relationships);
         foreach (var field in output.Result.FieldStatistics)

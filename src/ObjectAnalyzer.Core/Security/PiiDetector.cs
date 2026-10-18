@@ -138,11 +138,11 @@ public static class PiiDetector
             maskChar = "*";
 
         int len = value.Length;
-        int keep = prefixKeep + suffixKeep;
+        long keep = (long)prefixKeep + suffixKeep;
         if (len <= keep)
         {
             // 值太短：仅保留前后缀中可行的部分，其余显式打码
-            int mid = Math.Min(prefixKeep, len);
+            int mid = Math.Min(prefixKeep, Math.Max(0, len - 1));
             var sb = new System.Text.StringBuilder(len);
             sb.Append(value.AsSpan(0, mid));
             AppendRepeated(sb, maskChar, Math.Max(0, len - mid));
@@ -151,7 +151,7 @@ public static class PiiDetector
 
         var buffer = new System.Text.StringBuilder(len);
         buffer.Append(value.AsSpan(0, prefixKeep));
-        AppendRepeated(buffer, maskChar, len - keep);
+        AppendRepeated(buffer, maskChar, (int)(len - keep));
         buffer.Append(value.AsSpan(len - suffixKeep, suffixKeep));
         return buffer.ToString();
     }
@@ -165,8 +165,9 @@ public static class PiiDetector
             sb.Append(s[0], count);
             return;
         }
-        for (int i = 0; i < count; i++)
-            sb.Append(s);
+        int end = sb.Length + count;
+        while (sb.Length < end) sb.Append(s);
+        sb.Length = end;
     }
 
     private static string MaskName(string value)

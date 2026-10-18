@@ -7,6 +7,7 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public sealed class FuzzyDuplicateReport
 {
+    public string? Field { get; set; }
     /// <summary>被检查的样本数（按 --fuzzy-dedup-target 指定的字段汇总）。</summary>
     [JsonPropertyName("totalSamples")]
     public long TotalSamples { get; set; }

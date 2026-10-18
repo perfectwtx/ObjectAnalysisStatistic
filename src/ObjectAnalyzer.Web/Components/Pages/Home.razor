@@ -551,6 +551,10 @@
                 </div>
             </div>
 
+            @if (State.Result.Projection is { Omitted.Count: > 0 } projection)
+            {
+                <p class="result-section-note">出站投影已隐藏：@string.Join(", ", projection.Omitted)</p>
+            }
             @if (State.Result.Reliability is { Limitations.Count: > 0 } reliability)
             {
                 <details class="chart-box">
@@ -2153,7 +2157,9 @@
             Core.Analysis.AnalysisResult result = pipelineResult.Result;
             effectiveFormat = runContext.EffectiveFormat ?? effectiveFormat;
 
-            State.Preview = previewedPreview;
+            var delivery = Core.Reporting.ResultProjection.Create(result, previewedPreview, redact: !analysisOptions.Pii.PiiOff);
+            result = delivery.Result;
+            State.Preview = delivery.Preview.ToList();
             SeedPreviewSelection();
             State.Result = result;
             State.ProgressText = "";

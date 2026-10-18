@@ -252,7 +252,7 @@ public class PiiTests
     }
 
     [Fact]
-    public void PiiRedactor_NoPii_ReturnsSameInstance()
+    public void PiiRedactor_NoPii_DetachesResult()
     {
         var objects = new List<Dictionary<string, object?>>
         {
@@ -260,7 +260,7 @@ public class PiiTests
         };
 
         var result = Analyze(objects);
-        Assert.Same(result, PiiRedactor.Redact(result));
+        Assert.NotSame(result, PiiRedactor.Redact(result));
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class PiiTests
     }
 
     [Fact]
-    public void PiiRedactor_MaskedClone_PreservesDateTimeAndRangeStats()
+    public void PiiRedactor_MaskedClone_HidesValueSummariesButPreservesCounts()
     {
         var rules = new AnalysisRules();
         rules.Fields["loginAt"] = new FieldRule
@@ -346,15 +346,15 @@ public class PiiTests
         var login = Stat(redacted, "loginAt");
         var loginOrig = Stat(result, "loginAt");
         Assert.Equal(loginOrig.DateTimeCount, login.DateTimeCount);
-        Assert.Equal(loginOrig.MinDateTime, login.MinDateTime);
-        Assert.Equal(loginOrig.MaxDateTime, login.MaxDateTime);
+        Assert.Null(login.MinDateTime);
+        Assert.Null(login.MaxDateTime);
         Assert.Equal(loginOrig.PrimaryType, login.PrimaryType);
 
         var idOrig = Stat(result, "internalId");
         var idMasked = Stat(redacted, "internalId");
         Assert.Equal(idOrig.RangeViolationCount, idMasked.RangeViolationCount);
-        Assert.Equal(idOrig.MinNumber, idMasked.MinNumber);
-        Assert.Equal(idOrig.MaxNumber, idMasked.MaxNumber);
+        Assert.Null(idMasked.MinNumber);
+        Assert.Null(idMasked.MaxNumber);
     }
 
     [Fact]

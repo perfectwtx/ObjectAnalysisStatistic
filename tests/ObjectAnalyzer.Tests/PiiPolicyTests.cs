@@ -128,7 +128,7 @@ public class PiiPolicyTests
     }
 
     [Fact]
-    public void PreviewRedactor_RowWithoutPii_KeepsRowReference()
+    public void PreviewRedactor_RowWithoutPii_DetachesRow()
     {
         var policy = PiiPolicy.Resolve(Analyze(Sample));
         var cleanRow = new Dictionary<string, object?> { { "City", "Beijing" } };
@@ -136,18 +136,18 @@ public class PiiPolicyTests
 
         var redacted = PreviewRedactor.Redact(preview, policy);
 
-        Assert.Same(cleanRow, redacted[0]);
+        Assert.NotSame(cleanRow, redacted[0]);
     }
 
     [Fact]
-    public void PreviewRedactor_EmptyPolicy_ReturnsSameInstance()
+    public void PreviewRedactor_EmptyPolicy_DetachesPreview()
     {
         var preview = new List<Dictionary<string, object?>>
         {
             new() { { "City", "Beijing" } }
         };
 
-        Assert.Same(preview, PreviewRedactor.Redact(preview, PiiPolicy.Empty));
+        Assert.NotSame(preview, PreviewRedactor.Redact(preview, PiiPolicy.Empty));
     }
 
     // ──────────────────────────────────────────────
@@ -169,11 +169,11 @@ public class PiiPolicyTests
     }
 
     [Fact]
-    public void PiiRedactor_EmptyPolicy_ReturnsSameInstance()
+    public void PiiRedactor_EmptyPolicy_DetachesResult()
     {
         var result = Analyze(CleanSample);
 
-        Assert.Same(result, PiiRedactor.Redact(result, PiiPolicy.Resolve(result)));
+        Assert.NotSame(result, PiiRedactor.Redact(result, PiiPolicy.Resolve(result)));
     }
 
     private static FieldStatistic Stat(AnalysisResult result, string fieldName)

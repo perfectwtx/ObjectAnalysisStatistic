@@ -134,6 +134,7 @@ internal sealed class AnalysisSession
         if (fuzzy is not null)
         {
             result.FuzzyDuplicates = fuzzy.Complete(cancellationToken);
+            result.FuzzyDuplicates.Field = FieldPath.Parse(options.Advanced.FuzzyDedupField!).ToString();
             result.Reliability!.Limitations.Add(new("fuzzy-duplicates", AnalysisAccuracy.Approximate,
                 "Canonical counts cover the stream; Jaccard searches singleton keys only (at most 5000); reported groups and examples are bounded."));
         }

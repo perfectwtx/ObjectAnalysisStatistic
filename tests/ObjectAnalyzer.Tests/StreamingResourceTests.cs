@@ -291,7 +291,8 @@ public sealed class StreamingResourceTests
             var redacted = PiiRedactor.Redact(result);
             Assert.NotSame(result, redacted);
             Assert.NotNull(redacted.Reliability);
-            Assert.Same(result.Reliability, DataQualityReport.Build(redacted).Reliability);
+            Assert.NotSame(result.Reliability, DataQualityReport.Build(redacted).Reliability);
+            Assert.Equal(result.Reliability!.Summary, redacted.Reliability!.Summary);
             ReportExporter.Save(redacted, path);
             Assert.Contains("field-frequencies", File.ReadAllText(path));
         }

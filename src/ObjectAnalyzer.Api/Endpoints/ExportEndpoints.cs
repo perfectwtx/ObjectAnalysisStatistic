@@ -42,7 +42,7 @@ public static class ExportEndpoints
         AnalysisResult? result;
         try
         {
-            result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            result = global::ObjectAnalyzer.Reporting.ResultProjection.ReadStored(job.ResultJson);
         }
         catch (JsonException)
         {

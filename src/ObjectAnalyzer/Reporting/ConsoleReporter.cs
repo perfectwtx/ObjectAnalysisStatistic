@@ -15,6 +15,8 @@ public sealed class ConsoleReporter : IResultPresenter
     public static void Print(AnalysisResult result, int maxValuesToShow, bool redactPii = true)
     {
         result = PiiRedactor.Redact(result, redactPii);
+        if (result.Projection is { Omitted.Count: > 0 } projection)
+            AnsiConsole.MarkupLine("[grey]出站投影已隐藏: " + Markup.Escape(string.Join(", ", projection.Omitted)) + "[/]");
 
         // ── 摘要面板 ──
         var summaryTable = new Table()
@@ -176,7 +178,7 @@ public sealed class ConsoleReporter : IResultPresenter
                 .AddColumn(new TableColumn("[bold]次数[/]").RightAligned())
                 .AddColumn(new TableColumn("[bold]占比[/]").RightAligned());
 
-            var sortedValues = stat.ValueCounts.OrderByDescending(v => v.Value).ToList();
+            var sortedValues = ResultProjection.Values(stat);
             int shown = 0;
             foreach (var val in sortedValues)
             {
@@ -187,20 +189,20 @@ public sealed class ConsoleReporter : IResultPresenter
                     break;
                 }
 
-                string displayVal = val.Key.ToDisplayString();
+                string displayVal = val.Display;
                 if (displayVal.Length > 50)
                     displayVal = string.Concat(displayVal.AsSpan(0, 47), "...");
                 displayVal = displayVal.Replace("\r", "\\r").Replace("\n", "\\n");
 
                 bool isDefault = stat.DefaultValueRepresentation != null &&
-                    string.Equals(val.Key.ToDisplayString(), stat.DefaultValueRepresentation, StringComparison.OrdinalIgnoreCase);
+                    string.Equals(val.Display, stat.DefaultValueRepresentation, StringComparison.OrdinalIgnoreCase);
 
                 string valMarkup = isDefault
                     ? $"[green]{Markup.Escape(displayVal)} [bold][[默认值]][/][/] " // Fix #7: was Unicode-escaped \u9ed8\u8ba4\u503c
                     : Markup.Escape(displayVal);
 
-                double pct = stat.Count > 0 ? (double)val.Value / stat.Count * 100 : 0;
-                valueTable.AddRow(valMarkup, $"[aqua]{val.Value}[/]", $"[yellow]{pct:F1}%[/]");
+                double pct = stat.Count > 0 ? (double)val.Count / stat.Count * 100 : 0;
+                valueTable.AddRow(valMarkup, $"[aqua]{val.Count}[/]", $"[yellow]{pct:F1}%[/]");
                 shown++;
             }
 

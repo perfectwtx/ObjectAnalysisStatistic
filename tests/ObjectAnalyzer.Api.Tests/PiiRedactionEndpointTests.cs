@@ -3,6 +3,9 @@ using ObjectAnalyzer.Data;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using ObjectAnalyzer.Platform;
+using ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Api.Tests;
 
@@ -17,6 +20,44 @@ public class PiiRedactionEndpointTests : IClassFixture<IsolatedApiWebApplication
     public PiiRedactionEndpointTests(IsolatedApiWebApplicationFactory factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public async Task NestedPolicy_MasksUnflattenedPreviewAndFieldValues()
+    {
+        var request = new
+        {
+            dataText = "[{\"profile\":{\"token\":\"nested-private-92834\",\"city\":\"Paris\"}}]", format = "json",
+            rules = new { fields = new Dictionary<string, object> { ["profile.token"] = new { pii = new { mask = new { maskAll = true } } } } }
+        };
+        var response = await _factory.CreateClient().PostAsJsonAsync("/api/analyze/config", request);
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        string body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("nested-private-92834", body); Assert.Contains("Paris", body);
+    }
+
+    [Theory]
+    [InlineData("/api/analysis/jobs/{0}/result")]
+    [InlineData("/api/analysis/jobs/{0}")]
+    [InlineData("/api/analysis/jobs/{0}/overview")]
+    [InlineData("/api/quality/fields/{0}")]
+    [InlineData("/api/quality/dashboard?jobId={0}")]
+    [InlineData("/api/analysis/jobs")]
+    public async Task HistoricalResult_UsesDeliveryCopiesAndKeepsDatabaseContent(string route)
+    {
+        const string secret = "historical-private-72934";
+        using var scope = _factory.Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<IAnalysisHistoryStore>();
+        await store.InitializeAsync();
+        var rules = new AnalysisRules { Fields = { ["token"] = new FieldRule { Pii = new() { Mask = new() { MaskAll = true } } } } };
+        var result = global::ObjectAnalyzer.Analysis.ObjectAnalyzer.Analyze([new Dictionary<string, object?> { ["token"] = secret }], rules);
+        string original = JsonSerializer.Serialize(result);
+        var job = new AnalysisJob { SourceName = "projection-test", SourceType = "json", Status = AnalysisJobStatus.Succeeded, ResultJson = original, TotalObjects = 1, FieldCount = 1 };
+        await store.SaveAsync(job);
+        var response = await _factory.CreateClient().GetAsync(string.Format(System.Globalization.CultureInfo.InvariantCulture, route, job.Id));
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        Assert.DoesNotContain(secret, await response.Content.ReadAsStringAsync());
+        Assert.Equal(original, (await store.GetAsync(job.Id))!.ResultJson);
     }
 
     private const string PiiPayload = """[{"Phone":"13812341234","City":"Beijing"},{"Phone":"13900001111","City":"Shanghai"}]""";

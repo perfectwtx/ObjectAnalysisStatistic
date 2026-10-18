@@ -105,7 +105,7 @@ public sealed partial class AnalysisCommandRunner
                 Path.GetFileNameWithoutExtension(basePath) + schemaExt);
 
             _services.Console.MarkupLine($"正在导出 [bold green]{options.Report.ExportSchema}[/] 格式 Schema 定义至: [blue]{MarkupText.Escape(schemaPath)}[/] ...");
-            SchemaExporter.Export(result, options.Report.ExportSchema, schemaPath);
+            SchemaExporter.Export(ResultProjection.Create(result, redact: !options.Pii.PiiOff).Result, options.Report.ExportSchema, schemaPath);
             _services.Console.MarkupLine("[green]Schema 定义代码成功导出！[/]");
         }
 

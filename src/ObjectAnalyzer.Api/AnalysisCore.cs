@@ -53,18 +53,19 @@ internal static class AnalysisCore
         // 分析内核始终处理原始值；任何结果离开服务前在这里统一按策略打码，
         // 覆盖全部同步 / 异步端点（新增端点天然继承，无需各自记得调用）。
         // piiOff=true 是显式退出：原始敏感值出站，PiiRedacted=false 留痕并写审计 / 服务器日志。
-        var policy = PiiPolicy.Resolve(pipelineResult.Result);
+        var delivery = ResultProjection.Create(pipelineResult.Result, preview, redact: !options.Pii.PiiOff);
+        var policy = delivery.Policy;
         if (options.Pii.PiiOff)
         {
             Console.Error.WriteLine($"[pii] 出站打码已关闭（piiOff=true），原始敏感值随响应出站：{dataPath}");
             WritePiiOffAudit(options, dataPath);
-            return new AnalyzeOutcome(pipelineResult.Result, preview, runContext.EffectiveFormat,
+            return new AnalyzeOutcome(delivery.Result, delivery.Preview, runContext.EffectiveFormat,
                 policy, PiiRedacted: false);
         }
 
         return new AnalyzeOutcome(
-            PiiRedactor.Redact(pipelineResult.Result, policy),
-            PreviewRedactor.Redact(preview, policy),
+            delivery.Result,
+            delivery.Preview,
             runContext.EffectiveFormat,
             policy,
             PiiRedacted: true);

@@ -5,8 +5,9 @@ namespace ObjectAnalyzer.Reporting;
 
 public static class HtmlReportExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
+        if (redactPii) result = ResultProjection.Create(result).Result;
         // 逐段写入，避免大报告整体常驻内存
         using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
         {
@@ -64,6 +65,9 @@ public static class HtmlReportExporter
                 writer.WriteLine($"<li>{Escape(limitation.Metric)} ({limitation.Accuracy}): {Escape(limitation.Reason)}</li>");
             writer.WriteLine("</ul></div>");
         }
+
+        if (result.Projection is { Omitted.Count: > 0 } projection)
+            writer.WriteLine($"<p>出站投影已隐藏：{Escape(string.Join(", ", projection.Omitted))}</p>");
 
         // 数据质量摘要
         var quality = DataQualityReport.Build(result);
@@ -180,9 +184,8 @@ public static class HtmlReportExporter
             if (string.IsNullOrEmpty(metricInfo)) metricInfo = "<span class=\"na\">—</span>";
 
             string types = string.Join(", ", stat.TypeCounts.Select(t => $"{t.Key}({t.Value})"));
-            string topValues = string.Join(", ", stat.ValueCounts
-                .OrderByDescending(v => v.Value).Take(3)
-                .Select(v => $"{Escape(Truncate(v.Key.ToDisplayString(), 30))} ×{v.Value.ToString(CultureInfo.InvariantCulture)}"));
+            string topValues = string.Join(", ", ResultProjection.Values(stat).Take(3)
+                .Select(v => $"{Escape(Truncate(v.Display, 30))} ×{v.Count.ToString(CultureInfo.InvariantCulture)}"));
 
             string coveragePct = (stat.Coverage * 100).ToString("F1", CultureInfo.InvariantCulture);
             string ruleInfo = stat.AppliedRule != null ? "<span class=\"rule-badge\">已应用</span>" : "";

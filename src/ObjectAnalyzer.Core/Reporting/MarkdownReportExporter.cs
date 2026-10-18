@@ -8,8 +8,9 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class MarkdownReportExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
+        if (redactPii) result = ResultProjection.Create(result).Result;
         // 逐段写入，避免大报告整体常驻内存
         using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
         {
@@ -38,6 +39,9 @@ public static class MarkdownReportExporter
                 writer.WriteLine($"- {EscapeMd(limitation.Metric)} ({limitation.Accuracy}): {EscapeMd(limitation.Reason)}");
             writer.WriteLine();
         }
+
+        if (result.Projection is { Omitted.Count: > 0 } projection)
+            writer.WriteLine($"出站投影已隐藏：{EscapeMd(string.Join(", ", projection.Omitted))}。\n");
 
         // 数据质量摘要
         var quality = DataQualityReport.Build(result);
@@ -157,9 +161,8 @@ public static class MarkdownReportExporter
                     violations += "<br>" + string.Join(", ", check.Samples.Select(s => $"`{EscapeMd(Truncate(s, 40))}`"));
                 }
             }
-            string topValues = string.Join("<br>", stat.ValueCounts
-                .OrderByDescending(v => v.Value).Take(5)
-                .Select(v => $"`{EscapeMd(Truncate(v.Key.ToDisplayString(), 40))}` ×{v.Value}"));
+            string topValues = string.Join("<br>", ResultProjection.Values(stat).Take(5)
+                .Select(v => $"`{EscapeMd(Truncate(v.Display, 40))}` ×{v.Count}"));
 
             writer.Write("| `");
             writer.Write(EscapeMd(stat.FieldName));

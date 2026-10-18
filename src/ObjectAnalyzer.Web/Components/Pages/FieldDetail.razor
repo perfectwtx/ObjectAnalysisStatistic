@@ -96,7 +96,7 @@
                                     </div>
                                     <div class="oa-detail-section"><div class="oa-detail-title">标准化质量指标</div>@if (normalized is not null){<div class="oa-metric-line"><span>覆盖率 @normalized.Coverage.ToString("P1")</span><span>Null率 @normalized.NullRate.ToString("P1")</span><span>唯一性 @(normalized.Uniqueness?.ToString("P1") ?? "-")</span><span>异常率 @(normalized.OutlierRatio?.ToString("P1") ?? "-")</span></div>}else{<span class="oa-detail-muted">暂无标准化质量快照。</span>}</div>
                                     <div class="oa-detail-section"><div class="oa-detail-title">类型分布</div><div class="oa-detail-badges">@foreach (var type in field.TypeCounts.OrderByDescending(x => x.Value)){<span class="oa-badge is-neutral">@type.Key: @type.Value</span>}</div></div>
-                                    @if (field.ValueCounts.Count > 0){<div class="oa-detail-section"><div class="oa-detail-title">高频值</div><div class="oa-value-list">@foreach (var value in field.ValueCounts.OrderByDescending(x => x.Value).Take(10)){<div><span>@value.Key</span><strong>@value.Value</strong></div>}</div></div>}
+                                    @if (field.ValueCounts.Count > 0){<div class="oa-detail-section"><div class="oa-detail-title">高频值</div><div class="oa-value-list">@foreach (var value in global::ObjectAnalyzer.Reporting.ResultProjection.Values(field).Take(10)){<div><span>@value.Display</span><strong>@value.Count</strong></div>}</div></div>}
                                     @if (GetViolations(field.FieldName).Count > 0){<div class="oa-detail-section oa-violation-section"><div class="oa-detail-title">质量问题</div>@foreach (var violation in GetViolations(field.FieldName)){<div class="oa-field-violation"><span class="oa-badge is-warning">@QualityCheckTypes.Label(violation.Check)</span><p>@violation.Message</p></div>}</div>}
                                 </div></td></tr>
                             }
@@ -172,7 +172,7 @@
         _selectedJobId = job.Id;
         try
         {
-            var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson);
+            var result = global::ObjectAnalyzer.Reporting.ResultProjection.ReadStored(job.ResultJson);
             _fields = result?.FieldStatistics ?? new List<FieldStatistic>();
             _violations = result?.QualityViolations ?? new List<FieldViolation>();
         }
@@ -189,7 +189,7 @@
             Field = x.FieldName,
             Check = x.Check,
             Count = x.Count,
-            Message = x.Message
+            Message = "Stored issue; raw message omitted in delivery."
         }).ToList();
     }
 

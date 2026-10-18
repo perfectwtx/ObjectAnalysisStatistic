@@ -9,8 +9,9 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class ExcelReportExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
+        if (redactPii) result = ResultProjection.Create(result).Result;
 
         // MiniExcel 的 sheet 顺序按 Dictionary 插入顺序输出
         var sheets = new Dictionary<string, object>();
@@ -65,6 +66,8 @@ public static class ExcelReportExporter
         {
             rows.Add(new() { ["指标"] = "过滤表达式", ["值"] = r.FilterExpression! });
         }
+        if (r.Projection is { Omitted.Count: > 0 } projection)
+            rows.Add(new() { ["指标"] = "投影隐藏项", ["值"] = string.Join(", ", projection.Omitted) });
         sheets["摘要"] = rows;
     }
 
@@ -98,7 +101,7 @@ public static class ExcelReportExporter
             ["转换失败数"] = s.TransformFailureCount,
             ["枚举违规数"] = s.EnumViolationCount,
             ["类型分布"] = string.Join("; ", s.TypeCounts.Select(t => $"{t.Key}={t.Value}")),
-            ["Top5 值"] = string.Join("; ", s.ValueCounts.OrderByDescending(v => v.Value).Take(5).Select(v => $"{v.Key}×{v.Value}")),
+            ["Top5 值"] = string.Join("; ", ResultProjection.Values(s).Take(5).Select(v => $"{v.Display}×{v.Count}")),
         }).ToList();
         sheets["字段统计"] = rows;
     }

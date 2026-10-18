@@ -8,8 +8,9 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class CsvReportExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
     {
+        if (redactPii) result = ResultProjection.Create(result).Result;
         // 带 BOM 的 UTF-8，保证 Excel 直接打开中文不乱码；逐行写入避免整份报告常驻内存
         using (var writer = new StreamWriter(outputPath, false, new UTF8Encoding(true)))
         {
@@ -43,6 +44,9 @@ public static class CsvReportExporter
             }
             writer.WriteLine();
         }
+
+        if (result.Projection is { Omitted.Count: > 0 } projection)
+        { writer.Write("ProjectionOmissions,"); writer.WriteLine(CsvField(string.Join(";", projection.Omitted))); writer.WriteLine(); }
 
         // ── 数据质量 ──
         var quality = DataQualityReport.Build(result);
@@ -100,9 +104,8 @@ public static class CsvReportExporter
             string transformType = stat.TransformType ?? "";
             string transformFailures = stat.TransformFailureCount.ToString(CultureInfo.InvariantCulture);
             string violations = CsvField(string.Join(";", stat.EnumViolations));
-            string topValues = CsvField(string.Join(";", stat.ValueCounts
-                .OrderByDescending(v => v.Value).Take(5)
-                .Select(v => $"{v.Key}×{v.Value}")));
+            string topValues = CsvField(string.Join(";", ResultProjection.Values(stat).Take(5)
+                .Select(v => $"{v.Display}×{v.Count}")));
 
             writer.Write(CsvField(stat.FieldName)); writer.Write(',');
             writer.Write(stat.Count.ToString(CultureInfo.InvariantCulture)); writer.Write(',');

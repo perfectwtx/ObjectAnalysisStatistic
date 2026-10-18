@@ -10,6 +10,7 @@ public class FieldStatistic
     public string FieldName { get; set; } = "";
     [JsonIgnore]
     public FieldPath Path => FieldPath.Parse(FieldName);
+    public List<ResultValueView>? ProjectedValues { get; set; }
     public long Count { get; set; }
     public double Coverage { get; set; } // 字段在所有对象中的覆盖率 (0.0 - 1.0)
 
@@ -179,26 +180,7 @@ public class FieldStatistic
     /// </summary>
     internal void AddEnumViolation(string value) => _enumViolations.Add(value);
 
-    /// <summary>
-    /// 出站打码用的副本底版：<see cref="object.MemberwiseClone"/> 浅拷贝全部标量统计
-    /// （<see cref="PrimaryType"/>、日期剖析、异常值、RangeViolationCount 等未来新增属性自动携带），
-    /// 可变集合（TypeCounts / ValueCounts / 两个直方图 / 枚举违规列表）一律换成新实例并断开与原对象的共享——
-    /// 打码副本必须是"可安全分发的独立副本"，调用方随后只需重填打码后的 ValueCounts 键与枚举违规值。
-    /// </summary>
-    internal FieldStatistic CloneForRedaction()
-    {
-        var clone = (FieldStatistic)MemberwiseClone();
-        clone.TypeCounts = new Dictionary<string, long>(TypeCounts);
-        clone.ValueCounts = new Dictionary<RecordValue, long>();
-        clone.Histogram = Histogram is null
-            ? null
-            : Histogram.Select(b => new NumericHistogramBucket { From = b.From, To = b.To, Count = b.Count }).ToList();
-        clone.DateHistogram = DateHistogram is null
-            ? null
-            : DateHistogram.Select(b => new DateHistogramBucket { From = b.From, To = b.To, Count = b.Count }).ToList();
-        clone._enumViolations = new List<string>();
-        return clone;
-    }
+    internal void ReplaceEnumViolations(IEnumerable<string> values) => _enumViolations = values.ToList();
 
     /// <summary>格式化分位数摘要（"P50 x · P90 y · P95 z · P99 w"）；无分位数数据时返回 null。</summary>
     public string? FormatQuantiles()
