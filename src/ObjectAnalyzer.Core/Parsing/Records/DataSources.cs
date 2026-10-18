@@ -77,11 +77,12 @@ public static class DataSources
             options.Validate(Descriptor);
             cancellationToken.ThrowIfCancellationRequested();
             using var lease = open(cancellationToken);
-            using var stream = new SourceReadStream(lease.Content, cancellationToken);
+            using var stream = new SourceReadStream(lease.Content, cancellationToken,
+                !Descriptor.Capabilities.Streaming || Descriptor.Capabilities.RequiresSeek && !lease.Content.CanSeek ? options.ResourceLimits.MaxBufferedInputBytes : null, options.CheckMemory);
             using var buffered = Descriptor.Capabilities.RequiresSeek && !stream.CanSeek ? new MemoryStream() : null;
             if (buffered is not null) { stream.CopyTo(buffered); buffered.Position = 0; }
             foreach (var record in parser.Parse(buffered ?? (Stream)stream, Descriptor.Name, options, cancellationToken))
-            { cancellationToken.ThrowIfCancellationRequested(); yield return record; }
+            { cancellationToken.ThrowIfCancellationRequested(); global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(record.ToEngineRecord(), options.ResourceLimits); options.CheckMemory?.Invoke(); yield return record; }
         }
         public async IAsyncEnumerable<SourceRecord> ReadAsync(SourceReadOptions options,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -90,12 +91,13 @@ public static class DataSources
             options.Validate(Descriptor);
             cancellationToken.ThrowIfCancellationRequested();
             await using var lease = open(cancellationToken);
-            using var stream = new SourceReadStream(lease.Content, cancellationToken);
+            using var stream = new SourceReadStream(lease.Content, cancellationToken,
+                !Descriptor.Capabilities.Streaming || Descriptor.Capabilities.RequiresSeek && !lease.Content.CanSeek ? options.ResourceLimits.MaxBufferedInputBytes : null, options.CheckMemory);
             using var buffered = Descriptor.Capabilities.RequiresSeek && !stream.CanSeek ? new MemoryStream() : null;
             if (buffered is not null)
             { await stream.CopyToAsync(buffered, cancellationToken).ConfigureAwait(false); buffered.Position = 0; }
             await foreach (var record in parser.ParseAsync(buffered ?? (Stream)stream, Descriptor.Name, options, cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false))
-            { cancellationToken.ThrowIfCancellationRequested(); yield return record; }
+            { cancellationToken.ThrowIfCancellationRequested(); global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(record.ToEngineRecord(), options.ResourceLimits); options.CheckMemory?.Invoke(); yield return record; }
         }
     }
 
@@ -120,8 +122,11 @@ public static class DataSources
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 index++;
-            options.PositionProgress?.Invoke(index);
-                yield return SourceRecord.FromValue(record, new SourceLocation(name, index), options.Flatten);
+                options.PositionProgress?.Invoke(index);
+                var normalized = SourceRecord.FromValue(record, new SourceLocation(name, index), options.Flatten);
+                global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(normalized.ToEngineRecord(), options.ResourceLimits);
+                options.CheckMemory?.Invoke();
+                yield return normalized;
             }
         }
         public async IAsyncEnumerable<SourceRecord> ReadAsync(SourceReadOptions options,
@@ -138,8 +143,11 @@ public static class DataSources
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 index++;
-            options.PositionProgress?.Invoke(index);
-                yield return SourceRecord.FromValue(record, new SourceLocation(name, index), options.Flatten);
+                options.PositionProgress?.Invoke(index);
+                var normalized = SourceRecord.FromValue(record, new SourceLocation(name, index), options.Flatten);
+                global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(normalized.ToEngineRecord(), options.ResourceLimits);
+                options.CheckMemory?.Invoke();
+                yield return normalized;
             }
         }
     }

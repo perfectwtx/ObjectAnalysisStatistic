@@ -18,6 +18,8 @@ internal sealed class AnalysisSession
     private readonly bool _asyncInput;
     private MemoryBudget? _memory;
     private long _populationCount;
+    private AnalysisResourceLimits? _limits;
+    private bool _previewTruncated;
 
     public AnalysisSession(IProgressReporter progress, AnalysisRunContext context, CancellationToken cancellation, bool asyncInput = false)
     { _progress = progress; _context = context; _cancellation = cancellation; _asyncInput = asyncInput; }
@@ -29,19 +31,21 @@ internal sealed class AnalysisSession
         var ctx = _context;
         var cancellationToken = _cancellation;
         Stage(AnalysisStage.Preparing);
+        _limits = options.Memory.Resources;
         _memory = ctx.MemoryBudget ?? new MemoryBudget(options.Memory.MaxMemoryMB, options.Memory.MaxMemoryMode);
-        _memory.Check(0, out bool fallback);
+        _memory.Check(0, out _);
         _memory.ThrowIfHardExceeded();
-        if (fallback && !Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+        if (_memory.IsEnabled && _memory.Mode == MaxMemoryMode.Soft && !Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
         {
+            if (options.Sampling.MemoryFallbackSampleSize < 2) throw new ArgumentException("Soft memory mode requires a fallback reservoir size of at least two.");
             options.Sampling.SampleReservoir = options.Sampling.MemoryFallbackSampleSize;
             Sampling.Validate(options.Sampling.SampleReservoir, options.Sampling.SampleStep);
-            Diagnostic("memory.sampling", "Memory pressure enabled reservoir sampling.");
+            Diagnostic("memory.sampling", "Soft memory mode selects reservoir sampling before input is read.");
         }
         if ((ctx.StartFromPosition > 0 || ctx.InitialState is not null) &&
             Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
             throw new NotSupportedException("Incremental state cannot be combined with sampling.");
-        var accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues, ctx.Analyzers);
+        var accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues, ctx.Analyzers, options.Memory.Resources);
 
         // Prepare filters and transformations before opening the input.
         var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.FieldSelection.Fields), options.FieldSelection.Filter);
@@ -80,41 +84,25 @@ internal sealed class AnalysisSession
         List<Dictionary<string, object?>>? preview = null;
         if (ctx.PreviewSink != null)
         {
-            preview = new List<Dictionary<string, object?>>(Math.Max(0, ctx.PreviewLimit));
-            objects = WrapWithPreview(objects, preview, ctx.PreviewLimit);
+            preview = new();
+            objects = WrapWithPreview(objects, preview, Math.Min(ctx.PreviewLimit, options.Memory.Resources.MaxPreviewRecords), options.Memory.Resources);
         }
 
         // 6. 关系跟踪：与统计共用同一次枚举，记录嵌套对象/对象集合关系，避免再次读取输入。
         IReadOnlyList<ObjectRelationship> objectRelationships = Array.Empty<ObjectRelationship>();
-        objects = ObjectRelationshipAnalyzer.Track(objects, relationships => objectRelationships = relationships);
+        objects = ObjectRelationshipAnalyzer.Track(objects, relationships => objectRelationships = relationships, options.Memory.Resources);
 
-        // 7. 保留高级分析的物化分支；内存预算与单遍处理在后续阶段统一改造。
-        bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField);
-        bool needDistributionSketches =
-            !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
-            !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline);
-        List<Dictionary<string, object?>> materialized = (needFuzzyDedup || needDistributionSketches)
-            ? objects.ToList()
-            : new List<Dictionary<string, object?>>();
-
-        // 8. 模糊去重（--fuzzy-dedup-field）
-        FuzzyDuplicateReport? fuzzyReport = null;
-        if (needFuzzyDedup)
-        {
-            string field = options.Advanced.FuzzyDedupField!;
-            fuzzyReport = FuzzyDuplicateDetector.Detect(materialized, obj =>
-            {
-                if (obj.TryGetValue(field, out var v)) return v?.ToString();
-                return null;
-            }, cancellationToken);
-        }
+        // Advanced collectors observe the same stream; distribution sketches are produced by the accumulator.
+        FuzzyDuplicateCollector? fuzzy = !string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField)
+            ? new(options.Memory.Resources) : null;
+        if (fuzzy is not null) objects = ObserveFuzzy(objects, fuzzy, FieldPath.Parse(options.Advanced.FuzzyDedupField!).ToString());
 
         // 9. 统计：进度端口包装（CLI：Spectre 进度条；API/Web：直接执行）
         AnalysisResult result = null!;
         Dictionary<string, MergeableQuantileSketch>? quantileSketches = null;
         Dictionary<string, HyperLogLog>? distinctSketches = null;
 
-        long? expectedTotal = options.Progress.ShowProgress ? EstimateTotalObjects(materialized) : null;
+        long? expectedTotal = null;
         string description = string.IsNullOrEmpty(options.Input.InputPath)
             ? "分析中（数据库直连）"
             : $"分析中 {Path.GetFileName(options.Input.InputPath)}";
@@ -130,7 +118,7 @@ internal sealed class AnalysisSession
                     ? options.Parse.MaxDegreeOfParallelism
                     : -1
             };
-            accumulator.ObserveRange(needFuzzyDedup || needDistributionSketches ? materialized : objects,
+            accumulator.ObserveRange(objects,
                 parallelOptions, progress, cancellationToken);
             ctx.LastRecordCount = accumulator.TotalObjects;
             progress.Report(ctx.LastRecordCount);
@@ -143,7 +131,12 @@ internal sealed class AnalysisSession
         });
 
         // 10. 回填与补充统计
-        if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
+        if (fuzzy is not null)
+        {
+            result.FuzzyDuplicates = fuzzy.Complete(cancellationToken);
+            result.Reliability!.Limitations.Add(new("fuzzy-duplicates", AnalysisAccuracy.Approximate,
+                "Canonical counts cover the stream; Jaccard searches singleton keys only (at most 5000); reported groups and examples are bounded."));
+        }
         result.ObjectRelationships = objectRelationships.ToList();
         transformProcessor.ApplyFailures(result);
         result.FilterExpression = options.FieldSelection.Filter;
@@ -157,6 +150,9 @@ internal sealed class AnalysisSession
             distinctSketches = completed.DistinctSketches;
         }
         BuildSamplingConfidence(result, options, _populationCount);
+        if (_previewTruncated)
+            result.Reliability!.Limitations.Add(new("preview", AnalysisAccuracy.Truncated, "Preview records and retained bytes have independent limits; statistics cover every selected record."));
+        CheckMemory();
 
         // 11. 预览回调（统计成功完成后一次性交付）
         cancellationToken.ThrowIfCancellationRequested();
@@ -165,6 +161,8 @@ internal sealed class AnalysisSession
         return new PipelineResult
         {
             Result = result,
+            ExecutionProfile = ctx.ExecutionProfile,
+            RetainedPayloadBytes = accumulator.Payload.Bytes,
             Accumulator = Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep)
                 || options.Memory.MaxMemoryMB > 0 && options.Memory.MaxMemoryMode == MaxMemoryMode.Soft ? null : accumulator,
             ExecutionSignature = CreateExecutionSignature(options),
@@ -180,7 +178,7 @@ internal sealed class AnalysisSession
         {
             InputContract = "record-source/v1",
             options.Parse.Flatten, options.Parse.MaxTrackedValues, options.Parse.CsvInferNumbers, options.Parse.MalformedRecords, options.FieldSelection,
-            options.Input.RootPath, options.Input.RecordPath, options.Sampling, options.Advanced
+            options.Input.RootPath, options.Input.RecordPath, options.Sampling, options.Advanced, options.Memory.Resources
         })).CanonicalKey;
 
     private (IAnalysisDataSource Source, SourceReadOptions Options) PrepareInput(AnalysisOptions options, AnalysisRules? rules)
@@ -207,9 +205,10 @@ internal sealed class AnalysisSession
         }
         var settings = new SourceReadOptions
         {
+            ResourceLimits = options.Memory.Resources, CheckMemory = CheckMemory,
             Flatten = ResolveFlatten(options), CsvInferNumbers = options.Parse.CsvInferNumbers,
             ValueParsers = ResolveValueParsers(rules), StartPosition = _context.StartFromPosition, RootPath = rootPath,
-            MalformedRecords = options.Parse.MalformedRecords, DiagnosticLimit = options.Parse.InputDiagnosticLimit,
+            MalformedRecords = options.Parse.MalformedRecords, DiagnosticLimit = Math.Min(options.Parse.InputDiagnosticLimit, options.Memory.Resources.MaxDiagnosticSamples),
             SkippedRecordProgress = count => _context.SkippedInputRecords = count,
             PositionProgress = position =>
             {
@@ -225,6 +224,7 @@ internal sealed class AnalysisSession
         };
         settings.Validate(source.Descriptor);
         _context.SourceDescriptor = source.Descriptor;
+        _context.ExecutionProfile = DescribeExecution(source.Descriptor, options);
         return (source, settings);
     }
 
@@ -299,7 +299,7 @@ internal sealed class AnalysisSession
             return parsed;
 
         AnnounceSampling(options);
-        return Sampling.Apply(CountPopulation(parsed), options.Sampling.SampleReservoir, options.Sampling.SampleStep);
+        return Sampling.Apply(CountPopulation(parsed), options.Sampling.SampleReservoir, options.Sampling.SampleStep, options.Memory.Resources);
     }
 
     private IEnumerable<Dictionary<string, object?>> CountPopulation(IEnumerable<Dictionary<string, object?>> source)
@@ -312,18 +312,21 @@ internal sealed class AnalysisSession
             new Dictionary<string, object?> { ["reservoir"] = options.Sampling.SampleReservoir, ["step"] = options.Sampling.SampleStep });
 
     /// <summary>预览包装：惰性捕获流经的前 limit 条记录（与统计共用同一次枚举，不额外物化）。</summary>
-    private static IEnumerable<Dictionary<string, object?>> WrapWithPreview(
-        IEnumerable<Dictionary<string, object?>> source, List<Dictionary<string, object?>> preview, int limit)
+    private IEnumerable<Dictionary<string, object?>> WrapWithPreview(
+        IEnumerable<Dictionary<string, object?>> source, List<Dictionary<string, object?>> preview, int limit, AnalysisResourceLimits limits)
     {
+        long bytes = 0;
         foreach (var obj in source)
         {
-            if (preview.Count < limit)
+            long size = ObjectAnalyzer.EstimateRecordBytes(obj, limits);
+            if (preview.Count < limit && bytes + size <= limits.MaxPreviewBytes)
             {
                 lock (preview)
                 {
-                    if (preview.Count < limit) preview.Add(ToObjectRecord(obj));
+                    if (preview.Count < limit) { preview.Add(ToObjectRecord(obj)); bytes += size; }
                 }
             }
+            else _previewTruncated = true;
             yield return obj;
         }
     }
@@ -366,8 +369,11 @@ internal sealed class AnalysisSession
         while (true)
         {
             _cancellation.ThrowIfCancellationRequested();
+            CheckMemory();
             if (!iterator.MoveNext()) break;
+            CheckMemory();
             _cancellation.ThrowIfCancellationRequested();
+            ObjectAnalyzer.EstimateRecordBytes(iterator.Current, _limits!);
             yield return iterator.Current;
         }
     }
@@ -377,6 +383,8 @@ internal sealed class AnalysisSession
         if (!Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
             return;
 
+        result.Reliability ??= new();
+        result.Reliability.Limitations.Add(new("analysis-population", AnalysisAccuracy.Sampled, "Statistics describe records selected after transformation and filtering."));
         long effective = result.TotalObjects;
         long estimated = populationCount;
         var fieldCounts = result.FieldStatistics.Select(s => (s.FieldName, s.Count));
@@ -426,8 +434,34 @@ internal sealed class AnalysisSession
         return options.Parse.Flatten;
     }
 
-    private static long? EstimateTotalObjects(List<Dictionary<string, object?>> materialized)
+    private void CheckMemory()
     {
-        return materialized.Count > 0 ? materialized.Count : null;
+        if (_memory is not { IsEnabled: true }) return;
+        _memory.Check(_context.LastRecordCount, out _); _memory.ThrowIfHardExceeded();
+    }
+
+    private static IEnumerable<Dictionary<string, object?>> ObserveFuzzy(
+        IEnumerable<Dictionary<string, object?>> source, FuzzyDuplicateCollector collector, string field)
+    {
+        foreach (var record in source)
+        { if (record.TryGetValue(field, out var value)) collector.Observe(value?.ToString()); yield return record; }
+    }
+
+    internal static AnalysisExecutionProfile DescribeExecution(SourceDescriptor source, AnalysisOptions options)
+    {
+        var limits = options.Memory.Resources;
+        var capabilities = new List<AnalysisCapabilityRequirement>
+        {
+            new("input", source.Capabilities.Streaming ? AnalysisAccessMode.SinglePass : AnalysisAccessMode.BufferedInput,
+                source.Capabilities.Streaming ? null : limits.MaxBufferedInputBytes),
+            new("statistics", AnalysisAccessMode.BoundedState, limits.MaxRetainedPayloadBytes),
+            new("exact-object-identities", AnalysisAccessMode.BoundedState, limits.MaxObjectIdentities),
+            new("preview", AnalysisAccessMode.BoundedState, limits.MaxPreviewBytes)
+        };
+        if (source.Capabilities.RequiresSeek) capabilities.Add(new("parser", AnalysisAccessMode.SeekableInput, limits.MaxBufferedInputBytes));
+        if (options.Sampling.SampleReservoir > 0) capabilities.Add(new("reservoir", AnalysisAccessMode.BoundedSample, limits.MaxSamplingBytes));
+        if (options.Advanced.EnableCorrelation) capabilities.Add(new("correlation", AnalysisAccessMode.BoundedSample, Math.Min(options.Advanced.CorrelationReservoir, limits.MaxCorrelationRows)));
+        if (!string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField)) capabilities.Add(new("fuzzy-duplicates", AnalysisAccessMode.BoundedState, limits.MaxFuzzyKeys));
+        return new(capabilities, limits.BatchSize, Math.Min(options.Parse.MaxDegreeOfParallelism > 0 ? options.Parse.MaxDegreeOfParallelism : limits.MaxWorkers, limits.MaxWorkers));
     }
 }

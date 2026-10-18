@@ -60,6 +60,8 @@ public sealed class SourceRecord
 /// <summary>Sampling belongs to the execution pipeline, never a parser or source.</summary>
 public sealed record SourceReadOptions
 {
+    public AnalysisResourceLimits ResourceLimits { get; init; } = new();
+    public Action? CheckMemory { get; init; }
     public string? Format { get; internal init; }
     public bool Flatten { get; init; } = true;
     public bool CsvInferNumbers { get; init; } = true;
@@ -74,6 +76,7 @@ public sealed record SourceReadOptions
 
     internal void Validate(SourceDescriptor descriptor)
     {
+        ResourceLimits.Validate();
         ArgumentOutOfRangeException.ThrowIfNegative(StartPosition);
         ArgumentOutOfRangeException.ThrowIfNegative(DiagnosticLimit);
         if (!Enum.IsDefined(MalformedRecords)) throw new ArgumentException("Unknown malformed-record policy.", nameof(descriptor));

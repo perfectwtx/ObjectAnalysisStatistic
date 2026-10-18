@@ -28,11 +28,15 @@ public sealed partial class AnalysisCommandRunner
         if (runContext.MemoryBudget is { IsEnabled: true } finalBudget)
         {
             _services.Console.MarkupLine(
-                $"[grey][[内存]][/] 本次分析峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.Memory.MaxMemoryMB:N0} MB，模式 {options.Memory.MaxMemoryMode}）");
+                $"[grey][[内存]][/] 观测到的进程托管堆峰值 [blue]{finalBudget.PeakMB:F1} MB[/]（--max-memory 阈值 {options.Memory.MaxMemoryMB:N0} MB，模式 {options.Memory.MaxMemoryMode}）");
             // hard 模式：分析完成后若曾触发 HardLimitExceeded（来自 progress 回调内的 Check），
             // 此处由主流程显式抛错；不能放在 progress 回调里直接 throw——会变成"未观察异常"逃出主流程。
             finalBudget.ThrowIfHardExceeded();
         }
+
+        if (result.Reliability is { Limitations.Count: > 0 } reliability)
+            foreach (var item in reliability.Limitations)
+                _services.Console.WriteLine($"{item.Metric} ({item.Accuracy}): {item.Reason}");
 
         // Schema 快照导出 / diff 计算（必须在 ConsoleReporter.Print 与 ReportExporter.Save 之前，
         // 这样控制台与 HTML/MD/JSON 报告的「Schema 演进」小节才能带 diff 数据）

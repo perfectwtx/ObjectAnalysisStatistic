@@ -5,6 +5,8 @@ namespace ObjectAnalyzer.Analysis.Options;
 /// </summary>
 public sealed class MemoryBudgetOptions
 {
+    public AnalysisResourceLimits Resources { get; set; } = new();
+
     /// <summary>进程托管堆上限（MB，--max-memory &lt;MB&gt;）。0 = 不监控。仅监控 .NET 托管堆（GC.GetTotalMemory）。</summary>
     public long MaxMemoryMB { get; set; }
 

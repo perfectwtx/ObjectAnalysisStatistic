@@ -6,6 +6,7 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public sealed class DataQualityReport
 {
+    public AnalysisReliability? Reliability { get; init; }
     public bool Passed { get; init; }
     public int TotalFields { get; init; }
     public int FieldsWithViolations { get; init; }
@@ -59,6 +60,7 @@ public sealed class DataQualityReport
 
         return new DataQualityReport
         {
+            Reliability = result.Reliability,
             Passed = totalViolationCount == 0,
             TotalFields = totalFields,
             FieldsWithViolations = fieldsWithViolations,

@@ -25,7 +25,10 @@ internal sealed class DatabaseDataSource(string connectionString, DatabaseProvid
             if (!reader.Read()) break;
             index++;
             options.PositionProgress?.Invoke(index);
-            yield return ReadRecord(reader, index, options.Flatten);
+            var record = ReadRecord(reader, index, options.Flatten);
+            global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(record.ToEngineRecord(), options.ResourceLimits);
+            options.CheckMemory?.Invoke();
+            yield return record;
         }
     }
 
@@ -46,7 +49,10 @@ internal sealed class DatabaseDataSource(string connectionString, DatabaseProvid
             cancellationToken.ThrowIfCancellationRequested();
             index++;
             options.PositionProgress?.Invoke(index);
-            yield return ReadRecord(reader, index, options.Flatten);
+            var record = ReadRecord(reader, index, options.Flatten);
+            global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(record.ToEngineRecord(), options.ResourceLimits);
+            options.CheckMemory?.Invoke();
+            yield return record;
         }
     }
 

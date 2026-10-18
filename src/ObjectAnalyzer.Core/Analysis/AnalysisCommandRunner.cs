@@ -75,7 +75,7 @@ public sealed partial class AnalysisCommandRunner
             // 目的：1) 硬模式下若启动时已超阈值，立即以退出码 1 失败，避免分析半途才发现；
             //       2) 软模式下若已超阈值且用户未指定采样，自动启用蓄水池兜底。
             // 必须在 try 块内：硬模式抛 MaxMemoryExceededException，由下方 catch 转为退出码 1。
-            MemoryBudgetEntryCheck(preflight.MemoryBudget, options);
+            MemoryBudgetEntryCheck(preflight.MemoryBudget);
 
             // W1 统一分析管线：解析 → JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计。
             // 运行期状态（内存预算 / 续跑位置）随 AnalysisRunContext 传入，回填 EffectiveFormat / LastRecordCount。

@@ -14,7 +14,7 @@ internal sealed class LegacyRecordParser(IFileParser parser, bool streaming, Sou
     private IEnumerator<Dictionary<string, object?>> Open(Stream stream, string source, ParseOptions options)
     {
         try { return parser.Parse(stream, options).GetEnumerator(); }
-        catch (Exception exception) when (exception is not (OperationCanceledException or SourceReadException))
+        catch (Exception exception) when (exception is not (OperationCanceledException or SourceReadException or AnalysisResourceLimitException or MaxMemoryExceededException))
         { throw new SourceReadException("Input parser initialization failed.", new SourceLocation(source), exception); }
     }
 
@@ -33,7 +33,7 @@ internal sealed class LegacyRecordParser(IFileParser parser, bool streaming, Sou
             cancellationToken.ThrowIfCancellationRequested();
             bool next;
             try { next = iterator.MoveNext(); }
-            catch (Exception exception) when (exception is not (OperationCanceledException or SourceReadException))
+            catch (Exception exception) when (exception is not (OperationCanceledException or SourceReadException or AnalysisResourceLimitException or MaxMemoryExceededException))
             {
                 throw new SourceReadException("Input parsing failed.", new SourceLocation(source, index + 1,
                     Row: positionKind == SourcePositionKind.Row && position > 0 ? position : null), exception);

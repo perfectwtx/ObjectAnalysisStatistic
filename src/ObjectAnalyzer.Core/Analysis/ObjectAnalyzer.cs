@@ -10,7 +10,6 @@ namespace ObjectAnalyzer.Analysis;
 public static partial class ObjectAnalyzer
 {
     private const int MaxTrackedUniqueValues = 1000;
-    private const int ChunkSize = 10000;
 
     /// <summary>Typed entry point. Literal property names and structural paths remain unambiguous.</summary>
     public static AnalysisResult AnalyzeRecords(
@@ -93,13 +92,13 @@ public static partial class ObjectAnalyzer
     {
         int maxTracked = state.MaxTrackedValues;
         var features = state.Features;
-        var pathCache = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+        var limits = state.Limits;
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken, parallelOptions?.CancellationToken ?? default);
         cancellationToken = linkedCancellation.Token;
         var options = new ParallelOptions
         {
-            MaxDegreeOfParallelism = parallelOptions?.MaxDegreeOfParallelism ?? -1,
+            MaxDegreeOfParallelism = Math.Min(parallelOptions?.MaxDegreeOfParallelism is > 0 ? parallelOptions.MaxDegreeOfParallelism : limits.MaxWorkers, limits.MaxWorkers),
             TaskScheduler = parallelOptions?.TaskScheduler,
             CancellationToken = cancellationToken
         };
@@ -116,7 +115,7 @@ public static partial class ObjectAnalyzer
 
                     // Fix #9: Array.Sort avoids LINQ lambda allocations in the per-object hot path
                     var sortedEntries = obj.Select(pair => KeyValuePair.Create(
-                        pathCache.GetOrAdd(pair.Key, static key => FieldPath.Parse(key).ToString()), pair.Value)).ToArray();
+                        FieldPath.Parse(pair.Key).ToString(), pair.Value)).ToArray();
                     Array.Sort(sortedEntries, static (a, b) => string.Compare(a.Key, b.Key, StringComparison.Ordinal));
                     for (int i = 1; i < sortedEntries.Length; i++)
                     {
@@ -152,8 +151,9 @@ public static partial class ObjectAnalyzer
 
                         if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
                         {
-                            stat = new FieldAccumulator { FieldName = fieldName };
-                            stat.Components = state.CreateComponents(fieldName);
+                            state.RegisterField(fieldName);
+                            stat = new FieldAccumulator(limits) { FieldName = fieldName };
+                            stat.Components = state.CreateComponents(fieldName, global: false);
                             localState.StatsMap[fieldName] = stat;
                         }
 
@@ -173,13 +173,13 @@ public static partial class ObjectAnalyzer
                         stat.AddValue(typedValue, 1, maxTracked);
 
                         stat.Components!.Observe(typedValue);
-                        RecordFeatureMetrics(localState, value, valStr, fieldName, correlationRow, features);
+                        RecordFeatureMetrics(localState, value, valStr, fieldName, correlationRow, features, limits);
                     }
 
                     // 深度分析 相关性：把这一行所有字段的数值样本一次性送给收集器
                     if (correlationRow != null)
                     {
-                        (localState.CorrelationCollector ??= new FieldCorrelationCollector(features!.CorrelationReservoir))
+                        (localState.CorrelationCollector ??= new FieldCorrelationCollector(Math.Min(features!.CorrelationReservoir, limits.MaxCorrelationRows), maxFields: limits.MaxCorrelationFields))
                             .RecordObject(correlationRow);
                     }
 
@@ -193,30 +193,41 @@ public static partial class ObjectAnalyzer
                 state.MergeThread);
         }
 
-        if (objects is IList<Dictionary<string, object?>> objectList)
+        foreach (var chunk in EnumerateBoundedChunks(objects, limits, cancellationToken))
         {
-            // Fix #3: Use O(1) index-based slice instead of O(n) Skip/Take per chunk
-            for (int offset = 0; offset < objectList.Count; offset += ChunkSize)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                int count = Math.Min(ChunkSize, objectList.Count - offset);
-                ProcessChunk(IndexedSlice(objectList, offset, count));
-                // P6.1 进度上报：每完成一个分块（10K 对象）触发一次回调，
-                // Spectre.Console 的 Progress() 内部已合并高频上报避免闪烁
-                progress?.Report(state.TotalObjects);
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            ProcessChunk(chunk);
+            progress?.Report(state.TotalObjects);
         }
-        else
-        {
-            foreach (var chunk in EnumerateChunks(objects, ChunkSize))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                ProcessChunk(chunk);
-                // P6.1 进度上报：未知总量的流式输入同样每分块触发一次
-                progress?.Report(state.TotalObjects);
-            }
-        }
+    }
 
+    internal static long EstimateRecordBytes(IReadOnlyDictionary<string, object?> record, AnalysisResourceLimits limits)
+    {
+        if (record.Count > limits.MaxFields) throw new AnalysisResourceLimitException("record-fields", limits.MaxFields);
+        long bytes = 64;
+        foreach (var pair in record)
+        {
+            if (pair.Key.Length > limits.MaxPathCharacters) throw new AnalysisResourceLimitException("path-characters", limits.MaxPathCharacters);
+            bytes = checked(bytes + pair.Key.Length * 2L + RetainedPayloadBudget.Size(RecordValue.FromObject(pair.Value)));
+            if (bytes > limits.MaxRecordCharacters * 2L) throw new AnalysisResourceLimitException("record-characters", limits.MaxRecordCharacters);
+        }
+        return bytes;
+    }
+
+    private static IEnumerable<List<Dictionary<string, object?>>> EnumerateBoundedChunks(
+        IEnumerable<Dictionary<string, object?>> source, AnalysisResourceLimits limits, CancellationToken cancellationToken)
+    {
+        var chunk = new List<Dictionary<string, object?>>(); long bytes = 0;
+        foreach (var record in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            long size = EstimateRecordBytes(record, limits);
+            if (size > limits.MaxBatchBytes) throw new AnalysisResourceLimitException("batch-bytes", limits.MaxBatchBytes);
+            if (chunk.Count > 0 && (chunk.Count >= limits.BatchSize || bytes + size > limits.MaxBatchBytes))
+            { yield return chunk; chunk = new(); bytes = 0; }
+            chunk.Add(record); bytes += size;
+        }
+        if (chunk.Count > 0) yield return chunk;
     }
 
     internal static (AnalysisResult Result, Dictionary<string, MergeableQuantileSketch>? QuantileSketches,
@@ -232,7 +243,7 @@ public static partial class ObjectAnalyzer
         var fieldRules = state.FieldRules;
         foreach (string path in state.RulePlan.Paths)
             if (!globalStatsMap.ContainsKey(path))
-                globalStatsMap.Add(path, new FieldAccumulator { FieldName = path, Components = state.CreateComponents(path) });
+                globalStatsMap.Add(path, new FieldAccumulator(state.Limits) { FieldName = path, Components = state.CreateComponents(path, global: false) });
         // 后置处理：合并极值、推断默认值与语义分类
         var results = new List<FieldStatistic>();
         foreach (var field in globalStatsMap.Values)
@@ -411,7 +422,7 @@ public static partial class ObjectAnalyzer
         string valStr,
         string fieldName,
         Dictionary<string, double?>? correlationRow,
-        AdvancedAnalysisOptions? features)
+        AdvancedAnalysisOptions? features, AnalysisResourceLimits limits)
     {
         if (features == null) return;
         if (!features.EnableCorrelation
@@ -438,7 +449,7 @@ public static partial class ObjectAnalyzer
                 var patterns = localState.StringPatterns ??= new Dictionary<string, StringPatternProfiler>(StringComparer.Ordinal);
                 if (!patterns.TryGetValue(fieldName, out var profiler))
                 {
-                    profiler = new StringPatternProfiler();
+                    profiler = new StringPatternProfiler(limits);
                     patterns[fieldName] = profiler;
                 }
                 profiler.Add(sVal);
@@ -551,32 +562,6 @@ public static partial class ObjectAnalyzer
             }
             return JsonSerializer.Serialize(fallback, JsonSharedOptions.Write);
         }
-    }
-
-    // Fix #3: O(1) index-based slice over IList, avoids re-enumerating from offset
-    private static IEnumerable<Dictionary<string, object?>> IndexedSlice(
-        IList<Dictionary<string, object?>> list, int offset, int count)
-    {
-        int end = offset + count;
-        for (int i = offset; i < end; i++)
-            yield return list[i];
-    }
-
-    private static IEnumerable<List<Dictionary<string, object?>>> EnumerateChunks(
-        IEnumerable<Dictionary<string, object?>> source, int chunkSize)
-    {
-        var chunk = new List<Dictionary<string, object?>>(chunkSize);
-        foreach (var obj in source)
-        {
-            chunk.Add(obj);
-            if (chunk.Count >= chunkSize)
-            {
-                yield return chunk;
-                chunk = new List<Dictionary<string, object?>>(chunkSize);
-            }
-        }
-        if (chunk.Count > 0)
-            yield return chunk;
     }
 
     private static string SafeToString(object? value)

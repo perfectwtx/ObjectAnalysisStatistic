@@ -551,6 +551,19 @@
                 </div>
             </div>
 
+            @if (State.Result.Reliability is { Limitations.Count: > 0 } reliability)
+            {
+                <details class="chart-box">
+                    <summary>精确度与限制 / Accuracy and limits</summary>
+                    <ul>
+                        @foreach (var limitation in reliability.Limitations)
+                        {
+                            <li>@limitation.Metric (@limitation.Accuracy): @limitation.Reason</li>
+                        }
+                    </ul>
+                </details>
+            }
+
             @* 图表区域 *@
             <div class="result-section-heading">
                 <span class="result-section-kicker">SIGNALS</span>

@@ -19,7 +19,7 @@ internal static class AnalysisFailure
             var kinds = aggregate.Flatten().InnerExceptions.Select(item => Classify(item, stage)).Distinct().ToArray();
             return kinds.Length == 1 ? kinds[0] : AnalysisFailureKind.Execution;
         }
-        if (exception is MaxMemoryExceededException) return AnalysisFailureKind.ResourceLimit;
+        if (exception is MaxMemoryExceededException or AnalysisResourceLimitException) return AnalysisFailureKind.ResourceLimit;
         if (stage == AnalysisStage.Preparing) return AnalysisFailureKind.Configuration;
         return exception switch
         {

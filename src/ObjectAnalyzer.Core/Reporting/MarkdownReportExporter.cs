@@ -31,6 +31,14 @@ public static class MarkdownReportExporter
         }
         writer.WriteLine();
 
+        if (result.Reliability is { Limitations.Count: > 0 } reliability)
+        {
+            writer.WriteLine("## 精确度与限制"); writer.WriteLine();
+            foreach (var limitation in reliability.Limitations)
+                writer.WriteLine($"- {EscapeMd(limitation.Metric)} ({limitation.Accuracy}): {EscapeMd(limitation.Reason)}");
+            writer.WriteLine();
+        }
+
         // 数据质量摘要
         var quality = DataQualityReport.Build(result);
         writer.WriteLine("## 数据质量");

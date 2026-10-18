@@ -15,13 +15,8 @@ internal sealed class JsonLinesRecordParser : IRecordParser
     {
         using var reader = new StreamReader(stream, Encoding.UTF8, true, 4096, leaveOpen: true);
         var state = new LineState(source, options);
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            string? line = reader.ReadLine();
-            if (line is null) break;
+        foreach (var line in BoundedLines.Read(reader, options.ResourceLimits.MaxRecordCharacters, cancellationToken))
             if (state.Parse(line) is { } record) yield return record;
-        }
         state.Complete();
     }
 
@@ -30,13 +25,8 @@ internal sealed class JsonLinesRecordParser : IRecordParser
     {
         using var reader = new StreamReader(stream, Encoding.UTF8, true, 4096, leaveOpen: true);
         var state = new LineState(source, options);
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            string? line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null) break;
+        await foreach (var line in BoundedLines.ReadAsync(reader, options.ResourceLimits.MaxRecordCharacters, cancellationToken))
             if (state.Parse(line) is { } record) yield return record;
-        }
         state.Complete();
     }
 
@@ -48,6 +38,7 @@ internal sealed class JsonLinesRecordParser : IRecordParser
 
         public SourceRecord? Parse(string text)
         {
+            options.CheckMemory?.Invoke();
             _line++;
             options.PositionProgress?.Invoke(_line);
             if (_line <= options.StartPosition || string.IsNullOrWhiteSpace(text)) return null;

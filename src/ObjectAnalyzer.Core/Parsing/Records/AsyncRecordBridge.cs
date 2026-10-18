@@ -9,7 +9,7 @@ internal sealed class AsyncRecordBridge(IAnalysisDataSource source) : IAnalysisD
     public IEnumerable<SourceRecord> Read(SourceReadOptions options, CancellationToken cancellationToken = default)
     {
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var channel = Channel.CreateBounded<SourceRecord>(new BoundedChannelOptions(128)
+        var channel = Channel.CreateBounded<SourceRecord>(new BoundedChannelOptions(options.ResourceLimits.AsyncQueueCapacity)
         { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         var producer = Task.Run(async () =>
         {
@@ -17,7 +17,11 @@ internal sealed class AsyncRecordBridge(IAnalysisDataSource source) : IAnalysisD
             try
             {
                 await foreach (var record in source.ReadAsync(options, lifetime.Token).WithCancellation(lifetime.Token).ConfigureAwait(false))
+                {
+                    global::ObjectAnalyzer.Analysis.ObjectAnalyzer.EstimateRecordBytes(record.ToEngineRecord(), options.ResourceLimits);
+                    options.CheckMemory?.Invoke();
                     await channel.Writer.WriteAsync(record, lifetime.Token).ConfigureAwait(false);
+                }
             }
             catch (Exception exception) { failure = exception; }
             finally { channel.Writer.TryComplete(failure); }

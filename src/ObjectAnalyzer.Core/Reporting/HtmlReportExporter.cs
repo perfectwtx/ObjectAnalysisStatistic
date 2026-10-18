@@ -57,6 +57,14 @@ public static class HtmlReportExporter
         writer.Write(Card("字段数", result.FieldStatistics.Count.ToString(CultureInfo.InvariantCulture), "purple"));
         writer.WriteLine("</div>");
 
+        if (result.Reliability is { Limitations.Count: > 0 } reliability)
+        {
+            writer.WriteLine("<div class=\"section\"><h2>精确度与限制</h2><ul>");
+            foreach (var limitation in reliability.Limitations)
+                writer.WriteLine($"<li>{Escape(limitation.Metric)} ({limitation.Accuracy}): {Escape(limitation.Reason)}</li>");
+            writer.WriteLine("</ul></div>");
+        }
+
         // 数据质量摘要
         var quality = DataQualityReport.Build(result);
         writer.WriteLine("<div class=\"section\">");

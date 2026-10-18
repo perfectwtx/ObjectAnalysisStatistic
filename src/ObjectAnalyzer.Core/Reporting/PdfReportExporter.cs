@@ -73,6 +73,13 @@ public static class PdfReportExporter
         {
             col.Spacing(12);
             col.Item().Element(c => SummarySection(c, r));
+            if (r.Reliability is { Limitations.Count: > 0 } reliability)
+                col.Item().Column(items =>
+                {
+                    items.Item().Text("Accuracy and limits").Bold();
+                    foreach (var item in reliability.Limitations)
+                        items.Item().Text($"{item.Metric} ({item.Accuracy}): {item.Reason}");
+                });
             col.Item().Element(c => FieldStatsSection(c, r));
             col.Item().Element(c => ViolationsSection(c, r));
             col.Item().Element(c => DuplicatesSection(c, r));

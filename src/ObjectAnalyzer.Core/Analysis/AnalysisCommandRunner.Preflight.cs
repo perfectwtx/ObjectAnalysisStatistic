@@ -209,29 +209,13 @@ public sealed partial class AnalysisCommandRunner
             MemoryBudget: memoryBudget);
     }
 
-    /// <summary>
-    /// P6.3：内存预算入口预检——启动时采样一次托管堆占用。
-    /// 软模式已超阈值且未指定采样时自动启用蓄水池兜底；硬模式已超限立即抛
-    /// <see cref="MaxMemoryExceededException"/>（由 RunCore 的 catch 转为退出码 1）。
-    /// 注意：fresh 进程刚启动时 GC.GetTotalMemory 可能仅 0.1 MB 左右（无任何分配），
-    /// 因此仅靠入口预检不够；分析循环内每批 Check 后由收尾检查统一抛错。
-    /// </summary>
-    private void MemoryBudgetEntryCheck(MemoryBudget? memoryBudget, AnalysisOptions options)
+    /// <summary>Observe heap pressure at entry; the execution session chooses sampling before reading input.</summary>
+    private static void MemoryBudgetEntryCheck(MemoryBudget? memoryBudget)
     {
         if (memoryBudget is not { IsEnabled: true } entryBudget)
             return;
 
-        entryBudget.Check(0, out bool autoEnable);
-        if (autoEnable)
-        {
-            bool userRequestedSampling = Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep);
-            if (!userRequestedSampling)
-            {
-                options.Sampling.SampleReservoir = options.Sampling.MemoryFallbackSampleSize;
-                _services.Console.MarkupLine(
-                    $"[grey][[内存]][/] 检测到启动时已接近 [blue]--max-memory {options.Memory.MaxMemoryMB:N0} MB[/]；已自动切换为蓄水池采样 [blue]{options.Sampling.SampleReservoir:N0}[/] 条以保护进程。");
-            }
-        }
+        entryBudget.Check(0, out _);
         // 入口已超限时（启动内存即超阈值，如 xunit 测试进程）立即拒绝
         if (entryBudget.HardLimitExceeded)
         {

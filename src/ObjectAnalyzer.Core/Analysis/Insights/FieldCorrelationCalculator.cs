@@ -19,13 +19,14 @@ public static class FieldCorrelationCalculator
         if (collector == null || collector.Seen == 0) return matrix;
 
         // 仅保留至少有 3 个非空样本的字段
-        var fields = (numericFields ?? collector.Samples.Keys)
-            .Where(f => collector.Samples.TryGetValue(f, out var list) && list.Count(v => v.HasValue) >= 3)
+        var samples = collector.Samples;
+        var fields = (numericFields ?? samples.Keys)
+            .Where(f => samples.TryGetValue(f, out var list) && list.Count(v => v.HasValue) >= 3)
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
         matrix.Fields = fields;
-        matrix.Samples = collector.Seen;
+        matrix.Samples = collector.SampleCount;
 
         int n = fields.Count;
         for (int i = 0; i < n; i++)
@@ -40,7 +41,7 @@ public static class FieldCorrelationCalculator
         }
 
         // 把每字段样本数组预提取为本地
-        var data = fields.Select(f => collector.Samples[f].ToArray()).ToArray();
+        var data = fields.Select(f => samples[f].ToArray()).ToArray();
 
         for (int i = 0; i < n; i++)
         {

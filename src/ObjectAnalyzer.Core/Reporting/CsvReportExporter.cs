@@ -31,6 +31,19 @@ public static class CsvReportExporter
         }
         writer.WriteLine();
 
+        if (result.Reliability is { Limitations.Count: > 0 } reliability)
+        {
+            writer.WriteLine("# AccuracyAndLimits");
+            writer.WriteLine("Metric,Accuracy,Reason");
+            foreach (var item in reliability.Limitations)
+            {
+                writer.Write(CsvField(item.Metric)); writer.Write(',');
+                writer.Write(item.Accuracy); writer.Write(',');
+                writer.WriteLine(CsvField(item.Reason));
+            }
+            writer.WriteLine();
+        }
+
         // ── 数据质量 ──
         var quality = DataQualityReport.Build(result);
         writer.WriteLine("# DataQuality");

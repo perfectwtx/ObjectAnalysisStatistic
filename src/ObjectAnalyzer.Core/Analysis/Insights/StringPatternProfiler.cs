@@ -13,6 +13,28 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public sealed class StringPatternProfiler
 {
+    private readonly AnalysisResourceLimits _limits;
+    private readonly RetainedPayloadBudget? _payload;
+    public bool ExamplesTruncated { get; private set; }
+    public StringPatternProfiler(AnalysisResourceLimits? limits = null) : this(limits ?? new(), null) { }
+    internal StringPatternProfiler(AnalysisResourceLimits limits, RetainedPayloadBudget? payload)
+    { limits.Validate(); _limits = limits; _payload = payload; }
+    private TemplateAccumulator GetTemplate(string template)
+    {
+        if (_templates.TryGetValue(template, out var existing)) return existing;
+        if (_templates.Count >= _limits.MaxPatternTemplates) throw new AnalysisResourceLimitException("pattern-templates", _limits.MaxPatternTemplates);
+        _payload?.Reserve(64 + template.Length * 2L);
+        var created = new TemplateAccumulator(); _templates.Add(template, created); return created;
+    }
+    private void AddExample(TemplateAccumulator acc, string value)
+    {
+        if (value.Length > _limits.MaxExampleCharacters)
+        { value = value[.._limits.MaxExampleCharacters]; ExamplesTruncated = true; }
+        if (acc.Examples.Contains(value)) return;
+        if (acc.Examples.Count >= MaxExamplesPerTemplate) { ExamplesTruncated = true; return; }
+        _payload?.Reserve(value.Length * 2L + 24); acc.Examples.Add(value);
+    }
+
     private const int MaxExamplesPerTemplate = 3;
 
     private readonly Dictionary<string, TemplateAccumulator> _templates = new(StringComparer.Ordinal);
@@ -24,23 +46,13 @@ public sealed class StringPatternProfiler
         if (string.IsNullOrEmpty(value)) return;
         if (string.IsNullOrWhiteSpace(value)) return;
 
+        if (value.Length > _limits.MaxPatternCharacters) throw new AnalysisResourceLimitException("pattern-characters", _limits.MaxPatternCharacters);
         _total++;
         string template = BuildTemplate(value);
 
-        if (!_templates.TryGetValue(template, out var acc))
-        {
-            acc = new TemplateAccumulator();
-            _templates[template] = acc;
-        }
+        var acc = GetTemplate(template);
         acc.Count++;
-        if (acc.Examples.Count < MaxExamplesPerTemplate)
-        {
-            // 避免与已有的示例完全重复（保留差异化的样例）
-            if (!acc.Examples.Contains(value))
-            {
-                acc.Examples.Add(value);
-            }
-        }
+        AddExample(acc, value);
     }
 
     /// <summary>
@@ -51,22 +63,13 @@ public sealed class StringPatternProfiler
     {
         if (other == null) return;
         _total += other._total;
+        ExamplesTruncated |= other.ExamplesTruncated;
         foreach (var (template, otherAcc) in other._templates)
         {
-            if (!_templates.TryGetValue(template, out var acc))
-            {
-                acc = new TemplateAccumulator();
-                _templates[template] = acc;
-            }
+            if (template.Length > _limits.MaxPatternCharacters) throw new AnalysisResourceLimitException("pattern-characters", _limits.MaxPatternCharacters);
+            var acc = GetTemplate(template);
             acc.Count += otherAcc.Count;
-            foreach (var ex in otherAcc.Examples)
-            {
-                if (acc.Examples.Count >= MaxExamplesPerTemplate) break;
-                if (!acc.Examples.Contains(ex))
-                {
-                    acc.Examples.Add(ex);
-                }
-            }
+            foreach (var ex in otherAcc.Examples) AddExample(acc, ex);
         }
     }
 

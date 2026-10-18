@@ -13,17 +13,18 @@ public static class ObjectRelationshipAnalyzer
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> Track(
         IEnumerable<Dictionary<string, object?>> source,
-        Action<IReadOnlyList<ObjectRelationship>> completed)
+        Action<IReadOnlyList<ObjectRelationship>> completed, AnalysisResourceLimits? resourceLimits = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(completed);
 
+        var limits = resourceLimits ?? new();
         var states = new Dictionary<string, RelationshipState>(StringComparer.Ordinal);
         try
         {
             foreach (var item in source)
             {
-                CollectObject(item, "", states, 0);
+                CollectObject(item, "", states, 0, limits);
                 yield return item;
             }
         }
@@ -40,7 +41,7 @@ public static class ObjectRelationshipAnalyzer
         IDictionary<string, object?> obj,
         string prefix,
         Dictionary<string, RelationshipState> states,
-        int depth)
+        int depth, AnalysisResourceLimits limits)
     {
         if (depth >= MaxDepth) return;
 
@@ -51,14 +52,14 @@ public static class ObjectRelationshipAnalyzer
             object? value = pair.Value;
             if (value is RecordValue typedValue)
             {
-                CollectTypedValue(typedValue, path, states, depth);
+                CollectTypedValue(typedValue, path, states, depth, limits);
                 continue;
             }
 
             if (TryGetDictionary(value, out var nested))
             {
-                Add(states, path, "Object", nested.Keys);
-                CollectObject(nested, path, states, depth + 1);
+                Add(states, path, "Object", nested.Keys, limits);
+                CollectObject(nested, path, states, depth + 1, limits);
                 continue;
             }
 
@@ -69,8 +70,8 @@ public static class ObjectRelationshipAnalyzer
                 {
                     if (!TryGetDictionary(element, out var nestedElement)) continue;
                     foundObject = true;
-                    Add(states, path, "Collection", nestedElement.Keys);
-                    CollectObject(nestedElement, path, states, depth + 1);
+                    Add(states, path, "Collection", nestedElement.Keys, limits);
+                    CollectObject(nestedElement, path, states, depth + 1, limits);
                 }
 
                 if (foundObject) continue;
@@ -78,31 +79,33 @@ public static class ObjectRelationshipAnalyzer
         }
     }
 
-    private static void CollectTypedValue(RecordValue value, string path, Dictionary<string, RelationshipState> states, int depth)
+    private static void CollectTypedValue(RecordValue value, string path, Dictionary<string, RelationshipState> states, int depth, AnalysisResourceLimits limits)
     {
         if (depth >= MaxDepth) return;
-        if (value.Kind == RecordValueKind.Object) CollectTypedObject(value, path, "Object", states, depth);
+        if (value.Kind == RecordValueKind.Object) CollectTypedObject(value, path, "Object", states, depth, limits);
         else if (value.Kind == RecordValueKind.Array)
             foreach (var item in value.Items)
-                if (item.Kind == RecordValueKind.Object) CollectTypedObject(item, path, "Collection", states, depth);
+                if (item.Kind == RecordValueKind.Object) CollectTypedObject(item, path, "Collection", states, depth, limits);
     }
 
-    private static void CollectTypedObject(RecordValue value, string path, string kind, Dictionary<string, RelationshipState> states, int depth)
+    private static void CollectTypedObject(RecordValue value, string path, string kind, Dictionary<string, RelationshipState> states, int depth, AnalysisResourceLimits limits)
     {
-        Add(states, path, kind, value.Properties.Keys);
+        Add(states, path, kind, value.Properties.Keys, limits);
         foreach (var property in value.Properties)
-            CollectTypedValue(property.Value, FieldPath.Parse(path).AppendProperty(property.Key).ToString(), states, depth + 1);
+            CollectTypedValue(property.Value, FieldPath.Parse(path).AppendProperty(property.Key).ToString(), states, depth + 1, limits);
     }
 
     private static void Add(
         Dictionary<string, RelationshipState> states,
         string path,
         string kind,
-        IEnumerable<string> targetFields)
+        IEnumerable<string> targetFields, AnalysisResourceLimits limits)
     {
+        if (path.Length > limits.MaxPathCharacters) throw new AnalysisResourceLimitException("relationship-path-characters", limits.MaxPathCharacters);
         string key = $"{kind}\n{path}";
         if (!states.TryGetValue(key, out var state))
         {
+            if (states.Count >= limits.MaxRelationshipPaths) throw new AnalysisResourceLimitException("relationship-paths", limits.MaxRelationshipPaths);
             state = new RelationshipState(path, kind);
             states[key] = state;
         }
@@ -111,6 +114,7 @@ public static class ObjectRelationshipAnalyzer
         state.NonNullCount++;
         foreach (var field in targetFields)
         {
+            if (field.Length > limits.MaxPathCharacters) throw new AnalysisResourceLimitException("relationship-path-characters", limits.MaxPathCharacters);
             state.AddTargetField(field);
         }
     }

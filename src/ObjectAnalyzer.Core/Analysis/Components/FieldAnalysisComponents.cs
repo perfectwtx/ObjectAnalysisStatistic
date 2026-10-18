@@ -51,7 +51,7 @@ internal sealed class FieldAnalysisComponents
 
     public InternalFieldMetrics MetricsView()
     {
-        var metrics = new InternalFieldMetrics();
+        var metrics = new InternalFieldMetrics(int.MaxValue);
         foreach (var provider in _states.Values.OfType<IFieldMetricsProvider>()) metrics.MergeFrom(provider.Metrics);
         return metrics;
     }

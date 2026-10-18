@@ -16,6 +16,7 @@ public sealed class AnalysisRunContext
     public SourceDescriptor? SourceDescriptor { get; internal set; }
     public long SkippedInputRecords { get; internal set; }
     private readonly List<Exception> _observerErrors = new();
+    public AnalysisExecutionProfile? ExecutionProfile { get; internal set; }
     public Guid RunId { get; } = Guid.NewGuid();
     public Action<AnalysisEvent>? EventSink { get; init; }
     public IReadOnlyList<Exception> ObserverErrors
@@ -84,6 +85,8 @@ public sealed class AnalysisRunContext
 /// </summary>
 public sealed class PipelineResult
 {
+    public AnalysisExecutionProfile? ExecutionProfile { get; init; }
+    public long RetainedPayloadBytes { get; init; }
     public required AnalysisResult Result { get; set; }
 
     public AnalysisAccumulator? Accumulator { get; init; }

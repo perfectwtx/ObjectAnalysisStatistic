@@ -78,6 +78,8 @@ public static class PiiRedactor
 
         return new AnalysisResult
         {
+            Reliability = result.Reliability,
+            ObjectRelationships = result.ObjectRelationships,
             TotalObjects = result.TotalObjects,
             TotalUniqueObjects = result.TotalUniqueObjects,
             TotalDuplicateGroups = result.TotalDuplicateGroups,

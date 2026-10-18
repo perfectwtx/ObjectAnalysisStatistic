@@ -16,6 +16,9 @@ public static class ExcelReportExporter
         var sheets = new Dictionary<string, object>();
 
         AppendSummarySheet(sheets, result);
+        if (result.Reliability is { Limitations.Count: > 0 } reliability)
+            sheets["精确度与限制"] = reliability.Limitations.Select(item => new Dictionary<string, object>
+            { ["指标"] = item.Metric, ["精确度"] = item.Accuracy.ToString(), ["说明"] = item.Reason }).ToList();
         AppendFieldStatsSheet(sheets, result);
         AppendDuplicateSheet(sheets, result);
         AppendViolationsSheet(sheets, result);

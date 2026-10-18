@@ -8,7 +8,7 @@ namespace ObjectAnalyzer.Analysis;
 ///  1. 对每个值做 NFKC 归一化、大小写折叠、空白折叠、Unicode 卫生处理，生成"规范化键"；
 ///  2. 同规范化键的对象归入同一组（这部分其实就是精确去重的"形态变体"）；
 ///  3. 对每个规范化键唯一的样本，额外用词袋 Jaccard 相似度在近似键间做近邻查找，
-///     相似度 ≥ <see cref="FuzzySimilarityThreshold"/>（默认 0.85）且编辑距离 ≤ 1 的归为同一组。
+///     相似度 ≥ <see cref="FuzzySimilarityThreshold"/>（默认 0.85）的归为同一组。
 /// 适用场景：去除 "Alice" vs "alice" vs " ALICE "、"张伟" vs "张 伟" 这类形态变体。
 /// </summary>
 public static class FuzzyDuplicateDetector
@@ -41,119 +41,11 @@ public static class FuzzyDuplicateDetector
         Func<Dictionary<string, object?>, string?> keySelector,
         CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var report = new FuzzyDuplicateReport();
-        if (objects == null) return report;
-
-        // 第一阶段：按 canonical key 精确聚类
-        var byCanonical = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        var canonicalToOriginal = new Dictionary<string, string>(StringComparer.Ordinal);
-        long total = 0;
-
-        foreach (var obj in objects)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            string raw = keySelector(obj) ?? "";
-            if (string.IsNullOrEmpty(raw)) continue;
-            total++;
-
-            string canon = Canonicalize(raw);
-            if (string.IsNullOrEmpty(canon)) continue;
-
-            if (!byCanonical.TryGetValue(canon, out var list))
-            {
-                list = new List<string>();
-                byCanonical[canon] = list;
-                canonicalToOriginal[canon] = raw;
-            }
-            if (list.Count < 5) list.Add(raw);
-        }
-
-        report.TotalSamples = total;
-        long dupSamples = 0;
-        int groupCount = 0;
-
-        // 直接从大小写/空白/全半角等形态变体归并的组（不做 Jaccard 比较）
-        foreach (var (canon, examples) in byCanonical.OrderByDescending(kv => kv.Value.Count))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (examples.Count < 2)
-            {
-                // 单一样本无需建组（除非后续 Jaccard 找到近邻）
-                continue;
-            }
-            groupCount++;
-            dupSamples += examples.Count;
-        }
-
-        // 第二阶段：跨 canonical key 的 Jaccard 词袋相似度近邻
-        // 仅当唯一 canonical key 较少（≤5000）时启用，避免 O(n²) 退化
-        var uniqKeys = byCanonical.Keys.Where(k => byCanonical[k].Count == 1).ToList();
-        if (uniqKeys.Count <= 5000)
-        {
-            var uniqTokens = uniqKeys.Select(BuildTokenSet).ToList();
-            var parent = Enumerable.Range(0, uniqKeys.Count).ToArray();
-            int Find(int x) { while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
-            void Union(int a, int b) { int ra = Find(a), rb = Find(b); if (ra != rb) parent[ra] = rb; }
-
-            for (int i = 0; i < uniqKeys.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var ti = uniqTokens[i];
-                if (ti.Count == 0) continue;
-                for (int j = i + 1; j < uniqKeys.Count; j++)
-                {
-                    var tj = uniqTokens[j];
-                    if (tj.Count == 0) continue;
-                    // 大小差异过大直接跳过（避免与所有长字符串做无意义比较）
-                    int minSize = Math.Min(ti.Count, tj.Count);
-                    int maxSize = Math.Max(ti.Count, tj.Count);
-                    if (maxSize > minSize * 2 + 1) continue;
-                    if (Jaccard(ti, tj) >= FuzzySimilarityThreshold)
-                    {
-                        Union(i, j);
-                    }
-                }
-            }
-
-            var groupsByRoot = new Dictionary<int, List<int>>();
-            for (int i = 0; i < uniqKeys.Count; i++)
-            {
-                int root = Find(i);
-                if (!groupsByRoot.TryGetValue(root, out var bucket))
-                {
-                    bucket = new List<int>();
-                    groupsByRoot[root] = bucket;
-                }
-                bucket.Add(i);
-            }
-            foreach (var bucket in groupsByRoot.Values.Where(b => b.Count >= 2))
-            {
-                groupCount++;
-                dupSamples += bucket.Count;
-            }
-        }
-
-        report.GroupCount = groupCount;
-        report.SimilarDuplicates = dupSamples;
-
-        // 暂不展开 Jaccard 合并后的具体内容（避免报告过大）；保留代表样本 + 计数
-        var topGroups = byCanonical
-            .Where(kv => kv.Value.Count >= 2)
-            .OrderByDescending(kv => kv.Value.Count)
-            .Take(MaxReportedGroups)
-            .Select(kv => new FuzzyDuplicateGroup
-            {
-                RepresentativeJson = SafeStringify(canonicalToOriginal[kv.Key]),
-                CanonicalKey = kv.Key,
-                Count = kv.Value.Count,
-                AverageSimilarity = 1.0, // canonical key 一致即视为完全相似
-                Examples = kv.Value.Take(5).ToList()
-            })
-            .ToList();
-        report.Groups = topGroups;
-
-        return report;
+        var collector = new FuzzyDuplicateCollector(new());
+        if (objects is not null)
+            foreach (var obj in objects)
+            { cancellationToken.ThrowIfCancellationRequested(); collector.Observe(keySelector(obj)); }
+        return collector.Complete(cancellationToken);
     }
 
     /// <summary>Jaccard 相似度 = |A∩B| / |A∪B|。两个 HashSet 已经按 canonical token 分词。</summary>
@@ -191,10 +83,4 @@ public static class FuzzyDuplicateDetector
         return tokens;
     }
 
-    private static string SafeStringify(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return "";
-        // 截断过长字符串避免报告膨胀
-        return value.Length > 200 ? string.Concat(value.AsSpan(0, 200), "...") : value;
-    }
 }

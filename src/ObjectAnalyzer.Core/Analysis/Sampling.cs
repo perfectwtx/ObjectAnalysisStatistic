@@ -29,11 +29,12 @@ public static class Sampling
     public static IEnumerable<Dictionary<string, object?>> Apply(
         IEnumerable<Dictionary<string, object?>> source,
         int reservoir,
-        int step)
+        int step,
+        AnalysisResourceLimits? limits = null)
     {
         Validate(reservoir, step);
         if (reservoir > 0)
-            return ReservoirSample(source, reservoir);
+            return ReservoirSample(source, reservoir, limits ?? new());
         if (step > 0)
             return SystematicSample(source, step);
         return source;
@@ -41,14 +42,20 @@ public static class Sampling
 
     private static IEnumerable<Dictionary<string, object?>> ReservoirSample(
         IEnumerable<Dictionary<string, object?>> source,
-        int reservoir)
+        int reservoir, AnalysisResourceLimits limits)
     {
         var sampler = new ReservoirSampler<Dictionary<string, object?>>(reservoir);
+        long bytes = 0;
         foreach (var obj in source)
         {
+            long size = ObjectAnalyzer.EstimateRecordBytes(obj, limits);
             int slot = sampler.NextSlot();
             if (slot >= 0)
-                sampler.SetSlot(slot, obj);
+            {
+                long old = slot < sampler.Items.Count ? ObjectAnalyzer.EstimateRecordBytes(sampler.Items[slot], limits) : 0;
+                if (bytes - old + size > limits.MaxSamplingBytes) throw new AnalysisResourceLimitException("sampling-bytes", limits.MaxSamplingBytes);
+                sampler.SetSlot(slot, obj); bytes += size - old;
+            }
         }
         return sampler.Items;
     }

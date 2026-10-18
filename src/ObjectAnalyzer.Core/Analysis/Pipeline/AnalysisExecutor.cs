@@ -26,8 +26,24 @@ public sealed class AnalysisExecutionPlan
         if (!string.IsNullOrWhiteSpace(copy.Input.RootPath)) JsonPathProjector.TryValidate(copy.Input.RootPath);
         if (!string.IsNullOrWhiteSpace(copy.Input.RecordPath)) JsonPathProjector.TryValidate(copy.Input.RecordPath);
         ArgumentOutOfRangeException.ThrowIfNegative(copy.Memory.MaxMemoryMB);
+        copy.Memory.Resources.Validate();
+        if (!Enum.IsDefined(copy.Memory.MaxMemoryMode)) throw new ArgumentException("Unknown memory mode.", nameof(options));
+        if (copy.Memory.MaxMemoryMB > 0 && copy.Memory.MaxMemoryMode == MaxMemoryMode.Soft
+            && !Sampling.IsEnabled(copy.Sampling.SampleReservoir, copy.Sampling.SampleStep) && copy.Sampling.MemoryFallbackSampleSize < 2)
+            throw new ArgumentException("Soft memory mode requires a fallback reservoir size of at least two.", nameof(options));
         if (!string.IsNullOrWhiteSpace(copy.Input.ConnectionString) && string.IsNullOrWhiteSpace(copy.Input.Query))
             throw new ArgumentException("A database query is required.", nameof(options));
+    }
+
+    /// <summary>Inspect buffering and retention requirements without opening the source.</summary>
+    public AnalysisExecutionProfile Describe(SourceDescriptor source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var options = CreateOptions();
+        if (options.Memory.MaxMemoryMB > 0 && options.Memory.MaxMemoryMode == MaxMemoryMode.Soft
+            && !Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+            options.Sampling.SampleReservoir = options.Sampling.MemoryFallbackSampleSize;
+        return AnalysisSession.DescribeExecution(source, options);
     }
 
     internal AnalysisOptions CreateOptions() => JsonSerializer.Deserialize<AnalysisOptions>(_options, JsonOptions)!;

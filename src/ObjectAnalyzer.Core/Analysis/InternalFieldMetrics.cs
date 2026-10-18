@@ -1,7 +1,7 @@
 namespace ObjectAnalyzer.Analysis;
 
 // 内部使用的线程局部扩展指标集
-internal sealed class InternalFieldMetrics
+internal sealed class InternalFieldMetrics(int maxTimeBins = 4096)
 {
     public double MinNumber { get; set; } = double.MaxValue;
     public double MaxNumber { get; set; } = double.MinValue;
@@ -57,6 +57,7 @@ internal sealed class InternalFieldMetrics
 
         var hist = DateHistogram ??= new Dictionary<long, long>();
         long bucket = utc.UtcTicks / TimeSpan.TicksPerMinute;
+        if (!hist.ContainsKey(bucket) && hist.Count >= maxTimeBins) throw new AnalysisResourceLimitException("time-bins", maxTimeBins);
         hist[bucket] = hist.GetValueOrDefault(bucket) + 1;
     }
 
@@ -176,6 +177,7 @@ internal sealed class InternalFieldMetrics
             var dateHist = DateHistogram ??= new Dictionary<long, long>();
             foreach (var kv in other.DateHistogram)
             {
+                if (!dateHist.ContainsKey(kv.Key) && dateHist.Count >= maxTimeBins) throw new AnalysisResourceLimitException("time-bins", maxTimeBins);
                 dateHist[kv.Key] = dateHist.GetValueOrDefault(kv.Key) + kv.Value;
             }
         }
@@ -205,9 +207,9 @@ internal sealed class InternalFieldMetrics
         DistinctHll = DistinctHll?.Capture(),
     };
 
-    internal static InternalFieldMetrics Restore(FieldMetricsSnapshot data)
+    internal static InternalFieldMetrics Restore(FieldMetricsSnapshot data, int maxTimeBins = 4096)
     {
-        var state = new InternalFieldMetrics
+        var state = new InternalFieldMetrics(maxTimeBins)
         {
             MinNumber = data.MinNumber,
             MaxNumber = data.MaxNumber,
@@ -230,6 +232,7 @@ internal sealed class InternalFieldMetrics
             DistinctHll = data.DistinctHll is null ? null : HyperLogLog.Restore(data.DistinctHll),
         };
         foreach (var p in data.SemanticCounts) state.SemanticCounts.Add(p.Key, p.Value);
+        if (state.DateHistogram?.Count > maxTimeBins) throw new InvalidDataException("Time histogram exceeds its budget.");
         return state;
     }
 }

@@ -37,9 +37,9 @@ internal static partial class BuiltInAnalyzers
         public string Id => id;
         public int Version => 1;
         public IReadOnlyCollection<RecordValueKind> InputKinds => kinds;
-        public IFieldAnalyzerState CreateState(FieldAnalyzerContext context) => new MetricsState(new(), context.Path.ToString(), observe, complete);
+        public IFieldAnalyzerState CreateState(FieldAnalyzerContext context) => new MetricsState(new(context.ResourceLimits.MaxTimeBins), context.Path.ToString(), observe, complete);
         public IFieldAnalyzerState RestoreState(FieldAnalyzerContext context, JsonElement data)
-            => new MetricsState(InternalFieldMetrics.Restore(data.Deserialize<FieldMetricsSnapshot>() ?? throw new InvalidDataException("Missing metric state.")),
+            => new MetricsState(InternalFieldMetrics.Restore(data.Deserialize<FieldMetricsSnapshot>() ?? throw new InvalidDataException("Missing metric state."), context.ResourceLimits.MaxTimeBins),
                 context.Path.ToString(), observe, complete);
     }
 
@@ -59,21 +59,21 @@ internal static partial class BuiltInAnalyzers
         public int Version => 1;
         public IReadOnlyCollection<RecordValueKind> InputKinds { get; } = Enum.GetValues<RecordValueKind>();
         public bool IsEnabled(FieldAnalyzerContext context) => context.Rules?.Checks.Count > 0;
-        public IFieldAnalyzerState CreateState(FieldAnalyzerContext context) => new ValueRulesState(context.Rules!.Checks);
+        public IFieldAnalyzerState CreateState(FieldAnalyzerContext context) => new ValueRulesState(context.Rules!.Checks, context.ResourceLimits, context.Payload);
         public IFieldAnalyzerState RestoreState(FieldAnalyzerContext context, JsonElement data)
         {
-            var state = new ValueRulesState(context.Rules!.Checks);
+            var state = new ValueRulesState(context.Rules!.Checks, context.ResourceLimits, context.Payload);
             var saved = data.Deserialize<Dictionary<string, ValueRuleStateSnapshot>>(StateOptions) ?? throw new InvalidDataException("Missing rule state.");
             if (!saved.Keys.Order(StringComparer.Ordinal).SequenceEqual(context.Rules.Checks.Select(c => c.Id).Order(StringComparer.Ordinal)))
                 throw new InvalidDataException("Rule state does not match the compiled plan.");
-            foreach (var p in saved) state.Values[p.Key] = ValueRuleAccumulator.Restore(p.Value);
+            foreach (var p in saved) state.Values[p.Key] = ValueRuleAccumulator.Restore(p.Value, context.ResourceLimits, context.Payload);
             return state;
         }
     }
 
-    private sealed class ValueRulesState(IReadOnlyList<CompiledValueRule> rules) : IFieldAnalyzerState
+    private sealed class ValueRulesState(IReadOnlyList<CompiledValueRule> rules, AnalysisResourceLimits limits, RetainedPayloadBudget? payload) : IFieldAnalyzerState
     {
-        public Dictionary<string, ValueRuleAccumulator> Values { get; } = rules.ToDictionary(r => r.Id, _ => new ValueRuleAccumulator(), StringComparer.Ordinal);
+        public Dictionary<string, ValueRuleAccumulator> Values { get; } = rules.ToDictionary(r => r.Id, _ => new ValueRuleAccumulator(limits, payload), StringComparer.Ordinal);
         public void Observe(RecordValue value)
         {
             foreach (var rule in rules) if (rule.IsViolation(value)) Values[rule.Id].Add(value);

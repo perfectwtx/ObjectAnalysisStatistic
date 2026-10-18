@@ -28,7 +28,10 @@ public sealed class FieldAnalyzerContext
 {
     public FieldPath Path { get; }
     public CompiledFieldRules? Rules { get; }
-    internal FieldAnalyzerContext(string path, CompiledFieldRules? rules) { Path = FieldPath.Parse(path); Rules = rules; }
+    public AnalysisResourceLimits ResourceLimits { get; }
+    internal RetainedPayloadBudget? Payload { get; }
+    internal FieldAnalyzerContext(string path, CompiledFieldRules? rules, AnalysisResourceLimits? limits = null, RetainedPayloadBudget? payload = null)
+    { Path = FieldPath.Parse(path); Rules = rules; ResourceLimits = limits ?? new(); Payload = payload; }
 }
 
 public sealed record AnalyzerDescriptor(string Id, int Version, string ConfigurationKey);

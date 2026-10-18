@@ -82,10 +82,11 @@ public sealed record AnalyzeViewResponse
 /// <summary>概览统计页：一屏展示的总量指标。</summary>
 public sealed record AnalyzeOverview
 {
+    public AnalysisReliability? Reliability { get; init; }
     /// <summary>分析对象总数。</summary>
     public long TotalObjects { get; init; }
 
-    /// <summary>唯一对象数（HLL 近似）。</summary>
+    /// <summary>唯一对象数（128 位哈希身份计数）。</summary>
     public long TotalUniqueObjects { get; init; }
 
     /// <summary>重复对象组总数。</summary>
@@ -102,6 +103,7 @@ public sealed record AnalyzeOverview
 
     public static AnalyzeOverview From(AnalysisResult result) => new()
     {
+        Reliability = result.Reliability,
         TotalObjects = result.TotalObjects,
         TotalUniqueObjects = result.TotalUniqueObjects,
         TotalDuplicateGroups = result.TotalDuplicateGroups,
