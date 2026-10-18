@@ -1,142 +1,83 @@
+using System.Collections.Immutable;
 using System.Text;
-using Microsoft.CodeAnalysis;
 
 namespace ObjectAnalyzer.Reporting;
 
-/// <summary>
-/// Exports inferred object schemas based on analysis results to
-/// C# record/class (via Roslyn SyntaxFactory AST), TypeScript interface, or JSON Schema (via System.Text.Json.Nodes DOM).
-/// Correctly un-flattens dot-separated paths into nested DTO classes/interfaces and groups array indices into typed array/list fields.
-/// </summary>
-public static partial class SchemaExporter
+public sealed record SchemaExportOptions
 {
-    private sealed class SchemaNode
-    {
-        public string NodeName { get; set; } = "";
-        public string Kind { get; set; } = "Primitive"; // "Primitive", "Object", "Array"
-        public string CSharpBaseType { get; set; } = "string";
-        public string TsBaseType { get; set; } = "string";
-        public string JsonSchemaBaseType { get; set; } = "string";
-        public string? Format { get; set; }
-        public bool IsNullable { get; set; }
-        public FieldStatistic? Field { get; set; }
-        public Dictionary<string, SchemaNode> Properties { get; } = new(StringComparer.Ordinal);
-        public SchemaNode? ElementNode { get; set; }
-    }
+    public string RootName { get; init; } = "GeneratedSchema";
+    public string SqlDialect { get; init; } = "postgres";
+    public bool Strict { get; init; }
+}
+public sealed record SchemaExportResult(string Content, ImmutableArray<SchemaDiagnostic> Diagnostics);
+public interface ISchemaBackend
+{
+    string Format { get; }
+    SchemaExportResult Generate(SchemaDocument document, SchemaExportOptions options);
+}
+public sealed class SchemaExportException(ImmutableArray<SchemaDiagnostic> diagnostics)
+    : InvalidOperationException("The target cannot preserve all schema semantics; inspect Diagnostics or use non-strict export.")
+{
+    public ImmutableArray<SchemaDiagnostic> Diagnostics { get; } = diagnostics;
+}
 
+/// <summary>Compatibility facade. Inference, identifier allocation, and target rendering are separate operations.</summary>
+public static class SchemaExporter
+{
+    public static SchemaExportResult Generate(SchemaDocument document, string format, SchemaExportOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        options ??= new();
+        ISchemaBackend backend = format.ToLowerInvariant() switch
+        {
+            "csharp" or "cs" => new CSharpSchemaBackend(),
+            "typescript" or "ts" => new TypeScriptSchemaBackend(),
+            "json-schema" or "jsonschema" or "schema" => new JsonSchemaBackend(),
+            "openapi" or "swagger" or "openapi-json" => new OpenApiSchemaBackend(),
+            "openapi-yaml" or "yaml-schema" => new OpenApiSchemaBackend(yaml: true),
+            "protobuf" or "proto" or "proto3" => new ProtobufSchemaBackend(),
+            "sql" or "postgres" or "postgresql" or "pg" => new SqlSchemaBackend(),
+            "mysql" or "sqlite" or "sqlserver" or "mssql" => new SqlSchemaBackend(),
+            _ => throw new ArgumentException($"Unsupported schema backend: {format}", nameof(format))
+        };
+        if (format.ToLowerInvariant() is "mysql" or "sqlite" or "sqlserver" or "mssql") options = options with { SqlDialect = format };
+        return backend.Generate(document, options);
+    }
+    public static SchemaExportResult Generate(AnalysisResult result, string format, SchemaExportOptions? options = null)
+        => Generate(SchemaInference.Infer(result), format, options);
+    public static string GenerateCSharp(AnalysisResult result, string className = "GeneratedSchema") => Generate(result, "csharp", new() { RootName = className }).Content;
+    public static string GenerateTypeScript(AnalysisResult result, string interfaceName = "GeneratedSchema") => Generate(result, "typescript", new() { RootName = interfaceName }).Content;
+    public static string GenerateJsonSchema(AnalysisResult result) => Generate(result, "json-schema").Content;
+    public static string GenerateOpenApiJson(AnalysisResult result, string title = "GeneratedSchema") => Generate(result, "openapi", new() { RootName = title }).Content;
+    public static string GenerateOpenApiYaml(AnalysisResult result, string title = "GeneratedSchema") => Generate(result, "openapi-yaml", new() { RootName = title }).Content;
+    public static string GenerateProtobuf(AnalysisResult result, string messageName = "GeneratedSchema") => Generate(result, "proto", new() { RootName = messageName }).Content;
+    public static string GenerateSql(AnalysisResult result, string dialect = "postgres", string tableName = "GeneratedSchema") => Generate(result, "sql", new() { RootName = tableName, SqlDialect = dialect }).Content;
     public static void Export(AnalysisResult result, string format, string outputPath)
     {
-        string content = format.ToLowerInvariant() switch
-        {
-            "csharp" or "cs" => GenerateCSharp(result),
-            "typescript" or "ts" => GenerateTypeScript(result),
-            "json-schema" or "jsonschema" or "schema" => GenerateJsonSchema(result),
-            "openapi" or "swagger" or "openapi-json" => GenerateOpenApiJson(result),
-            "openapi-yaml" or "yaml-schema" => GenerateOpenApiYaml(result),
-            "protobuf" or "proto" or "proto3" => GenerateProtobuf(result),
-            "sql" or "postgres" or "postgresql" or "pg" => GenerateSql(result, "postgres", SqlTableNameFromPath(outputPath)),
-            "mysql" => GenerateSql(result, "mysql", SqlTableNameFromPath(outputPath)),
-            "sqlite" => GenerateSql(result, "sqlite", SqlTableNameFromPath(outputPath)),
-            "sqlserver" or "mssql" => GenerateSql(result, "sqlserver", SqlTableNameFromPath(outputPath)),
-            _ => throw new InvalidOperationException($"不支持的 Schema 导出格式: '{format}'。可用格式: csharp, typescript, json-schema, openapi, openapi-yaml, proto, sql (postgres/mysql/sqlite/sqlserver)")
-        };
-
-        File.WriteAllText(outputPath, content, Encoding.UTF8);
+        string name = Path.GetFileNameWithoutExtension(outputPath);
+        if (name.EndsWith("_schema", StringComparison.OrdinalIgnoreCase)) name = name[..^7];
+        bool sql = format.ToLowerInvariant() is "sql" or "postgres" or "postgresql" or "pg" or "mysql" or "sqlite" or "sqlserver" or "mssql";
+        var generated = Generate(result, format, new() { RootName = sql && name.Length > 0 ? name : "GeneratedSchema" });
+        File.WriteAllText(outputPath, generated.Content, Encoding.UTF8);
     }
+}
 
-
-    // ─────────────────────────────────────────────
-    //  AST Tree Builder
-    // ─────────────────────────────────────────────
-
-    private static SchemaNode BuildSchemaTree(AnalysisResult result)
+internal sealed class SchemaRenderContext(SchemaDocument document, SchemaExportOptions options)
+{
+    private readonly List<SchemaDiagnostic> _diagnostics = Check(document);
+    private static List<SchemaDiagnostic> Check(SchemaDocument document)
     {
-        var root = new SchemaNode { NodeName = "Root", Kind = "Object" };
-
-        foreach (var field in result.FieldStatistics)
-        {
-            var segments = FieldPath.Parse(field.FieldName).Segments;
-            SchemaNode current = root;
-            for (int i = 0; i < segments.Length; i++)
-            {
-                var segment = segments[i];
-                if (segment.IsIndex)
-                {
-                    current.Kind = "Array";
-                    current = current.ElementNode ??= new SchemaNode { NodeName = "Item" };
-                }
-                else
-                {
-                    current.Kind = "Object";
-                    if (!current.Properties.TryGetValue(segment.Name!, out var child))
-                    {
-                        child = new SchemaNode { NodeName = segment.Name!, IsNullable = field.Coverage < 1 || field.NullAppeared };
-                        current.Properties.Add(segment.Name!, child);
-                    }
-                    current = child;
-                }
-                if (i == segments.Length - 1) ApplyFieldType(current, field);
-            }
-        }
-
-        return root;
+        if (document.Root.Kinds.Length != 1 || document.Root.Kinds[0] != RecordValueKind.Object || document.Root.HasUnknownValues)
+            throw new ArgumentException("Schema exports require an object record root.", nameof(document));
+        return document.Diagnostics.ToList();
     }
-
-    /// <summary>
-    /// 将叶节点字段的静态类型信息应用到 SchemaNode。
-    /// 若节点已包含子属性（如先出现 "address.city" 又出现 "address"），保持对象形态，不做降级。
-    /// </summary>
-    private static void ApplyFieldType(SchemaNode node, FieldStatistic field)
+    public void Note(string code, string path, string message) => _diagnostics.Add(new(code, path, message));
+    public ImmutableArray<SchemaDiagnostic> Diagnostics => _diagnostics.Distinct().OrderBy(item => item.Path, StringComparer.Ordinal).ThenBy(item => item.Code, StringComparer.Ordinal).ToImmutableArray();
+    public SchemaExportResult Finish(string content)
     {
-        node.IsNullable = field.NullAppeared;
-        node.Field = field;
-
-        switch (field.PrimaryType)
-        {
-            case "Object":
-                node.Kind = "Object";
-                break;
-
-            case "Array":
-                if (node.Properties.Count == 0)
-                {
-                    node.Kind = "Array";
-                    node.ElementNode ??= new SchemaNode { NodeName = "Item", Kind = "Primitive" };
-                    if (node.ElementNode.Properties.Count == 0 && node.ElementNode.Kind != "Object")
-                    {
-                        node.ElementNode.CSharpBaseType = "string";
-                        node.ElementNode.TsBaseType = "string";
-                        node.ElementNode.JsonSchemaBaseType = "string";
-                        node.ElementNode.Format = null;
-                    }
-                }
-                break;
-
-            default:
-                if (node.Properties.Count == 0)
-                {
-                    node.Kind = "Primitive";
-                    node.CSharpBaseType = MapToCSharpBaseType(field);
-                    node.TsBaseType = MapToTsBaseType(field);
-                    node.JsonSchemaBaseType = MapToJsonSchemaBaseType(field, out string? fmt);
-                    node.Format = fmt;
-                }
-                break;
-        }
+        if (options.Strict && Diagnostics.Length > 0) throw new SchemaExportException(Diagnostics);
+        return new(content, Diagnostics);
     }
-
-
-    private static string SanitizeIdentifier(string fieldName)
-    {
-        string sanitized = new string(fieldName
-            .Select(c => char.IsLetterOrDigit(c) ? c : '_')
-            .ToArray());
-
-        if (string.IsNullOrEmpty(sanitized)) return "Property";
-        if (char.IsDigit(sanitized[0])) sanitized = "_" + sanitized;
-
-        return char.ToUpperInvariant(sanitized[0]) + sanitized.Substring(1);
-    }
-
-
+    public string Comments(string prefix) => string.Concat(Diagnostics.Select(item => prefix + " " + item.Code + " " + System.Text.Json.JsonSerializer.Serialize(item.Path) + ": " + item.Message + "\n"));
+    public static string Child(string path, string name) => path + "[" + System.Text.Json.JsonSerializer.Serialize(name) + "]";
 }

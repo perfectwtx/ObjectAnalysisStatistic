@@ -264,7 +264,7 @@ public sealed class RecordModelTests
         using var schema = JsonDocument.Parse(SchemaExporter.GenerateJsonSchema(result));
         var item = schema.RootElement.GetProperty("properties").GetProperty("matrix").GetProperty("items");
         Assert.Equal("array", item.GetProperty("type").GetString());
-        Assert.Equal("number", item.GetProperty("items").GetProperty("type").GetString());
+        Assert.Equal("integer", item.GetProperty("items").GetProperty("type").GetString());
     }
 
     [Fact]

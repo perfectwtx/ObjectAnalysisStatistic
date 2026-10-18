@@ -85,14 +85,14 @@ public class FullRoadmapFeaturesTests
         Assert.Contains("}", csCode);
         Assert.Contains("public long Id", csCode);
         Assert.Contains("public bool IsActive", csCode);
-        Assert.Contains("public string? NullableNote", csCode);
+        Assert.Contains("public System.Text.Json.JsonElement? NullableNote", csCode);
 
         // TypeScript
         string tsCode = SchemaExporter.GenerateTypeScript(result, "TestEntity");
         Assert.Contains("export interface TestEntity", tsCode);
         Assert.Contains("Id: number;", tsCode);
         Assert.Contains("IsActive: boolean;", tsCode);
-        Assert.Contains("NullableNote?: string;", tsCode);
+        Assert.Contains("NullableNote: null;", tsCode);
 
         // JSON Schema
         string jsonSchema = SchemaExporter.GenerateJsonSchema(result);
@@ -100,13 +100,13 @@ public class FullRoadmapFeaturesTests
         Assert.Contains("\"Id\"", jsonSchema);
         Assert.Contains("\"Email\"", jsonSchema);
 
-        // OpenAPI 3.0 (JSON & YAML)
+        // OpenAPI 3.1 (JSON & YAML)
         string openApiJson = SchemaExporter.GenerateOpenApiJson(result, "TestEntity");
-        Assert.Contains("\"openapi\": \"3.0.3\"", openApiJson);
+        Assert.Contains("\"openapi\": \"3.1.0\"", openApiJson);
         Assert.Contains("\"TestEntity\"", openApiJson);
 
         string openApiYaml = SchemaExporter.GenerateOpenApiYaml(result, "TestEntity");
-        Assert.Contains("openapi: 3.0.3", openApiYaml);
+        Assert.Contains("openapi: \"3.1.0\"", openApiYaml);
         Assert.Contains("TestEntity:", openApiYaml);
 
         // Protobuf 3 (.proto)
@@ -143,7 +143,7 @@ public class FullRoadmapFeaturesTests
         // 嵌套对象被还原为独立 DTO record
         Assert.Contains("public record AddressDto", csCode);
         Assert.Contains("public string City", csCode);
-        Assert.Contains("public string District", csCode);
+        Assert.Contains("public string? District", csCode);
         Assert.Contains("public AddressDto Address", csCode);
         // 数组索引被还原为强类型数组
         Assert.Contains("public string[] Tags", csCode);
@@ -227,7 +227,7 @@ public class FullRoadmapFeaturesTests
         Assert.Contains("\"created_at\" TIMESTAMP NOT NULL", pg);
         Assert.Contains("\"profile\" JSONB", pg);
         Assert.Contains("\"tags\" JSONB", pg);
-        Assert.Contains("CHECK (\"status\" IN ('active', 'disabled', 'O''Brien'))", pg);
+        Assert.Contains("CHECK (\"status\" IN ('O''Brien', 'active', 'disabled'))", pg);
 
         // MySQL (反引号标识符、JSON、DOUBLE、TINYINT(1))
         string my = SchemaExporter.GenerateSql(result, "mysql", "users");
@@ -251,7 +251,7 @@ public class FullRoadmapFeaturesTests
         Assert.Contains("[created_at] DATETIME2 NOT NULL", ss);
         Assert.Contains("[tags] NVARCHAR(MAX)", ss);
         Assert.Contains("[name] NVARCHAR(MAX) NOT NULL", ss);
-        Assert.Contains("CHECK ([status] IN ('active', 'disabled', 'O''Brien'))", ss);
+        Assert.Contains("CHECK ([status] IN ('O''Brien', 'active', 'disabled'))", ss);
     }
 
     // ──────────────────────────────────────────────
