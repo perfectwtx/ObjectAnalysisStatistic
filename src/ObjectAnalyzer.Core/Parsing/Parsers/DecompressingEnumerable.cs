@@ -44,8 +44,8 @@ internal sealed class DecompressingEnumerable(string path, IFileParser parser, P
         public void Reset() => _inner.Reset();
         public void Dispose()
         {
-            _inner.Dispose();
-            _source.Dispose();
+            try { _inner.Dispose(); }
+            finally { _source.Dispose(); }
         }
     }
 }

@@ -15,11 +15,12 @@ internal sealed class AnalysisSession
     private readonly IProgressReporter _progress;
     private readonly AnalysisRunContext _context;
     private readonly CancellationToken _cancellation;
+    private readonly bool _asyncInput;
     private MemoryBudget? _memory;
     private long _populationCount;
 
-    public AnalysisSession(IProgressReporter progress, AnalysisRunContext context, CancellationToken cancellation)
-    { _progress = progress; _context = context; _cancellation = cancellation; }
+    public AnalysisSession(IProgressReporter progress, AnalysisRunContext context, CancellationToken cancellation, bool asyncInput = false)
+    { _progress = progress; _context = context; _cancellation = cancellation; _asyncInput = asyncInput; }
 
     public PipelineResult Run(
         AnalysisOptions options,
@@ -37,11 +38,6 @@ internal sealed class AnalysisSession
             Sampling.Validate(options.Sampling.SampleReservoir, options.Sampling.SampleStep);
             Diagnostic("memory.sampling", "Memory pressure enabled reservoir sampling.");
         }
-        if (ctx.StartFromPosition > 0 && (
-            !string.IsNullOrEmpty(options.Input.ConnectionString) ||
-            CompressionDetector.Detect(options.Input.InputPath) != CompressionType.None ||
-            ResolveEffectiveFormat(options.Input.InputPath, rules, options.Input.Format) is not ("jsonl" or "ndjson")))
-            throw new NotSupportedException("Position resume requires uncompressed JSONL input.");
         if ((ctx.StartFromPosition > 0 || ctx.InitialState is not null) &&
             Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
             throw new NotSupportedException("Incremental state cannot be combined with sampling.");
@@ -56,9 +52,10 @@ internal sealed class AnalysisSession
             if (initial.Configuration != accumulator.Configuration)
                 throw new InvalidOperationException("Initial state configuration differs from the execution plan.");
         }
+        var input = PrepareInput(options, rules);
         Stage(AnalysisStage.Input);
         // 1. 解析分发：数据库直连 / root-path 整体投影 / 常规文件
-        IEnumerable<Dictionary<string, object?>> objects = WithCancellation(ParseDispatch(options, rules, ctx));
+        IEnumerable<Dictionary<string, object?>> objects = WithCancellation(ReadInput(input.Source, input.Options));
         Stage(AnalysisStage.Projection);
 
         // 2. record-path 投影：每条记录可能 fan-out，始终生效（即使在 root-path 之后）
@@ -72,7 +69,7 @@ internal sealed class AnalysisSession
         Stage(AnalysisStage.Filtering);
         if (transformProcessor.HasSelectionOrTransforms)
         {
-            objects = transformProcessor.Wrap(objects);
+            objects = transformProcessor.Wrap(objects.Select(ToObjectRecord));
         }
 
         // 4. 全部格式共用转换、过滤后的采样阶段。
@@ -181,76 +178,68 @@ internal sealed class AnalysisSession
     internal static string CreateExecutionSignature(AnalysisOptions options) => RecordValue.FromJsonElement(
         JsonSerializer.SerializeToElement(new
         {
-            options.Parse.Flatten, options.Parse.MaxTrackedValues, options.Parse.CsvInferNumbers, options.FieldSelection,
+            InputContract = "record-source/v1",
+            options.Parse.Flatten, options.Parse.MaxTrackedValues, options.Parse.CsvInferNumbers, options.Parse.MalformedRecords, options.FieldSelection,
             options.Input.RootPath, options.Input.RecordPath, options.Sampling, options.Advanced
         })).CanonicalKey;
 
-    private IEnumerable<Dictionary<string, object?>> ParseDispatch(
-        AnalysisOptions options, AnalysisRules? rules, AnalysisRunContext ctx)
+    private (IAnalysisDataSource Source, SourceReadOptions Options) PrepareInput(AnalysisOptions options, AnalysisRules? rules)
     {
-        bool dbMode = !string.IsNullOrEmpty(options.Input.ConnectionString);
-        var valueParsers = ResolveValueParsers(rules);
-
-        if (dbMode)
+        var registry = _context.Parsers ?? RecordParserRegistry.Default;
+        IAnalysisDataSource source;
+        if (_context.Source is { } supplied) source = supplied;
+        else if (!string.IsNullOrWhiteSpace(options.Input.ConnectionString))
+            source = DataSources.Database(options.Input.ConnectionString,
+                DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString), options.Input.Query!);
+        else
         {
-            return ParseFromDatabase(options, ctx);
+            if (string.IsNullOrWhiteSpace(options.Input.InputPath)) throw new ArgumentException("An input source is required.");
+            string format = !string.IsNullOrWhiteSpace(options.Input.Format)
+                ? options.Input.Format.Trim().ToLowerInvariant() : registry.DetectFormat(options.Input.InputPath);
+            if (rules?.ValueParsers is { Count: > 0 } && format is "excel" or "excel-json" or "csv") format = "excel-json";
+            source = DataSources.File(options.Input.InputPath, format, registry);
         }
-
-        bool hasRootPath = !string.IsNullOrWhiteSpace(options.Input.RootPath);
-        if (hasRootPath)
+        string? rootPath = options.Input.RootPath;
+        if (!string.IsNullOrWhiteSpace(rootPath) && !source.Descriptor.Capabilities.RootProjection)
         {
-            string fmt = ResolveEffectiveFormat(options.Input.InputPath, rules, options.Input.Format);
-            if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db")
-            {
-                Diagnostic("projection.root-ignored", "Root projection is ignored for record-oriented input.");
-            }
-            else
-            {
-                ctx.EffectiveFormat = fmt;
-                return LoadAndApplyRootPath(options.Input.InputPath, options.Input.RootPath!);
-            }
+            Diagnostic("projection.root-ignored", "Root projection is ignored for record-oriented input.");
+            rootPath = null;
         }
-
-        return ParseByFormat(options, rules, valueParsers, ctx);
-    }
-
-    private IEnumerable<Dictionary<string, object?>> ParseByFormat(
-        AnalysisOptions options,
-        AnalysisRules? rules,
-        IReadOnlyList<ValueParserConfig> valueParsers,
-        AnalysisRunContext ctx)
-    {
-        string format = ResolveEffectiveFormat(options.Input.InputPath, rules, options.Input.Format);
-        ctx.EffectiveFormat = format;
-        Diagnostic("input.format", "Input format resolved.", new Dictionary<string, object?> { ["format"] = format });
-
-        AnnounceCompression(options.Input.InputPath);
-
-        var parseOptions = new ParseOptions
+        var settings = new SourceReadOptions
         {
-            Flatten = ResolveFlatten(options),
-            ValueParsers = valueParsers,
-            CsvInferNumbers = options.Parse.CsvInferNumbers,
-            SampleReservoir = 0,
-            SampleStep = 0,
-            StartFromLine = ctx.StartFromPosition,
-            SourceProgress = position =>
+            Flatten = ResolveFlatten(options), CsvInferNumbers = options.Parse.CsvInferNumbers,
+            ValueParsers = ResolveValueParsers(rules), StartPosition = _context.StartFromPosition, RootPath = rootPath,
+            MalformedRecords = options.Parse.MalformedRecords, DiagnosticLimit = options.Parse.InputDiagnosticLimit,
+            SkippedRecordProgress = count => _context.SkippedInputRecords = count,
+            PositionProgress = position =>
             {
                 _cancellation.ThrowIfCancellationRequested();
-                ctx.LastSourcePosition = position - ctx.StartFromPosition;
+                _context.LastSourcePosition = position - _context.StartFromPosition;
+            },
+            DiagnosticSink = diagnostic =>
+            {
+                if (diagnostic.Code == "input.skipped-summary") _context.SkippedInputRecords = diagnostic.Occurrences;
+                Diagnostic(diagnostic.Code, diagnostic.Message, new Dictionary<string, object?>
+                { ["location"] = diagnostic.Location, ["occurrences"] = diagnostic.Occurrences });
             }
         };
-        return FileParsers.ParseByFormat(options.Input.InputPath, format, parseOptions);
+        settings.Validate(source.Descriptor);
+        _context.SourceDescriptor = source.Descriptor;
+        return (source, settings);
     }
 
-    private IEnumerable<Dictionary<string, object?>> ParseFromDatabase(
-        AnalysisOptions options, AnalysisRunContext ctx)
+    private IEnumerable<Dictionary<string, object?>> ReadInput(IAnalysisDataSource source, SourceReadOptions settings)
     {
-        ctx.EffectiveFormat = "db";
-        var provider = DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString!);
-        Diagnostic("input.format", "Database input selected.", new Dictionary<string, object?> { ["format"] = "db", ["provider"] = provider.ToString() });
-        return DatabaseReader.ReadRows(options.Input.ConnectionString!, provider, options.Input.Query!);
+        _context.EffectiveFormat = source.Descriptor.Format;
+        Diagnostic("input.format", "Input format resolved.", new Dictionary<string, object?> { ["format"] = source.Descriptor.Format });
+        if (_context.Source is null && !string.IsNullOrWhiteSpace(_context.SourceDescriptor?.Name)
+            && source.Descriptor.Format != "db") AnnounceCompression(source.Descriptor.Name);
+        var input = _asyncInput ? new AsyncRecordBridge(source) : source;
+        return input.Read(settings, _cancellation).Select(record => record.ToEngineRecord());
     }
+
+    private static Dictionary<string, object?> ToObjectRecord(Dictionary<string, object?> record)
+        => record.ToDictionary(pair => pair.Key, pair => pair.Value is RecordValue typed ? typed.ToObject() : pair.Value, StringComparer.Ordinal);
 
     /// <summary>
     /// 缺陷 2 修复落点：valueParsers 仅在输入确为电子表格类格式（excel / excel-json / csv，
@@ -289,45 +278,12 @@ internal sealed class AnalysisSession
         {
             _cancellation.ThrowIfCancellationRequested();
             input++;
-            var matches = JsonPathProjector.ApplyRecordPath(record, expression);
+            var matches = JsonPathProjector.ApplyRecordPath(ToObjectRecord(record), expression);
             if (matches.Count == 0) missing++;
             foreach (var match in matches) { output++; yield return match; }
         }
         Diagnostic("projection.summary", "Record projection completed.", new Dictionary<string, object?>
         { ["input"] = input, ["unmatched"] = missing, ["output"] = output });
-    }
-
-    private IEnumerable<Dictionary<string, object?>> LoadAndApplyRootPath(string path, string expression)
-    {
-        // 整体读入 JSON：JSONPath 投影必须访问整个文档，无法流式。
-        byte[] bytes;
-        using (var fs = File.OpenRead(path))
-        using (var ms = new MemoryStream())
-        {
-            var buffer = new byte[81920];
-            int count;
-            while ((count = fs.Read(buffer, 0, buffer.Length)) > 0)
-            { _cancellation.ThrowIfCancellationRequested(); ms.Write(buffer, 0, count); }
-            bytes = ms.ToArray();
-        }
-        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
-        {
-            bytes = bytes.AsSpan(3).ToArray();
-        }
-
-        JsonNode? root;
-        try
-        {
-            root = JsonNode.Parse(bytes);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidDataException("JSON 根节点解析失败。", ex);
-        }
-
-        var records = JsonPathProjector.ApplyRootPath(root, expression);
-        Diagnostic("projection.root", "Root projection completed.", new Dictionary<string, object?> { ["output"] = records.Count });
-        return records;
     }
 
     // ── 采样 / 预览 / 统计回填 ──
@@ -365,7 +321,7 @@ internal sealed class AnalysisSession
             {
                 lock (preview)
                 {
-                    if (preview.Count < limit) preview.Add(obj);
+                    if (preview.Count < limit) preview.Add(ToObjectRecord(obj));
                 }
             }
             yield return obj;

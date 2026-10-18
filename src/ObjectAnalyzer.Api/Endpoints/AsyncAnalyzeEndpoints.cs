@@ -522,9 +522,7 @@ public static class AsyncAnalyzeEndpoints
 
             var outcome = await coordinator.ExecuteAsync(
                 job,
-                token => Task.Run(
-                    () => AnalysisCore.AnalyzeFile(dataPath, rules, options, token, progressBridge),
-                    token),
+                token => AnalysisCore.AnalyzeFileAsync(dataPath, rules, options, token, progressBridge),
                 value =>
                 {
                     // Publish delivery metadata before CompleteAsync commits the terminal state.

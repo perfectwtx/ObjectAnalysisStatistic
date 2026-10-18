@@ -42,8 +42,9 @@ public sealed class InputSource : IDisposable
     /// <summary>
     /// 打开输入文件并按扩展名选择解压策略。返回的对象在分析枚举期间保持打开，结束后释放。
     /// </summary>
-    public static InputSource Open(string path)
+    public static InputSource Open(string path, bool materializeExcel = true, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         CompressionType type = CompressionDetector.Detect(path);
         if (type == CompressionType.None)
         {
@@ -58,8 +59,12 @@ public sealed class InputSource : IDisposable
             var gzip = new GZipStream(fs, CompressionMode.Decompress, leaveOpen: false);
             string innerExt = Path.GetExtension(CompressionDetector.StripCompression(path));
             string format = FileParsers.FormatFromExtension(innerExt);
-            Stream content = MaterializeIfExcel(gzip, format);
-            return new InputSource(content, null, format, type, null, null);
+            try
+            {
+                Stream content = MaterializeIfExcel(gzip, materializeExcel ? format : "", cancellationToken);
+                return new InputSource(content, null, format, type, null, null);
+            }
+            catch { gzip.Dispose(); fs.Dispose(); throw; }
         }
 
         if (type == CompressionType.BZip2)
@@ -71,33 +76,47 @@ public sealed class InputSource : IDisposable
             };
             string innerExt = Path.GetExtension(CompressionDetector.StripCompression(path));
             string format = FileParsers.FormatFromExtension(innerExt);
-            Stream content = MaterializeIfExcel(bz2, format);
-            // BZip2InputStream 不级联释放底层文件流，显式将文件流登记为 owner 释放
-            return new InputSource(content, new IDisposable[] { fs }, format, type, null, null);
+            try
+            {
+                Stream content = MaterializeIfExcel(bz2, materializeExcel ? format : "", cancellationToken);
+                return new InputSource(content, new IDisposable[] { fs }, format, type, null, null);
+            }
+            catch { bz2.Dispose(); fs.Dispose(); throw; }
         }
 
-        return OpenZip(path);
+        return OpenZip(path, materializeExcel, cancellationToken);
     }
 
     /// <summary>
     /// 若内层格式为需要随机访问的 excel（.xlsx），则把前向只读的解压流整体拷贝到内存流以保证可寻址；
     /// 否则直接透传解压流（流式、内存有界）。
     /// </summary>
-    private static Stream MaterializeIfExcel(Stream decompressed, string format)
+    private static Stream MaterializeIfExcel(Stream decompressed, string format, CancellationToken cancellationToken)
     {
         if (format != "excel")
             return decompressed;
 
         // .xlsx 基于 zip 随机访问，MiniExcel 需要可寻址流；压缩流通常为前向只读，整体缓冲到内存。
         // xlsx 极少达到 TB 级，且已属边界场景，缓冲代价可接受。
-        var ms = new MemoryStream();
-        decompressed.CopyTo(ms);
-        ms.Position = 0;
+        var ms = Buffer(decompressed, cancellationToken);
         decompressed.Dispose(); // 级联释放底层文件流（leaveOpen:false）
         return ms;
     }
 
-    private static InputSource OpenZip(string path)
+    private static MemoryStream Buffer(Stream input, CancellationToken cancellationToken)
+    {
+        var buffer = new MemoryStream();
+        try
+        {
+            using var view = new SourceReadStream(input, cancellationToken);
+            view.CopyTo(buffer);
+            buffer.Position = 0;
+            return buffer;
+        }
+        catch { buffer.Dispose(); throw; }
+    }
+
+    private static InputSource OpenZip(string path, bool materializeExcel, CancellationToken cancellationToken)
     {
         var fs = File.OpenRead(path);
         ZipArchive zip;
@@ -149,12 +168,10 @@ public sealed class InputSource : IDisposable
             string format = FileParsers.FormatFromExtension(innerExt);
 
             Stream content;
-            if (format == "excel")
+            if (materializeExcel && format == "excel")
             {
                 // 缓冲到内存以保证可寻址（.xlsx 基于 zip 随机访问）
-                var ms = new MemoryStream();
-                raw.CopyTo(ms);
-                ms.Position = 0;
+                var ms = Buffer(raw, cancellationToken);
                 raw.Dispose();
                 content = ms;
             }

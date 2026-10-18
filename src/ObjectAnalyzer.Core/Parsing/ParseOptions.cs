@@ -1,7 +1,7 @@
 namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
-/// Options passed to file parsers.
+/// Legacy file parser options. Unified sources use SourceReadOptions; sampling is owned by the pipeline.
 /// </summary>
 public sealed class ParseOptions
 {

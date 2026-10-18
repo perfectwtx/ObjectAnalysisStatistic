@@ -26,8 +26,6 @@ public sealed class AnalysisExecutionPlan
         if (!string.IsNullOrWhiteSpace(copy.Input.RootPath)) JsonPathProjector.TryValidate(copy.Input.RootPath);
         if (!string.IsNullOrWhiteSpace(copy.Input.RecordPath)) JsonPathProjector.TryValidate(copy.Input.RecordPath);
         ArgumentOutOfRangeException.ThrowIfNegative(copy.Memory.MaxMemoryMB);
-        if (string.IsNullOrWhiteSpace(copy.Input.ConnectionString) && string.IsNullOrWhiteSpace(copy.Input.InputPath))
-            throw new ArgumentException("An input path or database connection is required.", nameof(options));
         if (!string.IsNullOrWhiteSpace(copy.Input.ConnectionString) && string.IsNullOrWhiteSpace(copy.Input.Query))
             throw new ArgumentException("A database query is required.", nameof(options));
     }
@@ -52,8 +50,30 @@ public sealed class AnalysisExecutor(IProgressReporter? progress = null)
         return ExecuteRun(() => plan, runContext, cancellationToken);
     }
 
+    public Task<PipelineResult> ExecuteAsync(AnalysisOptions options, AnalysisRules? rules = null,
+        AnalysisRunContext? runContext = null, CancellationToken cancellationToken = default)
+    {
+        // Freeze before scheduling so callers can safely reuse their mutable option builders.
+        AnalysisExecutionPlan? plan = null;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        try { plan = new AnalysisExecutionPlan(options, rules); }
+        catch (Exception exception) { failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception); }
+        return Task.Run(() => ExecuteRun(() =>
+        {
+            failure?.Throw();
+            return plan!;
+        }, runContext, cancellationToken, asyncInput: true), CancellationToken.None);
+    }
+
+    public Task<PipelineResult> ExecuteAsync(AnalysisExecutionPlan plan, AnalysisRunContext? runContext = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        return Task.Run(() => ExecuteRun(() => plan, runContext, cancellationToken, asyncInput: true), CancellationToken.None);
+    }
+
     private PipelineResult ExecuteRun(Func<AnalysisExecutionPlan> prepare, AnalysisRunContext? runContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool asyncInput = false)
     {
         var context = runContext ?? new AnalysisRunContext();
         context.Begin();
@@ -70,7 +90,7 @@ public sealed class AnalysisExecutor(IProgressReporter? progress = null)
             cancellationToken.ThrowIfCancellationRequested();
             if (context.StartFromPosition < 0 || context.PreviewLimit < 0)
                 throw new ArgumentOutOfRangeException(nameof(runContext), "Cursor and preview limit cannot be negative.");
-            result = new AnalysisSession(_progress, context, cancellationToken)
+            result = new AnalysisSession(_progress, context, cancellationToken, asyncInput)
                 .Run(plan.CreateOptions(), plan.CreateRules());
             cancellationToken.ThrowIfCancellationRequested();
         }

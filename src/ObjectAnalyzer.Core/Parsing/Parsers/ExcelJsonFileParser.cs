@@ -108,6 +108,7 @@ internal sealed class ExcelJsonFileParser : IFileParser
         foreach (var row in MiniExcel.Query(stream, useHeaderRow: false, excelType: ParserHelpers.ResolveExcelType(stream)))
         {
             rowIndex++;
+            options.SourceProgress?.Invoke(rowIndex);
             if (row is not IDictionary<string, object?> rowDict)
                 continue;
 

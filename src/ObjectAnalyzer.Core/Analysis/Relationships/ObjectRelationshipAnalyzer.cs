@@ -48,22 +48,28 @@ public static class ObjectRelationshipAnalyzer
         {
             string path = depth == 0 ? FieldPath.Parse(pair.Key).ToString() : FieldPath.Parse(prefix).AppendProperty(pair.Key).ToString();
             if (pair.Value is null) continue;
-
-            if (TryGetDictionary(pair.Value, out var nested))
+            object? value = pair.Value;
+            if (value is RecordValue typedValue)
             {
-                Add(states, path, "Object", nested);
+                CollectTypedValue(typedValue, path, states, depth);
+                continue;
+            }
+
+            if (TryGetDictionary(value, out var nested))
+            {
+                Add(states, path, "Object", nested.Keys);
                 CollectObject(nested, path, states, depth + 1);
                 continue;
             }
 
-            if (pair.Value is IEnumerable enumerable && pair.Value is not string)
+            if (value is IEnumerable enumerable && value is not string)
             {
                 bool foundObject = false;
                 foreach (var element in enumerable)
                 {
                     if (!TryGetDictionary(element, out var nestedElement)) continue;
                     foundObject = true;
-                    Add(states, path, "Collection", nestedElement);
+                    Add(states, path, "Collection", nestedElement.Keys);
                     CollectObject(nestedElement, path, states, depth + 1);
                 }
 
@@ -72,11 +78,27 @@ public static class ObjectRelationshipAnalyzer
         }
     }
 
+    private static void CollectTypedValue(RecordValue value, string path, Dictionary<string, RelationshipState> states, int depth)
+    {
+        if (depth >= MaxDepth) return;
+        if (value.Kind == RecordValueKind.Object) CollectTypedObject(value, path, "Object", states, depth);
+        else if (value.Kind == RecordValueKind.Array)
+            foreach (var item in value.Items)
+                if (item.Kind == RecordValueKind.Object) CollectTypedObject(item, path, "Collection", states, depth);
+    }
+
+    private static void CollectTypedObject(RecordValue value, string path, string kind, Dictionary<string, RelationshipState> states, int depth)
+    {
+        Add(states, path, kind, value.Properties.Keys);
+        foreach (var property in value.Properties)
+            CollectTypedValue(property.Value, FieldPath.Parse(path).AppendProperty(property.Key).ToString(), states, depth + 1);
+    }
+
     private static void Add(
         Dictionary<string, RelationshipState> states,
         string path,
         string kind,
-        IDictionary<string, object?> target)
+        IEnumerable<string> targetFields)
     {
         string key = $"{kind}\n{path}";
         if (!states.TryGetValue(key, out var state))
@@ -87,7 +109,7 @@ public static class ObjectRelationshipAnalyzer
 
         state.OccurrenceCount++;
         state.NonNullCount++;
-        foreach (var field in target.Keys)
+        foreach (var field in targetFields)
         {
             state.AddTargetField(field);
         }

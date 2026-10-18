@@ -98,36 +98,11 @@ public static class DatabaseReader
     /// DateTime→ISO-8601 字符串、Guid→字符串、二进制→Base64、其余→字符串）。
     /// </summary>
     public static IEnumerable<Dictionary<string, object?>> ReadRows(
-        string connectionString,
-        DatabaseProvider provider,
-        string query)
-    {
-        using DbConnection connection = CreateConnection(connectionString, provider);
-        connection.Open();
+        string connectionString, DatabaseProvider provider, string query, CancellationToken cancellationToken = default)
+        => DataSources.Database(connectionString, provider, query).Read(new SourceReadOptions(), cancellationToken)
+            .Select(record => record.ToObjectDictionary());
 
-        using DbCommand command = connection.CreateCommand();
-        command.CommandText = query;
-        command.CommandTimeout = 0; // 大表流式读取不应受默认 30 秒超时限制
-
-        using DbDataReader reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            var row = new Dictionary<string, object?>(reader.FieldCount);
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                row[FieldPath.Property(reader.GetName(i)).ToString()] = ConvertValue(reader.GetValue(i));
-            }
-            yield return row;
-        }
-    }
-
-    /// <summary>把数据库原生值归一化为与分析管道兼容的标量类型。</summary>
-    private static object? ConvertValue(object? value)
-    {
-        return RecordValue.FromObject(value).ToObject();
-    }
-
-    private static DbConnection CreateConnection(string connectionString, DatabaseProvider provider)
+    internal static DbConnection CreateConnection(string connectionString, DatabaseProvider provider)
     {
         return provider switch
         {

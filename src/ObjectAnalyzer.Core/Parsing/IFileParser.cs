@@ -1,7 +1,7 @@
 namespace ObjectAnalyzer.Parsing;
 
 /// <summary>
-/// Interface for file format parsers. Implement this to add new input formats.
+/// Legacy third-party parser adapter. New formats implement IRecordParser and register per executor run.
 /// </summary>
 public interface IFileParser
 {

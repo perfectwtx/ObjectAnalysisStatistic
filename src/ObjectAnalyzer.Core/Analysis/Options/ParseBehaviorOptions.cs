@@ -5,6 +5,9 @@
 /// </summary>
 public sealed class ParseBehaviorOptions
 {
+    public MalformedRecordPolicy MalformedRecords { get; set; }
+    public int InputDiagnosticLimit { get; set; } = 100;
+
     /// <summary>嵌套属性是否展平为 <c>a.b.c</c>。默认 true。与 <c>--no-flatten</c> 取反对应。</summary>
     public bool Flatten { get; set; } = true;
 

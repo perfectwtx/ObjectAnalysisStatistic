@@ -39,10 +39,12 @@ public sealed partial class AnalysisCommandRunner
 
     private static void ValidateCheckpointOptions(AnalysisOptions options)
     {
-        if (!string.IsNullOrEmpty(options.Input.ConnectionString)
-            || CompressionDetector.Detect(options.Input.InputPath) != CompressionType.None
-            || AnalysisPipeline.ResolveEffectiveFormat(options.Input.InputPath, null, options.Input.Format) != "jsonl")
-            throw new NotSupportedException("Position-based checkpoints currently require uncompressed JSONL input; other formats need an explicit source cursor.");
+        if (!string.IsNullOrEmpty(options.Input.ConnectionString))
+            throw new NotSupportedException("Database queries do not support durable source cursors.");
+        var descriptor = DataSources.File(options.Input.InputPath,
+            AnalysisPipeline.ResolveEffectiveFormat(options.Input.InputPath, null, options.Input.Format)).Descriptor;
+        if (!descriptor.Capabilities.CanResume || descriptor.Capabilities.PositionKind != SourcePositionKind.PhysicalLine)
+            throw new NotSupportedException("Position-based checkpoints require a replayable physical-line source; built-in support is uncompressed JSONL.");
         if (options.Sampling.SampleReservoir > 0 || options.Sampling.SampleStep > 0
             || options.Memory.MaxMemoryMB > 0 && options.Memory.MaxMemoryMode == MaxMemoryMode.Soft)
             throw new NotSupportedException("Checkpoint/resume cannot combine with sampling or automatic memory fallback.");

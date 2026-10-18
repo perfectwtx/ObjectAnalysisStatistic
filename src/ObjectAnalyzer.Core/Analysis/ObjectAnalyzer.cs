@@ -24,7 +24,7 @@ public static partial class ObjectAnalyzer
     {
         ArgumentNullException.ThrowIfNull(records);
         return Analyze(records.Select(record => record.ToDictionary(
-            p => p.Key.ToString(), p => p.Value.ToObject(), StringComparer.Ordinal)),
+            p => p.Key.ToString(), p => (object?)p.Value, StringComparer.Ordinal)),
             rules, parallelOptions, features, progress, maxTrackedValues, cancellationToken);
     }
 
@@ -430,7 +430,8 @@ public static partial class ObjectAnalyzer
         }
 
         // 2) 字符串模式 / Unicode 卫生：仅对字符串值生效
-        if (value is string sVal)
+        string? stringValue = value is RecordValue { Kind: RecordValueKind.String } text ? text.Scalar : value as string;
+        if (stringValue is { } sVal)
         {
             if (features.EnableStringPatterns)
             {

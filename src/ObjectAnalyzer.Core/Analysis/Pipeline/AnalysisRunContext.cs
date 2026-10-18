@@ -10,10 +10,16 @@ namespace ObjectAnalyzer.Analysis.Pipeline;
 public sealed class AnalysisRunContext
 {
     private int _used;
+    private readonly object _notificationLock = new();
+    public IAnalysisDataSource? Source { get; init; }
+    public RecordParserRegistry? Parsers { get; init; }
+    public SourceDescriptor? SourceDescriptor { get; internal set; }
+    public long SkippedInputRecords { get; internal set; }
     private readonly List<Exception> _observerErrors = new();
     public Guid RunId { get; } = Guid.NewGuid();
     public Action<AnalysisEvent>? EventSink { get; init; }
-    public IReadOnlyList<Exception> ObserverErrors => _observerErrors.AsReadOnly();
+    public IReadOnlyList<Exception> ObserverErrors
+    { get { lock (_notificationLock) return _observerErrors.ToArray(); } }
     internal AnalysisStage CurrentStage { get; set; } = AnalysisStage.Preparing;
 
     internal void Begin()
@@ -25,10 +31,13 @@ public sealed class AnalysisRunContext
     // Notifications are synchronous. Host failures cannot change the computation or its terminal outcome.
     internal void Notify(Action notification)
     {
-        try { notification(); }
-        catch (Exception exception)
+        lock (_notificationLock)
         {
-            if (_observerErrors.Count < 32) _observerErrors.Add(exception);
+            try { notification(); }
+            catch (Exception exception)
+            {
+                if (_observerErrors.Count < 32) _observerErrors.Add(exception);
+            }
         }
     }
 

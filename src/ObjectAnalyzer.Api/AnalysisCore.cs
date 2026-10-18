@@ -14,7 +14,7 @@ internal static class AnalysisCore
     /// <summary>
     /// 分析执行结果：结果本体 + 数据预览样本（W8 五页面视图的"数据预览"来源）。
     /// <para>
-    /// <see cref="Result"/> 与 <see cref="Preview"/> 已经过出站打码关卡（见 <see cref="AnalyzeFile"/>）；
+    /// <see cref="Result"/> 与 <see cref="Preview"/> 已经过出站打码关卡（见 <see cref="AnalyzeFileAsync"/>）；
     /// <see cref="Pii"/> 是本次运行解析出的打码策略，<see cref="PiiRedacted"/> 供响应回显留痕。
     /// </para>
     /// </summary>
@@ -28,7 +28,7 @@ internal static class AnalysisCore
     /// <summary>预览捕获条数（与 AnalyzePreviewView.DefaultLimit 对齐）。</summary>
     internal const int PreviewLimit = AnalyzePreviewView.DefaultLimit;
 
-    public static AnalyzeOutcome AnalyzeFile(
+    public static async Task<AnalyzeOutcome> AnalyzeFileAsync(
         string dataPath,
         AnalysisRules? rules,
         AnalysisOptions options,
@@ -47,7 +47,7 @@ internal static class AnalysisCore
             PreviewSink = captured => preview.AddRange(captured),
             PreviewLimit = PreviewLimit
         };
-        var pipelineResult = new AnalysisExecutor().Execute(options, rules, runContext, cancellationToken);
+        var pipelineResult = await new AnalysisExecutor().ExecuteAsync(options, rules, runContext, cancellationToken).ConfigureAwait(false);
 
         // ── 出站打码关卡（delivery boundary）──
         // 分析内核始终处理原始值；任何结果离开服务前在这里统一按策略打码，

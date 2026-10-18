@@ -70,9 +70,7 @@ public static class AnalyzeEndpoints
                 var outcome = await coordinator.ExecuteAsync(
                     file.FileName,
                     effectiveFormat,
-                    token => Task.Run(
-                        () => AnalysisCore.AnalyzeFile(tempData, rulesObj, options, token),
-                        token),
+                    token => AnalysisCore.AnalyzeFileAsync(tempData, rulesObj, options, token),
                     static value => value.Result,
                     options,
                     cancellationToken);
@@ -128,9 +126,7 @@ public static class AnalyzeEndpoints
                 var outcome = await coordinator.ExecuteAsync(
                     "(inline)",
                     effectiveFormat,
-                    token => Task.Run(
-                        () => AnalysisCore.AnalyzeFile(tempData, config.Rules, options, token),
-                        token),
+                    token => AnalysisCore.AnalyzeFileAsync(tempData, config.Rules, options, token),
                     static value => value.Result,
                     options,
                     cancellationToken);
@@ -198,9 +194,7 @@ public static class AnalyzeEndpoints
                 var outcome = await coordinator.ExecuteAsync(
                     "(inline)",
                     effectiveFormat,
-                    token => Task.Run(
-                        () => AnalysisCore.AnalyzeFile(tempData, rulesObj, analysisOptions, token),
-                        token),
+                    token => AnalysisCore.AnalyzeFileAsync(tempData, rulesObj, analysisOptions, token),
                     static value => value.Result,
                     analysisOptions,
                     cancellationToken);

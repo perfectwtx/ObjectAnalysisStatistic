@@ -48,7 +48,7 @@ public sealed class AnalysisAccumulator
     public void Observe(IReadOnlyDictionary<FieldPath, RecordValue> record)
     {
         ArgumentNullException.ThrowIfNull(record);
-        ObserveRange([record.ToDictionary(p => p.Key.ToString(), p => p.Value.ToObject(), StringComparer.Ordinal)]);
+        ObserveRange([record.ToDictionary(p => p.Key.ToString(), p => (object?)p.Value, StringComparer.Ordinal)]);
     }
 
     public void ObserveRange(IEnumerable<Dictionary<string, object?>> records, ParallelOptions? parallelOptions = null,
@@ -56,6 +56,13 @@ public sealed class AnalysisAccumulator
     {
         ArgumentNullException.ThrowIfNull(records);
         ObjectAnalyzer.Accumulate(this, records, parallelOptions, progress, cancellationToken);
+    }
+
+    public void ObserveRecords(IEnumerable<SourceRecord> records, ParallelOptions? parallelOptions = null,
+        IProgress<long>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        ObjectAnalyzer.Accumulate(this, records.Select(record => record.ToEngineRecord()), parallelOptions, progress, cancellationToken);
     }
 
     public AnalysisResult Complete() => CompleteDetailed().Result;

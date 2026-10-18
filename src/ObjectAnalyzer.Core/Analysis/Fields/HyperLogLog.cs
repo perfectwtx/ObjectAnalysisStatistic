@@ -80,7 +80,8 @@ public sealed class HyperLogLog(int precision = 14)
 
         if (other._dense != null)
         {
-            EnsureDense();
+            if (_dense is null && _sparse is not null) PromoteToDense();
+            else EnsureDense();
             for (int i = 0; i < _m; i++)
             {
                 if (_dense![i] < other._dense[i])

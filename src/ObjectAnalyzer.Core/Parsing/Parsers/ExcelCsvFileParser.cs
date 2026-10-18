@@ -53,6 +53,7 @@ internal sealed class ExcelCsvFileParser : IFileParser
             foreach (var row in MiniExcel.Query(stream, useHeaderRow: true, excelType: excelType))
             {
                 rowIndex++;
+                options.SourceProgress?.Invoke(rowIndex + 1);
                 if (dataIndex < skip)
                 {
                     dataIndex++;
@@ -76,6 +77,7 @@ internal sealed class ExcelCsvFileParser : IFileParser
         foreach (var row in MiniExcel.Query(stream, useHeaderRow: false, excelType: excelType))
         {
             rowIdx++;
+            options.SourceProgress?.Invoke(rowIdx);
             if (row is not IDictionary<string, object?> rowDict)
                 continue;
 
