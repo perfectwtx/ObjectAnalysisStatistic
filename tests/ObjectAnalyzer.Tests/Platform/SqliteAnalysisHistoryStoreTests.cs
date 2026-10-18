@@ -55,7 +55,7 @@ public sealed class SqliteAnalysisHistoryStoreTests
         }
         finally
         {
-            TryDelete(databasePath);
+            DeleteDatabase(databasePath);
         }
     }
 
@@ -91,19 +91,9 @@ public sealed class SqliteAnalysisHistoryStoreTests
         }
         finally
         {
-            TryDelete(databasePath);
+            DeleteDatabase(databasePath);
         }
     }
 
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-        catch
-        {
-        }
-    }
+    private static void DeleteDatabase(string path) => SqliteTestDatabase.Delete(path);
 }

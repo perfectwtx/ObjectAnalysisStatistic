@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "amount": 1.25,
+    "label": "alpha, \"quoted\""
+  },
+  {
+    "id": 2,
+    "amount": -2.5,
+    "label": "中文"
+  },
+  {
+    "id": 1,
+    "amount": 1.25,
+    "label": "alpha, \"quoted\""
+  }
+]

@@ -1,0 +1,5 @@
+<records>
+<record><id>001</id><amount>1.25</amount><label>alpha, "quoted"</label></record>
+<record><id>002</id><amount>-2.5</amount><label>中文</label></record>
+<record><id>001</id><amount>1.25</amount><label>alpha, "quoted"</label></record>
+</records>

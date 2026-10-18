@@ -1,0 +1,24 @@
+{
+  "Schema": "performance-run/v1",
+  "Revision": "b86a6b1ebe48de8bd9f63fc7090f7913ed2c3779",
+  "SourceDirty": true,
+  "CapturedAtUtc": "2026-10-18T11:13:08.122Z",
+  "Workload": "mixed-records/v1",
+  "WorkloadSha256": "3D8BA1F12EFD8A170A7FA43871533AEE92FC1050CE204D9A58130DC29398B967",
+  "HarnessSha256": "1BFE3D4137685C2E66AE0D9102840EE3525E74F01D57CCC8710750CF81D5B80A",
+  "Arguments": [
+    "--filter",
+    "*",
+    "--job",
+    "short",
+    "--warmupCount",
+    "5",
+    "--iterationCount",
+    "10",
+    "--exporters",
+    "json",
+    "--artifacts",
+    "artifacts/benchmarks/stage10-final"
+  ],
+  "Notes": "Initial baseline. Kernel source is unchanged from Revision; new benchmark/test harness is uncommitted. Resource probes are separate processes and not statistical timing results."
+}

@@ -1,0 +1,289 @@
+{
+  "Version": "analysis-state/v3",
+  "ResourceLimits": {
+    "MaxPathCharacters": 1024,
+    "MaxRulesPerField": 32,
+    "MaxAnalyzerComponents": 32,
+    "MaxFields": 512,
+    "MaxObjectIdentities": 100000,
+    "MaxObjectSamples": 256,
+    "MaxRetainedPayloadBytes": 67108864,
+    "MaxFrequencyValueBytes": 16384,
+    "MaxSampleValueBytes": 4096,
+    "MaxRuleSamples": 5,
+    "MaxSamplingBytes": 67108864,
+    "MaxPreviewRecords": 100,
+    "MaxPreviewBytes": 1048576,
+    "MaxRecordCharacters": 1048576,
+    "MaxBufferedInputBytes": 67108864,
+    "BatchSize": 1024,
+    "MaxBatchBytes": 8388608,
+    "MaxWorkers": 8,
+    "MaxTimeBins": 4096,
+    "MaxPatternTemplates": 256,
+    "MaxPatternCharacters": 4096,
+    "MaxExampleCharacters": 256,
+    "MaxCorrelationFields": 32,
+    "MaxCorrelationRows": 20000,
+    "MaxFuzzyKeys": 5000,
+    "MaxRelationshipPaths": 1024,
+    "MaxDiagnosticSamples": 100,
+    "AsyncQueueCapacity": 128
+  },
+  "Rules": null,
+  "Features": {
+    "EnableCorrelation": false,
+    "EnableStringPatterns": false,
+    "EnableUnicodeHygiene": false,
+    "EnableTimeSeries": false,
+    "FuzzyDedupField": null,
+    "EnableDistributionSnapshot": false,
+    "CorrelationReservoir": 20000
+  },
+  "Analyzers": [
+    {
+      "Id": "date",
+      "Version": 1,
+      "ConfigurationKey": ""
+    },
+    {
+      "Id": "distinct",
+      "Version": 1,
+      "ConfigurationKey": ""
+    },
+    {
+      "Id": "numeric",
+      "Version": 1,
+      "ConfigurationKey": ""
+    },
+    {
+      "Id": "text",
+      "Version": 1,
+      "ConfigurationKey": ""
+    },
+    {
+      "Id": "value-rules",
+      "Version": 1,
+      "ConfigurationKey": "rv1:[\u0022Array\u0022,[[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022enum\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022pattern\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022range\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}]]]"
+    }
+  ],
+  "RuleConfigurationKey": "rv1:[\u0022Object\u0022,{\u0022Result\u0022:[\u0022Array\u0022,[[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022dataset-expectations\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022outlier\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022required-null-rate\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022unique\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}]]],\u0022Value\u0022:[\u0022Array\u0022,[[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022enum\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022pattern\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}],[\u0022Object\u0022,{\u0022ConfigurationKey\u0022:[\u0022String\u0022,\u0022\u0022],\u0022Id\u0022:[\u0022String\u0022,\u0022range\u0022],\u0022Version\u0022:[\u0022Number\u0022,\u00221\u0022]}]]]}]",
+  "MaxTrackedValues": 1000,
+  "TotalObjects": 2,
+  "Fields": [
+    {
+      "Counters": {
+        "FieldName": "amount",
+        "Count": 2,
+        "NullCount": 0,
+        "TypeCounts": {
+          "Number": 2
+        },
+        "ValueCounts": {
+          "rv1:[\u0022Number\u0022,\u00221\u0022]": 1,
+          "rv1:[\u0022Number\u0022,\u00223\u0022]": 1
+        },
+        "OtherValueCount": 0,
+        "ValueCountsTruncated": false,
+        "NumbersAreIntegral": true,
+        "NumbersFitInt64": true,
+        "NumbersFitDecimal": true,
+        "NumbersFitDouble": true
+      },
+      "Components": [
+        {
+          "Id": "distinct",
+          "Data": {
+            "MinNumber": 1.7976931348623157E+308,
+            "MaxNumber": -1.7976931348623157E+308,
+            "SumNumber": 0,
+            "NumberCount": 0,
+            "NumMean": 0,
+            "NumM2": 0,
+            "MinLength": 2147483647,
+            "MaxLength": -2147483648,
+            "LengthSum": 0,
+            "StringCount": 0,
+            "ZeroCount": 0,
+            "SemanticCounts": {},
+            "Histogram": null,
+            "DateTimeCount": 0,
+            "MinDateTime": null,
+            "MaxDateTime": null,
+            "DateHistogram": null,
+            "RangeViolationCount": 0,
+            "Quantiles": null,
+            "DistinctHll": {
+              "Precision": 14,
+              "Registers": {
+                "4379": 1,
+                "14407": 1
+              }
+            }
+          }
+        },
+        {
+          "Id": "numeric",
+          "Data": {
+            "MinNumber": 1,
+            "MaxNumber": 3,
+            "SumNumber": 4,
+            "NumberCount": 2,
+            "NumMean": 2,
+            "NumM2": 2,
+            "MinLength": 2147483647,
+            "MaxLength": -2147483648,
+            "LengthSum": 0,
+            "StringCount": 0,
+            "ZeroCount": 0,
+            "SemanticCounts": {},
+            "Histogram": {
+              "0": 1,
+              "1": 1
+            },
+            "DateTimeCount": 0,
+            "MinDateTime": null,
+            "MaxDateTime": null,
+            "DateHistogram": null,
+            "RangeViolationCount": 0,
+            "Quantiles": {
+              "Capacity": 256,
+              "Centroids": [
+                {
+                  "mean": 1,
+                  "weight": 1
+                },
+                {
+                  "mean": 3,
+                  "weight": 1
+                }
+              ]
+            },
+            "DistinctHll": null
+          }
+        }
+      ]
+    },
+    {
+      "Counters": {
+        "FieldName": "label",
+        "Count": 2,
+        "NullCount": 1,
+        "TypeCounts": {
+          "String": 1,
+          "Null": 1
+        },
+        "ValueCounts": {
+          "rv1:[\u0022String\u0022,\u0022one\u0022]": 1,
+          "rv1:[\u0022Null\u0022,\u0022\u0022]": 1
+        },
+        "OtherValueCount": 0,
+        "ValueCountsTruncated": false,
+        "NumbersAreIntegral": true,
+        "NumbersFitInt64": true,
+        "NumbersFitDecimal": true,
+        "NumbersFitDouble": true
+      },
+      "Components": [
+        {
+          "Id": "date",
+          "Data": {
+            "MinNumber": 1.7976931348623157E+308,
+            "MaxNumber": -1.7976931348623157E+308,
+            "SumNumber": 0,
+            "NumberCount": 0,
+            "NumMean": 0,
+            "NumM2": 0,
+            "MinLength": 2147483647,
+            "MaxLength": -2147483648,
+            "LengthSum": 0,
+            "StringCount": 0,
+            "ZeroCount": 0,
+            "SemanticCounts": {},
+            "Histogram": null,
+            "DateTimeCount": 0,
+            "MinDateTime": null,
+            "MaxDateTime": null,
+            "DateHistogram": null,
+            "RangeViolationCount": 0,
+            "Quantiles": null,
+            "DistinctHll": null
+          }
+        },
+        {
+          "Id": "distinct",
+          "Data": {
+            "MinNumber": 1.7976931348623157E+308,
+            "MaxNumber": -1.7976931348623157E+308,
+            "SumNumber": 0,
+            "NumberCount": 0,
+            "NumMean": 0,
+            "NumM2": 0,
+            "MinLength": 2147483647,
+            "MaxLength": -2147483648,
+            "LengthSum": 0,
+            "StringCount": 0,
+            "ZeroCount": 0,
+            "SemanticCounts": {},
+            "Histogram": null,
+            "DateTimeCount": 0,
+            "MinDateTime": null,
+            "MaxDateTime": null,
+            "DateHistogram": null,
+            "RangeViolationCount": 0,
+            "Quantiles": null,
+            "DistinctHll": {
+              "Precision": 14,
+              "Registers": {
+                "3346": 1,
+                "10401": 10
+              }
+            }
+          }
+        },
+        {
+          "Id": "text",
+          "Data": {
+            "MinNumber": 1.7976931348623157E+308,
+            "MaxNumber": -1.7976931348623157E+308,
+            "SumNumber": 0,
+            "NumberCount": 0,
+            "NumMean": 0,
+            "NumM2": 0,
+            "MinLength": 3,
+            "MaxLength": 3,
+            "LengthSum": 3,
+            "StringCount": 1,
+            "ZeroCount": 0,
+            "SemanticCounts": {},
+            "Histogram": null,
+            "DateTimeCount": 0,
+            "MinDateTime": null,
+            "MaxDateTime": null,
+            "DateHistogram": null,
+            "RangeViolationCount": 0,
+            "Quantiles": null,
+            "DistinctHll": null
+          }
+        }
+      ]
+    }
+  ],
+  "Objects": [
+    {
+      "High": 8444281626215883149,
+      "Low": 9689569679208088776,
+      "Count": 1,
+      "Sample": "{\r\n  \u0022amount\u0022: 3,\r\n  \u0022label\u0022: null\r\n}"
+    },
+    {
+      "High": 8645152359798196599,
+      "Low": 14005372183664651711,
+      "Count": 1,
+      "Sample": "{\r\n  \u0022amount\u0022: 1,\r\n  \u0022label\u0022: \u0022one\u0022\r\n}"
+    }
+  ],
+  "Relationships": [],
+  "TransformFailures": {},
+  "FilterExpression": null
+}

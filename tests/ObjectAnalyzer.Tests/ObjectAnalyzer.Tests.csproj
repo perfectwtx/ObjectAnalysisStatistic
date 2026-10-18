@@ -33,4 +33,8 @@
     <ProjectReference Include="../../src/ObjectAnalyzer.Hosting/ObjectAnalyzer.Hosting.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../../testsupport/DeterministicRecords.cs" Link="Contracts/DeterministicRecords.cs" />
+    <None Include="Fixtures/Contracts/**/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

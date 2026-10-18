@@ -1,0 +1,19 @@
+{
+  "Workload": "mixed-records/v1",
+  "DatasetSha256": "CE7C2767A89CD93AC9A0010705065AD9BB9059B8A85302E97B41A1B90204A4D0",
+  "Records": 10000,
+  "Cardinality": 32,
+  "Parallelism": 4,
+  "TrackedValues": 128,
+  "Runtime": ".NET 10.0.12",
+  "OS": "Microsoft Windows 10.0.26200",
+  "Architecture": "X64",
+  "LogicalProcessors": 32,
+  "ServerGC": false,
+  "ElapsedMilliseconds": 391.2318,
+  "RecordsPerSecond": 25560.294434143645,
+  "AllocatedBytesAllThreads": 127366864,
+  "RetainedManagedBytesDelta": 1186392,
+  "PeakWorkingSetBytes": 79872000,
+  "ResultRecords": 10000
+}

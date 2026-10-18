@@ -155,6 +155,7 @@ samples/                   # 示例数据与规则
 | [Desktop 使用与发布](docs/desktop.md) | Desktop 本地使用、数据位置、Windows 发布 |
 | [总体架构](docs/architecture.md) | 模块依赖、宿主与任务生命周期 |
 | [模块拆分与迁移](docs/core-module-boundaries.md) | 独立引用内核、输入端口和程序集迁移 |
+| [统计契约与性能基线](docs/core-statistical-contracts-and-benchmarks.md) | 合并性质、跨格式验证、实测基线与比较 |
 | [数据质量](docs/data-quality.md) | 五维质量模型与质量指标 |
 | [问题中心](docs/issues.md) | Issue 模型、来源与处理路径 |
 | [历史与趋势](docs/history.md) | 快照、趋势与历史存储 |

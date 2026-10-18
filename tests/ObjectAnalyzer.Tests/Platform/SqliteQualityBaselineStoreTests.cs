@@ -27,9 +27,7 @@ public sealed class SqliteQualityBaselineStoreTests
         }
         finally
         {
-            TryDelete(databasePath);
-            TryDelete(databasePath + "-shm");
-            TryDelete(databasePath + "-wal");
+            DeleteDatabase(databasePath);
         }
     }
 
@@ -51,15 +49,27 @@ public sealed class SqliteQualityBaselineStoreTests
         }
         finally
         {
-            TryDelete(databasePath);
-            TryDelete(databasePath + "-shm");
-            TryDelete(databasePath + "-wal");
+            DeleteDatabase(databasePath);
         }
     }
 
-    private static void TryDelete(string path)
+    [Fact]
+    public async Task ParallelTemporaryDatabases_AreReleasedWithoutClearingOtherPools()
     {
-        if (File.Exists(path))
-            File.Delete(path);
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(async index =>
+        {
+            var path = Path.Combine(Path.GetTempPath(), $"oa-baseline-isolation-{Guid.NewGuid():N}.db");
+            try
+            {
+                var store = new SqliteQualityBaselineStore(path);
+                await store.InitializeAsync();
+                await store.SaveAsync(new QualityBaseline("source-" + index, 90));
+                Assert.NotNull(await store.GetAsync("source-" + index));
+            }
+            finally { DeleteDatabase(path); }
+            Assert.False(File.Exists(path));
+        }));
     }
+
+    private static void DeleteDatabase(string path) => SqliteTestDatabase.Delete(path);
 }

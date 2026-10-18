@@ -1,0 +1,40 @@
+name: Performance baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Benchmark job (Short uses 5 warmups and 10 measurements)
+        type: choice
+        options: [Short, Default]
+        default: Short
+      filter:
+        description: Benchmark type/method filter
+        type: string
+        default: '*'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Measure fixed workloads
+        shell: pwsh
+        env:
+          BENCHMARK_JOB: ${{ inputs.job }}
+          BENCHMARK_FILTER: ${{ inputs.filter }}
+        run: ./scripts/run-benchmarks.ps1 -Job $env:BENCHMARK_JOB -Filter $env:BENCHMARK_FILTER -Output artifacts/benchmarks/current
+      - name: Upload measurements and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-baseline
+          path: artifacts/benchmarks/current
+          if-no-files-found: warn

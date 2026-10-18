@@ -41,6 +41,18 @@ jobs:
       - name: Test
         run: dotnet test ObjectAnalyzer.sln --no-build -c Release
 
+      - name: Setup Node for benchmark comparison tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Test benchmark comparison
+        run: node --test scripts/compare-benchmarks.test.mjs
+
+      - name: Smoke test benchmark harness without timing thresholds
+        shell: pwsh
+        run: ./scripts/run-benchmarks.ps1 -Job Dry -Filter '*CheckpointBenchmarks*' -Output artifacts/benchmarks/smoke -SkipResourceProbes
+
       - name: Verify standalone kernel sample
         run: dotnet run --project samples/ObjectAnalyzer.MemorySample --no-build --no-restore -c Release
 

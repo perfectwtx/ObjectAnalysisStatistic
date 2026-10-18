@@ -26,3 +26,6 @@ Thumbs.db
 samples/report*
 nuget.config
 /.trae/documents
+
+# Default output from direct BenchmarkDotNet invocations
+BenchmarkDotNet.Artifacts/
