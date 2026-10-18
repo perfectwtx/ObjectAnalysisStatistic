@@ -9,7 +9,7 @@ ObjectAnalyzer 是一个面向结构化与半结构化数据的**对象分析与
 - **对象分析**：字段覆盖率、类型、唯一值、值分布、数值与时间统计、重复对象分析。
 - **数据质量**：Completeness、Validity、Uniqueness、Consistency、Anomaly Control 五维质量评分。
 - **质量问题**：统一记录必填、类型、枚举、范围、Pattern、唯一性、异常等问题。
-- **Schema 分析**：Schema 快照、差异与破坏性变化识别。
+- **Schema 分析与导出**：独立类型推断、快照和破坏性变化识别，支持 C#、TypeScript、JSON Schema、OpenAPI 3.1、Protobuf 与 SQL。
 - **影响分析**：结合 Schema 变化与对象血缘，识别受影响的父级对象、子级节点和相关结构，并按风险等级排序。
 - **深度分析**：异常值、分布漂移、相关性、时间序列、字符串模式等。
 - **对象关系与血缘**：识别嵌套对象、对象集合及其字段结构，并生成可查询的数据血缘关系。
@@ -23,6 +23,8 @@ ObjectAnalyzer 是一个面向结构化与半结构化数据的**对象分析与
 JSON、JSONL、CSV、Excel、Excel-JSON、XML、YAML，以及 gzip、bzip2、zip 压缩输入；支持 PostgreSQL、MySQL、SQLite、SQL Server 数据库直读。
 
 ## 快速开始
+
+需要 .NET 10 SDK；Desktop 运行需要 Windows，性能脚本需要 PowerShell 7。
 
 ### CLI
 
@@ -59,7 +61,7 @@ Windows 本地工作台：
 dotnet run --project src/ObjectAnalyzer.Desktop
 ```
 
-Desktop 直接复用 Core 分析能力，并在本地保存作业历史、质量快照和 JSON 报告。
+Desktop 通过共享的应用管线与适配器调用 Core，并在本地保存作业历史、质量快照和 JSON 报告。
 
 完整说明见 [Desktop 使用与发布](docs/desktop.md)。
 
@@ -68,6 +70,46 @@ Desktop 直接复用 Core 分析能力，并在本地保存作业历史、质量
 ```bash
 dotnet test ObjectAnalyzer.sln -c Release
 ```
+
+## 独立复用计算内核
+
+只做内存记录统计时，可以仅引用 `ObjectAnalyzer.Core`，无需数据库驱动、PDF、文件解析器或平台业务依赖：
+
+```csharp
+using ObjectAnalyzer.Analysis;
+using ObjectAnalyzer.Data;
+
+var state = new AnalysisAccumulator();
+state.Observe(new Dictionary<FieldPath, RecordValue>
+{
+    [FieldPath.Parse("amount")] = RecordValue.FromObject(10)
+});
+var result = state.Complete();
+var schema = SchemaInference.Infer(result);
+```
+
+运行完整示例：
+
+```bash
+dotnet run --project samples/ObjectAnalyzer.MemorySample
+```
+
+需要执行事件、采样或自定义输入端口时引用 Application；使用内置文件和数据库能力时，通过 Hosting 的 `AnalysisRuntime.CreateExecutor()` 构造执行器。引用关系与破坏性变更见 [模块拆分与迁移](docs/core-module-boundaries.md)。
+
+## 验证与性能基线
+
+Core 十项优化已实施，覆盖统一值/路径、可恢复统计状态、可组合分析器、运行隔离、输入契约、资源预算、结果脱敏、Schema 模型和模块拆分。具体范围见 [Core 优化清单](docs/core-optimization-plan.md)。
+
+2026-10-18 本地 Release 验证结果：构建零警告、零错误；综合测试 **841/841**、API **132/132**、Web **74/74** 全部通过，原有 SQLite 临时文件锁失败已修复。
+
+独立 BenchmarkDotNet 项目记录固定负载的吞吐、托管分配、GC、检查点恢复及资源探针结果。首次五组实测保存在 [2026-10-18 基线](benchmarks/baselines/2026-10-18/README.md)。运行与比较：
+
+```powershell
+pwsh scripts/run-benchmarks.ps1 -Output artifacts/benchmarks/candidate
+node scripts/compare-benchmarks.mjs benchmarks/baselines/2026-10-18 artifacts/benchmarks/candidate
+```
+
+比较脚本需要 Node.js；使用新的输出目录，并在相同机器、运行时、负载和测量配置下比较。CI 执行契约测试和基准冒烟，不设置耗时通过阈值；完整性能测量可通过 GitHub Actions 的 Performance baseline 工作流手动触发。容限、环境与版本策略见 [统计契约与性能基线](docs/core-statistical-contracts-and-benchmarks.md)。
 
 ## 平台工作流
 
@@ -93,7 +135,7 @@ Webhook Outbox
 Webhook Delivery Worker
 ```
 
-CLI、API 和 Web 共用 Core 分析能力。Platform 层负责任务生命周期、质量历史、问题管理和外部通知。
+CLI、API、Web 和 Desktop 共用 Application 执行管线与 Core 计算内核。Platform 定义任务生命周期、质量历史、问题管理和告警业务，Infrastructure 提供 SQLite 等实现，Hosting 与各宿主负责组合。
 
 ## 数据质量模型
 
@@ -133,18 +175,20 @@ src/
 ├── ObjectAnalyzer.Platform/       # 作业、质量基线、责任、修复与告警
 ├── ObjectAnalyzer.Infrastructure/ # SQLite、审计与密钥实现
 ├── ObjectAnalyzer.Hosting/        # 完整命令及模块组合
-├── ObjectAnalyzer/        # CLI
-├── ObjectAnalyzer.Api/    # HTTP API
-├── ObjectAnalyzer.Web/    # Blazor Web
-└── ObjectAnalyzer.Desktop/ # WPF Desktop
+├── ObjectAnalyzer/                # CLI
+├── ObjectAnalyzer.Api/            # HTTP API
+├── ObjectAnalyzer.Web/            # Blazor Web
+└── ObjectAnalyzer.Desktop/        # WPF Desktop
 
 tests/
 ├── ObjectAnalyzer.Tests/
 ├── ObjectAnalyzer.Api.Tests/
 └── ObjectAnalyzer.Web.Tests/
 
+benchmarks/                # BenchmarkDotNet 工具与实测基线
+testsupport/               # 契约测试与基准共享的固定负载
 docs/                      # 产品、架构、使用与开发文档
-samples/                   # 示例数据与规则
+samples/                   # 示例数据、规则与独立内核应用
 ```
 
 ## 文档
@@ -155,6 +199,8 @@ samples/                   # 示例数据与规则
 | [Desktop 使用与发布](docs/desktop.md) | Desktop 本地使用、数据位置、Windows 发布 |
 | [总体架构](docs/architecture.md) | 模块依赖、宿主与任务生命周期 |
 | [模块拆分与迁移](docs/core-module-boundaries.md) | 独立引用内核、输入端口和程序集迁移 |
+| [Core 优化清单](docs/core-optimization-plan.md) | 十项重构的状态、范围与验收依据 |
+| [Schema 推断与导出](docs/core-schema-model.md) | 类型图、命名、导出后端与降级诊断 |
 | [统计契约与性能基线](docs/core-statistical-contracts-and-benchmarks.md) | 合并性质、跨格式验证、实测基线与比较 |
 | [数据质量](docs/data-quality.md) | 五维质量模型与质量指标 |
 | [问题中心](docs/issues.md) | Issue 模型、来源与处理路径 |
@@ -180,7 +226,7 @@ samples/                   # 示例数据与规则
 
 ## 设计原则
 
-1. **单一分析事实来源**：CLI、API、Web、Desktop 共用 `AnalysisPipeline`。
+1. **单一分析事实来源**：各宿主通过共享的 Application 管线执行统计；内存调用可直接使用 Core。
 2. **业务与 UI 解耦**：Core 不依赖具体宿主和展示层。
 3. **标准指标结构化存储**：趋势、回归和告警优先使用标准化快照。
 4. **复杂结果按需持久化**：SchemaDiff、CorrelationMatrix 等复杂结果无需强行拆表。
@@ -195,7 +241,7 @@ samples/                   # 示例数据与规则
 ./scripts/publish-desktop.ps1
 ```
 
-GitHub Actions 也会在 Desktop 或 Core 变更推送到 `main` 时生成 `ObjectAnalyzer-Desktop-win-x64` 构建产物。
+GitHub Actions 会在推送到 `main`、相关模块的 Pull Request 或手动触发时生成 `ObjectAnalyzer-Desktop-win-x64` 构建产物。
 
 ## 开源协议
 
