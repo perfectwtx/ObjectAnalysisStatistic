@@ -139,7 +139,7 @@ public class QualityChecksTests
     }
 
     [Fact]
-    public void Pattern_Truncation_MarksApproximate()
+    public void Pattern_Truncation_PreservesExactCount()
     {
         var objects = Enumerable.Range(0, 2500)
             .Select(i => new Dictionary<string, object?> { ["code"] = $"BAD-{i}" })
@@ -150,8 +150,8 @@ public class QualityChecksTests
         var result = Analyze(objects, rules);
 
         var violation = result.QualityViolations.Single(v => v.Check == QualityCheckTypes.Pattern);
-        Assert.True(violation.Approximate);
-        Assert.True(violation.Count > 0);
+        Assert.False(violation.Approximate);
+        Assert.Equal(2500, violation.Count);
     }
 
     // ──────────────────────────────────────────────

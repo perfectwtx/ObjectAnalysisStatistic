@@ -3,6 +3,8 @@ namespace ObjectAnalyzer.Analysis;
 /// <summary>Observed field counters. Derived report values never participate in merging.</summary>
 internal sealed class FieldAccumulator
 {
+    internal FieldAnalysisComponents? Components { get; set; }
+
     public string FieldName { get; set; } = "";
     public long Count { get; set; }
     public long NullCount { get; set; }

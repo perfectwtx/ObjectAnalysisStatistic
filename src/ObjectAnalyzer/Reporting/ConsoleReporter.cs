@@ -148,7 +148,7 @@ public sealed class ConsoleReporter : IResultPresenter
             }
 
             // 枚举违规值
-            if (stat.EnumViolations.Count > 0)
+            if (stat.EnumViolationCount > 0)
             {
                 var violations = string.Join(", ", stat.EnumViolations.Select(v => $"[red]{Markup.Escape(v)}[/]"));
                 AnsiConsole.MarkupLine($"  [red]枚举违规:[/] {violations}");

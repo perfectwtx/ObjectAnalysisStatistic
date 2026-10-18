@@ -8,6 +8,10 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public class FieldRule
 {
+    /// <summary>Registered custom value-rule configurations, keyed by compiler ID.</summary>
+    [JsonPropertyName("checks")]
+    public Dictionary<string, JsonElement>? Checks { get; set; }
+
     /// <summary>指定字段默认值 (覆盖自动推断)。</summary>
     [JsonPropertyName("defaultValue")]
     public object? DefaultValue { get; set; }
@@ -53,7 +57,7 @@ public class FieldRule
     [JsonPropertyName("required")]
     public bool? Required { get; set; }
 
-    /// <summary>正则模式：非空值的字符串形态需整体匹配该表达式，不匹配计入违规（基于跟踪的唯一值评估，截断时近似）。</summary>
+    /// <summary>正则 IsMatch 检查，不自动添加首尾锚点；非空值逐值精确计数，样本有界。</summary>
     [JsonPropertyName("pattern")]
     public string? Pattern { get; set; }
 
@@ -74,5 +78,5 @@ public class FieldRule
     public bool HasQualityChecks =>
         MinValue.HasValue || MaxValue.HasValue || Required == true
         || !string.IsNullOrEmpty(Pattern) || Unique == true || NullRateMax.HasValue
-        || MaxOutlierRatio.HasValue;
+        || MaxOutlierRatio.HasValue || Checks is { Count: > 0 };
 }

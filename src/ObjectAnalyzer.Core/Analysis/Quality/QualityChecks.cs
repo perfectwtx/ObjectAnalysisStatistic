@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -15,163 +14,42 @@ public static class QualityChecks
     public const int MaxSamples = 5;
 
 
-    private static readonly ConcurrentDictionary<string, Regex> PatternCache = new();
-
-    /// <summary>编译并缓存正则；无效表达式抛 ArgumentException（规则加载时预验证 fail-fast）。</summary>
-    public static Regex CompilePattern(string pattern)
-    {
-        return PatternCache.GetOrAdd(pattern, p =>
-            new Regex(p, RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromMilliseconds(250)));
-    }
+    /// <summary>Validation/compiler helper. The owning rule plan controls regex lifetime.</summary>
+    public static Regex CompilePattern(string pattern) =>
+        new(pattern, RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromMilliseconds(250));
 
     /// <summary>对分析结果执行全部质量检查（含枚举约束的聚合条目与数据集期望）。</summary>
     public static List<FieldViolation> Evaluate(
         long totalObjects,
         long uniqueObjects,
         IEnumerable<FieldStatistic> stats,
-        AnalysisRules rules)
+        AnalysisRules rules,
+        RuleExecutionPlan? plan = null)
     {
         var violations = new List<FieldViolation>();
 
-        foreach (var stat in stats)
+        var fields = stats.ToArray();
+        foreach (var stat in fields)
         {
-            var rule = stat.AppliedRule;
-            if (rule == null)
-                continue;
-
-            if (stat.EnumViolations.Count > 0)
+            foreach (var check in stat.ValueRuleResults ?? new())
             {
-                // 枚举约束沿用逐值结果，聚合成单条目（Count = 不同违规值个数）
+                if (check.Value.Count == 0) continue;
                 violations.Add(new FieldViolation
                 {
-                    Field = stat.FieldName,
-                    Check = QualityCheckTypes.EnumValues,
-                    Count = stat.EnumViolations.Count,
-                    Message = $"{stat.EnumViolations.Count} 个不在枚举范围内的值",
-                    Samples = TakeSamples(stat.EnumViolations)
+                    Field = stat.FieldName, Check = check.Key, Count = check.Value.Count,
+                    DistinctValueCount = check.Value.DistinctValueCount, DistinctApproximate = check.Value.DistinctApproximate,
+                    Message = $"{check.Value.Count} 个违规值：{check.Value.Message}", Samples = check.Value.Samples
                 });
             }
 
-            if (rule.MinValue.HasValue || rule.MaxValue.HasValue)
-            {
-                EvaluateRange(stat, rule, violations);
-            }
-
-            if (!string.IsNullOrEmpty(rule.Pattern))
-            {
-                EvaluatePattern(stat, rule.Pattern!, violations);
-            }
-
-            if (rule.Required == true || rule.NullRateMax.HasValue)
-            {
-                EvaluateNulls(stat, rule, totalObjects, violations);
-            }
-
-            if (rule.Unique == true)
-            {
-                EvaluateUnique(stat, violations);
-            }
-
-            if (rule.MaxOutlierRatio.HasValue)
-            {
-                EvaluateOutlier(stat, rule.MaxOutlierRatio.Value, violations);
-            }
         }
-
-        EvaluateExpectations(totalObjects, uniqueObjects, rules, violations);
+        plan ??= new RuleExecutionPlan(rules, FieldAnalyzerRegistry.Default);
+        violations.AddRange(plan.EvaluateResults(new(totalObjects, uniqueObjects, fields)));
 
         return violations;
     }
 
-    private static void EvaluateRange(FieldStatistic stat, FieldRule rule, List<FieldViolation> violations)
-    {
-        if (stat.RangeViolationCount <= 0)
-            return;
-
-        double min = rule.MinValue ?? double.NegativeInfinity;
-        double max = rule.MaxValue ?? double.PositiveInfinity;
-        var samples = new List<string>();
-
-        if (!stat.ValueCountsTruncated)
-        {
-            foreach (var key in stat.ValueCounts.Keys)
-            {
-                if (key.Kind != RecordValueKind.Number)
-                    continue;
-                if (samples.Count >= MaxSamples)
-                    break;
-                if (key.TryGetDouble(out double v)
-                    && (v < min || v > max))
-                {
-                    samples.Add(key.ToDisplayString());
-                }
-            }
-        }
-        else
-        {
-            // 截断时尽力从已跟踪的唯一值中取样（全量扫描至取满；截断表 ≤1000 条，开销可忽略）
-            foreach (var key in stat.ValueCounts.Keys)
-            {
-                if (key.Kind != RecordValueKind.Number)
-                    continue;
-                if (samples.Count >= MaxSamples)
-                    break;
-                if (key.TryGetDouble(out double v)
-                    && (v < min || v > max))
-                {
-                    samples.Add(key.ToDisplayString());
-                }
-            }
-        }
-
-        violations.Add(new FieldViolation
-        {
-            Field = stat.FieldName,
-            Check = QualityCheckTypes.Range,
-            Count = stat.RangeViolationCount,
-            Message = string.Create(CultureInfo.InvariantCulture,
-                $"{stat.RangeViolationCount} 个值超出范围 [{FormatBound(min)}, {FormatBound(max)}]"),
-            Samples = samples
-        });
-    }
-
-    private static void EvaluatePattern(FieldStatistic stat, string pattern, List<FieldViolation> violations)
-    {
-        Regex regex = CompilePattern(pattern);
-        long count = 0;
-        var samples = new List<string>();
-
-        foreach (var kv in stat.ValueCounts)
-        {
-            string value = kv.Key.ToDisplayString();
-            if (kv.Key.Kind == RecordValueKind.Null)
-                continue;
-
-            if (regex.IsMatch(value))
-                continue;
-
-            count += kv.Value;
-            if (samples.Count < MaxSamples)
-                samples.Add(value);
-        }
-
-        if (count <= 0 && samples.Count == 0)
-            return;
-
-        violations.Add(new FieldViolation
-        {
-            Field = stat.FieldName,
-            Check = QualityCheckTypes.Pattern,
-            Count = count,
-            Approximate = stat.ValueCountsTruncated,
-            Message = stat.ValueCountsTruncated
-                ? $"至少 {count} 个值不匹配模式 /{pattern}/（唯一值已截断，近似计数）"
-                : $"{count} 个值不匹配模式 /{pattern}/",
-            Samples = samples
-        });
-    }
-
-    private static void EvaluateNulls(
+    internal static void EvaluateNulls(
         FieldStatistic stat, FieldRule rule, long totalObjects, List<FieldViolation> violations)
     {
         long nullCount = stat.TypeCounts.GetValueOrDefault("Null");
@@ -208,7 +86,7 @@ public static class QualityChecks
         }
     }
 
-    private static void EvaluateUnique(FieldStatistic stat, List<FieldViolation> violations)
+    internal static void EvaluateUnique(FieldStatistic stat, List<FieldViolation> violations)
     {
         long nullCount = stat.TypeCounts.GetValueOrDefault("Null");
         long nonNull = stat.Count - nullCount;
@@ -264,7 +142,7 @@ public static class QualityChecks
         });
     }
 
-    private static void EvaluateOutlier(FieldStatistic stat, double maxRatio, List<FieldViolation> violations)
+    internal static void EvaluateOutlier(FieldStatistic stat, double maxRatio, List<FieldViolation> violations)
     {
         if (!stat.OutlierCount.HasValue || !stat.OutlierRatio.HasValue)
             return;
@@ -282,7 +160,7 @@ public static class QualityChecks
         });
     }
 
-    private static void EvaluateExpectations(
+    internal static void EvaluateExpectations(
         long totalObjects, long uniqueObjects, AnalysisRules rules, List<FieldViolation> violations)
     {
         var expectations = rules.Expectations;
@@ -318,11 +196,4 @@ public static class QualityChecks
         }
     }
 
-    private static string FormatBound(double bound) =>
-        double.IsNegativeInfinity(bound) ? "-∞"
-        : double.IsPositiveInfinity(bound) ? "+∞"
-        : bound.ToString("G6", CultureInfo.InvariantCulture);
-
-    private static string[] TakeSamples(IEnumerable<string> source) =>
-        source.Take(MaxSamples).ToArray();
 }

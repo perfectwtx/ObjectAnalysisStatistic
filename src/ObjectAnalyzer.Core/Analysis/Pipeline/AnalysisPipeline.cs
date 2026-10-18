@@ -51,6 +51,8 @@ public static class AnalysisPipeline
         AnalysisRunContext ctx,
         CancellationToken cancellationToken)
     {
+        var accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues, ctx.Analyzers);
+
         // 1. 解析分发：数据库直连 / root-path 整体投影 / 常规文件
         IEnumerable<Dictionary<string, object?>> objects = ParseDispatch(options, rules, ctx);
 
@@ -114,7 +116,6 @@ public static class AnalysisPipeline
 
         // 9. 统计：进度端口包装（CLI：Spectre 进度条；API/Web：直接执行）
         AnalysisResult result = null!;
-        AnalysisAccumulator accumulator = null!;
         Dictionary<string, MergeableQuantileSketch>? quantileSketches = null;
         Dictionary<string, HyperLogLog>? distinctSketches = null;
 
@@ -133,7 +134,6 @@ public static class AnalysisPipeline
                     ? options.Parse.MaxDegreeOfParallelism
                     : -1
             };
-            accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues);
             accumulator.ObserveRange(needFuzzyDedup || needDistributionSketches ? materialized : objects,
                 parallelOptions, progress, cancellationToken);
             ctx.LastRecordCount = accumulator.TotalObjects;

@@ -10,6 +10,7 @@ namespace ObjectAnalyzer.Analysis;
 /// </summary>
 public sealed class AnalyzerSnapshot
 {
+    private FieldAnalyzerRegistry? _analyzers;
     [JsonPropertyName("schema")]
     public string Schema { get; set; } = "object-analyzer.snapshot/v3";
 
@@ -42,7 +43,7 @@ public sealed class AnalyzerSnapshot
 
     /// <summary>Compatibility read projection; never serialized or used to restore computation.</summary>
     [JsonIgnore]
-    public AnalysisResult Result => State.Restore().Complete();
+    public AnalysisResult Result => State.Restore(_analyzers).Complete();
 
     /// <summary>Pipeline configuration identity, excluding source location and output options.</summary>
     [JsonPropertyName("executionSignature")]
@@ -66,8 +67,9 @@ public sealed class AnalyzerSnapshot
         IncludeFields = true
     };
 
-    public void SaveTo(string path)
+    public void SaveTo(string path, FieldAnalyzerRegistry? analyzers = null)
     {
+        _analyzers = analyzers;
         if (Schema != "object-analyzer.snapshot/v3" || SourcePosition < 0) throw new InvalidDataException("Invalid checkpoint schema or cursor.");
         // 原子写入：先写临时文件，再重命名，避免半写状态被 resume
         var dir = Path.GetDirectoryName(path);
@@ -75,7 +77,7 @@ public sealed class AnalyzerSnapshot
         {
             Directory.CreateDirectory(dir);
         }
-        _ = State.Restore();
+        _ = State.Restore(analyzers);
         var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
@@ -88,7 +90,7 @@ public sealed class AnalyzerSnapshot
         }
     }
 
-    public static AnalyzerSnapshot LoadFrom(string path)
+    public static AnalyzerSnapshot LoadFrom(string path, FieldAnalyzerRegistry? analyzers = null)
     {
         using var fs = File.OpenRead(path);
         using var document = JsonDocument.Parse(fs, new JsonDocumentOptions { MaxDepth = 512 });
@@ -103,7 +105,8 @@ public sealed class AnalyzerSnapshot
                 $"AnalyzerSnapshot schema 不兼容：'{snapshot.Schema}'，期望 'object-analyzer.snapshot/v3'。旧版值身份与路径无法无损迁移，请重新分析数据源。");
         }
         if (snapshot.SourcePosition < 0) throw new InvalidDataException("Negative source cursor.");
-        _ = snapshot.State.Restore();
+        _ = snapshot.State.Restore(analyzers);
+        snapshot._analyzers = analyzers;
         return snapshot;
     }
 }

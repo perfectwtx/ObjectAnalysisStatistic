@@ -95,7 +95,7 @@ public static class ExcelReportExporter
             ["平均长度"] = s.AvgLength?.ToString("G4", CultureInfo.InvariantCulture) ?? "",
             ["转换类型"] = s.TransformType ?? "",
             ["转换失败数"] = s.TransformFailureCount,
-            ["枚举违规数"] = s.EnumViolations.Count,
+            ["枚举违规数"] = s.EnumViolationCount,
             ["类型分布"] = string.Join("; ", s.TypeCounts.Select(t => $"{t.Key}={t.Value}")),
             ["Top5 值"] = string.Join("; ", s.ValueCounts.OrderByDescending(v => v.Value).Take(5).Select(v => $"{v.Key}×{v.Value}")),
         }).ToList();

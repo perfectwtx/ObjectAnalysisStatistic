@@ -189,7 +189,7 @@ public static class HtmlReportExporter
                 }
                 ruleInfo += "</span>";
             }
-            if (stat.EnumViolations.Count > 0)
+            if (stat.EnumViolationCount > 0)
             {
                 var violations = string.Join(", ", stat.EnumViolations.Select(v => $"<span class=\"violation\">{Escape(v)}</span>"));
                 ruleInfo += $"<div class=\"violations\">枚举违规: {violations}</div>";

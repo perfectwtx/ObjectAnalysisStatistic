@@ -136,6 +136,16 @@ public class FieldStatistic
     public bool NullAppeared { get; set; }
     public string? DefaultValueRepresentation { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, System.Text.Json.JsonElement>? AnalyzerResults { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, ValueRuleResult>? ValueRuleResults { get; set; }
+
+    /// <summary>Exact enum violation occurrences; EnumViolations contains bounded display samples.</summary>
+    private long? _enumViolationCount;
+    public long EnumViolationCount { get => _enumViolationCount ?? _enumViolations.Count; set => _enumViolationCount = value; }
+
     // 规则校验相关
     public FieldRule? AppliedRule { get; set; }
 
@@ -159,7 +169,7 @@ public class FieldStatistic
     private List<string> _enumViolations = new();
 
     /// <summary>
-    /// 不符合枚举约束的实际值列表。只读，由分析器内部填充。
+    /// 不符合枚举约束的有界展示样本。总出现次数使用 EnumViolationCount。
     /// </summary>
     [JsonIgnore]
     public IReadOnlyList<string> EnumViolations => _enumViolations;

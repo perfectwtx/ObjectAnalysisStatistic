@@ -5,9 +5,11 @@ namespace ObjectAnalyzer.Analysis;
 /// <summary>Durable accumulator data, distinct from user-facing AnalysisResult.</summary>
 public sealed class AnalysisStateSnapshot
 {
-    public string Version { get; set; } = "analysis-state/v1";
+    public string Version { get; set; } = "analysis-state/v2";
     public AnalysisRules? Rules { get; set; }
     public AdvancedAnalysisOptions Features { get; set; } = new();
+    public List<AnalyzerDescriptor> Analyzers { get; set; } = FieldAnalyzerRegistry.Default.Descriptors.ToList();
+    public string RuleConfigurationKey { get; set; } = FieldAnalyzerRegistry.Default.RuleConfigurationKey;
     public int MaxTrackedValues { get; set; } = 1000;
     public long TotalObjects { get; set; }
     public List<FieldStateSnapshot> Fields { get; set; } = new();
@@ -16,11 +18,14 @@ public sealed class AnalysisStateSnapshot
     public Dictionary<string, long> TransformFailures { get; set; } = new();
     public string? FilterExpression { get; set; }
 
-    public AnalysisAccumulator Restore()
+    public AnalysisAccumulator Restore(FieldAnalyzerRegistry? analyzers = null)
     {
-        if (Version != "analysis-state/v1") throw new InvalidDataException("Unsupported analysis state version. Re-analyze the source.");
+        if (Version != "analysis-state/v2") throw new InvalidDataException("Unsupported analysis state version. Re-analyze the source.");
         if (TotalObjects < 0) throw new InvalidDataException("Negative record count.");
-        var state = new AnalysisAccumulator(Rules, Features, MaxTrackedValues) { TotalObjects = TotalObjects };
+        var registry = (analyzers ?? FieldAnalyzerRegistry.Default).Resolve(Analyzers);
+        if (RuleConfigurationKey != registry.RuleConfigurationKey)
+            throw new InvalidDataException("Rule compiler registrations or configurations do not match the snapshot.");
+        var state = new AnalysisAccumulator(Rules, Features, MaxTrackedValues, registry) { TotalObjects = TotalObjects };
         state.EnsureMergeable();
         state.Relationships.AddRange(AnalysisAccumulator.Clone(Relationships));
         foreach (var p in TransformFailures) state.TransformFailures.Add(p.Key, p.Value);
@@ -28,7 +33,10 @@ public sealed class AnalysisStateSnapshot
         foreach (var field in Fields)
         {
             var counters = field.Counters;
-            var metrics = field.Metrics;
+            var components = state.CreateComponents(field.Counters.FieldName);
+            components.Restore(field.Components);
+            components.ValidateObservedKinds(field.Counters.TypeCounts.Keys);
+            var metrics = components.MetricsView().Capture();
             if (counters.Count < 0 || counters.Count > TotalObjects || counters.NullCount < 0 || counters.NullCount > counters.Count
                 || counters.TypeCounts.Values.Any(v => v <= 0) || counters.TypeCounts.Values.Sum() != counters.Count
                 || counters.ValueCounts.Values.Any(v => v <= 0) || counters.OtherValueCount < 0
@@ -41,13 +49,13 @@ public sealed class AnalysisStateSnapshot
                 || metrics.Quantiles?.Centroids.Sum(c => c.Weight) != (metrics.NumberCount > 0 ? metrics.NumberCount : null)
                 || metrics.ZeroCount < 0 || (metrics.Histogram?.Values.Sum() ?? 0) + metrics.ZeroCount != metrics.NumberCount
                 || (metrics.DateHistogram?.Values.Sum() ?? 0) != metrics.DateTimeCount
-                || counters.Count > 0 && metrics.DistinctHll is null)
+                || counters.Count > 0 && registry.Contains(BuiltInAnalyzers.DistinctId) && metrics.DistinctHll is null)
                 throw new InvalidDataException("Invalid field metric state.");
             string name = FieldPath.Parse(field.Counters.FieldName).ToString();
             var restoredCounters = FieldAccumulator.Restore(field.Counters);
             restoredCounters.FieldName = name;
+            restoredCounters.Components = components;
             state.Fields.Add(name, restoredCounters);
-            state.Metrics.Add(name, InternalFieldMetrics.Restore(field.Metrics));
         }
         long count = 0;
         foreach (var item in Objects)
@@ -66,7 +74,20 @@ public sealed class AnalysisStateSnapshot
 public sealed class FieldStateSnapshot
 {
     public FieldCountersSnapshot Counters { get; set; } = new();
-    public FieldMetricsSnapshot Metrics { get; set; } = new();
+    public List<FieldAnalyzerStateSnapshot> Components { get; set; } = new();
+
+    /// <summary>Compatibility diagnostic projection, not a second persisted source of truth.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public FieldMetricsSnapshot Metrics
+    {
+        get
+        {
+            var metrics = new InternalFieldMetrics();
+            foreach (var component in Components.Where(c => BuiltInAnalyzers.MetricIds.Contains(c.Id)))
+                metrics.MergeFrom(InternalFieldMetrics.Restore(System.Text.Json.JsonSerializer.Deserialize<FieldMetricsSnapshot>(component.Data)!));
+            return metrics.Capture();
+        }
+    }
 }
 
 public sealed class ObjectStateSnapshot

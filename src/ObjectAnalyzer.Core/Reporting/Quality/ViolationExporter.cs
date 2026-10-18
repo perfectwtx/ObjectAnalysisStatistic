@@ -25,14 +25,16 @@ public static class ViolationExporter
         foreach (var stat in result.FieldStatistics)
         {
             // 枚举违规：聚合为单条 entry（含 samples 前 N 条样本）
-            if (stat.EnumViolations.Count > 0)
+            if (stat.EnumViolationCount > 0)
             {
                 fieldEntries.Add(new Dictionary<string, object?>
                 {
                     ["field"] = stat.FieldName,
                     ["check"] = QualityCheckTypes.EnumValues,
-                    ["count"] = stat.EnumViolations.Count,
-                    ["message"] = $"{stat.EnumViolations.Count} 个不在枚举范围内的值",
+                    ["count"] = stat.EnumViolationCount,
+                    ["message"] = $"{stat.EnumViolationCount} 个不在枚举范围内的值",
+                    ["distinctValueCount"] = stat.ValueRuleResults?.GetValueOrDefault(QualityCheckTypes.EnumValues)?.DistinctValueCount,
+                    ["distinctApproximate"] = stat.ValueRuleResults?.GetValueOrDefault(QualityCheckTypes.EnumValues)?.DistinctApproximate ?? false,
                     ["samples"] = ((IReadOnlyList<string>)stat.EnumViolations).Take(QualityChecks.MaxSamples).ToArray()
                 });
             }
@@ -49,6 +51,8 @@ public static class ViolationExporter
                     ["message"] = check.Message
                 };
                 if (check.Approximate) entry["approximate"] = true;
+                if (check.DistinctValueCount.HasValue) entry["distinctValueCount"] = check.DistinctValueCount;
+                if (check.DistinctApproximate) entry["distinctApproximate"] = true;
                 if (check.Samples.Count > 0) entry["samples"] = check.Samples;
                 fieldEntries.Add(entry);
             }

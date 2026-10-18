@@ -233,7 +233,7 @@ public sealed class AnalysisState : IDisposable
             "clean" => fields.Where(f => GetFieldSignalCount(f) == 0),
             "null" => fields.Where(f => f.NullCount > 0),
             "outlier" => fields.Where(f => f.OutlierCount is long c && c > 0),
-            "rule" => fields.Where(f => f.EnumViolations.Count > 0 || f.RangeViolationCount > 0),
+            "rule" => fields.Where(f => f.EnumViolationCount > 0 || f.RangeViolationCount > 0),
             "range" => fields.Where(f => f.RangeViolationCount > 0),
             _ => fields
         };
@@ -264,7 +264,7 @@ public sealed class AnalysisState : IDisposable
     private static int GetFieldSignalCount(FieldStatistic field) =>
         (field.NullCount > 0 ? 1 : 0) +
         (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0) +
-        (field.EnumViolations.Count > 0 ? 1 : 0) +
+        (field.EnumViolationCount > 0 ? 1 : 0) +
         (field.RangeViolationCount > 0 ? 1 : 0);
 
     /// <summary>当前页的字段（先过滤排序，再分页切片）。</summary>
@@ -305,7 +305,7 @@ public sealed class AnalysisState : IDisposable
     {
         if (Result == null) return "[]";
         var violations = Result.FieldStatistics
-            .Where(f => f.EnumViolations.Count > 0)
+            .Where(f => f.EnumViolationCount > 0)
             .Select(f => new
             {
                 field = f.FieldName,

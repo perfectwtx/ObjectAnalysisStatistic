@@ -55,3 +55,11 @@ Completeness × 30%
 质量分用于衡量数据集整体健康程度，不代替具体问题诊断。
 
 排查问题时，应从综合分进入维度指标，再进入字段和具体 Issue。
+
+## 规则计数口径
+
+枚举、范围和 pattern 在观察每个值时累计违规出现次数，计数不受字段频次截断影响。`FieldViolation.Count` 是出现次数；`DistinctValueCount` 是不同违规值数量，估计时标记 `DistinctApproximate`；`Samples` 最多 5 个。
+
+`FieldStatistic.EnumViolationCount` 表示枚举违规总出现次数，`EnumViolations` 仅保留展示样本。不能以样本列表长度推算总数。未出现但配置为必填的字段也会执行缺失检查。
+
+扩展接口和自定义规则配置见 [可组合分析器与规则执行](core-composable-analysis.md)。

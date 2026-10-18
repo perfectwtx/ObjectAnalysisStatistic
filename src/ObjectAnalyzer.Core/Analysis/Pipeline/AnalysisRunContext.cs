@@ -9,6 +9,8 @@ namespace ObjectAnalyzer.Analysis.Pipeline;
 /// </summary>
 public sealed class AnalysisRunContext
 {
+    public FieldAnalyzerRegistry? Analyzers { get; init; }
+
     public AnalysisAccumulator? InitialState { get; init; }
 
     /// <summary>内存预算监控（--max-memory）。null 或未启用时管道不做内存采样。</summary>

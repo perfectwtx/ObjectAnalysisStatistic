@@ -9,7 +9,9 @@ public sealed class AnalysisAccumulator
 {
     private static readonly JsonSerializerOptions CloneOptions = new() { MaxDepth = 512 };
     internal Dictionary<string, FieldAccumulator> Fields { get; } = new(StringComparer.Ordinal);
-    internal Dictionary<string, InternalFieldMetrics> Metrics { get; } = new(StringComparer.Ordinal);
+    internal Dictionary<string, InternalFieldMetrics> Metrics => Fields.ToDictionary(p => p.Key, p => p.Value.Components!.MetricsView(), StringComparer.Ordinal);
+    internal FieldAnalyzerRegistry Analyzers { get; }
+    public RuleExecutionPlan RulePlan { get; }
     internal ConcurrentDictionary<Hash128, long> ObjectCounts { get; } = new();
     internal ConcurrentDictionary<Hash128, string> ObjectSamples { get; } = new();
     internal object MergeLock { get; } = new();
@@ -26,16 +28,22 @@ public sealed class AnalysisAccumulator
     internal Dictionary<string, long> TransformFailures { get; } = new(StringComparer.Ordinal);
     internal string? FilterExpression { get; set; }
 
-    public AnalysisAccumulator(AnalysisRules? rules = null, AdvancedAnalysisOptions? features = null, int maxTrackedValues = 1000)
+    public AnalysisAccumulator(AnalysisRules? rules = null, AdvancedAnalysisOptions? features = null, int maxTrackedValues = 1000, FieldAnalyzerRegistry? analyzers = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maxTrackedValues);
         // Freeze configuration so caller mutations cannot change an existing state.
         Rules = rules is null ? null : JsonSerializer.Deserialize<AnalysisRules>(JsonSerializer.Serialize(rules));
         Features = features is null ? new() : JsonSerializer.Deserialize<AdvancedAnalysisOptions>(JsonSerializer.Serialize(features))!;
         MaxTrackedValues = maxTrackedValues;
+        Analyzers = analyzers ?? FieldAnalyzerRegistry.Default;
+        RulePlan = new RuleExecutionPlan(Rules, Analyzers);
+        if (Features.EnableTimeSeries && !Analyzers.Contains(BuiltInAnalyzers.DateId))
+            throw new ArgumentException("Time-series analysis requires the date analyzer.");
         FieldRules = Rules?.Fields.ToDictionary(p => FieldPath.Parse(p.Key).ToString(), p => p.Value, StringComparer.Ordinal);
-        Configuration = RecordValue.FromJsonElement(JsonSerializer.SerializeToElement(new { Rules, Features, MaxTrackedValues })).CanonicalKey;
+        Configuration = RecordValue.FromJsonElement(JsonSerializer.SerializeToElement(new { Rules, Features, MaxTrackedValues, Analyzers = Analyzers.Descriptors, Analyzers.RuleConfigurationKey })).CanonicalKey;
     }
+
+    internal FieldAnalysisComponents CreateComponents(string path) => new(Analyzers, new FieldAnalyzerContext(path, RulePlan.Find(path)));
 
     public void Observe(IReadOnlyDictionary<FieldPath, RecordValue> record)
     {
@@ -103,7 +111,6 @@ public sealed class AnalysisAccumulator
         FilterExpression ??= other.FilterExpression;
         var local = new AnalyzerThreadState { TotalObjects = other.TotalObjects };
         foreach (var p in other.Fields) local.StatsMap.Add(p.Key, p.Value);
-        foreach (var p in other.Metrics) local.MetricsMap.Add(p.Key, p.Value);
         MergeThread(local);
         foreach (var p in other.ObjectCounts) ObjectCounts.AddOrUpdate(p.Key, p.Value, (_, count) => count + p.Value);
         foreach (var p in other.ObjectSamples)
@@ -139,10 +146,11 @@ public sealed class AnalysisAccumulator
                 string fName = localStat.FieldName;
                 if (!Fields.TryGetValue(fName, out var globalStat))
                 {
-                    globalStat = new FieldAccumulator { FieldName = fName };
+                    globalStat = new FieldAccumulator { FieldName = fName, Components = CreateComponents(fName) };
                     Fields[fName] = globalStat;
                 }
 
+                globalStat.Components!.Merge(localStat.Components!);
                 globalStat.Count += localStat.Count;
                 globalStat.ValueCountsTruncated |= localStat.ValueCountsTruncated;
                 globalStat.OtherValueCount += localStat.OtherValueCount;
@@ -161,21 +169,6 @@ public sealed class AnalysisAccumulator
                 {
                     globalStat.AddValue(vc.Key, vc.Value, MaxTrackedValues);
                 }
-            }
-
-            // 合并数值与文本扩展指标
-            foreach (var kvp in local.MetricsMap)
-            {
-                string fName = kvp.Key;
-                var localMetrics = kvp.Value;
-
-                if (!Metrics.TryGetValue(fName, out var globalMetrics))
-                {
-                    globalMetrics = new InternalFieldMetrics();
-                    Metrics[fName] = globalMetrics;
-                }
-
-                globalMetrics.MergeFrom(localMetrics);
             }
 
             // 深度分析 增强：合并线程局部收集器
@@ -239,7 +232,8 @@ public sealed class AnalysisAccumulator
         {
             Rules = Clone(Rules), Features = Clone(Features), MaxTrackedValues = MaxTrackedValues, TotalObjects = TotalObjects,
             Relationships = Clone(Relationships), TransformFailures = new(TransformFailures), FilterExpression = FilterExpression,
-            Fields = Fields.Values.Select(f => new FieldStateSnapshot { Counters = f.Capture(), Metrics = Metrics[f.FieldName].Capture() }).ToList(),
+            Analyzers = Analyzers.Descriptors.ToList(), RuleConfigurationKey = Analyzers.RuleConfigurationKey,
+            Fields = Fields.Values.Select(f => new FieldStateSnapshot { Counters = f.Capture(), Components = f.Components!.Capture() }).ToList(),
             Objects = ObjectCounts.Select(p => new ObjectStateSnapshot { High = p.Key.High, Low = p.Key.Low, Count = p.Value,
                 Sample = ObjectSamples.GetValueOrDefault(p.Key) }).ToList()
         };

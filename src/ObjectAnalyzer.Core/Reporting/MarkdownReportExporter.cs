@@ -136,7 +136,7 @@ public static class MarkdownReportExporter
                     ? $"{EscapeMd(stat.TransformType)} (失败 {stat.TransformFailureCount})"
                     : EscapeMd(stat.TransformType))
                 : "—";
-            string violations = stat.EnumViolations.Count > 0
+            string violations = stat.EnumViolationCount > 0
                 ? string.Join(", ", stat.EnumViolations.Select(v => $"`{EscapeMd(v)}`"))
                 : "—";
             foreach (var check in result.QualityViolations)

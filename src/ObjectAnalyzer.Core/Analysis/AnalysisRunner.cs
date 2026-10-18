@@ -233,22 +233,6 @@ public static partial class AnalysisRunner
             throw new InvalidOperationException($"规则文件解析失败: {rulesPath}");
         }
 
-        // 质量检查 v2：pattern 预编译验证，无效正则 fail-fast（而非分析完成后才报错）
-        foreach (var field in rules.Fields)
-        {
-            if (string.IsNullOrEmpty(field.Value.Pattern))
-                continue;
-            try
-            {
-                QualityChecks.CompilePattern(field.Value.Pattern!);
-            }
-            catch (ArgumentException ex)
-            {
-                throw new InvalidOperationException(
-                    $"字段 [blue]{field.Key}[/] 的 pattern 正则无效: {ex.Message}");
-            }
-        }
-
         // KMS 集成：把 transform 中以 kms: 前缀引用的敏感密钥解密为明文（key/iv/privateKey/publicKey/signature）。
         // 明文字符串仅存在于本次进程的内存规则模型上，规则 JSON 不会被改写为明文。
         KmsRuleResolver.Resolve(rules);

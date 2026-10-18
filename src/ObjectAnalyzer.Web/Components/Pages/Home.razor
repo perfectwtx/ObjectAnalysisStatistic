@@ -469,7 +469,7 @@
                         <button class="btn btn-outline btn-sm" @onclick="DownloadCsvReport">CSV</button>
                         <button class="btn btn-outline btn-sm" @onclick="DownloadExcelReport">Excel</button>
                         <button class="btn btn-outline btn-sm" @onclick="DownloadPdfReport">PDF</button>
-                        @if (State.Result.FieldStatistics.Any(f => f.EnumViolations.Count > 0))
+                        @if (State.Result.FieldStatistics.Any(f => f.EnumViolationCount > 0))
                         {
                             <button class="btn btn-outline btn-sm" @onclick="DownloadViolations">@Loc["ViolationsDownload"]</button>
                         }
@@ -838,7 +838,7 @@
                                     {
                                         <span class="rule-badge">@Loc["Applied"]</span>
                                     }
-                                    @if (field.EnumViolations.Count > 0)
+                                    @if (field.EnumViolationCount > 0)
                                     {
                                         <div class="enum-violations">
                                             @foreach (var v in field.EnumViolations)
@@ -889,15 +889,15 @@
                                                         {
                                                             <span class="field-detail-signal is-danger">Outliers @detailOutliers.ToString("N0")</span>
                                                         }
-                                                        @if (field.EnumViolations.Count > 0)
+                                                        @if (field.EnumViolationCount > 0)
                                                         {
-                                                            <span class="field-detail-signal is-danger">Enum violations @field.EnumViolations.Count</span>
+                                                            <span class="field-detail-signal is-danger">Enum violations @field.EnumViolationCount</span>
                                                         }
                                                         @if (field.RangeViolationCount > 0)
                                                         {
                                                             <span class="field-detail-signal is-danger">Range violations @field.RangeViolationCount</span>
                                                         }
-                                                        @if (field.NullCount == 0 && (field.OutlierCount is not long positiveOutliers || positiveOutliers == 0) && field.EnumViolations.Count == 0 && field.RangeViolationCount == 0)
+                                                        @if (field.NullCount == 0 && (field.OutlierCount is not long positiveOutliers || positiveOutliers == 0) && field.EnumViolationCount == 0 && field.RangeViolationCount == 0)
                                                         {
                                                             <span class="field-detail-signal is-success">No active quality signals</span>
                                                         }
@@ -914,11 +914,11 @@
                                                             <strong>@field.NullCount.ToString("N0")</strong>
                                                         </div>
                                                     }
-                                                    @if (field.EnumViolations.Count > 0)
+                                                    @if (field.EnumViolationCount > 0)
                                                     {
                                                         <div class="field-detail-issue-row">
                                                             <span><span class="field-detail-issue-dot is-danger"></span>Enum violation</span>
-                                                            <strong>@field.EnumViolations.Count.ToString("N0")</strong>
+                                                            <strong>@field.EnumViolationCount.ToString("N0")</strong>
                                                         </div>
                                                     }
                                                     @if (field.RangeViolationCount > 0)
@@ -928,17 +928,17 @@
                                                             <strong>@field.RangeViolationCount.ToString("N0")</strong>
                                                         </div>
                                                     }
-                                                    @if (field.NullCount == 0 && field.EnumViolations.Count == 0 && field.RangeViolationCount == 0)
+                                                    @if (field.NullCount == 0 && field.EnumViolationCount == 0 && field.RangeViolationCount == 0)
                                                     {
                                                         <div class="field-detail-issue-empty">No active issues detected for this field.</div>
                                                     }
                                                 </div>
-                                                @if (field.EnumViolations.Count > 0 || field.RangeViolationCount > 0)
+                                                @if (field.EnumViolationCount > 0 || field.RangeViolationCount > 0)
                                                 {
                                                     <a class="field-detail-issues-link" href="@($"/issues?field={Uri.EscapeDataString(field.FieldName)}")">View all issues <span aria-hidden="true">→</span></a>
                                                 }
                                             </div>
-                                            @if (field.TypeCounts.Count > 0 || field.EnumViolations.Count > 0 || !string.IsNullOrWhiteSpace(field.OutlierBounds))
+                                            @if (field.TypeCounts.Count > 0 || field.EnumViolationCount > 0 || !string.IsNullOrWhiteSpace(field.OutlierBounds))
                                             {
                                                 <div class="field-detail-evidence">
                                                     @if (field.TypeCounts.Count > 0)
@@ -960,7 +960,7 @@
                                                             <code>@field.OutlierBounds</code>
                                                         </div>
                                                     }
-                                                    @if (field.EnumViolations.Count > 0)
+                                                    @if (field.EnumViolationCount > 0)
                                                     {
                                                         <div>
                                                             <span class="field-detail-card-title">RULE VIOLATIONS</span>
@@ -1537,7 +1537,7 @@
     }
 
     private static int GetFieldSignalCount(global::ObjectAnalyzer.Analysis.FieldStatistic field) =>
-        (field.NullCount > 0 ? 1 : 0) + (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0) + (field.EnumViolations.Count > 0 ? 1 : 0) + (field.RangeViolationCount > 0 ? 1 : 0);
+        (field.NullCount > 0 ? 1 : 0) + (field.OutlierCount is long outlierCount && outlierCount > 0 ? 1 : 0) + (field.EnumViolationCount > 0 ? 1 : 0) + (field.RangeViolationCount > 0 ? 1 : 0);
 
     private void ToggleFieldDetails(string fieldName)
     {

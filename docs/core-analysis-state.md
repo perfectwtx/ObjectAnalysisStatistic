@@ -67,9 +67,9 @@ AnalysisResult updated = restored.Complete();
 
 ## 检查点 v3
 
-外层格式为 `object-analyzer.snapshot/v3`，内部状态格式为 `analysis-state/v1`。文件保存 `state`，不再保存最终 `result`。`AnalyzerSnapshot.Result` 仅保留只读的兼容投影，不参与序列化和恢复。
+外层格式为 `object-analyzer.snapshot/v3`，内部状态格式为 `analysis-state/v2`。文件保存 `state`，不再保存最终 `result`。`AnalyzerSnapshot.Result` 仅保留只读的兼容投影，不参与序列化和恢复。
 
-读取时先检查版本，再验证计数、草图和对象计数的一致性。v1/v2 检查点及普通报告缺少可靠续算信息，一律要求重新分析。
+读取时先检查版本，再验证组件注册、计数、草图和对象计数的一致性。v1/v2 检查点、内部 `analysis-state/v1` 状态及普通报告均要求重新分析。第三阶段的注册与规则协议见 [可组合分析器与规则执行](core-composable-analysis.md)。
 
 写入使用同目录的唯一临时文件，序列化成功后再替换目标文件；失败时清理临时文件，避免先删除旧检查点。当前检查点在分析成功结束后写入，不提供运行中定期落盘。
 

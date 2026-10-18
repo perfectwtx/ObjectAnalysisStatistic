@@ -9,7 +9,7 @@ public sealed class DataQualityReport
     public bool Passed { get; init; }
     public int TotalFields { get; init; }
     public int FieldsWithViolations { get; init; }
-    public int TotalViolationCount { get; init; }
+    public long TotalViolationCount { get; init; }
 
     /// <summary>存在违规的字段占比（0.0 ~ 1.0）。</summary>
     public double ViolationRate { get; init; }
@@ -36,8 +36,8 @@ public sealed class DataQualityReport
                 PrimaryType = f.PrimaryType,
                 HasRule = f.AppliedRule != null,
                 HasDefaultValue = f.DefaultValueRepresentation != null,
-                ViolationCount = f.EnumViolations.Count + (checksByField.TryGetValue(f.FieldName, out var checks)
-                    ? (int)checks.Sum(c => c.Count)
+                ViolationCount = f.EnumViolationCount + (checksByField.TryGetValue(f.FieldName, out var checks)
+                    ? checks.Sum(c => c.Count)
                     : 0),
                 Violations = f.EnumViolations,
                 Checks = checksByField.TryGetValue(f.FieldName, out var fieldChecks)
@@ -54,8 +54,8 @@ public sealed class DataQualityReport
 
         int totalFields = rows.Count;
         int fieldsWithViolations = rows.Count(r => r.ViolationCount > 0);
-        int totalViolationCount = rows.Sum(r => r.ViolationCount)
-            + (int)datasetViolations.Sum(v => Math.Max(1, v.Count));
+        long totalViolationCount = rows.Sum(r => r.ViolationCount)
+            + datasetViolations.Sum(v => Math.Max(1, v.Count));
 
         return new DataQualityReport
         {

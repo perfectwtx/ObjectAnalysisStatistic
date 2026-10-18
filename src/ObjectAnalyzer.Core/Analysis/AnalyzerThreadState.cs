@@ -5,7 +5,6 @@ namespace ObjectAnalyzer.Analysis;
 internal sealed class AnalyzerThreadState
 {
     public Dictionary<string, FieldAccumulator> StatsMap { get; } = new();
-    public Dictionary<string, InternalFieldMetrics> MetricsMap { get; } = new();
     public long TotalObjects { get; set; }
     public ArrayBufferWriter<byte> CanonicalWriter { get; } = new();
 

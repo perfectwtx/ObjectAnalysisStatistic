@@ -104,6 +104,10 @@ public static class PiiRedactor
         // 副本底版自带全部标量统计（PrimaryType / 日期剖析 / 异常值 / RangeViolationCount…）
         // 与断开共享的可变集合；这里只重填需要打码的部分。
         var clone = source.CloneForRedaction();
+        clone.ValueRuleResults = source.ValueRuleResults?.ToDictionary(p => p.Key,
+            p => p.Value with { Samples = p.Value.Samples.Select(s => MaskKey(s) ?? s).ToArray() }, StringComparer.Ordinal);
+        // Extension payloads have no redaction schema; omit them for masked fields.
+        clone.AnalyzerResults = null;
 
         if (source.DefaultValueRepresentation != null)
         {
