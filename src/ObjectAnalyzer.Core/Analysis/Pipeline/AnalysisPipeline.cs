@@ -114,6 +114,7 @@ public static class AnalysisPipeline
 
         // 9. 统计：进度端口包装（CLI：Spectre 进度条；API/Web：直接执行）
         AnalysisResult result = null!;
+        AnalysisAccumulator accumulator = null!;
         Dictionary<string, MergeableQuantileSketch>? quantileSketches = null;
         Dictionary<string, HyperLogLog>? distinctSketches = null;
 
@@ -132,21 +133,14 @@ public static class AnalysisPipeline
                     ? options.Parse.MaxDegreeOfParallelism
                     : -1
             };
-            if (needDistributionSketches)
-            {
-                var detailed = ObjectAnalyzer.AnalyzeDetailed(
-                    materialized, rules, parallelOptions, options.Advanced, progress,
-                    options.Parse.MaxTrackedValues, cancellationToken);
-                result = detailed.Result;
-                quantileSketches = detailed.QuantileSketches;
-                distinctSketches = detailed.DistinctSketches;
-            }
-            else
-            {
-                result = ObjectAnalyzer.Analyze(
-                    objects, rules, parallelOptions, options.Advanced, progress,
-                    options.Parse.MaxTrackedValues, cancellationToken);
-            }
+            accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues);
+            accumulator.ObserveRange(needFuzzyDedup || needDistributionSketches ? materialized : objects,
+                parallelOptions, progress, cancellationToken);
+            ctx.LastRecordCount = accumulator.TotalObjects;
+            var detailed = accumulator.CompleteDetailed();
+            result = detailed.Result;
+            quantileSketches = detailed.QuantileSketches;
+            distinctSketches = detailed.DistinctSketches;
         });
 
         // 10. 回填与补充统计
@@ -154,6 +148,15 @@ public static class AnalysisPipeline
         result.ObjectRelationships = objectRelationships.ToList();
         transformProcessor.ApplyFailures(result);
         result.FilterExpression = options.FieldSelection.Filter;
+        accumulator.CapturePipelineResult(result);
+        if (ctx.InitialState is not null)
+        {
+            accumulator.Merge(ctx.InitialState);
+            var completed = accumulator.CompleteDetailed();
+            result = completed.Result;
+            quantileSketches = completed.QuantileSketches;
+            distinctSketches = completed.DistinctSketches;
+        }
         BuildSamplingConfidence(result, options);
 
         // 11. 预览回调（统计成功完成后一次性交付）
@@ -162,12 +165,22 @@ public static class AnalysisPipeline
         return new PipelineResult
         {
             Result = result,
+            Accumulator = Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep)
+                || options.Memory.MaxMemoryMB > 0 && options.Memory.MaxMemoryMode == MaxMemoryMode.Soft ? null : accumulator,
+            ExecutionSignature = CreateExecutionSignature(options),
             QuantileSketches = quantileSketches,
             DistinctSketches = distinctSketches
         };
     }
 
     // ── 解析分发 ──
+
+    internal static string CreateExecutionSignature(AnalysisOptions options) => RecordValue.FromJsonElement(
+        JsonSerializer.SerializeToElement(new
+        {
+            options.Parse.Flatten, options.Parse.MaxTrackedValues, options.Parse.CsvInferNumbers, options.FieldSelection,
+            options.Input.RootPath, options.Input.RecordPath, options.Sampling, options.Advanced
+        })).CanonicalKey;
 
     private static IEnumerable<Dictionary<string, object?>> ParseDispatch(
         AnalysisOptions options, AnalysisRules? rules, AnalysisRunContext ctx)
@@ -233,7 +246,8 @@ public static class AnalysisPipeline
             CsvInferNumbers = options.Parse.CsvInferNumbers,
             SampleReservoir = options.Sampling.SampleReservoir,
             SampleStep = options.Sampling.SampleStep,
-            StartFromLine = ctx.StartFromPosition
+            StartFromLine = ctx.StartFromPosition,
+            SourceProgress = position => ctx.LastSourcePosition = position - ctx.StartFromPosition
         };
         return FileParsers.ParseByFormat(options.Input.InputPath, format, parseOptions);
     }

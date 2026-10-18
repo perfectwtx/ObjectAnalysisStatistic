@@ -2107,6 +2107,8 @@
                     var p6Outcome = P6PostAnalysis.Apply(new P6PostAnalysisInput
                     {
                         Result = completedPipeline.Result,
+                        Accumulator = completedPipeline.Accumulator,
+                        ExecutionSignature = completedPipeline.ExecutionSignature,
                         ResumeFromPath = resumeFromPath,
                         BaselinePath = baselinePath,
                         CheckpointFileName = safeCheckpointName,
@@ -2114,6 +2116,7 @@
                         SourceFormat = effectiveFormat
                     });
 
+                    completedPipeline.Result = p6Outcome.Result ?? completedPipeline.Result;
                     if (p6Outcome.LastCheckpointServerPath != null)
                     {
                         State.LastCheckpointServerPath = p6Outcome.LastCheckpointServerPath;

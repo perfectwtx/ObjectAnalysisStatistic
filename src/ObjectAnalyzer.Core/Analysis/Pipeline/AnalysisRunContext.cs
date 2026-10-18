@@ -9,6 +9,8 @@ namespace ObjectAnalyzer.Analysis.Pipeline;
 /// </summary>
 public sealed class AnalysisRunContext
 {
+    public AnalysisAccumulator? InitialState { get; init; }
+
     /// <summary>内存预算监控（--max-memory）。null 或未启用时管道不做内存采样。</summary>
     public MemoryBudget? MemoryBudget { get; init; }
 
@@ -37,6 +39,8 @@ public sealed class AnalysisRunContext
 
     /// <summary>输出：本 run 已分析记录数（来自分析进度回调，供 --checkpoint 落盘）。</summary>
     public long LastRecordCount { get; internal set; }
+
+    public long LastSourcePosition { get; internal set; }
 }
 
 /// <summary>
@@ -44,11 +48,14 @@ public sealed class AnalysisRunContext
 /// </summary>
 public sealed class PipelineResult
 {
-    public required AnalysisResult Result { get; init; }
+    public required AnalysisResult Result { get; set; }
+
+    public AnalysisAccumulator? Accumulator { get; init; }
+    public string? ExecutionSignature { get; init; }
 
     /// <summary>每字段 t-digest 分位草图（仅分布快照/漂移场景非空）。</summary>
-    public Dictionary<string, MergeableQuantileSketch>? QuantileSketches { get; init; }
+    public Dictionary<string, MergeableQuantileSketch>? QuantileSketches { get; set; }
 
     /// <summary>每字段 HyperLogLog 基数草图（仅分布快照/漂移场景非空）。</summary>
-    public Dictionary<string, HyperLogLog>? DistinctSketches { get; init; }
+    public Dictionary<string, HyperLogLog>? DistinctSketches { get; set; }
 }

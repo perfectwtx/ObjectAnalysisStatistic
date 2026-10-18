@@ -127,10 +127,10 @@ public sealed class RecordModelTests
     {
         var result = Engine.Analyze(new object?[] { "[Other values]", "other", null, "null", 1, "1" }
             .Select(x => new Dictionary<string, object?> { ["x"] = x }),
-            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = 1 }, maxTrackedValues: 1);
+            parallelOptions: new ParallelOptions { MaxDegreeOfParallelism = 1 }, maxTrackedValues: 5);
         var field = Assert.Single(result.FieldStatistics);
         Assert.Equal(1, field.ValueCounts["[Other values]"]);
-        Assert.Equal(5, field.OtherValueCount);
+        Assert.Equal(1, field.OtherValueCount);
         Assert.True(field.DistinctApproximate);
         Assert.InRange(field.DistinctCount!.Value, 5, 7);
         Assert.Equal(field.Count, field.ValueCounts.Values.Sum() + field.OtherValueCount);

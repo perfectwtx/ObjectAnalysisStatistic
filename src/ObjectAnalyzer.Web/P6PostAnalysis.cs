@@ -85,15 +85,21 @@ internal static class P6PostAnalysis
     {
         ArgumentNullException.ThrowIfNull(input);
         var result = input.Result;
-        var output = new P6PostAnalysisResult();
+        var output = new P6PostAnalysisResult { Result = result };
+        var state = input.Accumulator;
 
-        // P6.2 断点续跑：把历史 AnalyzerSnapshot.Result 合并进当前 result
+        // P6.2 断点续跑：合并独立批次的 v3 计算状态
         if (!string.IsNullOrEmpty(input.ResumeFromPath) && File.Exists(input.ResumeFromPath))
         {
             try
             {
                 var snapshot = AnalyzerSnapshot.LoadFrom(input.ResumeFromPath);
-                result.MergeFrom(snapshot.Result);
+                if (snapshot.ExecutionSignature is not null && snapshot.ExecutionSignature != input.ExecutionSignature)
+                    throw new InvalidOperationException("Checkpoint pipeline configuration differs from the current run.");
+                if (state is null) throw new InvalidOperationException("Calculation state is required; reports cannot be resumed.");
+                state.Merge(snapshot.State.Restore());
+                result = state.Complete();
+                output.Result = result;
             }
             catch (Exception ex)
             {
@@ -101,17 +107,18 @@ internal static class P6PostAnalysis
             }
         }
 
-        // P6.2 基线合并：把历史 AnalysisResult JSON 合并进当前 result
+        // P6.2 基线合并：只接受含可恢复状态的 v3 快照
         if (!string.IsNullOrEmpty(input.BaselinePath) && File.Exists(input.BaselinePath))
         {
             try
             {
-                var baselineJson = File.ReadAllText(input.BaselinePath);
-                var baselineResult = System.Text.Json.JsonSerializer.Deserialize<AnalysisResult>(baselineJson);
-                if (baselineResult != null)
-                {
-                    result.MergeFrom(baselineResult);
-                }
+                if (state is null) throw new InvalidOperationException("Calculation state is required; reports cannot be merged.");
+                var baseline = AnalyzerSnapshot.LoadFrom(input.BaselinePath);
+                if (baseline.ExecutionSignature is not null && baseline.ExecutionSignature != input.ExecutionSignature)
+                    throw new InvalidOperationException("Baseline pipeline configuration differs from the current run.");
+                state.Merge(baseline.State.Restore());
+                result = state.Complete();
+                output.Result = result;
             }
             catch (Exception ex)
             {
@@ -119,11 +126,12 @@ internal static class P6PostAnalysis
             }
         }
 
-        // P6.2 检查点落盘：把当前 result 写入 <CheckpointDirectory>/<CheckpointFileName>
+        // P6.2 检查点落盘：把计算状态写入 <CheckpointDirectory>/<CheckpointFileName>
         if (!string.IsNullOrEmpty(input.CheckpointFileName))
         {
             try
             {
+                if (state is null) throw new InvalidOperationException("Calculation state is required to save a checkpoint.");
                 var dir = input.CheckpointDirectory
                     ?? Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
                 Directory.CreateDirectory(dir);
@@ -132,7 +140,9 @@ internal static class P6PostAnalysis
                 {
                     SourcePath = input.SourcePath ?? "",
                     SourceFormat = input.SourceFormat ?? "",
-                    Result = result
+                    PositionKind = "batch",
+                    ExecutionSignature = input.ExecutionSignature,
+                    State = state.Capture()
                 };
                 snapshot.SaveTo(fullPath);
                 output.LastCheckpointServerPath = fullPath;

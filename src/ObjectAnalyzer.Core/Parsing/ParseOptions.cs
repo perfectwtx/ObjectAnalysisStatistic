@@ -5,6 +5,9 @@ namespace ObjectAnalyzer.Parsing;
 /// </summary>
 public sealed class ParseOptions
 {
+    /// <summary>Last physical source line consumed (including blanks and skipped lines).</summary>
+    public Action<long>? SourceProgress { get; init; }
+
     public bool Flatten { get; init; } = true;
     public IReadOnlyList<ObjectAnalyzer.Analysis.ValueParserConfig> ValueParsers { get; init; } = Array.Empty<ObjectAnalyzer.Analysis.ValueParserConfig>();
 

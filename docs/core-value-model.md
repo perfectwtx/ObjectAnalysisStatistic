@@ -70,7 +70,7 @@ C# Schema 生成根据所有观测值的数字证据选择 long、double、decim
 ## 迁移
 
 - 旧版无类型的频次 JSON 已丢失类型信息，读取时明确拒绝；请重新分析数据源生成报告。
-- 分析 checkpoint 升级为 `object-analyzer.snapshot/v2`。
+- 第一阶段的 checkpoint 为 v2；第二阶段已升级为保存计算状态的 `object-analyzer.snapshot/v3`，见 [计算状态与快照](core-analysis-state.md)。
 - Schema 与分布快照升级为 `snapshotVersion: "2.0"`。旧 HLL 的哈希输入语义不同，禁止跨版本比较，需重新生成基线。
 - 旧字段名曾存在点号/索引歧义，无法可靠自动恢复。规则中表示原始特殊属性名的键应改为带引号的路径。
 - 类型区分和严格枚举匹配会改变部分历史统计及门禁结果，这是本次明确的数据契约变更。

@@ -1,0 +1,90 @@
+using ObjectAnalyzer.Analysis.Options;
+
+namespace ObjectAnalyzer.Analysis;
+
+/// <summary>Durable accumulator data, distinct from user-facing AnalysisResult.</summary>
+public sealed class AnalysisStateSnapshot
+{
+    public string Version { get; set; } = "analysis-state/v1";
+    public AnalysisRules? Rules { get; set; }
+    public AdvancedAnalysisOptions Features { get; set; } = new();
+    public int MaxTrackedValues { get; set; } = 1000;
+    public long TotalObjects { get; set; }
+    public List<FieldStateSnapshot> Fields { get; set; } = new();
+    public List<ObjectStateSnapshot> Objects { get; set; } = new();
+    public List<ObjectRelationship> Relationships { get; set; } = new();
+    public Dictionary<string, long> TransformFailures { get; set; } = new();
+    public string? FilterExpression { get; set; }
+
+    public AnalysisAccumulator Restore()
+    {
+        if (Version != "analysis-state/v1") throw new InvalidDataException("Unsupported analysis state version. Re-analyze the source.");
+        if (TotalObjects < 0) throw new InvalidDataException("Negative record count.");
+        var state = new AnalysisAccumulator(Rules, Features, MaxTrackedValues) { TotalObjects = TotalObjects };
+        state.EnsureMergeable();
+        state.Relationships.AddRange(AnalysisAccumulator.Clone(Relationships));
+        foreach (var p in TransformFailures) state.TransformFailures.Add(p.Key, p.Value);
+        state.FilterExpression = FilterExpression;
+        foreach (var field in Fields)
+        {
+            var counters = field.Counters;
+            var metrics = field.Metrics;
+            if (counters.Count < 0 || counters.Count > TotalObjects || counters.NullCount < 0 || counters.NullCount > counters.Count
+                || counters.TypeCounts.Values.Any(v => v <= 0) || counters.TypeCounts.Values.Sum() != counters.Count
+                || counters.ValueCounts.Values.Any(v => v <= 0) || counters.OtherValueCount < 0
+                || counters.ValueCounts.Values.Sum() + counters.OtherValueCount != counters.Count
+                || counters.ValueCounts.Count > MaxTrackedValues || counters.TypeCounts.GetValueOrDefault("Null") != counters.NullCount
+                || counters.OtherValueCount > 0 && !counters.ValueCountsTruncated)
+                throw new InvalidDataException("Invalid field count.");
+            if (metrics.NumberCount < 0 || metrics.NumberCount > counters.Count || metrics.StringCount < 0 || metrics.StringCount > counters.Count
+                || metrics.DateTimeCount < 0 || metrics.DateTimeCount > counters.Count || metrics.LengthSum < 0
+                || metrics.Quantiles?.Centroids.Sum(c => c.Weight) != (metrics.NumberCount > 0 ? metrics.NumberCount : null)
+                || metrics.ZeroCount < 0 || (metrics.Histogram?.Values.Sum() ?? 0) + metrics.ZeroCount != metrics.NumberCount
+                || (metrics.DateHistogram?.Values.Sum() ?? 0) != metrics.DateTimeCount
+                || counters.Count > 0 && metrics.DistinctHll is null)
+                throw new InvalidDataException("Invalid field metric state.");
+            string name = FieldPath.Parse(field.Counters.FieldName).ToString();
+            var restoredCounters = FieldAccumulator.Restore(field.Counters);
+            restoredCounters.FieldName = name;
+            state.Fields.Add(name, restoredCounters);
+            state.Metrics.Add(name, InternalFieldMetrics.Restore(field.Metrics));
+        }
+        long count = 0;
+        foreach (var item in Objects)
+        {
+            if (item.Count <= 0) throw new InvalidDataException("Invalid object occurrence count.");
+            count = checked(count + item.Count);
+            var hash = new Hash128(item.High, item.Low);
+            if (!state.ObjectCounts.TryAdd(hash, item.Count)) throw new InvalidDataException("Duplicate object hash.");
+            if (item.Sample is not null) state.ObjectSamples.TryAdd(hash, item.Sample);
+        }
+        if (count != TotalObjects) throw new InvalidDataException("Object state does not match total record count.");
+        return state;
+    }
+}
+
+public sealed class FieldStateSnapshot
+{
+    public FieldCountersSnapshot Counters { get; set; } = new();
+    public FieldMetricsSnapshot Metrics { get; set; } = new();
+}
+
+public sealed class ObjectStateSnapshot
+{
+    public ulong High { get; set; }
+    public ulong Low { get; set; }
+    public long Count { get; set; }
+    public string? Sample { get; set; }
+}
+
+public sealed class HyperLogLogStateSnapshot
+{
+    public int Precision { get; set; }
+    public Dictionary<int, byte> Registers { get; set; } = new();
+}
+
+public sealed class QuantileStateSnapshot
+{
+    public int Capacity { get; set; }
+    public List<QuantileCentroid> Centroids { get; set; } = new();
+}

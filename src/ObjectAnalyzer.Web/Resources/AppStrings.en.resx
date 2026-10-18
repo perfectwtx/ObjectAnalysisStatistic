@@ -98,9 +98,9 @@
   <data name="OptMaxMemoryModeTitle" xml:space="preserve"><value>soft=warn+auto-sample, continue; hard=fail-fast</value></data>
   <data name="OptMaxMemoryModeSoft" xml:space="preserve"><value>Warn and auto-sample</value></data>
   <data name="OptMaxMemoryModeHard" xml:space="preserve"><value>Fail immediately</value></data>
-  <data name="OptResume" xml:space="preserve"><value>Resume from checkpoint (.snapshot)</value></data>
+  <data name="OptResume" xml:space="preserve"><value>Import batch state (.snapshot)</value></data>
   <data name="ClearResumeFile" xml:space="preserve"><value>Clear checkpoint</value></data>
-  <data name="OptBaseline" xml:space="preserve"><value>Baseline merge (--baseline)</value></data>
+  <data name="OptBaseline" xml:space="preserve"><value>Merge state snapshot (--baseline)</value></data>
   <data name="ClearBaselineFile" xml:space="preserve"><value>Clear baseline</value></data>
   <data name="OptCheckpoint" xml:space="preserve"><value>Checkpoint output (--checkpoint)</value></data>
   <data name="ClearCheckpointFile" xml:space="preserve"><value>Clear checkpoint template</value></data>

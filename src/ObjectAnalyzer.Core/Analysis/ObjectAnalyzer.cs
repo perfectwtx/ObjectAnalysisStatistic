@@ -12,7 +12,6 @@ public static partial class ObjectAnalyzer
 {
     private const int MaxTrackedUniqueValues = 1000;
     private const int ChunkSize = 10000;
-    private const int MaxStoredDuplicateJsons = 10000;
 
     /// <summary>Typed entry point. Literal property names and structural paths remain unambiguous.</summary>
     public static AnalysisResult AnalyzeRecords(
@@ -124,138 +123,20 @@ public static partial class ObjectAnalyzer
         IProgress<long>? progress = null,
         int? maxTrackedValues = null)
     {
-        // W8：每字段唯一值跟踪上限可由宿主配置（--max-tracked-values），缺省沿用引擎常量
-        int maxTracked = maxTrackedValues ?? MaxTrackedUniqueValues;
+        var state = new AnalysisAccumulator(rules, features, maxTrackedValues ?? MaxTrackedUniqueValues);
+        state.ObserveRange(objects, parallelOptions, progress, cancellationToken);
+        return state.CompleteDetailed();
+    }
+
+    internal static void Accumulate(AnalysisAccumulator state,
+        IEnumerable<Dictionary<string, object?>> objects, ParallelOptions? parallelOptions,
+        IProgress<long>? progress, CancellationToken cancellationToken)
+    {
+        int maxTracked = state.MaxTrackedValues;
+        var features = state.Features;
+        var fieldRules = state.FieldRules;
         var pathCache = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-        var fieldRules = rules?.Fields.ToDictionary(p => FieldPath.Parse(p.Key).ToString(), p => p.Value, StringComparer.Ordinal);
-        var globalSeenHashes = new ConcurrentDictionary<Hash128, byte>();
-        var globalDuplicateJsons = new ConcurrentDictionary<Hash128, string>();
-
-        var globalStatsMap = new Dictionary<string, FieldStatistic>();
-        var globalMetricsMap = new Dictionary<string, InternalFieldMetrics>();
-        var globalDuplicateCounts = new ConcurrentDictionary<Hash128, long>();
-        long globalTotalObjects = 0;
-        var mergeLock = new object();
-
-        // 深度分析 全局合并结果（MergeLocalState 持有；Analyze 末尾读取并清空）
-        FieldCorrelationCollector? globalCorrelationCollector = null;
-        Dictionary<string, StringPatternProfiler>? globalStringPatterns = null;
-        Dictionary<string, UnicodeHygieneReport>? globalUnicodeHygiene = null;
-
         var options = parallelOptions ?? new ParallelOptions();
-
-        void MergeLocalState(AnalyzerThreadState local)
-        {
-            lock (mergeLock)
-            {
-                globalTotalObjects += local.TotalObjects;
-
-                foreach (var localStat in local.StatsMap.Values)
-                {
-                    string fName = localStat.FieldName;
-                    if (!globalStatsMap.TryGetValue(fName, out var globalStat))
-                    {
-                        globalStat = new FieldStatistic { FieldName = fName };
-                        globalStatsMap[fName] = globalStat;
-                    }
-
-                    globalStat.Count += localStat.Count;
-                    globalStat.ValueCountsTruncated |= localStat.ValueCountsTruncated;
-                    globalStat.OtherValueCount += localStat.OtherValueCount;
-                    globalStat.NumbersAreIntegral &= localStat.NumbersAreIntegral;
-                    globalStat.NumbersFitInt64 &= localStat.NumbersFitInt64;
-                    globalStat.NumbersFitDecimal &= localStat.NumbersFitDecimal;
-                    globalStat.NumbersFitDouble &= localStat.NumbersFitDouble;
-
-                    foreach (var tc in localStat.TypeCounts)
-                    {
-                        globalStat.TypeCounts[tc.Key] = globalStat.TypeCounts.GetValueOrDefault(tc.Key) + tc.Value;
-                    }
-                    globalStat.NullCount += localStat.NullCount;
-
-                    foreach (var vc in localStat.ValueCounts)
-                    {
-                        if (ShouldTruncate(globalStat, vc.Key, maxTracked))
-                        {
-                            globalStat.ValueCountsTruncated = true;
-                            globalStat.OtherValueCount += vc.Value;
-                        }
-                        else
-                        {
-                            globalStat.ValueCounts[vc.Key] = globalStat.ValueCounts.GetValueOrDefault(vc.Key) + vc.Value;
-                        }
-                    }
-                }
-
-                // 合并数值与文本扩展指标
-                foreach (var kvp in local.MetricsMap)
-                {
-                    string fName = kvp.Key;
-                    var localMetrics = kvp.Value;
-
-                    if (!globalMetricsMap.TryGetValue(fName, out var globalMetrics))
-                    {
-                        globalMetrics = new InternalFieldMetrics();
-                        globalMetricsMap[fName] = globalMetrics;
-                    }
-
-                    globalMetrics.MergeFrom(localMetrics);
-                }
-
-                // 深度分析 增强：合并线程局部收集器
-                // 相关性：每个线程的收集器持有该线程处理的对象的"行样本"切片；
-                // 把所有线程的收集器按"对象顺序"追加合并，保证 Pearson/Spearman 计算使用全量数据。
-                if (local.CorrelationCollector != null)
-                {
-                    if (globalCorrelationCollector == null)
-                    {
-                        globalCorrelationCollector = local.CorrelationCollector;
-                    }
-                    else if (!ReferenceEquals(local.CorrelationCollector, globalCorrelationCollector))
-                    {
-                        globalCorrelationCollector.MergeFrom(local.CorrelationCollector);
-                    }
-                }
-
-                // 字符串模式：合并到 global（按字段求和；不同线程的 patterns 互不重叠，累加即可）
-                if (local.StringPatterns != null)
-                {
-                    if (globalStringPatterns == null)
-                    {
-                        globalStringPatterns = new Dictionary<string, StringPatternProfiler>(StringComparer.Ordinal);
-                    }
-                    foreach (var (field, profiler) in local.StringPatterns)
-                    {
-                        if (!globalStringPatterns.TryGetValue(field, out var dest))
-                        {
-                            // 复制一份避免线程间共享底层数据；StringPatternProfiler 内部只持有不可变 dict / list
-                            dest = new StringPatternProfiler();
-                            globalStringPatterns[field] = dest;
-                        }
-                        dest.MergeFrom(profiler);
-                    }
-                }
-
-                // Unicode 卫生：每线程的累加直接 MergeInto 到 global
-                if (local.UnicodeHygiene != null)
-                {
-                    if (globalUnicodeHygiene == null)
-                    {
-                        globalUnicodeHygiene = new Dictionary<string, UnicodeHygieneReport>(StringComparer.Ordinal);
-                    }
-                    foreach (var (field, report) in local.UnicodeHygiene)
-                    {
-                        if (!globalUnicodeHygiene.TryGetValue(field, out var dest))
-                        {
-                            dest = new UnicodeHygieneReport();
-                            globalUnicodeHygiene[field] = dest;
-                        }
-                        UnicodeHygieneChecker.MergeInto(dest, report);
-                    }
-                }
-            }
-        }
-
         void ProcessChunk(IEnumerable<Dictionary<string, object?>> chunk)
         {
             Parallel.ForEach(
@@ -303,7 +184,7 @@ public static partial class ObjectAnalyzer
 
                         if (!localState.StatsMap.TryGetValue(fieldName, out var stat))
                         {
-                            stat = new FieldStatistic { FieldName = fieldName };
+                            stat = new FieldAccumulator { FieldName = fieldName };
                             localState.StatsMap[fieldName] = stat;
                         }
 
@@ -326,15 +207,7 @@ public static partial class ObjectAnalyzer
                             stat.NumbersFitDecimal &= typedValue.FitsDecimal;
                             stat.NumbersFitDouble &= typedValue.FitsDouble;
                         }
-                        if (ShouldTruncate(stat, typedValue, maxTracked))
-                        {
-                            stat.ValueCountsTruncated = true;
-                            stat.OtherValueCount++;
-                        }
-                        else
-                        {
-                            stat.ValueCounts[typedValue] = stat.ValueCounts.GetValueOrDefault(typedValue) + 1;
-                        }
+                        stat.AddValue(typedValue, 1, maxTracked);
 
                         // 收集数值与字符串度量指标
                         metrics.AddDistinct(identity);
@@ -367,20 +240,11 @@ public static partial class ObjectAnalyzer
                     // 128 位非密码学哈希去重（替代慢速 MD5 + 十六进制字符串）
                     var objHash = ComputeHash128(writer.WrittenSpan);
 
-                    if (!globalSeenHashes.TryAdd(objHash, 0))
-                    {
-                        // 仅记录实际重复的哈希：首次出现由 TryAdd 占用，故从 2 起计数
-                        globalDuplicateCounts.AddOrUpdate(objHash, 2, (_, count) => count + 1);
-
-                        if (globalDuplicateJsons.Count < MaxStoredDuplicateJsons)
-                        {
-                            globalDuplicateJsons.TryAdd(objHash, SerializeDuplicate(sortedEntries));
-                        }
-                    }
+                    state.RecordObject(objHash, () => SerializeDuplicate(sortedEntries));
 
                     return localState;
                 },
-                MergeLocalState);
+                state.MergeThread);
         }
 
         if (objects is IList<Dictionary<string, object?>> objectList)
@@ -393,7 +257,7 @@ public static partial class ObjectAnalyzer
                 ProcessChunk(IndexedSlice(objectList, offset, count));
                 // P6.1 进度上报：每完成一个分块（10K 对象）触发一次回调，
                 // Spectre.Console 的 Progress() 内部已合并高频上报避免闪烁
-                progress?.Report(globalTotalObjects);
+                progress?.Report(state.TotalObjects);
             }
         }
         else
@@ -403,18 +267,32 @@ public static partial class ObjectAnalyzer
                 cancellationToken.ThrowIfCancellationRequested();
                 ProcessChunk(chunk);
                 // P6.1 进度上报：未知总量的流式输入同样每分块触发一次
-                progress?.Report(globalTotalObjects);
+                progress?.Report(state.TotalObjects);
             }
         }
 
+    }
+
+    internal static (AnalysisResult Result, Dictionary<string, MergeableQuantileSketch>? QuantileSketches,
+        Dictionary<string, HyperLogLog>? DistinctSketches) Complete(AnalysisAccumulator state)
+    {
+        var globalStatsMap = state.Fields;
+        var globalMetricsMap = state.Metrics;
+        var globalCorrelationCollector = state.CorrelationCollector;
+        var globalStringPatterns = state.StringPatterns;
+        var globalUnicodeHygiene = state.UnicodeHygiene;
+        var features = state.Features;
+        var rules = state.Rules;
+        var fieldRules = state.FieldRules;
         // 后置处理：合并极值、推断默认值与语义分类
         var results = new List<FieldStatistic>();
-        foreach (var stat in globalStatsMap.Values)
+        foreach (var field in globalStatsMap.Values)
         {
-            stat.Coverage = globalTotalObjects > 0 ? (double)stat.Count / globalTotalObjects : 0;
+            var stat = field.ToResult();
+            stat.Coverage = state.TotalObjects > 0 ? (double)stat.Count / state.TotalObjects : 0;
 
             stat.NullAppeared = stat.TypeCounts.ContainsKey("Null");
-            stat.PrimaryType = stat.TypeCounts.OrderByDescending(t => t.Value).FirstOrDefault().Key ?? "String";
+            stat.PrimaryType = stat.TypeCounts.OrderByDescending(t => t.Value).ThenBy(t => t.Key, StringComparer.Ordinal).FirstOrDefault().Key ?? "String";
 
             if (stat.NullAppeared)
             {
@@ -444,7 +322,7 @@ public static partial class ObjectAnalyzer
                     stat.MinNumber = metrics.MinNumber;
                     stat.MaxNumber = metrics.MaxNumber;
                     stat.SumNumber = metrics.SumNumber;
-                    stat.AvgNumber = metrics.SumNumber / metrics.NumberCount;
+                    stat.AvgNumber = metrics.NumMean;
 
                     // Welford 样本标准差（n-1 分母）
                     if (metrics.NumberCount >= 2)
@@ -495,7 +373,7 @@ public static partial class ObjectAnalyzer
 
                     // 当某语义匹配数量达到字符串总数的 80% 以上时，标注其 SemanticType
                     var topSemantic = metrics.SemanticCounts
-                        .OrderByDescending(kv => kv.Value)
+                        .OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal)
                         .FirstOrDefault();
 
                     if (topSemantic.Value > 0 && (double)topSemantic.Value / metrics.StringCount >= 0.8)
@@ -533,7 +411,7 @@ public static partial class ObjectAnalyzer
             // 应用配置规则
             if (fieldRules != null && fieldRules.TryGetValue(stat.FieldName, out var rule))
             {
-                stat.AppliedRule = rule;
+                stat.AppliedRule = AnalysisAccumulator.Clone(rule);
 
                 if (rule.DefaultValue != null)
                 {
@@ -563,28 +441,19 @@ public static partial class ObjectAnalyzer
             int cmp = b.Count.CompareTo(a.Count);
             if (cmp == 0)
             {
-                cmp = string.Compare(a.FieldName, b.FieldName, StringComparison.OrdinalIgnoreCase);
+                cmp = string.Compare(a.FieldName, b.FieldName, StringComparison.Ordinal);
             }
             return cmp;
         });
 
-        var duplicates = globalDuplicateCounts
-            .Where(kv => kv.Value > 1 && globalDuplicateJsons.ContainsKey(kv.Key))
-            .Select(kv => new DuplicateObjectStatistic
-            {
-                ObjectJson = globalDuplicateJsons[kv.Key],
-                Count = kv.Value
-            })
-            .OrderByDescending(d => d.Count)
-            .ToList();
-
-        long totalUniqueObjects = globalSeenHashes.Count;
-        long totalDuplicateGroups = globalDuplicateCounts.Count(kv => kv.Value > 1);
+        var duplicates = state.BuildDuplicates();
+        long totalUniqueObjects = state.ObjectCounts.Count;
+        long totalDuplicateGroups = state.ObjectCounts.Count(kv => kv.Value > 1);
 
         // 质量检查 v2：枚举/范围/模式/必填/唯一/null 率 + 数据集期望，统一评估
         var qualityViolations = rules == null
             ? new List<FieldViolation>()
-            : QualityChecks.Evaluate(globalTotalObjects, totalUniqueObjects, results, rules);
+            : QualityChecks.Evaluate(state.TotalObjects, totalUniqueObjects, results, rules);
 
         // 深度分析 后置处理：构建新报告（仅 features 启用时计算，否则全部为 null）
         FieldCorrelationMatrix? correlationMatrix = null;
@@ -627,7 +496,7 @@ public static partial class ObjectAnalyzer
                 {
                     if (report.TotalSamples > 0)
                     {
-                        unicodeHygiene[field] = report;
+                        unicodeHygiene[field] = AnalysisAccumulator.Clone(report);
                     }
                 }
             }
@@ -654,18 +523,18 @@ public static partial class ObjectAnalyzer
         {
             if (m.Quantiles != null && m.Quantiles.TotalWeight > 0)
             {
-                (quantileSketches ??= new Dictionary<string, MergeableQuantileSketch>(StringComparer.Ordinal))[field] = m.Quantiles;
+                (quantileSketches ??= new Dictionary<string, MergeableQuantileSketch>(StringComparer.Ordinal))[field] = MergeableQuantileSketch.Restore(m.Quantiles.Capture());
             }
             if (m.DistinctHll != null && m.DistinctHll.Estimate() > 0)
             {
-                (distinctSketches ??= new Dictionary<string, HyperLogLog>(StringComparer.Ordinal))[field] = m.DistinctHll;
+                (distinctSketches ??= new Dictionary<string, HyperLogLog>(StringComparer.Ordinal))[field] = HyperLogLog.Restore(m.DistinctHll.Capture());
             }
         }
 
         return (
             new AnalysisResult
             {
-                TotalObjects = globalTotalObjects,
+                TotalObjects = state.TotalObjects,
                 TotalUniqueObjects = totalUniqueObjects,
                 TotalDuplicateGroups = totalDuplicateGroups,
                 DuplicateObjects = duplicates,
@@ -1124,8 +993,6 @@ public static partial class ObjectAnalyzer
         catch { return "[unserializable]"; }
     }
 
-    private static bool ShouldTruncate(FieldStatistic stat, RecordValue value, int maxTracked)
-        => !stat.ValueCounts.ContainsKey(value) && stat.ValueCounts.Count >= maxTracked;
 
     private static string InferPrimaryTypeFromEnum(List<System.Text.Json.JsonElement> enumElements)
     {

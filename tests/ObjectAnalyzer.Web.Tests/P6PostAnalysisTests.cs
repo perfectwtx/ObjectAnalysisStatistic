@@ -158,13 +158,14 @@ public class P6PostAnalysisTests
         var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
         {
             Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
             ResumeFromPath = snapshotPath
         });
 
-        // MergeFrom: TotalObjects 相加
-        Assert.Equal(15, result.TotalObjects);
-        // TotalUniqueObjects 取 max
-        Assert.Equal(8, result.TotalUniqueObjects);
+        // 独立计算状态累计记录数。
+        Assert.Equal(15, output.Result!.TotalObjects);
+        // 两批次值域重叠，合并的是对象哈希集合。
+        Assert.Equal(8, output.Result!.TotalUniqueObjects);
         Assert.Null(output.ResumeErrorMessage);
     }
 
@@ -177,6 +178,7 @@ public class P6PostAnalysisTests
         var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
         {
             Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
             ResumeFromPath = Path.Combine(Path.GetTempPath(), "no-such-" + Guid.NewGuid().ToString("N") + ".snapshot")
         });
 
@@ -197,6 +199,7 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
                 ResumeFromPath = badPath
             });
 
@@ -212,9 +215,9 @@ public class P6PostAnalysisTests
 
     [Fact]
     [Trait("Category", "P6.2")]
-    public void Apply_BaselineFromValidJson_MergesIntoResult()
+    public void Apply_BaselineReportWithoutState_IsRejected()
     {
-        // baseline 是 AnalysisResult JSON（不是 AnalyzerSnapshot），走 JsonSerializer.Deserialize
+        // 普通报告没有可恢复状态，必须明确拒绝。
         var baselinePath = Path.Combine(Path.GetTempPath(), "baseline-" + Guid.NewGuid().ToString("N") + ".json");
         var baseline = NewResult(totalObjects: 100, totalUniqueObjects: 90);
         File.WriteAllText(baselinePath, System.Text.Json.JsonSerializer.Serialize(baseline));
@@ -224,12 +227,13 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
                 BaselinePath = baselinePath
             });
 
-            Assert.Equal(105, result.TotalObjects);
-            Assert.Equal(90, result.TotalUniqueObjects);
-            Assert.Null(output.BaselineErrorMessage);
+            Assert.Equal(5, output.Result!.TotalObjects);
+            Assert.Equal(5, output.Result!.TotalUniqueObjects);
+            Assert.NotNull(output.BaselineErrorMessage);
         }
         finally
         {
@@ -249,6 +253,7 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
                 BaselinePath = badPath
             });
 
@@ -275,6 +280,7 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
                 CheckpointFileName = fileName,
                 CheckpointDirectory = dir,
                 SourcePath = "C:/data/input.jsonl",
@@ -313,6 +319,7 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = NewResult(),
+                Accumulator = NewState(0),
                 CheckpointFileName = fileName,
                 CheckpointDirectory = dir
             });
@@ -340,6 +347,7 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = NewResult(),
+                Accumulator = NewState(0),
                 CheckpointFileName = "out.snapshot",
                 CheckpointDirectory = blockerFile // 文件当目录，Path.Combine 不会立即报错，但 SaveTo 写入会失败
             });
@@ -364,7 +372,7 @@ public class P6PostAnalysisTests
         // 三个 P6.2 步骤同一次 Apply 中都成功：合并 + 合并 + 落盘
         var resumePath = WriteSnapshotWith(totalObjects: 10);
         var baselinePath = Path.Combine(Path.GetTempPath(), "bl-" + Guid.NewGuid().ToString("N") + ".json");
-        File.WriteAllText(baselinePath, System.Text.Json.JsonSerializer.Serialize(NewResult(totalObjects: 20)));
+        new AnalyzerSnapshot { State = NewState(20).Capture() }.SaveTo(baselinePath);
 
         var dir = Path.Combine(Path.GetTempPath(), "p6-tests-" + Guid.NewGuid().ToString("N"));
         var fileName = "all.snapshot";
@@ -376,6 +384,7 @@ public class P6PostAnalysisTests
             var output = P6PostAnalysis.Apply(new P6PostAnalysisInput
             {
                 Result = result,
+            Accumulator = NewState(result.TotalObjects, result.TotalUniqueObjects),
                 ResumeFromPath = resumePath,
                 BaselinePath = baselinePath,
                 CheckpointFileName = fileName,
@@ -383,7 +392,7 @@ public class P6PostAnalysisTests
             });
 
             // 1 + 10 (resume) + 20 (baseline) = 31
-            Assert.Equal(31, result.TotalObjects);
+            Assert.Equal(31, output.Result!.TotalObjects);
             Assert.Equal(expectedCheckpoint, output.LastCheckpointServerPath);
             Assert.True(File.Exists(expectedCheckpoint));
             Assert.Null(output.ResumeErrorMessage);
@@ -405,11 +414,15 @@ public class P6PostAnalysisTests
 
     private static AnalysisResult NewResult(long totalObjects = 0, long totalUniqueObjects = 0)
     {
-        return new AnalysisResult
-        {
-            TotalObjects = totalObjects,
-            TotalUniqueObjects = totalUniqueObjects
-        };
+        return NewState(totalObjects, totalUniqueObjects).Complete();
+    }
+
+    private static AnalysisAccumulator NewState(long totalObjects, long totalUniqueObjects = 0)
+    {
+        var state = new AnalysisAccumulator();
+        long unique = totalUniqueObjects > 0 ? totalUniqueObjects : Math.Max(totalObjects, 1);
+        state.ObserveRange(Enumerable.Range(0, (int)totalObjects).Select(i => new Dictionary<string, object?> { ["x"] = i % unique }));
+        return state;
     }
 
     private static string WriteSnapshotWith(long totalObjects, long totalUniqueObjects = 0)
@@ -418,7 +431,7 @@ public class P6PostAnalysisTests
         {
             SourcePath = "test.jsonl",
             SourceFormat = "jsonl",
-            Result = NewResult(totalObjects, totalUniqueObjects)
+            State = NewState(totalObjects, totalUniqueObjects).Capture()
         };
         var path = Path.Combine(Path.GetTempPath(), "p6-resume-" + Guid.NewGuid().ToString("N") + ".snapshot");
         snapshot.SaveTo(path);

@@ -19,6 +19,25 @@ public sealed class MergeableQuantileSketch(int capacity = 256)
 
     public long TotalWeight => _totalWeight;
 
+    internal QuantileStateSnapshot Capture() => new()
+    {
+        Capacity = _capacity,
+        Centroids = _centroids.Select(c => new QuantileCentroid { Mean = c.Mean, Weight = c.Weight }).ToList()
+    };
+
+    internal static MergeableQuantileSketch Restore(QuantileStateSnapshot data)
+    {
+        var sketch = new MergeableQuantileSketch(data.Capacity);
+        if (data.Centroids.Count > data.Capacity) throw new InvalidDataException("Too many quantile centroids.");
+        foreach (var centroid in data.Centroids)
+        {
+            if (!double.IsFinite(centroid.Mean) || centroid.Weight <= 0) throw new InvalidDataException("Invalid quantile centroid.");
+            sketch.InsertCentroid(new Centroid(centroid.Mean, centroid.Weight));
+            sketch._totalWeight = checked(sketch._totalWeight + centroid.Weight);
+        }
+        return sketch;
+    }
+
     public void Add(double value, long weight = 1)
     {
         if (weight <= 0 || !double.IsFinite(value))

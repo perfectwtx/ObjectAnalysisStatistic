@@ -82,10 +82,10 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
             content.Contains("内存上限 (MB)") || content.Contains("&#x5185;&#x5B58;&#x4E0A;&#x9650; (MB)"),
             "OptMaxMemory 标签未出现。");
         Assert.True(
-            content.Contains("断点续跑 (.snapshot)") || content.Contains("&#x65AD;&#x70B9;&#x7EED;&#x8DD1; (.snapshot)"),
+            content.Contains("导入批次状态 (.snapshot)") || content.Contains(System.Text.Encodings.Web.HtmlEncoder.Default.Encode("导入批次状态 (.snapshot)")),
             "OptResume 标签未出现。");
         Assert.True(
-            content.Contains("基线合并 (--baseline)") || content.Contains("&#x57FA;&#x7EBF;&#x5408;&#x5E76; (--baseline)"),
+            content.Contains("合并状态快照 (--baseline)") || content.Contains(System.Text.Encodings.Web.HtmlEncoder.Default.Encode("合并状态快照 (--baseline)")),
             "OptBaseline 标签未出现。");
         Assert.True(
             content.Contains("检查点输出 (--checkpoint)") || content.Contains("&#x68C0;&#x67E5;&#x70B9;&#x8F93;&#x51FA; (--checkpoint)"),

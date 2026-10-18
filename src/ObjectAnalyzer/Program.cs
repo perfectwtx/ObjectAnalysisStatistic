@@ -167,7 +167,7 @@ var noProgressOption = new Option<bool>(
 
 var checkpointOption = new Option<string?>(
     name: "--checkpoint",
-    description: "P6.2：检查点输出路径。本次分析完成后会把当前结果 + 已处理位置写入该文件，下次可用 --resume <PATH> 续跑。原子写入（先 .tmp 再 rename）避免半写状态。");
+    description: "P6.2：检查点输出路径。本次分析成功完成后保存 v3 计算状态和 JSONL 已处理行位置，下次可用 --resume <PATH> 续跑。原子写入（先 .tmp 再 rename）避免半写状态。");
 
 var resumeOption = new Option<string?>(
     name: "--resume",
@@ -175,7 +175,7 @@ var resumeOption = new Option<string?>(
 
 var baselineOption = new Option<string?>(
     name: "--baseline",
-    description: "P6.2：历史 AnalysisResult JSON 路径（通常由 --output ... .json 产生）。本次结果会与基线合并（FieldStatistic 级 Welford / 直方图 / 枚举违规可增量合并），适合「只分析新增数据并与历史合并」的场景。与 --resume 的区别：--resume 是从源文件中间续跑；--baseline 是合并任意历史结果文件。");
+    description: "历史 v3 计算状态快照路径。将本批新增数据与历史状态合并；普通 AnalysisResult 报告不能用于续算。--resume 跳过同一 JSONL 源已处理的行，--baseline 处理独立批次。");
 
 var maxMemoryOption = new Option<long>(
     name: "--max-memory",

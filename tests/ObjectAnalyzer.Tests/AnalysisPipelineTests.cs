@@ -206,30 +206,17 @@ public class AnalysisPipelineTests
     }
 
     [Fact]
-    public void FieldStatistic_MergeFrom_SumsNullCount()
+    public void AccumulatorMerge_SumsNullCount()
     {
-        var a = new AnalysisResult
-        {
-            TotalObjects = 3,
-            FieldStatistics = new List<FieldStatistic>
-            {
-                new() { FieldName = "x", Count = 2, NullCount = 1 }
-            }
-        };
-        var b = new AnalysisResult
-        {
-            TotalObjects = 2,
-            FieldStatistics = new List<FieldStatistic>
-            {
-                new() { FieldName = "x", Count = 1, NullCount = 1 }
-            }
-        };
-
-        a.MergeFrom(b);
-
-        var x = a.FieldStatistics.Single(f => f.FieldName == "x");
+        var a = new AnalysisAccumulator();
+        a.ObserveRange([new() { ["x"] = null }, new(), new() { ["x"] = 1 }]);
+        var b = new AnalysisAccumulator();
+        b.ObserveRange([new() { ["x"] = null }, new()]);
+        a.Merge(b);
+        var x = Assert.Single(a.Complete().FieldStatistics);
         Assert.Equal(3, x.Count);
         Assert.Equal(2, x.NullCount);
+        Assert.Equal(0.6, x.Coverage);
     }
 
     // ── 三宿主行为一致性：管线结果与 CLI 宿主结果逐字节一致 ──

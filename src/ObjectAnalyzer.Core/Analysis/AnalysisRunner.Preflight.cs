@@ -113,6 +113,16 @@ public static partial class AnalysisRunner
             return PreflightOutcome.Fail(1);
         }
 
+        if (!string.IsNullOrEmpty(options.Incremental.CheckpointPath) || !string.IsNullOrEmpty(options.Incremental.ResumeFrom))
+        {
+            try { ValidateCheckpointOptions(options); }
+            catch (Exception ex)
+            {
+                AnalysisServices.Current.Console.MarkupLine($"[red]{MarkupText.Escape(ex.Message)}[/]");
+                return PreflightOutcome.Fail(1);
+            }
+        }
+
         // P6.2：--resume 加载快照
         AnalyzerSnapshot? resumeSnapshot = null;
         long startFromPosition = 0;
@@ -139,6 +149,19 @@ public static partial class AnalysisRunner
                         $"[red]错误: --resume 快照的源文件与当前输入不匹配（快照: {MarkupText.Escape(snapAbs)}，当前: {MarkupText.Escape(currentAbs)}）[/]");
                     return PreflightOutcome.Fail(1);
                 }
+            }
+
+            try
+            {
+                if (resumeSnapshot.PositionKind != "line" || resumeSnapshot.ExecutionSignature != BuildExecutionSignature(options))
+                    throw new InvalidDataException("Checkpoint pipeline configuration differs from the current run.");
+                if (resumeSnapshot.SourceFingerprint != ComputeSourceFingerprint(options.Input.InputPath, resumeSnapshot.SourcePosition))
+                    throw new InvalidDataException("Previously processed input has changed; rebuild the checkpoint.");
+            }
+            catch (Exception ex)
+            {
+                AnalysisServices.Current.Console.MarkupLine($"[red]{MarkupText.Escape(ex.Message)}[/]");
+                return PreflightOutcome.Fail(1);
             }
 
             startFromPosition = Math.Max(0, resumeSnapshot.SourcePosition);

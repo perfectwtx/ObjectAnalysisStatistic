@@ -108,10 +108,14 @@ objectanalyzer -i events.jsonl --record-path '$.payload'
 ```text
 --checkpoint PATH     保存分析检查点
 --resume PATH         从检查点继续分析
---baseline PATH       与历史 AnalysisResult 合并
+--baseline PATH       合并历史 v3 计算状态快照
 ```
 
-`--resume` 用于从中断位置继续同一数据源的分析；`--baseline` 用于把新增数据分析结果与已有历史结果合并，两者用途不同。
+检查点在成功完成分析后保存，格式为 `object-analyzer.snapshot/v3`，包含计算状态而非普通报告。目前不提供运行中定期落盘。
+
+`--resume` 根据物理行位置继续读取同一未压缩 JSONL 文件，校验已处理内容的摘要与执行配置，允许在文件末尾追加数据；空行和过滤掉的记录同样计入位置。`--baseline` 将一个独立批次与历史状态合并，不跳过当前输入。
+
+普通 `--output` 报告以及 v1/v2 检查点均不能用于续算，需要重新分析生成 v3 状态。位置续跑暂不支持其他格式、采样、内存自动回退，以及相关性、字符串模式、Unicode 卫生和模糊去重。普通完整分析仍可使用这些能力。详见 [计算状态与快照](core-analysis-state.md)。
 
 ## 审计与自动化
 

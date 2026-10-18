@@ -57,6 +57,8 @@ public sealed class HyperLogLog(int precision = 14)
     /// <summary>逐寄存器取最大合并（合并后保持当前实例的存储形态）。</summary>
     public void Merge(HyperLogLog other)
     {
+        ArgumentNullException.ThrowIfNull(other);
+        if (_p != other._p) throw new ArgumentException("HyperLogLog precisions differ.", nameof(other));
         // 空源无贡献
         if (other._dense == null && (other._sparse == null || other._sparse.Count == 0))
             return;
@@ -153,6 +155,30 @@ public sealed class HyperLogLog(int precision = 14)
     }
 
     private void EnsureDense() => _dense ??= new byte[_m];
+
+    internal HyperLogLogStateSnapshot Capture()
+    {
+        var data = new HyperLogLogStateSnapshot { Precision = _p };
+        if (_dense is not null)
+        {
+            for (int i = 0; i < _m; i++) if (_dense[i] > 0) data.Registers.Add(i, _dense[i]);
+        }
+        else if (_sparse is not null) data.Registers = new(_sparse);
+        return data;
+    }
+
+    internal static HyperLogLog Restore(HyperLogLogStateSnapshot data)
+    {
+        var hll = new HyperLogLog(data.Precision);
+        foreach (var pair in data.Registers)
+        {
+            if (pair.Key < 0 || pair.Key >= hll._m || pair.Value == 0 || pair.Value > 65 - data.Precision)
+                throw new InvalidDataException("Invalid HyperLogLog register.");
+        }
+        hll._sparse = new(data.Registers);
+        if (hll._sparse.Count >= SparseThreshold) hll.PromoteToDense();
+        return hll;
+    }
 
     private static byte CountLeadingZeros(ulong bits, int maxBits)
     {

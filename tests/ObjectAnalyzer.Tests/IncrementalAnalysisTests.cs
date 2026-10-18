@@ -5,8 +5,8 @@ namespace ObjectAnalyzer.Tests;
 /// <summary>
 /// P6.2 增量分析 / 断点续跑测试：
 /// - AnalyzerSnapshot 的 SaveTo / LoadFrom 序列化
-/// - FieldStatistic.MergeFrom（数值 / 直方图 / 枚举违规 / DateTime 等）
-/// - AnalysisResult.MergeFrom 顶层合并
+/// - 独立计算状态合并见 AccumulatorTests
+/// - 报告模型不再提供续算合并
 /// - AnalysisRunner --checkpoint / --resume / --baseline 端到端
 /// - 错误路径（--resume 源文件不一致 / 快照不存在）
 /// </summary>
@@ -31,17 +31,12 @@ public class IncrementalAnalysisTests
                 SourcePosition = 12345,
                 PositionKind = "line",
                 SourceFingerprint = "abcdef",
-                Result = new AnalysisResult
-                {
-                    TotalObjects = 12345,
-                    TotalUniqueObjects = 11900,
-                    TotalDuplicateGroups = 3
-                }
+                State = StateFor(Enumerable.Range(0, 12345).Select(i => new Dictionary<string, object?> { ["x"] = i % 3 })).Capture()
             };
             snapshot.SaveTo(path);
 
             var loaded = AnalyzerSnapshot.LoadFrom(path);
-            Assert.Equal("object-analyzer.snapshot/v2", loaded.Schema);
+            Assert.Equal("object-analyzer.snapshot/v3", loaded.Schema);
             Assert.Equal("C:\\data\\big.jsonl", loaded.SourcePath);
             Assert.Equal("jsonl", loaded.SourceFormat);
             Assert.Equal(12345, loaded.SourcePosition);
@@ -84,7 +79,7 @@ public class IncrementalAnalysisTests
             // 手写一个 schema 不兼容的 JSON（前缀与"object-analyzer.snapshot/"不匹配）
             File.WriteAllText(path, "{\"schema\":\"other-analyzer.snapshot/v0\",\"sourcePath\":\"x\"}");
             var ex = Assert.Throws<InvalidDataException>(() => AnalyzerSnapshot.LoadFrom(path));
-            Assert.Contains("schema 不兼容", ex.Message);
+            Assert.Contains("schema incompatible", ex.Message);
         }
         finally
         {
@@ -109,237 +104,6 @@ public class IncrementalAnalysisTests
         {
             TryDelete(path);
         }
-    }
-
-    // ──────────────────────────────────────────────
-    // FieldStatistic.MergeFrom 单元测试
-    // ──────────────────────────────────────────────
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void FieldStatistic_MergeFrom_AggregatesCountSumMinMaxAvgStdDev()
-    {
-        var a = new FieldStatistic
-        {
-            FieldName = "score",
-            Count = 3,
-            MinNumber = 10,
-            MaxNumber = 30,
-            SumNumber = 60, // 10+20+30
-            AvgNumber = 20,
-            StdDevNumber = 10 // sqrt(((10-20)² + (20-20)² + (30-20)²) / 2) = sqrt(200/2) = 10
-        };
-        var b = new FieldStatistic
-        {
-            FieldName = "score",
-            Count = 2,
-            MinNumber = 40,
-            MaxNumber = 50,
-            SumNumber = 90, // 40+50
-            AvgNumber = 45,
-            StdDevNumber = 5 // sqrt(((40-45)² + (50-45)²) / 1) = sqrt(50) ≈ 7.07
-            // 注：实际 Welford 算法生成的 StdDev 会因公式不同而略不同，这里以"至少 0"作为松弛断言
-        };
-        // 校正 b.StdDevNumber：实际应为 5*sqrt(1/0) ... 实际 n2=2 时样本标准差 = sqrt(50) ≈ 7.071
-        b.StdDevNumber = Math.Sqrt(50);
-
-        a.MergeFrom(b);
-
-        Assert.Equal(5, a.Count);
-        Assert.Equal(150, a.SumNumber); // 60 + 90
-        Assert.Equal(10, a.MinNumber);
-        Assert.Equal(50, a.MaxNumber);
-        // 新均值 = (3*20 + 2*45) / 5 = (60 + 90) / 5 = 30
-        Assert.Equal(30, a.AvgNumber);
-        Assert.NotNull(a.StdDevNumber);
-        // 标准差应为正数
-        Assert.True(a.StdDevNumber > 0, "合并后 StdDevNumber 应为正数");
-    }
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void FieldStatistic_MergeFrom_MergesHistograms()
-    {
-        var a = new FieldStatistic
-        {
-            FieldName = "value",
-            Count = 4,
-            Histogram = new List<NumericHistogramBucket>
-            {
-                new() { From = 0, To = 1, Count = 1 },
-                new() { From = 2, To = 4, Count = 3 }
-            }
-        };
-        var b = new FieldStatistic
-        {
-            FieldName = "value",
-            Count = 3,
-            Histogram = new List<NumericHistogramBucket>
-            {
-                new() { From = 0, To = 1, Count = 2 },
-                new() { From = 8, To = 16, Count = 1 }
-            }
-        };
-
-        a.MergeFrom(b);
-
-        Assert.NotNull(a.Histogram);
-        Assert.Equal(7, a.Count);
-        var byKey = a.Histogram!.ToDictionary(x => $"{x.From}-{x.To}");
-        Assert.Equal(3, byKey["0-1"].Count);   // 1 + 2
-        Assert.Equal(3, byKey["2-4"].Count);
-        Assert.Equal(1, byKey["8-16"].Count);
-    }
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void FieldStatistic_MergeFrom_MergesTypeCountsAndValueCounts()
-    {
-        var a = new FieldStatistic
-        {
-            FieldName = "k",
-            Count = 5,
-            TypeCounts = new Dictionary<string, long> { ["Number"] = 3, ["String"] = 2 },
-            ValueCounts = new Dictionary<ObjectAnalyzer.Data.RecordValue, long> { ["v1"] = 3, ["v2"] = 2 }
-        };
-        var b = new FieldStatistic
-        {
-            FieldName = "k",
-            Count = 4,
-            TypeCounts = new Dictionary<string, long> { ["Number"] = 2, ["Boolean"] = 2 },
-            ValueCounts = new Dictionary<ObjectAnalyzer.Data.RecordValue, long> { ["v1"] = 1, ["v3"] = 3 }
-        };
-
-        a.MergeFrom(b);
-
-        Assert.Equal(9, a.Count);
-        Assert.Equal(5, a.TypeCounts["Number"]);   // 3+2
-        Assert.Equal(2, a.TypeCounts["String"]);
-        Assert.Equal(2, a.TypeCounts["Boolean"]);
-        Assert.Equal(4, a.ValueCounts["v1"]);     // 3+1
-        Assert.Equal(2, a.ValueCounts["v2"]);
-        Assert.Equal(3, a.ValueCounts["v3"]);
-    }
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void FieldStatistic_MergeFrom_AppendsEnumViolations()
-    {
-        var a = new FieldStatistic { FieldName = "status" };
-        a.GetType().GetMethod("AddEnumViolation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(a, new object?[] { "OLD" });
-        a.GetType().GetMethod("AddEnumViolation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(a, new object?[] { "WORN" });
-
-        var b = new FieldStatistic { FieldName = "status" };
-        b.GetType().GetMethod("AddEnumViolation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(b, new object?[] { "BROKEN" });
-
-        a.MergeFrom(b);
-
-        Assert.Equal(3, a.EnumViolations.Count);
-        Assert.Contains("OLD", a.EnumViolations);
-        Assert.Contains("WORN", a.EnumViolations);
-        Assert.Contains("BROKEN", a.EnumViolations);
-    }
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void FieldStatistic_MergeFrom_NullOther_NoOp()
-    {
-        var a = new FieldStatistic { FieldName = "x", Count = 5 };
-        a.MergeFrom(null!);
-        Assert.Equal(5, a.Count);
-    }
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void FieldStatistic_MergeFrom_DateTimeMinMaxExtends()
-    {
-        var a = new FieldStatistic
-        {
-            FieldName = "ts",
-            MinDateTime = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero),
-            MaxDateTime = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
-        };
-        var b = new FieldStatistic
-        {
-            FieldName = "ts",
-            MinDateTime = new DateTimeOffset(2024, 12, 1, 0, 0, 0, TimeSpan.Zero),
-            MaxDateTime = new DateTimeOffset(2025, 7, 1, 0, 0, 0, TimeSpan.Zero)
-        };
-
-        a.MergeFrom(b);
-
-        Assert.Equal(new DateTimeOffset(2024, 12, 1, 0, 0, 0, TimeSpan.Zero), a.MinDateTime);
-        Assert.Equal(new DateTimeOffset(2025, 7, 1, 0, 0, 0, TimeSpan.Zero), a.MaxDateTime);
-    }
-
-    // ──────────────────────────────────────────────
-    // AnalysisResult.MergeFrom 单元测试
-    // ──────────────────────────────────────────────
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void AnalysisResult_MergeFrom_AggregatesTotals()
-    {
-        var a = new AnalysisResult
-        {
-            TotalObjects = 100,
-            TotalUniqueObjects = 95,
-            TotalDuplicateGroups = 2,
-            FieldStatistics = new List<FieldStatistic>
-            {
-                new() { FieldName = "x", Count = 100, SumNumber = 1000, AvgNumber = 10 }
-            }
-        };
-        var b = new AnalysisResult
-        {
-            TotalObjects = 50,
-            TotalUniqueObjects = 48,
-            TotalDuplicateGroups = 1,
-            FieldStatistics = new List<FieldStatistic>
-            {
-                new() { FieldName = "x", Count = 50, SumNumber = 500, AvgNumber = 10 }
-            }
-        };
-
-        a.MergeFrom(b);
-
-        Assert.Equal(150, a.TotalObjects);
-        Assert.Equal(95, a.TotalUniqueObjects); // max
-        Assert.Equal(3, a.TotalDuplicateGroups);
-        Assert.Single(a.FieldStatistics);
-        Assert.Equal(150, a.FieldStatistics[0].Count);
-        Assert.Equal(1500, a.FieldStatistics[0].SumNumber);
-    }
-
-    [Fact]
-    [Trait("Category", "P6.2")]
-    public void AnalysisResult_MergeFrom_NewFieldAppended()
-    {
-        var a = new AnalysisResult
-        {
-            TotalObjects = 10,
-            FieldStatistics = new List<FieldStatistic>
-            {
-                new() { FieldName = "a", Count = 10 }
-            }
-        };
-        var b = new AnalysisResult
-        {
-            TotalObjects = 5,
-            FieldStatistics = new List<FieldStatistic>
-            {
-                new() { FieldName = "b", Count = 5 }
-            }
-        };
-
-        a.MergeFrom(b);
-
-        Assert.Equal(2, a.FieldStatistics.Count);
-        Assert.Contains(a.FieldStatistics, f => f.FieldName == "a" && f.Count == 10);
-        Assert.Contains(a.FieldStatistics, f => f.FieldName == "b" && f.Count == 5);
     }
 
     // ──────────────────────────────────────────────
@@ -503,16 +267,8 @@ public class IncrementalAnalysisTests
         try
         {
             // 准备历史基线：5 条记录
-            var historical = new AnalysisResult
-            {
-                TotalObjects = 5,
-                TotalUniqueObjects = 5,
-                FieldStatistics = new List<FieldStatistic>
-                {
-                    new() { FieldName = "a", Count = 5, SumNumber = 15, MinNumber = 1, MaxNumber = 5, AvgNumber = 3 }
-                }
-            };
-            File.WriteAllText(baseline, JsonSerializer.Serialize(historical, s_jsonWriteOptions));
+            var historical = StateFor(Enumerable.Range(1, 5).Select(i => new Dictionary<string, object?> { ["a"] = i }));
+            new AnalyzerSnapshot { State = historical.Capture() }.SaveTo(baseline);
 
             // 准备新数据：3 条记录
             File.WriteAllText(input, "{\"a\":10,\"b\":\"x\"}\n{\"a\":20}\n{\"a\":30,\"b\":\"y\"}");
@@ -650,7 +406,12 @@ public class IncrementalAnalysisTests
     // Helper
     // ──────────────────────────────────────────────
 
-    private static readonly JsonSerializerOptions s_jsonWriteOptions = new() { WriteIndented = true };
+    private static AnalysisAccumulator StateFor(IEnumerable<Dictionary<string, object?>> rows)
+    {
+        var state = new AnalysisAccumulator();
+        state.ObserveRange(rows);
+        return state;
+    }
 
     private static string NewTempPath(string ext)
         => Path.Combine(Path.GetTempPath(), "p6-" + Guid.NewGuid().ToString("N") + ext);

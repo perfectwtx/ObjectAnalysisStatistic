@@ -29,6 +29,7 @@ internal sealed class JsonlFileParser : IFileParser
         while ((line = reader.ReadLine()) != null)
         {
             lineNumber++;
+            options.SourceProgress?.Invoke(lineNumber);
             if (lineNumber <= linesToSkip) continue;
             if (string.IsNullOrWhiteSpace(line))
                 continue;
@@ -46,6 +47,7 @@ internal sealed class JsonlFileParser : IFileParser
         while ((line = reader.ReadLine()) != null)
         {
             lineNumber++;
+            options.SourceProgress?.Invoke(lineNumber);
             if (lineNumber <= linesToSkip) continue;
             if (string.IsNullOrWhiteSpace(line))
                 continue;
@@ -67,6 +69,7 @@ internal sealed class JsonlFileParser : IFileParser
         while ((line = reader.ReadLine()) != null)
         {
             lineNumber++;
+            options.SourceProgress?.Invoke(lineNumber);
             if (lineNumber <= linesToSkip) continue;
             if (string.IsNullOrWhiteSpace(line))
                 continue;

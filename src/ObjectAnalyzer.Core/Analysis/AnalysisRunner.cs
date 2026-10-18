@@ -83,16 +83,15 @@ public static partial class AnalysisRunner
             var runContext = new AnalysisRunContext
             {
                 MemoryBudget = preflight.MemoryBudget,
-                StartFromPosition = preflight.StartFromPosition
+                StartFromPosition = preflight.StartFromPosition,
+                InitialState = preflight.ResumeSnapshot?.State.Restore()
             };
             PipelineResult pipelineResult = AnalysisPipeline.Execute(options, rules, runContext, cancellationToken);
             AnalysisResult result = pipelineResult.Result;
 
-            // W1 收尾：呈现 / 导出 / Schema 与分布快照（宿主职责，留在 CLI 侧）
+            MergeIncrementalResults(options, pipelineResult, preflight.StartFromPosition, runContext);
+            result = pipelineResult.Result;
             ProcessAndReport(pipelineResult, options, rules, runContext, cancellationToken);
-
-            // P6.2：--resume / --baseline 结果合并 + --checkpoint 落盘 + 合并后报告覆写
-            MergeIncrementalResults(options, result, preflight.ResumeSnapshot, preflight.StartFromPosition, runContext);
 
             (int exitCode, string? gateMessage) = EvaluateQualityGates(result, options);
             WriteAuditEvent(audit, options, rules, runId, sw, "analysis_finish", exitCode, result, gateMessage);
@@ -203,28 +202,6 @@ public static partial class AnalysisRunner
         if (ex.InnerException != null)
         {
             AnalysisServices.Current.Console.MarkupLine($"[red]内部错误: {MarkupText.Escape(ex.InnerException.Message)}[/]");
-        }
-    }
-
-    /// <summary>
-    /// P6.2：从 --baseline 指定的 JSON 文件反序列化为 <see cref="AnalysisResult"/>。
-    /// 该文件可以是 <c>--output ... .json</c> 生成的标准报告（顶层即为 AnalysisResult）；
-    /// 找不到字段时不抛异常，反序列化得到的对象只含存在的字段，由 <see cref="AnalysisResult.MergeFrom"/> 容错处理。
-    /// </summary>
-    private static AnalysisResult? LoadAnalysisResultFromFile(string path)
-    {
-        try
-        {
-            string json = File.ReadAllText(path);
-            if (string.IsNullOrWhiteSpace(json)) return null;
-            var result = JsonSerializer.Deserialize<AnalysisResult>(json, s_diffJsonOptions);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            AnalysisServices.Current.Console.MarkupLine(
-                $"[red]错误: --baseline 文件解析失败: {MarkupText.Escape(ex.Message)}[/]");
-            throw;
         }
     }
 

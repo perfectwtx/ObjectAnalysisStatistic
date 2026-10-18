@@ -6,7 +6,7 @@ internal sealed class InternalFieldMetrics
     public double MinNumber { get; set; } = double.MaxValue;
     public double MaxNumber { get; set; } = double.MinValue;
     public double SumNumber { get; set; }
-    public int NumberCount { get; set; }
+    public long NumberCount { get; set; }
 
     /// <summary>Welford 在线均值（流式，数值稳定）。</summary>
     public double NumMean { get; private set; }
@@ -20,12 +20,12 @@ internal sealed class InternalFieldMetrics
     /// <summary>字符串长度总和（配合 StringCount 得平均长度）。</summary>
     public long LengthSum { get; private set; }
 
-    public int StringCount { get; set; }
+    public long StringCount { get; set; }
 
     /// <summary>零值出现次数（对数直方图中零单独成桶）。</summary>
     public long ZeroCount { get; private set; }
 
-    public Dictionary<string, int> SemanticCounts { get; } = new();
+    public Dictionary<string, long> SemanticCounts { get; } = new();
 
     // 深度剖析草图（懒创建：仅该字段真的出现对应类型值时分配）
     public MergeableQuantileSketch? Quantiles { get; private set; }
@@ -112,11 +112,11 @@ internal sealed class InternalFieldMetrics
 
         if (other.NumberCount > 0)
         {
-            int newCount = NumberCount + other.NumberCount;
+            long newCount = NumberCount + other.NumberCount;
             double deltaMean = other.NumMean - NumMean;
             if (NumberCount > 0)
             {
-                NumM2 += other.NumM2 + deltaMean * deltaMean * NumberCount * other.NumberCount / newCount;
+                NumM2 += other.NumM2 + deltaMean * deltaMean * NumberCount * ((double)other.NumberCount / newCount);
                 NumMean += deltaMean * other.NumberCount / newCount;
             }
             else
@@ -179,5 +179,57 @@ internal sealed class InternalFieldMetrics
                 dateHist[kv.Key] = dateHist.GetValueOrDefault(kv.Key) + kv.Value;
             }
         }
+    }
+
+    internal FieldMetricsSnapshot Capture() => new()
+    {
+        MinNumber = MinNumber,
+        MaxNumber = MaxNumber,
+        SumNumber = SumNumber,
+        NumberCount = NumberCount,
+        NumMean = NumMean,
+        NumM2 = NumM2,
+        MinLength = MinLength,
+        MaxLength = MaxLength,
+        LengthSum = LengthSum,
+        StringCount = StringCount,
+        ZeroCount = ZeroCount,
+        SemanticCounts = new(SemanticCounts),
+        Histogram = Histogram is null ? null : new(Histogram),
+        DateTimeCount = DateTimeCount,
+        MinDateTime = MinDateTime,
+        MaxDateTime = MaxDateTime,
+        DateHistogram = DateHistogram is null ? null : new(DateHistogram),
+        RangeViolationCount = RangeViolationCount,
+        Quantiles = Quantiles?.Capture(),
+        DistinctHll = DistinctHll?.Capture(),
+    };
+
+    internal static InternalFieldMetrics Restore(FieldMetricsSnapshot data)
+    {
+        var state = new InternalFieldMetrics
+        {
+            MinNumber = data.MinNumber,
+            MaxNumber = data.MaxNumber,
+            SumNumber = data.SumNumber,
+            NumberCount = data.NumberCount,
+            NumMean = data.NumMean,
+            NumM2 = data.NumM2,
+            MinLength = data.MinLength,
+            MaxLength = data.MaxLength,
+            LengthSum = data.LengthSum,
+            StringCount = data.StringCount,
+            ZeroCount = data.ZeroCount,
+            Histogram = data.Histogram is null ? null : new(data.Histogram),
+            DateTimeCount = data.DateTimeCount,
+            MinDateTime = data.MinDateTime,
+            MaxDateTime = data.MaxDateTime,
+            DateHistogram = data.DateHistogram is null ? null : new(data.DateHistogram),
+            RangeViolationCount = data.RangeViolationCount,
+            Quantiles = data.Quantiles is null ? null : MergeableQuantileSketch.Restore(data.Quantiles),
+            DistinctHll = data.DistinctHll is null ? null : HyperLogLog.Restore(data.DistinctHll),
+        };
+        foreach (var p in data.SemanticCounts) state.SemanticCounts.Add(p.Key, p.Value);
+        return state;
     }
 }
