@@ -11,6 +11,14 @@ on:
     paths:
       - 'src/ObjectAnalyzer.Desktop/**'
       - 'src/ObjectAnalyzer.Core/**'
+      - 'src/ObjectAnalyzer.Application/**'
+      - 'src/ObjectAnalyzer.Parsing/**'
+      - 'src/ObjectAnalyzer.Exporting/**'
+      - 'src/ObjectAnalyzer.Platform/**'
+      - 'src/ObjectAnalyzer.Infrastructure/**'
+      - 'src/ObjectAnalyzer.Hosting/**'
+      - 'Directory.Build.props'
+      - 'ObjectAnalyzer.sln'
       - '.github/workflows/desktop.yml'
 
 jobs:

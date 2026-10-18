@@ -41,6 +41,9 @@ jobs:
       - name: Test
         run: dotnet test ObjectAnalyzer.sln --no-build -c Release
 
+      - name: Verify standalone kernel sample
+        run: dotnet run --project samples/ObjectAnalyzer.MemorySample --no-build --no-restore -c Release
+
       - name: Publish CLI
         run: >
           dotnet publish

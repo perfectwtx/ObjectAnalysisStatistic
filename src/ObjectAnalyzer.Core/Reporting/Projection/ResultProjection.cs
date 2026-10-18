@@ -25,17 +25,6 @@ public static class ResultProjection
             Preview(preview ?? [], redact ? policy : PiiPolicy.Empty), policy, redact);
     }
 
-    public static global::ObjectAnalyzer.Platform.AnalysisJob Job(global::ObjectAnalyzer.Platform.AnalysisJob source)
-    {
-        var copy = AnalysisAccumulator.Clone(source);
-        if (!string.IsNullOrWhiteSpace(copy.ResultJson))
-        {
-            try { copy.ResultJson = JsonSerializer.Serialize(ReadStored(copy.ResultJson)); }
-            catch (JsonException) { copy.ResultJson = null; }
-        }
-        return copy;
-    }
-
     public static AnalysisResult? ReadStored(string json)
     {
         var result = JsonSerializer.Deserialize<AnalysisResult>(json);

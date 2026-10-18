@@ -55,7 +55,7 @@ public static class QualityEndpoints
     private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetJobs(int? limit, IAnalysisHistoryStore store, CancellationToken cancellationToken)
     {
         var actualLimit = Math.Clamp(limit ?? 50, 1, 500);
-        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>((await store.GetRecentAsync(actualLimit, cancellationToken)).Select(ResultProjection.Job).ToList());
+        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>((await store.GetRecentAsync(actualLimit, cancellationToken)).Select(JobResultProjection.Job).ToList());
     }
 
     private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetFieldJobs(IAnalysisHistoryStore store, CancellationToken cancellationToken)
@@ -64,13 +64,13 @@ public static class QualityEndpoints
             .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
             .OrderByDescending(x => x.StartedAtUtc)
             .ToList();
-        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>(jobs.Select(ResultProjection.Job).ToList());
+        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>(jobs.Select(JobResultProjection.Job).ToList());
     }
 
     private static async Task<Results<Ok<AnalysisJob>, NotFound<ErrorResponse>>> GetJob(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
     {
         var job = await store.GetAsync(jobId, cancellationToken);
-        return job is null ? TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}")) : TypedResults.Ok(ResultProjection.Job(job));
+        return job is null ? TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}")) : TypedResults.Ok(JobResultProjection.Job(job));
     }
 
     private static async Task<Results<Ok<AnalysisResult>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetJobResult(Guid jobId, IAnalysisHistoryStore store, CancellationToken cancellationToken)
@@ -123,7 +123,7 @@ public static class QualityEndpoints
             .ToList();
 
         return TypedResults.Ok(new AnalysisJobOverviewResponse(
-            ResultProjection.Job(job),
+            JobResultProjection.Job(job),
             qualityMetrics,
             baselineEvaluation,
             gateResults,
@@ -154,7 +154,7 @@ public static class QualityEndpoints
         var topIssues = (await issues.GetByJobAsync(job.Id, cancellationToken)).OrderByDescending(x => x.Count).ThenBy(x => x.FieldName).Take(5).ToList();
         var gates = DeserializeList<QualityGateResult>(job.GateResultsJson);
         var metrics = result is null ? null : QualityMetricsCalculator.Calculate(result);
-        return TypedResults.Ok(new QualityDashboardResponse(ResultProjection.Job(job), metrics, snapshots, topIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList(), gates));
+        return TypedResults.Ok(new QualityDashboardResponse(JobResultProjection.Job(job), metrics, snapshots, topIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList(), gates));
     }
 
     private static async Task<Ok<IReadOnlyList<QualitySnapshot>>> GetTrend(string? sourceName, int? limit, IQualityHistoryQuery query, CancellationToken cancellationToken)
@@ -177,7 +177,7 @@ public static class QualityEndpoints
         var fields = ResultProjection.Create(result).Result.FieldStatistics;
         var normalizedFields = await qualityHistory.GetFieldsByJobAsync(jobId, cancellationToken);
         var qualityIssues = await issues.GetByJobAsync(jobId, cancellationToken);
-        return TypedResults.Ok(new FieldQualityResponse(ResultProjection.Job(job), fields, normalizedFields, qualityIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList()));
+        return TypedResults.Ok(new FieldQualityResponse(JobResultProjection.Job(job), fields, normalizedFields, qualityIssues.Select(item => item with { Message = "Stored issue; raw message omitted in delivery." }).ToList()));
     }
 
     private static async Task<Results<Ok<FieldCorrelationMatrix?>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> GetRelationships(Guid jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)

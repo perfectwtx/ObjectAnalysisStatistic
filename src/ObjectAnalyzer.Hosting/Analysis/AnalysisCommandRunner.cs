@@ -86,7 +86,7 @@ public sealed partial class AnalysisCommandRunner
                 StartFromPosition = preflight.StartFromPosition,
                 InitialState = preflight.ResumeSnapshot?.State.Restore()
             };
-            PipelineResult pipelineResult = new AnalysisExecutor(_services.Progress).Execute(options, rules, runContext, cancellationToken);
+            PipelineResult pipelineResult = AnalysisRuntime.CreateExecutor(_services.Progress).Execute(options, rules, runContext, cancellationToken);
             AnalysisResult result = pipelineResult.Result;
 
             MergeIncrementalResults(options, pipelineResult, preflight.StartFromPosition, runContext);

@@ -5,7 +5,7 @@ namespace ObjectAnalyzer.Parsing;
 /// <summary>Factories for equivalent file, byte-stream and typed-record input contracts.</summary>
 public static class DataSources
 {
-    public static IAnalysisDataSource File(string path, string? format = null, RecordParserRegistry? registry = null)
+    public static IAnalysisDataSource File(string path, string? format = null, IRecordParserRegistry? registry = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         registry ??= RecordParserRegistry.Default;
@@ -23,7 +23,7 @@ public static class DataSources
 
     /// <summary>The factory must return a fresh stream per enumeration when replayable is true.</summary>
     public static IAnalysisDataSource Stream(Func<Stream> open, string format, string name = "stream",
-        RecordParserRegistry? registry = null, bool replayable = true, bool leaveOpen = false)
+        IRecordParserRegistry? registry = null, bool replayable = true, bool leaveOpen = false)
     {
         ArgumentNullException.ThrowIfNull(open);
         ArgumentException.ThrowIfNullOrWhiteSpace(format);
@@ -43,7 +43,7 @@ public static class DataSources
     }
 
     public static IAnalysisDataSource Stream(Stream stream, string format, string name = "stream",
-        bool leaveOpen = false, RecordParserRegistry? registry = null)
+        bool leaveOpen = false, IRecordParserRegistry? registry = null)
     {
         ArgumentNullException.ThrowIfNull(stream);
         return Stream(() => stream, format, name, registry, replayable: false, leaveOpen: leaveOpen);

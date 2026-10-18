@@ -39,7 +39,7 @@ public sealed class WebAnalysisExecutionService
             sourceType,
             async token =>
             {
-                pipelineResult = await new AnalysisExecutor().ExecuteAsync(options, rules, runContext, token);
+                pipelineResult = await AnalysisRuntime.CreateExecutor().ExecuteAsync(options, rules, runContext, token);
 
                 // 允许 Web 宿主在 Coordinator 持久化 Job 之前完成结果后处理。
                 // 这样诸如 resume / baseline merge 得到的最终 Result 会进入同一个 AnalysisJob。

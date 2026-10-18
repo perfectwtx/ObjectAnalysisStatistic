@@ -119,3 +119,11 @@ internal static class SourceAsync
         foreach (var record in records) { cancellationToken.ThrowIfCancellationRequested(); yield return record; }
     }
 }
+
+/// <summary>Parser lookup port; concrete registrations belong to input adapters.</summary>
+public interface IRecordParserRegistry
+{
+    IRecordParser Resolve(string format);
+    string DetectFormat(string path);
+    string FormatFromExtension(string extension);
+}

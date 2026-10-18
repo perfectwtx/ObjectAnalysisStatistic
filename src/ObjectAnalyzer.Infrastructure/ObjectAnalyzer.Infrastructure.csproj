@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ObjectAnalyzer</RootNamespace>
+    <Description>SQLite platform storage, audit files and secret providers.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ObjectAnalyzer.Core/ObjectAnalyzer.Core.csproj" />
+    <ProjectReference Include="../ObjectAnalyzer.Platform/ObjectAnalyzer.Platform.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.50.3" />
+  </ItemGroup>
+</Project>

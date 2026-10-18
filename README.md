@@ -126,10 +126,17 @@ CLI、API 和 Web 共用 Core 分析能力。Platform 层负责任务生命周�
 
 ```text
 src/
-├── ObjectAnalyzer.Core/   # 核心分析能力
+├── ObjectAnalyzer.Core/           # 无第三方依赖的计算内核与契约
+├── ObjectAnalyzer.Application/    # 执行管线、事件与输入端口
+├── ObjectAnalyzer.Parsing/        # 文件、数据库、压缩与转换适配器
+├── ObjectAnalyzer.Exporting/      # 报告、Schema 导出与规则导入
+├── ObjectAnalyzer.Platform/       # 作业、质量基线、责任、修复与告警
+├── ObjectAnalyzer.Infrastructure/ # SQLite、审计与密钥实现
+├── ObjectAnalyzer.Hosting/        # 完整命令及模块组合
 ├── ObjectAnalyzer/        # CLI
 ├── ObjectAnalyzer.Api/    # HTTP API
-└── ObjectAnalyzer.Web/    # Blazor Web
+├── ObjectAnalyzer.Web/    # Blazor Web
+└── ObjectAnalyzer.Desktop/ # WPF Desktop
 
 tests/
 ├── ObjectAnalyzer.Tests/
@@ -146,7 +153,8 @@ samples/                   # 示例数据与规则
 |---|---|
 | [快速开始](docs/getting-started.md) | 环境、启动、第一次分析 |
 | [Desktop 使用与发布](docs/desktop.md) | Desktop 本地使用、数据位置、Windows 发布 |
-| [总体架构](docs/architecture.md) | Core、Platform、宿主与任务生命周期 |
+| [总体架构](docs/architecture.md) | 模块依赖、宿主与任务生命周期 |
+| [模块拆分与迁移](docs/core-module-boundaries.md) | 独立引用内核、输入端口和程序集迁移 |
 | [数据质量](docs/data-quality.md) | 五维质量模型与质量指标 |
 | [问题中心](docs/issues.md) | Issue 模型、来源与处理路径 |
 | [历史与趋势](docs/history.md) | 快照、趋势与历史存储 |

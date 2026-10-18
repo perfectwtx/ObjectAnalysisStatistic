@@ -25,7 +25,7 @@ public sealed class DataSourceContractTests : IDisposable
     {
         const string row = "{\"a.b\":9007199254740993,\"a\":{\"b\":\"1\"},\"items\":[1,null],\"empty\":{}}";
         string path = Write("exact.jsonl", row + "\n");
-        var executor = new AnalysisExecutor();
+        var executor = AnalysisRuntime.CreateExecutor();
         var fromFile = executor.Execute(new AnalysisOptions { Input = { InputPath = path }, Parse = { MaxDegreeOfParallelism = 1 } }).Result;
         var fromStream = executor.Execute(Options(), runContext: new AnalysisRunContext
         { Source = DataSources.Stream(() => new MemoryStream(Bytes(row)), "jsonl") }).Result;
@@ -70,7 +70,7 @@ public sealed class DataSourceContractTests : IDisposable
         var options = Options();
         options.Input.InputPath = Write("input.custom", "value|7");
         var context = new AnalysisRunContext { Parsers = registry };
-        var result = new AnalysisExecutor().Execute(options, runContext: context).Result;
+        var result = AnalysisRuntime.CreateExecutor().Execute(options, runContext: context).Result;
         Assert.Equal("pipe", context.SourceDescriptor!.Format);
         Assert.Equal(7, Assert.Single(result.FieldStatistics).AvgNumber);
     }
@@ -134,7 +134,7 @@ public sealed class DataSourceContractTests : IDisposable
         var source = DataSources.Stream(() => { opens++; return new MemoryStream(Bytes("[]")); }, "json");
         var options = Options();
         options.Parse.MalformedRecords = MalformedRecordPolicy.Skip;
-        Assert.Throws<NotSupportedException>(() => new AnalysisExecutor().Execute(options,
+        Assert.Throws<NotSupportedException>(() => AnalysisRuntime.CreateExecutor().Execute(options,
             runContext: new AnalysisRunContext { Source = source }));
         Assert.Equal(0, opens);
     }
@@ -149,7 +149,7 @@ public sealed class DataSourceContractTests : IDisposable
         options.FieldSelection.Filter = "x > 0";
         options.Sampling.SampleStep = 2;
         var context = new AnalysisRunContext();
-        var result = (await new AnalysisExecutor().ExecuteAsync(options, runContext: context)).Result;
+        var result = (await AnalysisRuntime.CreateExecutor().ExecuteAsync(options, runContext: context)).Result;
         Assert.Equal(2, result.TotalObjects);
         Assert.Equal(2, context.SkippedInputRecords);
         Assert.Equal(6, context.LastSourcePosition);
@@ -167,7 +167,7 @@ public sealed class DataSourceContractTests : IDisposable
         var options = Options();
         options.Input.InputPath = path;
         options.Input.RootPath = "$.data[*]";
-        var executor = new AnalysisExecutor();
+        var executor = AnalysisRuntime.CreateExecutor();
         Assert.Equal(2, executor.Execute(options).Result.TotalObjects);
         Assert.Equal(2, (await executor.ExecuteAsync(options)).Result.TotalObjects);
         Assert.False(DataSources.File(path).Descriptor.Capabilities.Streaming);
@@ -196,7 +196,7 @@ public sealed class DataSourceContractTests : IDisposable
         }
         var analyzer = new ActionAnalyzer(cancellation.Cancel);
         var events = new List<AnalysisEvent>();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new AnalysisExecutor().ExecuteAsync(Options(),
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => AnalysisRuntime.CreateExecutor().ExecuteAsync(Options(),
             runContext: new AnalysisRunContext
             {
                 Source = DataSources.AsyncRecords(Generate()),
@@ -228,7 +228,7 @@ public sealed class DataSourceContractTests : IDisposable
             finally { disposed = true; }
         }
         var events = new List<AnalysisEvent>();
-        var task = new AnalysisExecutor().ExecuteAsync(Options(), runContext: new AnalysisRunContext
+        var task = AnalysisRuntime.CreateExecutor().ExecuteAsync(Options(), runContext: new AnalysisRunContext
         {
             Source = DataSources.AsyncRecords(Generate()), EventSink = events.Add,
             Analyzers = FieldAnalyzerRegistry.Default.With(new ActionAnalyzer(() => throw new InvalidOperationException("consumer failed")))
@@ -245,7 +245,7 @@ public sealed class DataSourceContractTests : IDisposable
         var options = Options();
         options.Parse.MaxDegreeOfParallelism = 0;
         var events = new List<AnalysisEvent>();
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => new AnalysisExecutor().ExecuteAsync(options,
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => AnalysisRuntime.CreateExecutor().ExecuteAsync(options,
             runContext: new AnalysisRunContext { EventSink = events.Add }));
         Assert.Equal(AnalysisEventKind.Started, events[0].Kind);
         Assert.Equal(AnalysisEventKind.Failed, Assert.Single(events, Terminal).Kind);

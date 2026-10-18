@@ -1,6 +1,6 @@
 using ObjectAnalyzer.Analysis;
 
-namespace ObjectAnalyzer.Platform;
+namespace ObjectAnalyzer.Analysis;
 
 /// <summary>从分析结果计算数据质量各维度指标。</summary>
 public static class QualityMetricsCalculator

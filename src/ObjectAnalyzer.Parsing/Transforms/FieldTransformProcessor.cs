@@ -1,3 +1,4 @@
+using ObjectAnalyzer.Analysis.Pipeline;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,7 +22,7 @@ namespace ObjectAnalyzer.Analysis;
 /// 以及按过滤表达式筛选对象（--where / 规则文件 filter）；过滤在字段选择与值转换之后执行。
 /// 转换失败时保留原始值，并记录失败次数到 FieldStatistic.TransformFailureCount。
 /// </summary>
-public sealed class FieldTransformProcessor
+public sealed class FieldTransformProcessor : IRecordTransformer
 {
     private readonly Dictionary<string, FieldTransform> _transforms = new();
     private readonly HashSet<string>? _selectedFields;

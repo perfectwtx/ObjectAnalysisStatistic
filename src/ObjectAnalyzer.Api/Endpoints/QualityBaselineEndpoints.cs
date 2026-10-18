@@ -1,3 +1,4 @@
+using ObjectAnalyzer.Analysis;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using ObjectAnalyzer.Platform;

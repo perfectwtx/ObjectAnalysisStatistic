@@ -190,7 +190,7 @@ public sealed class ResultProjectionTests
     {
         var source = Sensitive(); var stored = Json(source);
         var job = new AnalysisJob { ResultJson = stored };
-        var delivery = ResultProjection.Job(job);
+        var delivery = JobResultProjection.Job(job);
         Assert.Equal(stored, job.ResultJson); Assert.DoesNotContain(Secret, delivery.ResultJson!);
         var restored = JsonSerializer.Deserialize<AnalysisResult>(stored)!;
         Assert.Contains(Secret, Json(restored));

@@ -25,6 +25,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ObjectAnalyzer.Core\ObjectAnalyzer.Core.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Parsing/ObjectAnalyzer.Parsing.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Exporting/ObjectAnalyzer.Exporting.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Application/ObjectAnalyzer.Application.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Platform/ObjectAnalyzer.Platform.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Infrastructure/ObjectAnalyzer.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/ObjectAnalyzer.Hosting/ObjectAnalyzer.Hosting.csproj" />
   </ItemGroup>
 
 </Project>

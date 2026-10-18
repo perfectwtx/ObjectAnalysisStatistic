@@ -47,7 +47,7 @@ internal static class AnalysisCore
             PreviewSink = captured => preview.AddRange(captured),
             PreviewLimit = PreviewLimit
         };
-        var pipelineResult = await new AnalysisExecutor().ExecuteAsync(options, rules, runContext, cancellationToken).ConfigureAwait(false);
+        var pipelineResult = await AnalysisRuntime.CreateExecutor().ExecuteAsync(options, rules, runContext, cancellationToken).ConfigureAwait(false);
 
         // ── 出站打码关卡（delivery boundary）──
         // 分析内核始终处理原始值；任何结果离开服务前在这里统一按策略打码，

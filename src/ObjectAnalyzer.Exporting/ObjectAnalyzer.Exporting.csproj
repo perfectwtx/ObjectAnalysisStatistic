@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ObjectAnalyzer</RootNamespace>
+    <Description>Report and schema backends, snapshot IO and C# rule import.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ObjectAnalyzer.Core/ObjectAnalyzer.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="MiniExcel" Version="1.45.0" />
+    <PackageReference Include="QuestPDF" Version="2024.10.3" />
+  </ItemGroup>
+</Project>

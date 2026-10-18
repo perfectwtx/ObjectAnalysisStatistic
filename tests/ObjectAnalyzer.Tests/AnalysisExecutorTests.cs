@@ -26,7 +26,7 @@ public sealed class AnalysisExecutorTests : IDisposable
     [Fact]
     public async Task ConcurrentRuns_IsolateConfigurationProgressAndEvents()
     {
-        var executor = new AnalysisExecutor();
+        var executor = AnalysisRuntime.CreateExecutor();
         var first = Input("first", "{\"x\":1}\n{\"x\":2}\n");
         var second = Input("second", "{\"y\":3}\n");
         first.Parse.MaxTrackedValues = 0;
@@ -81,7 +81,7 @@ public sealed class AnalysisExecutorTests : IDisposable
         options.Input.InputPath = "missing";
         options.FieldSelection.Fields = "other";
         rules.Fields["x"].MinValue = 0;
-        var executor = new AnalysisExecutor();
+        var executor = AnalysisRuntime.CreateExecutor();
         var first = executor.Execute(plan).Result;
         var second = executor.Execute(plan).Result;
         Assert.Equal(2, first.TotalObjects);
@@ -93,7 +93,7 @@ public sealed class AnalysisExecutorTests : IDisposable
     public void StartedObserver_CannotMutateFrozenRunConfiguration()
     {
         var options = Input("callback", "{\"x\":1}\n");
-        var result = new AnalysisExecutor().Execute(options, runContext: new AnalysisRunContext
+        var result = AnalysisRuntime.CreateExecutor().Execute(options, runContext: new AnalysisRunContext
         {
             EventSink = item => { if (item.Kind == AnalysisEventKind.Started) options.Input.InputPath = "missing"; }
         });
@@ -113,7 +113,7 @@ public sealed class AnalysisExecutorTests : IDisposable
             ProgressBridge = new InlineProgress(_ => throw new InvalidOperationException("progress listener")),
             PreviewSink = _ => throw new InvalidOperationException("preview listener")
         };
-        Assert.Equal(1, new AnalysisExecutor().Execute(options, runContext: context).Result.TotalObjects);
+        Assert.Equal(1, AnalysisRuntime.CreateExecutor().Execute(options, runContext: context).Result.TotalObjects);
         Assert.Equal(AnalysisEventKind.Completed, Assert.Single(events, IsTerminal).Kind);
         Assert.Equal(1, observer.Started);
         Assert.Equal(1, observer.Completed);
@@ -132,7 +132,7 @@ public sealed class AnalysisExecutorTests : IDisposable
             EventSink = events.Add,
             ProgressBridge = new InlineProgress(_ => cancellation.Cancel())
         };
-        Assert.ThrowsAny<OperationCanceledException>(() => new AnalysisExecutor().Execute(options,
+        Assert.ThrowsAny<OperationCanceledException>(() => AnalysisRuntime.CreateExecutor().Execute(options,
             runContext: context, cancellationToken: cancellation.Token));
         Assert.Equal(AnalysisEventKind.Cancelled, Assert.Single(events, IsTerminal).Kind);
         Assert.InRange(context.LastRecordCount, 1, 24999);
@@ -146,7 +146,7 @@ public sealed class AnalysisExecutorTests : IDisposable
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var events = new List<AnalysisEvent>();
-        Assert.ThrowsAny<OperationCanceledException>(() => new AnalysisExecutor().Execute(options,
+        Assert.ThrowsAny<OperationCanceledException>(() => AnalysisRuntime.CreateExecutor().Execute(options,
             runContext: new AnalysisRunContext { EventSink = events.Add }, cancellationToken: cancellation.Token));
         Assert.Equal(AnalysisEventKind.Started, events[0].Kind);
         Assert.Equal(AnalysisEventKind.Cancelled, Assert.Single(events, IsTerminal).Kind);
@@ -158,7 +158,7 @@ public sealed class AnalysisExecutorTests : IDisposable
         var options = new AnalysisOptions { Input = { InputPath = "missing.jsonl" } };
         var rules = new AnalysisRules { Fields = { ["x"] = new FieldRule { Pattern = "[" } } };
         var events = new List<AnalysisEvent>();
-        Assert.ThrowsAny<ArgumentException>(() => new AnalysisExecutor().Execute(options, rules,
+        Assert.ThrowsAny<ArgumentException>(() => AnalysisRuntime.CreateExecutor().Execute(options, rules,
             new AnalysisRunContext { EventSink = events.Add }));
         var failed = Assert.Single(events, IsTerminal);
         Assert.Equal(AnalysisEventKind.Failed, failed.Kind);
@@ -171,7 +171,7 @@ public sealed class AnalysisExecutorTests : IDisposable
     {
         var options = Input("unrelated", "{\"x\":1}\n");
         var events = new List<AnalysisEvent>();
-        Assert.Throws<OperationCanceledException>(() => new AnalysisExecutor(new BrokenReporter()).Execute(options,
+        Assert.Throws<OperationCanceledException>(() => AnalysisRuntime.CreateExecutor(new BrokenReporter()).Execute(options,
             runContext: new AnalysisRunContext { EventSink = events.Add }));
         Assert.Equal(AnalysisEventKind.Failed, Assert.Single(events, IsTerminal).Kind);
     }
@@ -183,11 +183,11 @@ public sealed class AnalysisExecutorTests : IDisposable
         var options = Input("sample", lines);
         options.FieldSelection.Filter = "x >= 1";
         options.Sampling.SampleStep = 2;
-        var jsonl = new AnalysisExecutor().Execute(options).Result;
+        var jsonl = AnalysisRuntime.CreateExecutor().Execute(options).Result;
         string json = Path.Combine(_directory, "sample.json");
         File.WriteAllText(json, "[" + string.Join(',', lines.Split('\n', StringSplitOptions.RemoveEmptyEntries)) + "]");
         options.Input.InputPath = json;
-        var document = new AnalysisExecutor().Execute(options).Result;
+        var document = AnalysisRuntime.CreateExecutor().Execute(options).Result;
         Assert.Equal(2, jsonl.TotalObjects);
         Assert.Equal(1, Assert.Single(jsonl.FieldStatistics).MinNumber);
         Assert.Equal(3, Assert.Single(jsonl.FieldStatistics).MaxNumber);
@@ -205,7 +205,7 @@ public sealed class AnalysisExecutorTests : IDisposable
         using var cancellation = new CancellationTokenSource();
         var analyzer = new CancellingAnalyzer(cancellation);
         var events = new List<AnalysisEvent>();
-        Assert.ThrowsAny<OperationCanceledException>(() => new AnalysisExecutor().Execute(options,
+        Assert.ThrowsAny<OperationCanceledException>(() => AnalysisRuntime.CreateExecutor().Execute(options,
             runContext: new AnalysisRunContext
             {
                 Analyzers = FieldAnalyzerRegistry.Default.With(analyzer), EventSink = events.Add
@@ -220,7 +220,7 @@ public sealed class AnalysisExecutorTests : IDisposable
     {
         var options = Input("invalid", "{\"x\":1}\n{\n");
         var events = new List<AnalysisEvent>();
-        Assert.ThrowsAny<Exception>(() => new AnalysisExecutor().Execute(options,
+        Assert.ThrowsAny<Exception>(() => AnalysisRuntime.CreateExecutor().Execute(options,
             runContext: new AnalysisRunContext { EventSink = events.Add }));
         var failed = Assert.Single(events, IsTerminal);
         Assert.Equal(AnalysisEventKind.Failed, failed.Kind);
@@ -234,7 +234,7 @@ public sealed class AnalysisExecutorTests : IDisposable
         var options = Input("config", "{}\n");
         options.Parse.MaxDegreeOfParallelism = 0;
         var events = new List<AnalysisEvent>();
-        Assert.Throws<ArgumentOutOfRangeException>(() => new AnalysisExecutor().Execute(options,
+        Assert.Throws<ArgumentOutOfRangeException>(() => AnalysisRuntime.CreateExecutor().Execute(options,
             runContext: new AnalysisRunContext { EventSink = events.Add }));
         Assert.Equal(AnalysisEventKind.Started, events[0].Kind);
         Assert.Equal(AnalysisFailureKind.Configuration, Assert.Single(events, IsTerminal).Failure);
@@ -245,7 +245,7 @@ public sealed class AnalysisExecutorTests : IDisposable
     {
         var options = Input("single", "{}\n");
         var context = new AnalysisRunContext();
-        var executor = new AnalysisExecutor();
+        var executor = AnalysisRuntime.CreateExecutor();
         executor.Execute(options, runContext: context);
         Assert.Throws<InvalidOperationException>(() => executor.Execute(options, runContext: context));
     }

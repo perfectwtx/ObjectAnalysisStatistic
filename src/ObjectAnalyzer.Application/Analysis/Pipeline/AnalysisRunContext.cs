@@ -3,7 +3,7 @@ using ObjectAnalyzer.Parsing;
 namespace ObjectAnalyzer.Analysis.Pipeline;
 
 /// <summary>
-/// 统一分析管线的运行期上下文（W1/W3 落点）：随 <see cref="AnalysisPipeline.Execute"/> 传入的
+/// 统一分析管线的运行期上下文（W1/W3 落点）：随 <see cref="AnalysisExecutor.Execute"/> 传入的
 /// per-run 状态——内存预算、续跑起始位置、宿主进度桥接、预览捕获；
 /// 管线执行后回填实际格式与已分析记录数（供 CLI 检查点落盘）。
 /// </summary>
@@ -12,7 +12,7 @@ public sealed class AnalysisRunContext
     private int _used;
     private readonly object _notificationLock = new();
     public IAnalysisDataSource? Source { get; init; }
-    public RecordParserRegistry? Parsers { get; init; }
+    public IRecordParserRegistry? Parsers { get; init; }
     public SourceDescriptor? SourceDescriptor { get; internal set; }
     public long SkippedInputRecords { get; internal set; }
     private readonly List<Exception> _observerErrors = new();

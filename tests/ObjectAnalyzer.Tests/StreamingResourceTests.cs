@@ -159,7 +159,7 @@ public sealed class StreamingResourceTests
     {
         var options = new AnalysisOptions { Parse = { MalformedRecords = MalformedRecordPolicy.Skip }, Memory = { Resources = new() { MaxRecordCharacters = 32 } } };
         var context = Context("{\"x\":\"" + new string('x', 2000) + "\"}\n");
-        var executor = new AnalysisExecutor();
+        var executor = AnalysisRuntime.CreateExecutor();
         if (asynchronous) await Assert.ThrowsAsync<AnalysisResourceLimitException>(() => executor.ExecuteAsync(options, runContext: context));
         else Assert.Throws<AnalysisResourceLimitException>(() => executor.Execute(options, runContext: context));
     }
@@ -177,7 +177,7 @@ public sealed class StreamingResourceTests
     [Fact]
     public void JsonLines_CrlfAndFinalRecordHaveCorrectFraming()
     {
-        var result = new AnalysisExecutor().Execute(new AnalysisOptions(), runContext: Context("{\"x\":1}\r\n\r\n{\"x\":2}\r{\"x\":3}"));
+        var result = AnalysisRuntime.CreateExecutor().Execute(new AnalysisOptions(), runContext: Context("{\"x\":1}\r\n\r\n{\"x\":2}\r{\"x\":3}"));
         Assert.Equal(3, result.Result.TotalObjects);
     }
 
@@ -191,7 +191,7 @@ public sealed class StreamingResourceTests
         };
         var source = new ObservedSource();
         var context = new AnalysisRunContext { Source = source, ProgressBridge = new InlineProgress(count => { if (count > 0) source.ProgressSeen = true; }) };
-        var result = new AnalysisExecutor().Execute(options, runContext: context);
+        var result = AnalysisRuntime.CreateExecutor().Execute(options, runContext: context);
         Assert.Equal(1, source.Enumerations); Assert.Equal(30, result.Result.TotalObjects);
         Assert.Equal(30, result.Result.FuzzyDuplicates!.SimilarDuplicates);
         Assert.Equal(30, Assert.Single(result.Result.FuzzyDuplicates.Groups).Count);
@@ -204,19 +204,19 @@ public sealed class StreamingResourceTests
     {
         var options = new AnalysisOptions { Memory = { Resources = new() { MaxPreviewRecords = 2, MaxPreviewBytes = 1000 } } };
         IReadOnlyList<Dictionary<string, object?>>? preview = null;
-        new AnalysisExecutor().Execute(options, runContext: new AnalysisRunContext
+        AnalysisRuntime.CreateExecutor().Execute(options, runContext: new AnalysisRunContext
         { Source = new ObservedSource(), PreviewLimit = 100_000, PreviewSink = rows => preview = rows });
         Assert.Equal(2, preview!.Count);
         options.Sampling.SampleReservoir = 10;
         options.Memory.Resources = options.Memory.Resources with { MaxSamplingBytes = 100 };
-        Assert.Equal("sampling-bytes", Limit(() => new AnalysisExecutor().Execute(options, runContext: new() { Source = new ObservedSource() })).Resource);
+        Assert.Equal("sampling-bytes", Limit(() => AnalysisRuntime.CreateExecutor().Execute(options, runContext: new() { Source = new ObservedSource() })).Resource);
     }
 
     [Fact]
     public void SoftMode_SelectsSamplingBeforeAnyPressureAndPreservesCallerOptions()
     {
         var options = new AnalysisOptions { Memory = { MaxMemoryMB = 100, MaxMemoryMode = MaxMemoryMode.Soft }, Sampling = { MemoryFallbackSampleSize = 3 } };
-        var result = new AnalysisExecutor().Execute(options, runContext: new()
+        var result = AnalysisRuntime.CreateExecutor().Execute(options, runContext: new()
         { Source = DataSources.Records(Enumerable.Range(0, 10).Select(value => RecordValue.FromObject(Row(value)))), MemoryBudget = new(100, MaxMemoryMode.Soft, () => 0) });
         Assert.Equal(3, result.Result.TotalObjects); Assert.NotNull(result.Result.SamplingConfidence);
         Assert.Equal(0, options.Sampling.SampleReservoir);
@@ -228,7 +228,7 @@ public sealed class StreamingResourceTests
     {
         int reads = 0;
         var context = Context("[{\"x\":1}]", "json", new MemoryBudget(1, MaxMemoryMode.Hard, () => ++reads < 4 ? 0 : 2 * 1024 * 1024));
-        Assert.Throws<MaxMemoryExceededException>(() => new AnalysisExecutor().Execute(new AnalysisOptions(), runContext: context));
+        Assert.Throws<MaxMemoryExceededException>(() => AnalysisRuntime.CreateExecutor().Execute(new AnalysisOptions(), runContext: context));
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public sealed class StreamingResourceTests
     public void StreamingInput_IsNotLimitedByTheBufferedDocumentQuota()
     {
         var options = new AnalysisOptions { Memory = { Resources = new() { MaxBufferedInputBytes = 8 } } };
-        var result = new AnalysisExecutor().Execute(options, runContext: Context(string.Concat(Enumerable.Repeat("{\"x\":1}\n", 2000))));
+        var result = AnalysisRuntime.CreateExecutor().Execute(options, runContext: Context(string.Concat(Enumerable.Repeat("{\"x\":1}\n", 2000))));
         Assert.Equal(2000, result.Result.TotalObjects);
         Assert.Contains(result.ExecutionProfile!.Capabilities, item => item.Capability == "input" && item.Mode == AnalysisAccessMode.SinglePass);
     }
@@ -267,7 +267,7 @@ public sealed class StreamingResourceTests
         var options = new AnalysisOptions { Memory = { Resources = new() { MaxObjectIdentities = 1 } } };
         var plan = new AnalysisExecutionPlan(options);
         options.Memory.Resources = new();
-        Assert.Equal("object-identities", Limit(() => new AnalysisExecutor().Execute(plan, runContext: Context("{\"x\":1}\n{\"x\":2}"))).Resource);
+        Assert.Equal("object-identities", Limit(() => AnalysisRuntime.CreateExecutor().Execute(plan, runContext: Context("{\"x\":1}\n{\"x\":2}"))).Resource);
         var rules = new AnalysisRules { Fields = { ["x"] = new FieldRule { Pattern = "^a$" } } };
         Assert.Throws<AnalysisResourceLimitException>(() => new AnalysisAccumulator(rules, resourceLimits: new() { MaxRulesPerField = 0 }));
         var emptyRules = new AnalysisRules { Fields = { ["x"] = new FieldRule() } };

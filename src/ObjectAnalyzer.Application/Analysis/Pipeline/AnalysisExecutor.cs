@@ -23,8 +23,6 @@ public sealed class AnalysisExecutionPlan
         if (copy.Sampling.SampleReservoir > 0 && copy.Sampling.SampleStep > 0)
             throw new ArgumentException("Reservoir and systematic sampling are mutually exclusive.", nameof(options));
         Sampling.Validate(copy.Sampling.SampleReservoir, copy.Sampling.SampleStep);
-        if (!string.IsNullOrWhiteSpace(copy.Input.RootPath)) JsonPathProjector.TryValidate(copy.Input.RootPath);
-        if (!string.IsNullOrWhiteSpace(copy.Input.RecordPath)) JsonPathProjector.TryValidate(copy.Input.RecordPath);
         ArgumentOutOfRangeException.ThrowIfNegative(copy.Memory.MaxMemoryMB);
         copy.Memory.Resources.Validate();
         if (!Enum.IsDefined(copy.Memory.MaxMemoryMode)) throw new ArgumentException("Unknown memory mode.", nameof(options));
@@ -51,8 +49,9 @@ public sealed class AnalysisExecutionPlan
 }
 
 /// <summary>Reusable execution entry. Dependencies are fixed per instance; all mutable state is per run.</summary>
-public sealed class AnalysisExecutor(IProgressReporter? progress = null)
+public sealed class AnalysisExecutor(IAnalysisInputServices inputs, IProgressReporter? progress = null)
 {
+    private readonly IAnalysisInputServices _inputs = inputs ?? throw new ArgumentNullException(nameof(inputs));
     private readonly IProgressReporter _progress = progress ?? DirectProgressReporter.Instance;
 
     public PipelineResult Execute(AnalysisOptions options, AnalysisRules? rules = null,
@@ -106,7 +105,7 @@ public sealed class AnalysisExecutor(IProgressReporter? progress = null)
             cancellationToken.ThrowIfCancellationRequested();
             if (context.StartFromPosition < 0 || context.PreviewLimit < 0)
                 throw new ArgumentOutOfRangeException(nameof(runContext), "Cursor and preview limit cannot be negative.");
-            result = new AnalysisSession(_progress, context, cancellationToken, asyncInput)
+            result = new AnalysisSession(_inputs, _progress, context, cancellationToken, asyncInput)
                 .Run(plan.CreateOptions(), plan.CreateRules());
             cancellationToken.ThrowIfCancellationRequested();
         }

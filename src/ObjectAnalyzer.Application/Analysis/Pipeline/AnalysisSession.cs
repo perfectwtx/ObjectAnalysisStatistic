@@ -12,6 +12,7 @@ namespace ObjectAnalyzer.Analysis.Pipeline;
 /// </summary>
 internal sealed class AnalysisSession
 {
+    private readonly IAnalysisInputServices _inputs;
     private readonly IProgressReporter _progress;
     private readonly AnalysisRunContext _context;
     private readonly CancellationToken _cancellation;
@@ -21,8 +22,8 @@ internal sealed class AnalysisSession
     private AnalysisResourceLimits? _limits;
     private bool _previewTruncated;
 
-    public AnalysisSession(IProgressReporter progress, AnalysisRunContext context, CancellationToken cancellation, bool asyncInput = false)
-    { _progress = progress; _context = context; _cancellation = cancellation; _asyncInput = asyncInput; }
+    public AnalysisSession(IAnalysisInputServices inputs, IProgressReporter progress, AnalysisRunContext context, CancellationToken cancellation, bool asyncInput = false)
+    { _inputs = inputs; _progress = progress; _context = context; _cancellation = cancellation; _asyncInput = asyncInput; }
 
     public PipelineResult Run(
         AnalysisOptions options,
@@ -48,7 +49,9 @@ internal sealed class AnalysisSession
         var accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues, ctx.Analyzers, options.Memory.Resources);
 
         // Prepare filters and transformations before opening the input.
-        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.FieldSelection.Fields), options.FieldSelection.Filter);
+        if (!string.IsNullOrWhiteSpace(options.Input.RootPath)) _inputs.ValidateProjection(options.Input.RootPath);
+        if (!string.IsNullOrWhiteSpace(options.Input.RecordPath)) _inputs.ValidateProjection(options.Input.RecordPath);
+        var transformProcessor = _inputs.CreateTransformer(rules, SplitFields(options.FieldSelection.Fields), options.FieldSelection.Filter);
         if (ctx.InitialState is { } initial)
         {
             initial.EnsureMergeable();
@@ -184,20 +187,7 @@ internal sealed class AnalysisSession
 
     private (IAnalysisDataSource Source, SourceReadOptions Options) PrepareInput(AnalysisOptions options, AnalysisRules? rules)
     {
-        var registry = _context.Parsers ?? RecordParserRegistry.Default;
-        IAnalysisDataSource source;
-        if (_context.Source is { } supplied) source = supplied;
-        else if (!string.IsNullOrWhiteSpace(options.Input.ConnectionString))
-            source = DataSources.Database(options.Input.ConnectionString,
-                DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString), options.Input.Query!);
-        else
-        {
-            if (string.IsNullOrWhiteSpace(options.Input.InputPath)) throw new ArgumentException("An input source is required.");
-            string format = !string.IsNullOrWhiteSpace(options.Input.Format)
-                ? options.Input.Format.Trim().ToLowerInvariant() : registry.DetectFormat(options.Input.InputPath);
-            if (rules?.ValueParsers is { Count: > 0 } && format is "excel" or "excel-json" or "csv") format = "excel-json";
-            source = DataSources.File(options.Input.InputPath, format, registry);
-        }
+        IAnalysisDataSource source = _context.Source ?? _inputs.Open(options, rules, _context.Parsers);
         string? rootPath = options.Input.RootPath;
         if (!string.IsNullOrWhiteSpace(rootPath) && !source.Descriptor.Capabilities.RootProjection)
         {
@@ -242,32 +232,10 @@ internal sealed class AnalysisSession
     private static Dictionary<string, object?> ToObjectRecord(Dictionary<string, object?> record)
         => record.ToDictionary(pair => pair.Key, pair => pair.Value is RecordValue typed ? typed.ToObject() : pair.Value, StringComparer.Ordinal);
 
-    /// <summary>
-    /// 缺陷 2 修复落点：valueParsers 仅在输入确为电子表格类格式（excel / excel-json / csv，
-    /// 单元格内嵌 JSON 的专用场景）时切换到 excel-json 解析器，不再强制改写其他格式——
-    /// 普通 JSON / JSONL / XML / YAML 配置了 valueParsers 也按原格式解析（旧行为会对普通 JSON
-    /// 报"字典键 '1' 缺失"）。宿主显式指定的格式（options.Input.Format，如 API 原始文本端点）优先于扩展名探测。
-    /// </summary>
-    public static string ResolveEffectiveFormat(string inputPath, AnalysisRules? rules, string? formatOverride)
-    {
-        string detected = !string.IsNullOrWhiteSpace(formatOverride)
-            ? formatOverride.Trim().ToLowerInvariant()
-            : FileParsers.DetectFormat(inputPath);
-        if (rules?.ValueParsers is { Count: > 0 } && detected is "excel" or "excel-json" or "csv")
-        {
-            return "excel-json";
-        }
-        return detected;
-    }
-
     private void AnnounceCompression(string path)
     {
-        var compression = CompressionDetector.Detect(path);
-        if (compression == CompressionType.None) return;
-        var data = new Dictionary<string, object?> { ["compression"] = compression.ToString() };
-        if (compression == CompressionType.Zip && InputSource.PreviewZipEntries(path) is { } preview)
-        { data["entry"] = preview.Chosen; data["ignoredEntries"] = preview.Others.Count; }
-        Diagnostic("input.compression", "Compressed input detected.", data);
+        if (_inputs.DescribeCompression(path) is { } data)
+            Diagnostic("input.compression", "Compressed input detected.", data);
     }
 
     /// <summary>Lazy, cancellable record projection; no full-input materialization.</summary>
@@ -279,7 +247,7 @@ internal sealed class AnalysisSession
         {
             _cancellation.ThrowIfCancellationRequested();
             input++;
-            var matches = JsonPathProjector.ApplyRecordPath(ToObjectRecord(record), expression);
+            var matches = _inputs.ProjectRecord(ToObjectRecord(record), expression);
             if (matches.Count == 0) missing++;
             foreach (var match in matches) { output++; yield return match; }
         }

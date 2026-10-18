@@ -27,29 +27,30 @@ AnalysisResult
 
 ## 核心分层
 
-### Core
+各职责已拆为独立程序集。Core、Application 和 Platform 均无第三方包；Core 不引用其他项目。
 
-`src/ObjectAnalyzer.Core` 负责解析、分析、质量检查、Schema、深度分析和报告能力。
+| 项目 | 职责 | 直接项目依赖 |
+|---|---|---|
+| Core | 值、路径、统计状态、规则、Schema 推断、结果投影、质量指标 | 无 |
+| Application | 执行计划、逐次运行管线、事件、输入/转换端口 | Core |
+| Parsing | 文件、压缩、数据库、JSONPath 和加密转换 | Core、Application |
+| Exporting | 报告、Schema 后端、快照 IO、C# 规则导入 | Core |
+| Platform | 作业、历史端口、基线、责任、修复、告警业务 | Core |
+| Infrastructure | SQLite 存储、审计文件和密钥实现 | Core、Platform |
+| Hosting | 完整命令运行、预检、输出、模块组合与 DI 注册 | 上述六个项目 |
 
-核心计算不依赖 Web UI 或 CLI 渲染实现。
+计算内核和应用管线不选择具体存储、解析器或报告实现。内存统计只需引用 Core；需要事件和采样的自定义执行可引用 Application 并实现输入端口；使用所有内置能力可通过 Hosting 的 AnalysisRuntime.CreateExecutor() 构造执行器。
 
-### Platform
+平台层定义 AnalysisJob、QualitySnapshot、FieldQualitySnapshot、QualityIssue 等业务模型，AnalysisExecutionCoordinator 处理作业开始、成功、失败与取消；数据库实现属于 Infrastructure。质量指标计算属于 Core，作业结果的脱敏交付属于 Platform，避免内核反向引用平台实体。
 
-平台层负责一次分析的生命周期和持久化：
-
-- `AnalysisJob`：一次分析任务。
-- `AnalysisExecutionCoordinator`：统一处理开始、成功、失败、取消。
-- `AnalysisHistoryStore`：保存任务和质量历史。
-- `QualitySnapshot`：数据集级质量快照。
-- `FieldQualitySnapshot`：字段级质量快照。
-- `QualityIssue`：标准化质量问题。
-- Alert / Webhook：根据分析结果触发外部通知。
+具体引用方式、依赖归属与破坏性变更见 [模块拆分与迁移](core-module-boundaries.md)。
 
 ### Hosts
 
 - CLI：面向本地和自动化命令行场景。
 - API：面向系统集成和前端调用。
 - Web：面向交互式分析和质量管理。
+- Desktop：面向 Windows 本地交互式分析和平台业务。
 
 ## 一次分析的生命周期
 
@@ -69,4 +70,4 @@ Pending → Running → Succeeded
 
 ## 扩展原则
 
-新增分析能力优先扩展 Core 的领域模型和 Pipeline；新增展示或集成能力优先通过 Platform 接口扩展，避免让分析内核直接依赖具体宿主。
+新增统计优先扩展 Core 的分析器和规则，新增执行步骤放入 Application；输入适配器实现 Application/Core 的端口，报告实现放入 Exporting，平台业务通过存储端口调用 Infrastructure 的实现。宿主和 Hosting 负责组合，内层项目不能引用外层项目。

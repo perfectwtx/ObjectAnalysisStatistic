@@ -4,7 +4,7 @@ using ObjectAnalyzer.Parsing.Parsers;
 namespace ObjectAnalyzer.Parsing;
 
 /// <summary>Immutable parser and detector registrations, shared only by explicit selection.</summary>
-public sealed class RecordParserRegistry
+public sealed class RecordParserRegistry : IRecordParserRegistry
 {
     private readonly ImmutableArray<IRecordParser> _parsers;
     private readonly ImmutableArray<Func<string, string?>> _detectors;
