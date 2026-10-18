@@ -17,7 +17,7 @@ public static class KmsRuleResolver
     /// <summary>
     /// 就地解析规则中所有 KMS 密文引用；无 KMS 引用时原样返回（零开销）。
     /// </summary>
-    public static void Resolve(AnalysisRules rules)
+    public static void Resolve(AnalysisRules rules, IAnalysisConsole? console = null)
     {
         if (rules?.Fields == null)
             return;
@@ -42,7 +42,7 @@ public static class KmsRuleResolver
 
         if (anyResolved)
         {
-            AnalysisServices.Current.Console.MarkupLine("[grey][[KMS]][/] 已从 KMS 密文引用解密敏感密钥（明文未写入规则文件）。");
+            (console ?? SilentConsole.Instance).MarkupLine("[grey][[KMS]][/] 已从 KMS 密文引用解密敏感密钥（明文未写入规则文件）。");
         }
     }
 

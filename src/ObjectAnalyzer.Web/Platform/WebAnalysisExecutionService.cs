@@ -40,7 +40,7 @@ public sealed class WebAnalysisExecutionService
             async token =>
             {
                 pipelineResult = await Task.Run(
-                    () => AnalysisPipeline.Execute(options, rules, runContext, token),
+                    () => new AnalysisExecutor().Execute(options, rules, runContext, token),
                     token);
 
                 // 允许 Web 宿主在 Coordinator 持久化 Job 之前完成结果后处理。

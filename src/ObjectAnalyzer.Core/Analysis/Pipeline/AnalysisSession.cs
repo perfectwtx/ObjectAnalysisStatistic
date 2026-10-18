@@ -1,0 +1,477 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using ObjectAnalyzer.Abstractions;
+using ObjectAnalyzer.Parsing;
+
+namespace ObjectAnalyzer.Analysis.Pipeline;
+
+/// <summary>
+/// 统一分析管线（W1）：解析 → JSONPath 投影 → 字段选择/转换/过滤 → 采样 → 统计。
+/// CLI / API / Web 三宿主共用同一条计算路径；输入为 <see cref="AnalysisOptions"/>（IR）+
+/// <see cref="AnalysisRules"/>，输出 <see cref="PipelineResult"/>。呈现/导出/门禁属于宿主职责，不在管线内。
+/// </summary>
+internal sealed class AnalysisSession
+{
+    private readonly IProgressReporter _progress;
+    private readonly AnalysisRunContext _context;
+    private readonly CancellationToken _cancellation;
+    private MemoryBudget? _memory;
+    private long _populationCount;
+
+    public AnalysisSession(IProgressReporter progress, AnalysisRunContext context, CancellationToken cancellation)
+    { _progress = progress; _context = context; _cancellation = cancellation; }
+
+    public PipelineResult Run(
+        AnalysisOptions options,
+        AnalysisRules? rules)
+    {
+        var ctx = _context;
+        var cancellationToken = _cancellation;
+        Stage(AnalysisStage.Preparing);
+        _memory = ctx.MemoryBudget ?? new MemoryBudget(options.Memory.MaxMemoryMB, options.Memory.MaxMemoryMode);
+        _memory.Check(0, out bool fallback);
+        _memory.ThrowIfHardExceeded();
+        if (fallback && !Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+        {
+            options.Sampling.SampleReservoir = options.Sampling.MemoryFallbackSampleSize;
+            Sampling.Validate(options.Sampling.SampleReservoir, options.Sampling.SampleStep);
+            Diagnostic("memory.sampling", "Memory pressure enabled reservoir sampling.");
+        }
+        if (ctx.StartFromPosition > 0 && (
+            !string.IsNullOrEmpty(options.Input.ConnectionString) ||
+            CompressionDetector.Detect(options.Input.InputPath) != CompressionType.None ||
+            ResolveEffectiveFormat(options.Input.InputPath, rules, options.Input.Format) is not ("jsonl" or "ndjson")))
+            throw new NotSupportedException("Position resume requires uncompressed JSONL input.");
+        if ((ctx.StartFromPosition > 0 || ctx.InitialState is not null) &&
+            Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+            throw new NotSupportedException("Incremental state cannot be combined with sampling.");
+        var accumulator = new AnalysisAccumulator(rules, options.Advanced, options.Parse.MaxTrackedValues, ctx.Analyzers);
+
+        // Prepare filters and transformations before opening the input.
+        var transformProcessor = new FieldTransformProcessor(rules, SplitFields(options.FieldSelection.Fields), options.FieldSelection.Filter);
+        if (ctx.InitialState is { } initial)
+        {
+            initial.EnsureMergeable();
+            accumulator.EnsureMergeable();
+            if (initial.Configuration != accumulator.Configuration)
+                throw new InvalidOperationException("Initial state configuration differs from the execution plan.");
+        }
+        Stage(AnalysisStage.Input);
+        // 1. 解析分发：数据库直连 / root-path 整体投影 / 常规文件
+        IEnumerable<Dictionary<string, object?>> objects = WithCancellation(ParseDispatch(options, rules, ctx));
+        Stage(AnalysisStage.Projection);
+
+        // 2. record-path 投影：每条记录可能 fan-out，始终生效（即使在 root-path 之后）
+        if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
+        {
+            objects = ApplyRecordPathStream(objects, options.Input.RecordPath!);
+        }
+
+        // 3. 字段选择 + 值转换 + 过滤（--fields / runtime.selectedFields / transform / --where / runtime.filter）
+        Stage(AnalysisStage.Transformation);
+        Stage(AnalysisStage.Filtering);
+        if (transformProcessor.HasSelectionOrTransforms)
+        {
+            objects = transformProcessor.Wrap(objects);
+        }
+
+        // 4. 全部格式共用转换、过滤后的采样阶段。
+        Stage(AnalysisStage.Sampling);
+        objects = ApplySamplingIfEnabled(objects, options);
+
+        // 5. 数据预览捕获（Web）：在进入统计前捕获前 N 条（转换/采样后）
+        List<Dictionary<string, object?>>? preview = null;
+        if (ctx.PreviewSink != null)
+        {
+            preview = new List<Dictionary<string, object?>>(Math.Max(0, ctx.PreviewLimit));
+            objects = WrapWithPreview(objects, preview, ctx.PreviewLimit);
+        }
+
+        // 6. 关系跟踪：与统计共用同一次枚举，记录嵌套对象/对象集合关系，避免再次读取输入。
+        IReadOnlyList<ObjectRelationship> objectRelationships = Array.Empty<ObjectRelationship>();
+        objects = ObjectRelationshipAnalyzer.Track(objects, relationships => objectRelationships = relationships);
+
+        // 7. 保留高级分析的物化分支；内存预算与单遍处理在后续阶段统一改造。
+        bool needFuzzyDedup = !string.IsNullOrWhiteSpace(options.Advanced.FuzzyDedupField);
+        bool needDistributionSketches =
+            !string.IsNullOrEmpty(options.Distribution.DistributionSnapshotPath) ||
+            !string.IsNullOrEmpty(options.Distribution.DiffDistributionBaseline);
+        List<Dictionary<string, object?>> materialized = (needFuzzyDedup || needDistributionSketches)
+            ? objects.ToList()
+            : new List<Dictionary<string, object?>>();
+
+        // 8. 模糊去重（--fuzzy-dedup-field）
+        FuzzyDuplicateReport? fuzzyReport = null;
+        if (needFuzzyDedup)
+        {
+            string field = options.Advanced.FuzzyDedupField!;
+            fuzzyReport = FuzzyDuplicateDetector.Detect(materialized, obj =>
+            {
+                if (obj.TryGetValue(field, out var v)) return v?.ToString();
+                return null;
+            }, cancellationToken);
+        }
+
+        // 9. 统计：进度端口包装（CLI：Spectre 进度条；API/Web：直接执行）
+        AnalysisResult result = null!;
+        Dictionary<string, MergeableQuantileSketch>? quantileSketches = null;
+        Dictionary<string, HyperLogLog>? distinctSketches = null;
+
+        long? expectedTotal = options.Progress.ShowProgress ? EstimateTotalObjects(materialized) : null;
+        string description = string.IsNullOrEmpty(options.Input.InputPath)
+            ? "分析中（数据库直连）"
+            : $"分析中 {Path.GetFileName(options.Input.InputPath)}";
+
+        Stage(AnalysisStage.Observation);
+        _progress.Run(description, expectedTotal, options.Progress.ShowProgress, uiProgress =>
+        {
+            IProgress<long> progress = BuildProgressBridge(uiProgress, ctx);
+
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = options.Parse.MaxDegreeOfParallelism > 0
+                    ? options.Parse.MaxDegreeOfParallelism
+                    : -1
+            };
+            accumulator.ObserveRange(needFuzzyDedup || needDistributionSketches ? materialized : objects,
+                parallelOptions, progress, cancellationToken);
+            ctx.LastRecordCount = accumulator.TotalObjects;
+            progress.Report(ctx.LastRecordCount);
+            cancellationToken.ThrowIfCancellationRequested();
+            Stage(AnalysisStage.Completion);
+            var detailed = accumulator.CompleteDetailed();
+            result = detailed.Result;
+            quantileSketches = detailed.QuantileSketches;
+            distinctSketches = detailed.DistinctSketches;
+        });
+
+        // 10. 回填与补充统计
+        if (fuzzyReport != null) result.FuzzyDuplicates = fuzzyReport;
+        result.ObjectRelationships = objectRelationships.ToList();
+        transformProcessor.ApplyFailures(result);
+        result.FilterExpression = options.FieldSelection.Filter;
+        accumulator.CapturePipelineResult(result);
+        if (ctx.InitialState is not null)
+        {
+            accumulator.Merge(ctx.InitialState);
+            var completed = accumulator.CompleteDetailed();
+            result = completed.Result;
+            quantileSketches = completed.QuantileSketches;
+            distinctSketches = completed.DistinctSketches;
+        }
+        BuildSamplingConfidence(result, options, _populationCount);
+
+        // 11. 预览回调（统计成功完成后一次性交付）
+        cancellationToken.ThrowIfCancellationRequested();
+        if (ctx.PreviewSink is { } sink) ctx.Notify(() => sink(preview ?? new List<Dictionary<string, object?>>()));
+
+        return new PipelineResult
+        {
+            Result = result,
+            Accumulator = Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep)
+                || options.Memory.MaxMemoryMB > 0 && options.Memory.MaxMemoryMode == MaxMemoryMode.Soft ? null : accumulator,
+            ExecutionSignature = CreateExecutionSignature(options),
+            QuantileSketches = quantileSketches,
+            DistinctSketches = distinctSketches
+        };
+    }
+
+    // ── 解析分发 ──
+
+    internal static string CreateExecutionSignature(AnalysisOptions options) => RecordValue.FromJsonElement(
+        JsonSerializer.SerializeToElement(new
+        {
+            options.Parse.Flatten, options.Parse.MaxTrackedValues, options.Parse.CsvInferNumbers, options.FieldSelection,
+            options.Input.RootPath, options.Input.RecordPath, options.Sampling, options.Advanced
+        })).CanonicalKey;
+
+    private IEnumerable<Dictionary<string, object?>> ParseDispatch(
+        AnalysisOptions options, AnalysisRules? rules, AnalysisRunContext ctx)
+    {
+        bool dbMode = !string.IsNullOrEmpty(options.Input.ConnectionString);
+        var valueParsers = ResolveValueParsers(rules);
+
+        if (dbMode)
+        {
+            return ParseFromDatabase(options, ctx);
+        }
+
+        bool hasRootPath = !string.IsNullOrWhiteSpace(options.Input.RootPath);
+        if (hasRootPath)
+        {
+            string fmt = ResolveEffectiveFormat(options.Input.InputPath, rules, options.Input.Format);
+            if (fmt is "jsonl" or "ndjson" or "csv" or "excel" or "excel-json" or "db")
+            {
+                Diagnostic("projection.root-ignored", "Root projection is ignored for record-oriented input.");
+            }
+            else
+            {
+                ctx.EffectiveFormat = fmt;
+                return LoadAndApplyRootPath(options.Input.InputPath, options.Input.RootPath!);
+            }
+        }
+
+        return ParseByFormat(options, rules, valueParsers, ctx);
+    }
+
+    private IEnumerable<Dictionary<string, object?>> ParseByFormat(
+        AnalysisOptions options,
+        AnalysisRules? rules,
+        IReadOnlyList<ValueParserConfig> valueParsers,
+        AnalysisRunContext ctx)
+    {
+        string format = ResolveEffectiveFormat(options.Input.InputPath, rules, options.Input.Format);
+        ctx.EffectiveFormat = format;
+        Diagnostic("input.format", "Input format resolved.", new Dictionary<string, object?> { ["format"] = format });
+
+        AnnounceCompression(options.Input.InputPath);
+
+        var parseOptions = new ParseOptions
+        {
+            Flatten = ResolveFlatten(options),
+            ValueParsers = valueParsers,
+            CsvInferNumbers = options.Parse.CsvInferNumbers,
+            SampleReservoir = 0,
+            SampleStep = 0,
+            StartFromLine = ctx.StartFromPosition,
+            SourceProgress = position =>
+            {
+                _cancellation.ThrowIfCancellationRequested();
+                ctx.LastSourcePosition = position - ctx.StartFromPosition;
+            }
+        };
+        return FileParsers.ParseByFormat(options.Input.InputPath, format, parseOptions);
+    }
+
+    private IEnumerable<Dictionary<string, object?>> ParseFromDatabase(
+        AnalysisOptions options, AnalysisRunContext ctx)
+    {
+        ctx.EffectiveFormat = "db";
+        var provider = DatabaseReader.ResolveProvider(options.Input.DbProvider, options.Input.ConnectionString!);
+        Diagnostic("input.format", "Database input selected.", new Dictionary<string, object?> { ["format"] = "db", ["provider"] = provider.ToString() });
+        return DatabaseReader.ReadRows(options.Input.ConnectionString!, provider, options.Input.Query!);
+    }
+
+    /// <summary>
+    /// 缺陷 2 修复落点：valueParsers 仅在输入确为电子表格类格式（excel / excel-json / csv，
+    /// 单元格内嵌 JSON 的专用场景）时切换到 excel-json 解析器，不再强制改写其他格式——
+    /// 普通 JSON / JSONL / XML / YAML 配置了 valueParsers 也按原格式解析（旧行为会对普通 JSON
+    /// 报"字典键 '1' 缺失"）。宿主显式指定的格式（options.Input.Format，如 API 原始文本端点）优先于扩展名探测。
+    /// </summary>
+    public static string ResolveEffectiveFormat(string inputPath, AnalysisRules? rules, string? formatOverride)
+    {
+        string detected = !string.IsNullOrWhiteSpace(formatOverride)
+            ? formatOverride.Trim().ToLowerInvariant()
+            : FileParsers.DetectFormat(inputPath);
+        if (rules?.ValueParsers is { Count: > 0 } && detected is "excel" or "excel-json" or "csv")
+        {
+            return "excel-json";
+        }
+        return detected;
+    }
+
+    private void AnnounceCompression(string path)
+    {
+        var compression = CompressionDetector.Detect(path);
+        if (compression == CompressionType.None) return;
+        var data = new Dictionary<string, object?> { ["compression"] = compression.ToString() };
+        if (compression == CompressionType.Zip && InputSource.PreviewZipEntries(path) is { } preview)
+        { data["entry"] = preview.Chosen; data["ignoredEntries"] = preview.Others.Count; }
+        Diagnostic("input.compression", "Compressed input detected.", data);
+    }
+
+    /// <summary>Lazy, cancellable record projection; no full-input materialization.</summary>
+    private IEnumerable<Dictionary<string, object?>> ApplyRecordPathStream(
+        IEnumerable<Dictionary<string, object?>> source, string expression)
+    {
+        long input = 0, missing = 0, output = 0;
+        foreach (var record in source)
+        {
+            _cancellation.ThrowIfCancellationRequested();
+            input++;
+            var matches = JsonPathProjector.ApplyRecordPath(record, expression);
+            if (matches.Count == 0) missing++;
+            foreach (var match in matches) { output++; yield return match; }
+        }
+        Diagnostic("projection.summary", "Record projection completed.", new Dictionary<string, object?>
+        { ["input"] = input, ["unmatched"] = missing, ["output"] = output });
+    }
+
+    private IEnumerable<Dictionary<string, object?>> LoadAndApplyRootPath(string path, string expression)
+    {
+        // 整体读入 JSON：JSONPath 投影必须访问整个文档，无法流式。
+        byte[] bytes;
+        using (var fs = File.OpenRead(path))
+        using (var ms = new MemoryStream())
+        {
+            var buffer = new byte[81920];
+            int count;
+            while ((count = fs.Read(buffer, 0, buffer.Length)) > 0)
+            { _cancellation.ThrowIfCancellationRequested(); ms.Write(buffer, 0, count); }
+            bytes = ms.ToArray();
+        }
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        {
+            bytes = bytes.AsSpan(3).ToArray();
+        }
+
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(bytes);
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException("JSON 根节点解析失败。", ex);
+        }
+
+        var records = JsonPathProjector.ApplyRootPath(root, expression);
+        Diagnostic("projection.root", "Root projection completed.", new Dictionary<string, object?> { ["output"] = records.Count });
+        return records;
+    }
+
+    // ── 采样 / 预览 / 统计回填 ──
+
+    /// <summary>
+    /// 采样包装：所有解析器关闭内部采样，在这里统一应用。
+    /// 顺序在字段过滤之后——从过滤后的总体中抽样，保证样本量语义正确。
+    /// </summary>
+    private IEnumerable<Dictionary<string, object?>> ApplySamplingIfEnabled(
+        IEnumerable<Dictionary<string, object?>> parsed, AnalysisOptions options)
+    {
+        if (!Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+            return parsed;
+
+        AnnounceSampling(options);
+        return Sampling.Apply(CountPopulation(parsed), options.Sampling.SampleReservoir, options.Sampling.SampleStep);
+    }
+
+    private IEnumerable<Dictionary<string, object?>> CountPopulation(IEnumerable<Dictionary<string, object?>> source)
+    {
+        foreach (var record in source) { _populationCount++; yield return record; }
+    }
+
+    private void AnnounceSampling(AnalysisOptions options)
+        => Diagnostic("sampling.enabled", "Sampling is applied after transformations and filtering.",
+            new Dictionary<string, object?> { ["reservoir"] = options.Sampling.SampleReservoir, ["step"] = options.Sampling.SampleStep });
+
+    /// <summary>预览包装：惰性捕获流经的前 limit 条记录（与统计共用同一次枚举，不额外物化）。</summary>
+    private static IEnumerable<Dictionary<string, object?>> WrapWithPreview(
+        IEnumerable<Dictionary<string, object?>> source, List<Dictionary<string, object?>> preview, int limit)
+    {
+        foreach (var obj in source)
+        {
+            if (preview.Count < limit)
+            {
+                lock (preview)
+                {
+                    if (preview.Count < limit) preview.Add(obj);
+                }
+            }
+            yield return obj;
+        }
+    }
+
+    /// <summary>
+    /// 进度桥接：把分析批计数扇出到宿主进度 UI（uiProgress）、宿主桥（ProgressBridge），
+    /// 并始终维护 <see cref="AnalysisRunContext.LastRecordCount"/>（--checkpoint 落盘依赖）。
+    /// </summary>
+    private InlineProgress BuildProgressBridge(IProgress<long>? uiProgress, AnalysisRunContext ctx)
+    {
+        return new InlineProgress(count =>
+        {
+            _cancellation.ThrowIfCancellationRequested();
+            ctx.LastRecordCount = count;
+            if (_memory is { IsEnabled: true } mem)
+            { mem.Check(count, out _); mem.ThrowIfHardExceeded(); }
+            ctx.Notify(() => uiProgress?.Report(count));
+            ctx.Notify(() => ctx.ProgressBridge?.Report(count));
+            ctx.Publish(new AnalysisEvent(ctx.RunId, AnalysisEventKind.Progress, AnalysisStage.Observation, count));
+        });
+    }
+
+    private sealed class InlineProgress(Action<long> report) : IProgress<long>
+    { public void Report(long value) => report(value); }
+
+    private void Stage(AnalysisStage stage)
+    {
+        _cancellation.ThrowIfCancellationRequested();
+        _context.CurrentStage = stage;
+        _context.Publish(new AnalysisEvent(_context.RunId, AnalysisEventKind.StageStarted, stage));
+    }
+
+    private void Diagnostic(string code, string message, IReadOnlyDictionary<string, object?>? data = null)
+        => _context.Publish(new AnalysisEvent(_context.RunId, AnalysisEventKind.Diagnostic, _context.CurrentStage,
+            Diagnostic: new AnalysisDiagnostic(code, message, data)));
+
+    private IEnumerable<Dictionary<string, object?>> WithCancellation(IEnumerable<Dictionary<string, object?>> source)
+    {
+        using var iterator = source.GetEnumerator();
+        while (true)
+        {
+            _cancellation.ThrowIfCancellationRequested();
+            if (!iterator.MoveNext()) break;
+            _cancellation.ThrowIfCancellationRequested();
+            yield return iterator.Current;
+        }
+    }
+
+    private static void BuildSamplingConfidence(AnalysisResult result, AnalysisOptions options, long populationCount)
+    {
+        if (!Sampling.IsEnabled(options.Sampling.SampleReservoir, options.Sampling.SampleStep))
+            return;
+
+        long effective = result.TotalObjects;
+        long estimated = populationCount;
+        var fieldCounts = result.FieldStatistics.Select(s => (s.FieldName, s.Count));
+        result.SamplingConfidence = SamplingConfidenceCalculator.Build(
+            method: options.Sampling.SampleReservoir > 0 ? "reservoir" : "systematic",
+            sampleSize: effective,
+            estimatedTotal: estimated,
+            fieldCounts: fieldCounts,
+            total: result.TotalObjects);
+    }
+
+    private static List<string>? SplitFields(string? fields)
+    {
+        if (string.IsNullOrWhiteSpace(fields))
+            return null;
+        return FieldPath.ParseList(fields).Select(path => path.ToString())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static IReadOnlyList<ValueParserConfig> ResolveValueParsers(AnalysisRules? rules)
+    {
+        if (rules?.ValueParsers is not { Count: > 0 })
+            return Array.Empty<ValueParserConfig>();
+
+        return rules.ValueParsers
+            .Where(p => !string.IsNullOrWhiteSpace(p.Source))
+            .Select(p => new ValueParserConfig
+            {
+                Source = p.Source.Trim(),
+                ParseType = string.IsNullOrWhiteSpace(p.ParseType) ? "auto" : p.ParseType.Trim(),
+                Flatten = p.Flatten,
+                Header = p.Header
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// 展平判定：--record-path 必须看到嵌套子对象才能正确投影；启用 --record-path 时强制不展平，
+    /// 投影提取出的子对象本身就是平坦的。
+    /// </summary>
+    public static bool ResolveFlatten(AnalysisOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.Input.RecordPath))
+            return false;
+
+        return options.Parse.Flatten;
+    }
+
+    private static long? EstimateTotalObjects(List<Dictionary<string, object?>> materialized)
+    {
+        return materialized.Count > 0 ? materialized.Count : null;
+    }
+}

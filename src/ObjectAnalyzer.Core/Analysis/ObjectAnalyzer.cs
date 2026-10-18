@@ -94,7 +94,15 @@ public static partial class ObjectAnalyzer
         int maxTracked = state.MaxTrackedValues;
         var features = state.Features;
         var pathCache = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-        var options = parallelOptions ?? new ParallelOptions();
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, parallelOptions?.CancellationToken ?? default);
+        cancellationToken = linkedCancellation.Token;
+        var options = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = parallelOptions?.MaxDegreeOfParallelism ?? -1,
+            TaskScheduler = parallelOptions?.TaskScheduler,
+            CancellationToken = cancellationToken
+        };
         void ProcessChunk(IEnumerable<Dictionary<string, object?>> chunk)
         {
             Parallel.ForEach(
@@ -103,6 +111,7 @@ public static partial class ObjectAnalyzer
                 () => new AnalyzerThreadState(),
                 (obj, loopState, localState) =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     localState.TotalObjects++;
 
                     // Fix #9: Array.Sort avoids LINQ lambda allocations in the per-object hot path
@@ -126,6 +135,7 @@ public static partial class ObjectAnalyzer
                     writer.Clear();
                     foreach (var kv in sortedEntries)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         string fieldName = kv.Key;
                         object? value = kv.Value;
                         var typedValue = RecordValue.FromObject(value);

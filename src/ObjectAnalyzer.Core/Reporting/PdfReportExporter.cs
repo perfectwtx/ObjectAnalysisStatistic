@@ -19,11 +19,9 @@ public static class PdfReportExporter
 
     public static void Save(AnalysisResult result, string outputPath)
     {
-        AnalysisServices.Current.Console.MarkupLine($"正在将 PDF 报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
 
         var doc = Document.Create(c => Compose(c, result));
         doc.GeneratePdf(outputPath);
-        AnalysisServices.Current.Console.MarkupLine($"[green]PDF 报告成功保存！[/]");
     }
 
     // ────── 整体文档结构 ──────

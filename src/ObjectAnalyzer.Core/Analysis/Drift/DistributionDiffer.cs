@@ -155,53 +155,53 @@ public static class DistributionDiffer
     }
 
     /// <summary>控制台打印 diff 摘要。</summary>
-    public static void PrintSummary(DistributionDiff diff, int maxPerCategory = 10)
+    public static void PrintSummary(DistributionDiff diff, int maxPerCategory = 10, IAnalysisConsole? console = null)
     {
         if (diff.SignificantDriftCount == 0 && diff.AddedFields.Count == 0 && diff.RemovedFields.Count == 0)
         {
-            AnalysisServices.Current.Console.MarkupLine("[green]✓ 无显著分布漂移（与基线一致）。[/]");
+            (console ?? SilentConsole.Instance).MarkupLine("[green]✓ 无显著分布漂移（与基线一致）。[/]");
             return;
         }
 
-        AnalysisServices.Current.Console.MarkupLine(
+        (console ?? SilentConsole.Instance).MarkupLine(
             $"[bold]分布漂移[/] — 显著变化 {diff.SignificantDriftCount} 处 / 覆盖率变化 {diff.CoverageChanges.Count} / 数值漂移 {diff.NumericDrifts.Count} / distinct 漂移 {diff.DistinctDrifts.Count}");
 
         if (diff.AddedFields.Count > 0)
         {
-            AnalysisServices.Current.Console.MarkupLine($"[green]+ 新出现字段[/] [grey]({diff.AddedFields.Count})[/]");
+            (console ?? SilentConsole.Instance).MarkupLine($"[green]+ 新出现字段[/] [grey]({diff.AddedFields.Count})[/]");
             foreach (var f in diff.AddedFields.Take(maxPerCategory))
             {
-                AnalysisServices.Current.Console.MarkupLine($"  [green]+[/] [cyan]{MarkupText.Escape(f.Path)}[/] [grey]({MarkupText.Escape(f.PrimaryType)}, coverage {f.Coverage:P1})[/]");
+                (console ?? SilentConsole.Instance).MarkupLine($"  [green]+[/] [cyan]{MarkupText.Escape(f.Path)}[/] [grey]({MarkupText.Escape(f.PrimaryType)}, coverage {f.Coverage:P1})[/]");
             }
         }
         if (diff.RemovedFields.Count > 0)
         {
-            AnalysisServices.Current.Console.MarkupLine($"[red]- 消失字段[/] [grey]({diff.RemovedFields.Count})[/]");
+            (console ?? SilentConsole.Instance).MarkupLine($"[red]- 消失字段[/] [grey]({diff.RemovedFields.Count})[/]");
             foreach (var f in diff.RemovedFields.Take(maxPerCategory))
             {
-                AnalysisServices.Current.Console.MarkupLine($"  [red]-[/] [cyan]{MarkupText.Escape(f.Path)}[/]");
+                (console ?? SilentConsole.Instance).MarkupLine($"  [red]-[/] [cyan]{MarkupText.Escape(f.Path)}[/]");
             }
         }
 
         if (diff.NumericDrifts.Count > 0)
         {
-            AnalysisServices.Current.Console.MarkupLine($"[yellow]~ 数值漂移[/] [grey]({diff.NumericDrifts.Count})[/]");
+            (console ?? SilentConsole.Instance).MarkupLine($"[yellow]~ 数值漂移[/] [grey]({diff.NumericDrifts.Count})[/]");
             foreach (var n in diff.NumericDrifts.Take(maxPerCategory).Where(n => Math.Abs(n.MeanShiftSigma ?? 0) >= MeanShiftSigmaThreshold))
             {
                 string tag = (n.MeanShiftSigma is > 0.5 or < -0.5) ? "[red]✗[/]" : "[yellow]~[/]";
-                AnalysisServices.Current.Console.MarkupLine(
+                (console ?? SilentConsole.Instance).MarkupLine(
                     $"  {tag} [cyan]{MarkupText.Escape(n.Path)}[/]: μ {n.BaselineMean:G4} → {n.CurrentMean:G4} (Δ {(n.MeanShiftSigma ?? 0):+0.00;-0.00;0.00}σ)");
             }
         }
 
         if (diff.DistinctDrifts.Count > 0)
         {
-            AnalysisServices.Current.Console.MarkupLine($"[yellow]~ distinct 漂移[/] [grey]({diff.DistinctDrifts.Count})[/]");
+            (console ?? SilentConsole.Instance).MarkupLine($"[yellow]~ distinct 漂移[/] [grey]({diff.DistinctDrifts.Count})[/]");
             foreach (var d in diff.DistinctDrifts.Where(d => d.Severity != "info").Take(maxPerCategory))
             {
                 string tag = d.Severity == "high" ? "[red]✗[/]" : "[yellow]~[/]";
                 string jaccard = d.Jaccard.HasValue ? $"Jaccard={d.Jaccard:P1}" : "";
-                AnalysisServices.Current.Console.MarkupLine(
+                (console ?? SilentConsole.Instance).MarkupLine(
                     $"  {tag} [cyan]{MarkupText.Escape(d.Path)}[/]: distinct {d.BaselineDistinct} → {d.CurrentDistinct} {MarkupText.Escape(jaccard)}");
             }
         }

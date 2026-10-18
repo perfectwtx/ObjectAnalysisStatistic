@@ -2,7 +2,7 @@ using ObjectAnalyzer.Analysis.Pipeline;
 
 namespace ObjectAnalyzer.Analysis;
 
-public static partial class AnalysisRunner
+public sealed partial class AnalysisCommandRunner
 {
     private static void MergeIncrementalResults(AnalysisOptions options, PipelineResult pipeline,
         long startFromPosition, AnalysisRunContext runContext)

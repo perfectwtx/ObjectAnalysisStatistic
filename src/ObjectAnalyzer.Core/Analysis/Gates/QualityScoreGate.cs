@@ -12,7 +12,7 @@ public sealed class QualityScoreGate : IQualityGate
     public int ExitCode => 7;
     public string FailureMessage => "质量评分门禁未通过";
 
-    public GateVerdict Check(AnalysisResult result, AnalysisOptions options)
+    public GateVerdict Check(AnalysisResult result, AnalysisOptions options, IAnalysisConsole? console = null)
     {
         var gate = options.Gates;
         if (!gate.HasScoreThresholds)
@@ -31,7 +31,7 @@ public sealed class QualityScoreGate : IQualityGate
         if (failures.Count == 0)
             return GateVerdict.Pass;
 
-        AnalysisServices.Current.Console.MarkupLine(
+        (console ?? SilentConsole.Instance).MarkupLine(
             $"[red]质量评分未通过（{string.Join("；", failures)}），退出码 7。[/]");
         return new GateVerdict(true);
     }

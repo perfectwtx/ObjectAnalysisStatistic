@@ -93,20 +93,20 @@ public sealed class PiiReport
     }
 
     /// <summary>向控制台输出一行数据安全合规摘要（无论是否导出报告文件）。</summary>
-    public static void PrintSummary(AnalysisResult result)
+    public static void PrintSummary(AnalysisResult result, IAnalysisConsole? console = null)
     {
         var report = Build(result);
 
         if (report.PiiFieldCount == 0)
         {
-            AnalysisServices.Current.Console.MarkupLine("[green]数据安全合规: 未发现敏感字段（手机号/身份证号/银行卡号/姓名/邮箱/SSN/IBAN/护照号）。[/]");
+            (console ?? SilentConsole.Instance).MarkupLine("[green]数据安全合规: 未发现敏感字段（手机号/身份证号/银行卡号/姓名/邮箱/SSN/IBAN/护照号）。[/]");
             return;
         }
 
         string categories = string.Join("/", report.Fields
             .Select(f => f.CategoryLabel)
             .Distinct());
-        AnalysisServices.Current.Console.MarkupLine(
+        (console ?? SilentConsole.Instance).MarkupLine(
             $"[yellow]数据安全合规: 发现 [bold]{report.PiiFieldCount}[/] 个敏感字段（{MarkupText.Escape(categories)}），"
             + $"共约 {report.PiiValueCount} 个敏感值，报告输出将自动打码。"
             + "推出合规等级报告请用 --pii-report。[/]");

@@ -135,7 +135,7 @@ public class RegistryTests : IDisposable
         public string Name => "自定义";
         public int ExitCode => 42;
         public string FailureMessage => "自定义门禁未通过";
-        public GateVerdict Check(AnalysisResult result, AnalysisOptions options) => new(true);
+        public GateVerdict Check(AnalysisResult result, AnalysisOptions options, ObjectAnalyzer.Abstractions.IAnalysisConsole? console = null) => new(true);
     }
 }
 

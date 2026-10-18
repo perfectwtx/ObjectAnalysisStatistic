@@ -8,19 +8,19 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class PiiExporter
 {
-    public static void Save(AnalysisResult result, string outputPath)
+    public static void Save(AnalysisResult result, string outputPath, IAnalysisConsole? console = null)
     {
         var report = PiiReport.Build(result);
 
         string json = JsonSerializer.Serialize(report, JsonSharedOptions.Write);
         File.WriteAllText(outputPath, json);
 
-        AnalysisServices.Current.Console.MarkupLine(
+        (console ?? SilentConsole.Instance).MarkupLine(
             report.PiiFieldCount == 0
                 ? $"[green]数据安全合规等级: A（未发现敏感字段）。[/]"
                 : $"[yellow]数据安全合规等级: [bold]{report.ComplianceLevel}[/]"
                   + $"（{MarkupText.Escape(report.ComplianceLevelLabel)}）：{report.PiiFieldCount} 个敏感字段，"
                   + $"共 {report.PiiValueCount} 个敏感值，全部自动打码。[/]");
-        AnalysisServices.Current.Console.MarkupLine($"已导出数据安全合规报告至: [blue]{MarkupText.Escape(outputPath)}[/]");
+        (console ?? SilentConsole.Instance).MarkupLine($"已导出数据安全合规报告至: [blue]{MarkupText.Escape(outputPath)}[/]");
     }
 }

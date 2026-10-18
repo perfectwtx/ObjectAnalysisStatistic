@@ -4,7 +4,7 @@ using Spectre.Console;
 namespace ObjectAnalyzer;
 
 // ── CLI 侧宿主端口实现 ──
-// 启动时注入 AnalysisServices，把 Core 的过程消息 / 进度 / 结果呈现
+// 通过 AnalysisCommandRunner 实例注入 AnalysisServices，把 Core 的过程消息 / 进度 / 结果呈现
 // 落到 Spectre.Console 的富渲染上。
 
 /// <summary>控制台端口实现：直接转发 AnsiConsole（保留 Spectre 标记渲染）。</summary>
@@ -18,6 +18,9 @@ internal sealed class SpectreConsoleAdapter : IAnalysisConsole
 /// <summary>进度端口实现：Spectre 进度条（未知总量时退化为 spinner + 计数）。</summary>
 internal sealed class SpectreProgressReporter : IProgressReporter
 {
+    private sealed class InlineProgress(Action<long> action) : IProgress<long>
+    { public void Report(long value) => action(value); }
+
     public void Run(string description, long? maxObjects, bool showProgress, Action<IProgress<long>?> work)
     {
         if (!showProgress)
@@ -43,7 +46,7 @@ internal sealed class SpectreProgressReporter : IProgressReporter
             {
                 // 任务描述为纯文本（端口契约）；由本实现负责转义
                 var task = ctx.AddTask(MarkupText.Escape(description), maxValue: maxObjects ?? 100);
-                work(new Progress<long>(value =>
+                work(new InlineProgress(value =>
                 {
                     task.Value = value;
                     // 未知总量时 task.Value 可能停在 < maxValue；work 完成后由下方收尾

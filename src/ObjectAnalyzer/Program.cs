@@ -9,7 +9,7 @@ using ObjectAnalyzer.Reporting;using Spectre.Console;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 // 宿主端口接线：CLI 用 Spectre 富渲染（进度条/表格），Core 通过 Abstractions 端口回调
-ObjectAnalyzer.Abstractions.AnalysisServices.Use(new()
+var analysisRunner = new AnalysisCommandRunner(new()
 {
     Console = new SpectreConsoleAdapter(),
     Progress = new SpectreProgressReporter(),
@@ -636,7 +636,7 @@ rootCommand.SetHandler((InvocationContext context) =>
         }
     };
 
-    context.ExitCode = AnalysisRunner.Run(options, cts.Token);
+    context.ExitCode = analysisRunner.Run(options, cts.Token);
 });
 
 Console.CancelKeyPress += (_, e) =>

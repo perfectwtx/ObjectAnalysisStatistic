@@ -8,7 +8,7 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class QualityExporter
 {
-    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true, IAnalysisConsole? console = null)
     {
         result = PiiRedactor.Redact(result, redactPii);
 
@@ -19,13 +19,13 @@ public static class QualityExporter
 
         if (report.Passed)
         {
-            AnalysisServices.Current.Console.MarkupLine($"[green]数据质量通过: {report.TotalFields} 个字段，无枚举违规。[/]");
+            (console ?? SilentConsole.Instance).MarkupLine($"[green]数据质量通过: {report.TotalFields} 个字段，无枚举违规。[/]");
         }
         else
         {
-            AnalysisServices.Current.Console.MarkupLine(
+            (console ?? SilentConsole.Instance).MarkupLine(
                 $"[yellow]数据质量未通过: {report.FieldsWithViolations}/{report.TotalFields} 个字段存在 {report.TotalViolationCount} 条枚举违规（违规率 {report.ViolationRate:P1}）。[/]");
         }
-        AnalysisServices.Current.Console.MarkupLine($"已导出数据质量报告至: [blue]{MarkupText.Escape(outputPath)}[/]");
+        (console ?? SilentConsole.Instance).MarkupLine($"已导出数据质量报告至: [blue]{MarkupText.Escape(outputPath)}[/]");
     }
 }

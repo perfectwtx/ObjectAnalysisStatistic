@@ -9,11 +9,36 @@ namespace ObjectAnalyzer.Analysis.Pipeline;
 /// </summary>
 public sealed class AnalysisRunContext
 {
+    private int _used;
+    private readonly List<Exception> _observerErrors = new();
+    public Guid RunId { get; } = Guid.NewGuid();
+    public Action<AnalysisEvent>? EventSink { get; init; }
+    public IReadOnlyList<Exception> ObserverErrors => _observerErrors.AsReadOnly();
+    internal AnalysisStage CurrentStage { get; set; } = AnalysisStage.Preparing;
+
+    internal void Begin()
+    {
+        if (Interlocked.Exchange(ref _used, 1) != 0)
+            throw new InvalidOperationException("A run context can only be executed once.");
+    }
+
+    // Notifications are synchronous. Host failures cannot change the computation or its terminal outcome.
+    internal void Notify(Action notification)
+    {
+        try { notification(); }
+        catch (Exception exception)
+        {
+            if (_observerErrors.Count < 32) _observerErrors.Add(exception);
+        }
+    }
+
+    internal void Publish(AnalysisEvent notification) => Notify(() => EventSink?.Invoke(notification));
+
     public FieldAnalyzerRegistry? Analyzers { get; init; }
 
     public AnalysisAccumulator? InitialState { get; init; }
 
-    /// <summary>内存预算监控（--max-memory）。null 或未启用时管道不做内存采样。</summary>
+    /// <summary>可选的独占内存监控实例；null 时按执行配置创建本次运行的监控。</summary>
     public MemoryBudget? MemoryBudget { get; init; }
 
     /// <summary>续跑起始位置（--resume 快照的 SourcePosition）：解析器按行/记录跳过已处理数据。</summary>

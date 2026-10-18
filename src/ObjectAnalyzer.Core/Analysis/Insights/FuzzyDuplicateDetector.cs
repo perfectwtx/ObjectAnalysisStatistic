@@ -38,8 +38,10 @@ public static class FuzzyDuplicateDetector
     /// </summary>
     public static FuzzyDuplicateReport Detect(
         IEnumerable<Dictionary<string, object?>> objects,
-        Func<Dictionary<string, object?>, string?> keySelector)
+        Func<Dictionary<string, object?>, string?> keySelector,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var report = new FuzzyDuplicateReport();
         if (objects == null) return report;
 
@@ -50,6 +52,7 @@ public static class FuzzyDuplicateDetector
 
         foreach (var obj in objects)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string raw = keySelector(obj) ?? "";
             if (string.IsNullOrEmpty(raw)) continue;
             total++;
@@ -73,6 +76,7 @@ public static class FuzzyDuplicateDetector
         // 直接从大小写/空白/全半角等形态变体归并的组（不做 Jaccard 比较）
         foreach (var (canon, examples) in byCanonical.OrderByDescending(kv => kv.Value.Count))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (examples.Count < 2)
             {
                 // 单一样本无需建组（除非后续 Jaccard 找到近邻）
@@ -94,6 +98,7 @@ public static class FuzzyDuplicateDetector
 
             for (int i = 0; i < uniqKeys.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var ti = uniqTokens[i];
                 if (ti.Count == 0) continue;
                 for (int j = i + 1; j < uniqKeys.Count; j++)

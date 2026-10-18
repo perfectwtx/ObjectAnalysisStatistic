@@ -58,13 +58,10 @@ public static class ReportExporter
 
         public void Save(AnalysisResult result, string outputPath)
         {
-            AnalysisServices.Current.Console.Write($"正在将详细分析报告保存至: [blue]{MarkupText.Escape(outputPath)}[/] ...");
-            AnalysisServices.Current.Console.WriteLine();
             using (var stream = File.Create(outputPath))
             {
                 JsonSerializer.Serialize(stream, result, JsonSharedOptions.Write);
             }
-            AnalysisServices.Current.Console.MarkupLine($"[green]报告成功保存！[/]");
         }
     }
 

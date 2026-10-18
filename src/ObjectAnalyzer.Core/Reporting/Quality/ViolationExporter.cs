@@ -17,7 +17,7 @@ namespace ObjectAnalyzer.Reporting;
 /// </summary>
 public static class ViolationExporter
 {
-    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
+    public static void Save(AnalysisResult result, string outputPath, bool redactPii = true, IAnalysisConsole? console = null)
     {
         result = PiiRedactor.Redact(result, redactPii);
 
@@ -83,7 +83,7 @@ public static class ViolationExporter
         string json = JsonSerializer.Serialize(payload, JsonSharedOptions.Write);
         File.WriteAllText(outputPath, json);
 
-        AnalysisServices.Current.Console.MarkupLine(
+        (console ?? SilentConsole.Instance).MarkupLine(
             $"已导出 [yellow]{totalViolations}[/] 条质量违规（{datasetEntries.Count} 条数据集期望）至: [blue]{MarkupText.Escape(outputPath)}[/]");
     }
 }

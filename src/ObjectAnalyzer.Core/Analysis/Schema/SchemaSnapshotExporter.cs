@@ -20,11 +20,11 @@ public static class SchemaSnapshotExporter
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public static void Save(AnalysisResult result, string outputPath, string? source = null)
+    public static void Save(AnalysisResult result, string outputPath, string? source = null, IAnalysisConsole? console = null)
     {
         var snapshot = Build(result, source);
         File.WriteAllText(outputPath, JsonSerializer.Serialize(snapshot, s_writeOptions), new UTF8Encoding(false));
-        AnalysisServices.Current.Console.MarkupLine(
+        (console ?? SilentConsole.Instance).MarkupLine(
             $"[green]Schema 快照已导出至[/] [blue]{MarkupText.Escape(outputPath)}[/] [grey]({snapshot.Fields.Count} 个字段，{snapshot.TotalObjects} 个对象)[/]");
     }
 

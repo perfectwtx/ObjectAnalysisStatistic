@@ -91,46 +91,39 @@ public sealed class LocalAnalysisService
                 DetectSourceType(inputPath),
                 async token =>
                 {
-                    AnalysisServices.Use(new AnalysisServices
+                    var runner = new AnalysisCommandRunner(new AnalysisServices
                     {
                         Console = console,
                         Progress = progress,
                         Presenter = NullResultPresenter.Instance
                     });
 
-                    try
+                    int exitCode = await Task.Run(
+                        () => runner.Run(options, token),
+                        token);
+
+                    if (exitCode == 2 && token.IsCancellationRequested)
+                        throw new OperationCanceledException(token);
+
+                    if (exitCode != 0)
+                        throw new AnalysisExecutionException(exitCode);
+
+                    if (!File.Exists(jsonReportPath))
+                        throw new FileNotFoundException("分析完成但没有生成 JSON 报告。", jsonReportPath);
+
+                    AnalysisResult analysisResult = LoadResult(jsonReportPath);
+
+                    if (!string.Equals(
+                            Path.GetFullPath(jsonReportPath),
+                            Path.GetFullPath(userReportPath),
+                            StringComparison.OrdinalIgnoreCase))
                     {
-                        int exitCode = await Task.Run(
-                            () => AnalysisRunner.Run(options, token),
-                            token);
-
-                        if (exitCode == 2 && token.IsCancellationRequested)
-                            throw new OperationCanceledException(token);
-
-                        if (exitCode != 0)
-                            throw new AnalysisExecutionException(exitCode);
-
-                        if (!File.Exists(jsonReportPath))
-                            throw new FileNotFoundException("分析完成但没有生成 JSON 报告。", jsonReportPath);
-
-                        AnalysisResult analysisResult = LoadResult(jsonReportPath);
-
-                        if (!string.Equals(
-                                Path.GetFullPath(jsonReportPath),
-                                Path.GetFullPath(userReportPath),
-                                StringComparison.OrdinalIgnoreCase))
-                        {
-                            Directory.CreateDirectory(Path.GetDirectoryName(userReportPath)!);
-                            ReportExporter.Save(analysisResult, userReportPath, redactPii: true);
-                            writeOutput($"已导出用户格式报告: {userReportPath}");
-                        }
-
-                        return analysisResult;
+                        Directory.CreateDirectory(Path.GetDirectoryName(userReportPath)!);
+                        ReportExporter.Save(analysisResult, userReportPath, redactPii: true);
+                        writeOutput($"已导出用户格式报告: {userReportPath}");
                     }
-                    finally
-                    {
-                        AnalysisServices.Use(null);
-                    }
+
+                    return analysisResult;
                 },
                 options,
                 cancellationToken);
