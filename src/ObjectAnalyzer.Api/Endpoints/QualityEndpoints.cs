@@ -242,31 +242,30 @@ public static class QualityEndpoints
 
     private static async Task<Ok<QualityRegressionReport?>> GetRegression(Guid? jobId, IAnalysisHistoryStore history, CancellationToken cancellationToken)
     {
-        var jobs = (await history.GetRecentAsync(100, cancellationToken))
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded && !string.IsNullOrWhiteSpace(x.ResultJson))
-            .OrderByDescending(x => x.StartedAtUtc)
-            .ToList();
-
+        AnalysisJob? currentJob;
         if (jobId.HasValue)
-        {
-            var currentIndex = jobs.FindIndex(x => x.Id == jobId.Value);
-            if (currentIndex < 0)
-                return TypedResults.Ok<QualityRegressionReport?>(null);
-
-            // jobs 按时间倒序，当前作业之后的第一条就是它的前一次成功分析。
-            jobs = jobs.Skip(currentIndex).Take(2).ToList();
-        }
+            currentJob = await history.GetAsync(jobId.Value, cancellationToken);
         else
         {
-            jobs = jobs.Take(2).ToList();
+            var recent = await history.GetRecentSummariesAsync(1, status: AnalysisJobStatus.Succeeded,
+                cancellationToken: cancellationToken);
+            currentJob = recent.Count == 0 ? null : recent[0];
         }
-
-        if (jobs.Count < 2) return TypedResults.Ok<QualityRegressionReport?>(null);
+        if (currentJob is not { Status: AnalysisJobStatus.Succeeded })
+            return TypedResults.Ok<QualityRegressionReport?>(null);
+        if (currentJob.ResultJson is null)
+            currentJob = await history.GetAsync(currentJob.Id, cancellationToken);
+        if (currentJob is null || string.IsNullOrWhiteSpace(currentJob.ResultJson))
+            return TypedResults.Ok<QualityRegressionReport?>(null);
+        var previousJob = await history.GetPreviousSucceededAsync(currentJob.SourceName, currentJob.Id,
+            currentJob.StartedAtUtc, cancellationToken);
+        if (previousJob is null || string.IsNullOrWhiteSpace(previousJob.ResultJson))
+            return TypedResults.Ok<QualityRegressionReport?>(null);
 
         try
         {
-            var current = JsonSerializer.Deserialize<AnalysisResult>(jobs[0].ResultJson!);
-            var previous = JsonSerializer.Deserialize<AnalysisResult>(jobs[1].ResultJson!);
+            var current = JsonSerializer.Deserialize<AnalysisResult>(currentJob.ResultJson);
+            var previous = JsonSerializer.Deserialize<AnalysisResult>(previousJob.ResultJson);
             if (current is null || previous is null) return TypedResults.Ok<QualityRegressionReport?>(null);
 
             return TypedResults.Ok<QualityRegressionReport?>(QualityRegressionAnalyzer.Analyze(previous, current));

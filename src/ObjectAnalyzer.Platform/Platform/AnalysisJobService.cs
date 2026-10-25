@@ -50,12 +50,8 @@ public sealed class AnalysisJobService
         if (job.Status != AnalysisJobStatus.Running)
             return false;
 
-        var previousJob = (await _historyStore.GetRecentAsync(100, cancellationToken))
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded
-                     && string.Equals(x.SourceName, job.SourceName, StringComparison.OrdinalIgnoreCase)
-                     && x.Id != job.Id)
-            .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc)
-            .FirstOrDefault();
+        var previousJob = await _historyStore.GetPreviousSucceededAsync(job.SourceName, job.Id,
+            cancellationToken: cancellationToken);
 
         var completedJob = new AnalysisJob { Id = job.Id };
         CopyState(job, completedJob);

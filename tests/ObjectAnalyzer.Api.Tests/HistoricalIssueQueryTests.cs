@@ -9,6 +9,26 @@ namespace ObjectAnalyzer.Api.Tests;
 public sealed class HistoricalIssueQueryTests
 {
     [Fact]
+    public async Task Regression_UsesSameSourceOutsideRecentHistoryWindow()
+    {
+        await using var factory = new IsolatedApiWebApplicationFactory();
+        using var client = factory.CreateClient();
+        var history = factory.Services.GetRequiredService<IAnalysisHistoryStore>();
+        var previous = global::ObjectAnalyzer.Analysis.ObjectAnalyzer.Analyze(new[] { new Dictionary<string, object?> { ["value"] = 1 } });
+        var current = global::ObjectAnalyzer.Analysis.ObjectAnalyzer.Analyze(new[] { new Dictionary<string, object?> { ["value"] = 1 }, new Dictionary<string, object?>() });
+        await history.SaveAsync(new AnalysisJob { SourceName = "Orders", SourceType = "json", Status = AnalysisJobStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow.AddDays(-4), ResultJson = JsonSerializer.Serialize(previous) });
+        var target = new AnalysisJob { SourceName = "orders", SourceType = "json", Status = AnalysisJobStatus.Succeeded,
+            StartedAtUtc = DateTime.UtcNow.AddDays(-3), ResultJson = JsonSerializer.Serialize(current) };
+        await history.SaveAsync(target);
+        for (var i = 0; i < 101; i++)
+            await history.SaveAsync(new AnalysisJob { SourceName = "other", SourceType = "json", Status = AnalysisJobStatus.Succeeded, ResultJson = "{}" });
+
+        var report = await client.GetFromJsonAsync<JsonElement>($"/api/quality/regression?jobId={target.Id}");
+        Assert.Equal(-15, report.GetProperty("scoreDelta").GetDouble());
+    }
+
+    [Fact]
     public async Task OldJob_RemainsQueryableWithSqlFiltersPaginationAndSummary()
     {
         await using var factory = new IsolatedApiWebApplicationFactory();

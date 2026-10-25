@@ -349,6 +349,31 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task<AnalysisJob?> GetPreviousSucceededAsync(string sourceName, Guid excludedJobId,
+        DateTime? startedBeforeUtc = null, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        connection.CreateCollation("OA_ORDINAL_IGNORE_CASE", StringComparer.OrdinalIgnoreCase.Compare);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, source_name, source_type, status, started_at_utc, completed_at_utc, duration_ms,
+                total_objects, field_count, quality_score, issue_count, error_message, result_json,
+                gate_results_json, quality_baseline_evaluation_json
+            FROM analysis_jobs
+            WHERE source_name = $source COLLATE OA_ORDINAL_IGNORE_CASE AND status = $succeeded AND id <> $excluded
+                AND ($before IS NULL OR started_at_utc < $before)
+            ORDER BY COALESCE(completed_at_utc, started_at_utc) DESC, started_at_utc DESC, id
+            LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$source", sourceName);
+        command.Parameters.AddWithValue("$succeeded", (int)AnalysisJobStatus.Succeeded);
+        command.Parameters.AddWithValue("$excluded", excludedJobId.ToString("D"));
+        command.Parameters.AddWithValue("$before", (object?)startedBeforeUtc?.ToString("O") ?? DBNull.Value);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadJob(reader) : null;
+    }
+
     public async Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);

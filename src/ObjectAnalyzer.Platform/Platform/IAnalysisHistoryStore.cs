@@ -11,6 +11,8 @@ public interface IAnalysisHistoryStore
     /// <summary>Atomically completes a running job with quality history and its webhook outbox.</summary>
     Task<bool> TryCompleteAsync(AnalysisCompletion completion, CancellationToken cancellationToken = default);
     Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default);
+    Task<AnalysisJob?> GetPreviousSucceededAsync(string sourceName, Guid excludedJobId,
+        DateTime? startedBeforeUtc = null, CancellationToken cancellationToken = default);
     Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default);
     /// <summary>Reads task metadata without loading result JSON; filtering precedes pagination.</summary>
