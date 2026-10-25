@@ -16,6 +16,8 @@ using MessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace ObjectAnalyzer.Desktop;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "The WPF window releases its platform service in OnClosed.")]
 public partial class MainWindow : FluentWindow
 {
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -35,6 +37,13 @@ public partial class MainWindow : FluentWindow
     private ReportsView ReportsViewControl => (ReportsView)_pages["reports"];
 
     private static string L(string key, string fallback) => LocalizationService.Get(key, fallback);
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _analysisCancellation?.Cancel();
+        _platformService.Dispose();
+        base.OnClosed(e);
+    }
 
     private static string Lf(string key, string fallback, params object[] args) =>
         string.Format(CultureInfo.CurrentCulture, LocalizationService.Get(key, fallback), args);
