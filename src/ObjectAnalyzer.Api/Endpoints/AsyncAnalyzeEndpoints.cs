@@ -289,12 +289,7 @@ public static class AsyncAnalyzeEndpoints
                 }
             }
 
-            // Registry 只保留进程内的短期运行时状态。终态作业被清理后，
-            // 客户端仍应能通过持久化历史查询到结果。应用重启后同样走这里。
-            var snap = AnalysisJobRegistry.Instance.Get(jobId);
-            if (snap is not null)
-                return TypedResults.Ok(ToResponse(snap));
-
+            // Missing persistence is authoritative: deleted jobs must never reappear from cache.
             return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
         })
         .WithTags("异步分析")
@@ -333,60 +328,37 @@ public static class AsyncAnalyzeEndpoints
                 var ct = http.RequestAborted;
                 while (true)
                 {
-                    // Use the same terminal authority as polling: persistence may finish
-                    // before the background task publishes its terminal Registry snapshot.
-                    if (Guid.TryParse(jobId, out var terminalJobId))
-                    {
-                        var terminalJob = await historyStore.GetAsync(terminalJobId, ct);
-                        if (terminalJob is not null && terminalJob.Status is
-                            (AnalysisJobStatus.Succeeded or AnalysisJobStatus.Failed or AnalysisJobStatus.Cancelled))
-                        {
-                            var response = ToResponse(terminalJob);
-                            await WriteEventAsync("complete", JsonSerializer.Serialize(new
-                            {
-                                processedObjects = response.ProcessedObjects,
-                                status = response.Status.ToString(),
-                                error = response.Error
-                            }, s_sseJsonOptions), ct);
-                            return;
-                        }
-                    }
-
-                    var snap = AnalysisJobRegistry.Instance.Get(jobId);
-                    if (snap is not null)
-                    {
-                        bool terminal = snap.Status != AnalysisStatus.Running;
-                        await WriteEventAsync(terminal ? "complete" : "progress", SnapJson(snap), ct);
-                        if (terminal)
-                            return;
-                    }
-                    else if (Guid.TryParse(jobId, out var persistedJobId))
-                    {
-                        var persisted = await historyStore.GetAsync(persistedJobId, ct);
-                        if (persisted is null)
-                        {
-                            await WriteEventAsync("gone", "{\"reason\":\"job not found\"}", ct);
-                            return;
-                        }
-
-                        var terminal = persisted.Status is not (AnalysisJobStatus.Pending or AnalysisJobStatus.Running);
-                        var persistedStatus = persisted.Status switch
-                        {
-                            AnalysisJobStatus.Succeeded => "Completed",
-                            AnalysisJobStatus.Failed => "Failed",
-                            AnalysisJobStatus.Cancelled => "Cancelled",
-                            _ => "Running"
-                        };
-                        await WriteEventAsync(terminal ? "complete" : "progress",
-                            JsonSerializer.Serialize(new { processedObjects = persisted.TotalObjects, status = persistedStatus, error = persisted.ErrorMessage }, s_sseJsonOptions), ct);
-                        if (terminal)
-                            return;
-                    }
-                    else
+                    if (!Guid.TryParse(jobId, out var persistedJobId))
                     {
                         await WriteEventAsync("gone", "{\"reason\":\"invalid job id\"}", ct);
                         return;
                     }
+                    var persisted = await historyStore.GetAsync(persistedJobId, ct);
+                    if (persisted is null)
+                    {
+                        await WriteEventAsync("gone", "{\"reason\":\"job not found\"}", ct);
+                        return;
+                    }
+                    var terminal = persisted.Status is not (AnalysisJobStatus.Pending or AnalysisJobStatus.Running);
+                    if (terminal)
+                    {
+                        var response = ToResponse(persisted);
+                        await WriteEventAsync("complete", JsonSerializer.Serialize(new
+                        {
+                            processedObjects = response.ProcessedObjects,
+                            status = response.Status.ToString(), error = response.Error
+                        }, s_sseJsonOptions), ct);
+                        return;
+                    }
+                    var snap = AnalysisJobRegistry.Instance.Get(jobId);
+                    if (snap is not null)
+                        await WriteEventAsync(snap.Status == AnalysisStatus.Running ? "progress" : "complete", SnapJson(snap), ct);
+                    else
+                        await WriteEventAsync("progress", JsonSerializer.Serialize(new
+                        {
+                            processedObjects = persisted.TotalObjects, status = "Running", error = (string?)null
+                        }, s_sseJsonOptions), ct);
+                    if (snap is not null && snap.Status != AnalysisStatus.Running) return;
 
                     await Task.Delay(500, ct);
                 }
@@ -427,10 +399,6 @@ public static class AsyncAnalyzeEndpoints
                     return TypedResults.Conflict(new ErrorResponse("作业仍在运行，但当前进程中已找不到对应的运行时取消句柄，无法执行取消。"));
                 }
             }
-
-            var runtimeSnap = AnalysisJobRegistry.Instance.Get(jobId);
-            if (runtimeSnap is not null)
-                return TypedResults.Ok(new AnalyzeCancelResponse(jobId, AnalysisJobRegistry.Instance.Cancel(jobId)));
 
             return TypedResults.NotFound(new ErrorResponse($"作业不存在或已清理：{jobId}"));
         })

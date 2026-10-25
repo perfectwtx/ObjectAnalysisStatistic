@@ -45,6 +45,14 @@ public sealed class AnalysisJobRegistry
         return job.ToSnapshot();
     }
 
+    /// <summary>Forgets cached output. An active execution retains ownership of its cancellation source.</summary>
+    public bool Remove(string jobId)
+    {
+        if (string.IsNullOrEmpty(jobId) || !_jobs.TryRemove(jobId, out var job)) return false;
+        if (job.IsTerminal) job.DisposeCts();
+        return true;
+    }
+
     public bool Cancel(string jobId)
     {
         if (string.IsNullOrEmpty(jobId)) return false;

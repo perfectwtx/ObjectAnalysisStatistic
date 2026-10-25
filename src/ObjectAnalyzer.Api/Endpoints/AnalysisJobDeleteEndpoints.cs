@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using ObjectAnalyzer.Platform;
+using ObjectAnalyzer.Analysis;
 
 namespace ObjectAnalyzer.Api;
 
@@ -45,6 +46,7 @@ public static class AnalysisJobDeleteEndpoints
             return TypedResults.Conflict(new ErrorResponse("作业仍在进行中，请先取消后再删除。"));
 
         var removed = await store.DeleteAsync(jobId, cancellationToken);
+        if (removed) AnalysisJobRegistry.Instance.Remove(jobId.ToString("N"));
         return removed
             ? TypedResults.NoContent()
             : TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
@@ -78,7 +80,11 @@ public static class AnalysisJobDeleteEndpoints
             }
 
             var ok = await store.DeleteAsync(id, cancellationToken);
-            if (ok) deleted.Add(id);
+            if (ok)
+            {
+                AnalysisJobRegistry.Instance.Remove(id.ToString("N"));
+                deleted.Add(id);
+            }
             else failed.Add(new DeleteJobFailure(id, "not_found", "作业不存在"));
         }
 
