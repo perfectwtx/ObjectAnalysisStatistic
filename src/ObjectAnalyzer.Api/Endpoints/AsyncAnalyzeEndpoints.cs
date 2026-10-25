@@ -55,6 +55,7 @@ public static class AsyncAnalyzeEndpoints
             var tempRules = Path.Combine(Path.GetTempPath(), $"oa-async-{Guid.NewGuid():N}.json");
             AnalysisJob? job = null;
             var cts = new CancellationTokenSource();
+            var backgroundOwnsResources = false;
             try
             {
                 await using (var fs = File.Create(tempData))
@@ -116,8 +117,7 @@ public static class AsyncAnalyzeEndpoints
                         cts),
                     CancellationToken.None);
 
-                tempData = null!;
-                tempRules = null!;
+                backgroundOwnsResources = true;
 
                 return TypedResults.Ok(new AnalyzeAsyncResponse(
                     JobId: jobIdForTask,
@@ -129,9 +129,6 @@ public static class AsyncAnalyzeEndpoints
             }
             catch (Exception ex)
             {
-                try { cts.Cancel(); } catch { }
-                try { cts.Dispose(); } catch { }
-
                 if (job is not null)
                 {
                     // StartAsync 已成功时，必须把持久化 Job 也置为 Failed，避免留下永久 Running。
@@ -144,9 +141,16 @@ public static class AsyncAnalyzeEndpoints
                     AnalysisJobRegistry.Instance.Fail(job.Id.ToString("N"), ex);
                 }
 
-                TryDelete(tempData);
-                TryDelete(tempRules);
                 return TypedResults.BadRequest(ApiErrors.FromException(ex));
+            }
+            finally
+            {
+                if (!backgroundOwnsResources)
+                {
+                    TryDelete(tempData);
+                    TryDelete(tempRules);
+                    cts.Dispose();
+                }
             }
         })
         .WithTags("异步分析")
@@ -178,6 +182,7 @@ public static class AsyncAnalyzeEndpoints
             var tempData = Path.Combine(Path.GetTempPath(), $"oa-async-{Guid.NewGuid():N}.txt");
             AnalysisJob? job = null;
             var cts = new CancellationTokenSource();
+            var backgroundOwnsResources = false;
             try
             {
                 await File.WriteAllTextAsync(tempData, config.DataText, cancellationToken);
@@ -220,7 +225,7 @@ public static class AsyncAnalyzeEndpoints
                         cts),
                     CancellationToken.None);
 
-                tempData = null!;
+                backgroundOwnsResources = true;
 
                 return TypedResults.Ok(new AnalyzeAsyncResponse(
                     JobId: jobId,
@@ -232,9 +237,6 @@ public static class AsyncAnalyzeEndpoints
             }
             catch (Exception ex)
             {
-                try { cts.Cancel(); } catch { }
-                try { cts.Dispose(); } catch { }
-
                 if (job is not null)
                 {
                     try
@@ -246,8 +248,15 @@ public static class AsyncAnalyzeEndpoints
                     AnalysisJobRegistry.Instance.Fail(job.Id.ToString("N"), ex);
                 }
 
-                TryDelete(tempData);
                 return TypedResults.BadRequest(ApiErrors.FromException(ex));
+            }
+            finally
+            {
+                if (!backgroundOwnsResources)
+                {
+                    TryDelete(tempData);
+                    cts.Dispose();
+                }
             }
         })
         .WithTags("异步分析")
