@@ -5,6 +5,8 @@ public interface IAnalysisHistoryStore
     Task<int> RecoverOrphanedJobsAsync(DateTime completedAtUtc, string errorMessage, CancellationToken cancellationToken = default);
     Task InitializeAsync(CancellationToken cancellationToken = default);
     Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default);
+    Task RecordRemediationVerificationAsync(RemediationVerificationOutcome outcome, CancellationToken cancellationToken = default);
+    Task<RemediationVerificationOutcome?> GetRemediationVerificationAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>仅当数据库中的作业仍处于指定状态时，原子地写入新的作业状态。</summary>
     Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default);

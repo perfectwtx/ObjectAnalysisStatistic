@@ -43,6 +43,10 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                 gate_results_json TEXT NULL,
                 quality_baseline_evaluation_json TEXT NULL
             );
+            CREATE TABLE IF NOT EXISTS remediation_verification_outcomes (
+                job_id TEXT PRIMARY KEY, previous_job_id TEXT NULL,
+                succeeded INTEGER NOT NULL, error TEXT NULL, attempted_at_utc TEXT NOT NULL
+            );
             CREATE INDEX IF NOT EXISTS ix_analysis_jobs_started_at
                 ON analysis_jobs(started_at_utc DESC);
             CREATE TABLE IF NOT EXISTS quality_snapshots (
@@ -124,6 +128,46 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
             return await command.ExecuteNonQueryAsync(cancellationToken);
         }
         finally { s_writeLock.Release(); }
+    }
+
+    public async Task RecordRemediationVerificationAsync(RemediationVerificationOutcome outcome, CancellationToken cancellationToken = default)
+    {
+        await s_writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO remediation_verification_outcomes(job_id, previous_job_id, succeeded, error, attempted_at_utc)
+                SELECT $id, $previous, $succeeded, $error, $at
+                WHERE EXISTS (SELECT 1 FROM analysis_jobs WHERE id = $id AND status = $status)
+                ON CONFLICT(job_id) DO UPDATE SET previous_job_id = excluded.previous_job_id,
+                    succeeded = excluded.succeeded, error = excluded.error, attempted_at_utc = excluded.attempted_at_utc;
+                """;
+            command.Parameters.AddWithValue("$id", outcome.JobId.ToString("D"));
+            command.Parameters.AddWithValue("$previous", (object?)outcome.PreviousJobId?.ToString("D") ?? DBNull.Value);
+            command.Parameters.AddWithValue("$succeeded", outcome.Succeeded ? 1 : 0);
+            command.Parameters.AddWithValue("$error", (object?)outcome.Error ?? DBNull.Value);
+            command.Parameters.AddWithValue("$at", outcome.AttemptedAtUtc.ToString("O"));
+            command.Parameters.AddWithValue("$status", (int)AnalysisJobStatus.Succeeded);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        finally { s_writeLock.Release(); }
+    }
+
+    public async Task<RemediationVerificationOutcome?> GetRemediationVerificationAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT previous_job_id, succeeded, error, attempted_at_utc FROM remediation_verification_outcomes WHERE job_id = $id";
+        command.Parameters.AddWithValue("$id", jobId.ToString("D"));
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken)
+            ? new RemediationVerificationOutcome(jobId, reader.IsDBNull(0) ? null : Guid.Parse(reader.GetString(0)),
+                reader.GetBoolean(1), reader.IsDBNull(2) ? null : reader.GetString(2),
+                DateTime.Parse(reader.GetString(3), null, System.Globalization.DateTimeStyles.RoundtripKind)) : null;
     }
 
     public async Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
@@ -437,6 +481,7 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
                     "DELETE FROM quality_issues WHERE job_id = $id",
                     "DELETE FROM field_quality_snapshots WHERE job_id = $id",
                     "DELETE FROM quality_snapshots WHERE job_id = $id",
+                    "DELETE FROM remediation_verification_outcomes WHERE job_id = $id",
                     "DELETE FROM webhook_deliveries WHERE job_id = $id",
                 })
                 {

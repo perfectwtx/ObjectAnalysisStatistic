@@ -275,6 +275,11 @@ public sealed class InMemoryAsyncHistoryStore : IAnalysisHistoryStore
         return count;
     }
 
+    public Task RecordRemediationVerificationAsync(RemediationVerificationOutcome outcome, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+    public Task<RemediationVerificationOutcome?> GetRemediationVerificationAsync(Guid jobId, CancellationToken cancellationToken = default)
+        => Task.FromResult<RemediationVerificationOutcome?>(null);
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)

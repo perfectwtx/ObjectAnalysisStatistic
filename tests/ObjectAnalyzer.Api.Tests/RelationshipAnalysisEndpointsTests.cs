@@ -198,6 +198,11 @@ public sealed class InMemoryRelationshipHistoryStore : IAnalysisHistoryStore
         return count;
     }
 
+    public Task RecordRemediationVerificationAsync(RemediationVerificationOutcome outcome, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+    public Task<RemediationVerificationOutcome?> GetRemediationVerificationAsync(Guid jobId, CancellationToken cancellationToken = default)
+        => Task.FromResult<RemediationVerificationOutcome?>(null);
+
     public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default) { _jobs[job.Id] = job; _persistedStatuses[job.Id] = job.Status; return Task.CompletedTask; }
         public Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default)

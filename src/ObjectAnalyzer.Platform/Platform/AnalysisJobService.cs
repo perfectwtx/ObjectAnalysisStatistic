@@ -95,10 +95,57 @@ public sealed class AnalysisJobService
 
         if (_remediationVerifier is not null)
         {
-            await _remediationVerifier.VerifyAsync(job, previousJob, currentIssues, cancellationToken);
+            await VerifyRemediationCoreAsync(job, previousJob, currentIssues, cancellationToken);
         }
 
         return true;
+    }
+
+    /// <summary>Retries post-processing without changing the committed analysis status.</summary>
+    public async Task<RemediationVerificationOutcome> RetryRemediationVerificationAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        var job = await _historyStore.GetAsync(jobId, cancellationToken)
+            ?? throw new KeyNotFoundException("Analysis job was not found.");
+        if (job.Status != AnalysisJobStatus.Succeeded || string.IsNullOrWhiteSpace(job.ResultJson))
+            throw new InvalidOperationException("Only successful jobs with stored results can be verified.");
+        var saved = await _historyStore.GetRemediationVerificationAsync(jobId, cancellationToken);
+        var previous = saved is not null
+            ? (saved.PreviousJobId.HasValue ? await _historyStore.GetAsync(saved.PreviousJobId.Value, cancellationToken) : null)
+            : await _historyStore.GetPreviousSucceededAsync(job.SourceName, job.Id, job.StartedAtUtc, cancellationToken);
+        if (saved?.PreviousJobId is not null && previous is null)
+            throw new InvalidOperationException("The original previous job has been deleted.");
+        var result = JsonSerializer.Deserialize<AnalysisResult>(job.ResultJson)
+            ?? throw new InvalidOperationException("Stored analysis result is invalid.");
+        return await VerifyRemediationCoreAsync(job, previous, CreateQualityIssues(job.Id, result), cancellationToken);
+    }
+
+    private async Task<RemediationVerificationOutcome> VerifyRemediationCoreAsync(AnalysisJob job,
+        AnalysisJob? previousJob, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken)
+    {
+        RemediationVerificationOutcome outcome;
+        try
+        {
+            if (_remediationVerifier is null)
+                throw new InvalidOperationException("Remediation verification is not configured.");
+            await _remediationVerifier.VerifyAsync(job, previousJob, issues, cancellationToken);
+            outcome = new(job.Id, previousJob?.Id, true, null, DateTime.UtcNow);
+        }
+        catch (Exception ex)
+        {
+            // This is post-processing: the successful analysis and outbox are already committed.
+            Console.Error.WriteLine($"[platform] Remediation verification failed for {job.Id}: {ex.GetType().Name}");
+            outcome = new(job.Id, previousJob?.Id, false, "整改验证失败，可以在修复原因后重试。", DateTime.UtcNow);
+        }
+        try
+        {
+            await _historyStore.RecordRemediationVerificationAsync(outcome, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[platform] Verification outcome persistence failed for {job.Id}: {ex.GetType().Name}");
+            outcome = outcome with { Succeeded = false, Error = "整改验证状态未能保存，请重试。" };
+        }
+        return outcome;
     }
 
     private async Task ResyncStateAsync(AnalysisJob job, CancellationToken cancellationToken)

@@ -68,6 +68,7 @@ api.MapAnalysisHistoryApi();
 api.MapAnalysisJobDeleteApi();
 api.MapQualityApi();
 api.MapIssueApi();
+api.MapRemediationVerificationApi();
 api.MapAlertRuleApi();
 api.MapWebhookDeliveryApi();
 api.MapCapabilitiesApi();
