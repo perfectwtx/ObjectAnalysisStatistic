@@ -216,6 +216,22 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         public List<AnalysisJob> Jobs { get; } = [];
         private readonly Dictionary<Guid, AnalysisJobStatus> _persistedStatuses = [];
+        public async Task<int> RecoverOrphanedJobsAsync(DateTime completedAtUtc, string errorMessage, CancellationToken cancellationToken = default)
+        {
+            var jobs = await GetRecentAsync(int.MaxValue, cancellationToken);
+            var count = 0;
+            foreach (var job in jobs.Where(x => x.Status is AnalysisJobStatus.Pending or AnalysisJobStatus.Running))
+            {
+                var expected = job.Status;
+                job.Status = AnalysisJobStatus.Failed;
+                job.CompletedAtUtc = completedAtUtc;
+                job.DurationMs = Math.Max(0, (long)(completedAtUtc - job.StartedAtUtc).TotalMilliseconds);
+                job.ErrorMessage = errorMessage;
+                if (await TryTransitionAsync(job, expected, cancellationToken)) count++;
+            }
+            return count;
+        }
+
         public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)

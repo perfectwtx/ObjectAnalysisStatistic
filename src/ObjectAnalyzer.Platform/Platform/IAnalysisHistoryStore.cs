@@ -2,6 +2,7 @@ namespace ObjectAnalyzer.Platform;
 
 public interface IAnalysisHistoryStore
 {
+    Task<int> RecoverOrphanedJobsAsync(DateTime completedAtUtc, string errorMessage, CancellationToken cancellationToken = default);
     Task InitializeAsync(CancellationToken cancellationToken = default);
     Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default);
 

@@ -101,6 +101,31 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         }
     }
 
+    public async Task<int> RecoverOrphanedJobsAsync(DateTime completedAtUtc, string errorMessage, CancellationToken cancellationToken = default)
+    {
+        await s_writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                UPDATE analysis_jobs
+                SET status = $failed, completed_at_utc = $completedAt,
+                    duration_ms = MAX(0, CAST((julianday($completedAt) - julianday(started_at_utc)) * 86400000 AS INTEGER)),
+                    error_message = $error
+                WHERE status IN ($pending, $running);
+                """;
+            command.Parameters.AddWithValue("$failed", (int)AnalysisJobStatus.Failed);
+            command.Parameters.AddWithValue("$pending", (int)AnalysisJobStatus.Pending);
+            command.Parameters.AddWithValue("$running", (int)AnalysisJobStatus.Running);
+            command.Parameters.AddWithValue("$completedAt", completedAtUtc.ToString("O"));
+            command.Parameters.AddWithValue("$error", errorMessage);
+            return await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        finally { s_writeLock.Release(); }
+    }
+
     public async Task SaveAsync(AnalysisJob job, CancellationToken cancellationToken = default)
     {
         await s_writeLock.WaitAsync(cancellationToken);
