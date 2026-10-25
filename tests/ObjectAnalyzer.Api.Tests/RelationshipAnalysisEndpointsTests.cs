@@ -192,6 +192,13 @@ public sealed class InMemoryRelationshipHistoryStore : IAnalysisHistoryStore
             return Task.FromResult(true);
         }
 
+    public async Task<bool> TryCompleteAsync(AnalysisCompletion completion, CancellationToken cancellationToken = default)
+    {
+        if (!await TryTransitionAsync(completion.Job, AnalysisJobStatus.Running, cancellationToken)) return false;
+        await SaveAsync(completion.Job, cancellationToken);
+        return true;
+    }
+
     public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(_jobs.GetValueOrDefault(id));
     public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AnalysisJob>>(_jobs.Values.Take(limit).ToList());

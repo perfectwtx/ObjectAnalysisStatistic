@@ -10,7 +10,6 @@ public sealed class AnalysisJobService
 {
     private readonly IAnalysisHistoryStore _historyStore;
     private readonly IAlertRuleStore _alertRuleStore;
-    private readonly IWebhookDeliveryStore _webhookDeliveryStore;
     private readonly IQualityBaselineStore? _qualityBaselineStore;
     private readonly QualityIssueRemediationVerifier? _remediationVerifier;
 
@@ -23,7 +22,7 @@ public sealed class AnalysisJobService
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
-        _webhookDeliveryStore = webhookDeliveryStore;
+        ArgumentNullException.ThrowIfNull(webhookDeliveryStore);
         _qualityBaselineStore = qualityBaselineStore;
         _remediationVerifier = remediationVerifier;
     }
@@ -75,52 +74,51 @@ public sealed class AnalysisJobService
             .OrderByDescending(x => x.CompletedAtUtc ?? x.StartedAtUtc)
             .FirstOrDefault();
 
-        job.Status = AnalysisJobStatus.Succeeded;
-        job.CompletedAtUtc = DateTime.UtcNow;
-        job.DurationMs = Math.Max(0, (long)(job.CompletedAtUtc.Value - job.StartedAtUtc).TotalMilliseconds);
-        job.TotalObjects = result.TotalObjects;
-        job.FieldCount = result.FieldStatistics.Count;
-        job.QualityScore = QualityScoreCalculator.Calculate(result);
-        job.IssueCount = result.QualityViolations.Count + checked((int)Math.Min(result.TotalDuplicateGroups, int.MaxValue));
-        job.ResultJson = JsonSerializer.Serialize(result);
+        var completedJob = new AnalysisJob { Id = job.Id };
+        CopyState(job, completedJob);
+        completedJob.Status = AnalysisJobStatus.Succeeded;
+        completedJob.CompletedAtUtc = DateTime.UtcNow;
+        completedJob.DurationMs = Math.Max(0, (long)(completedJob.CompletedAtUtc.Value - completedJob.StartedAtUtc).TotalMilliseconds);
+        completedJob.TotalObjects = result.TotalObjects;
+        completedJob.FieldCount = result.FieldStatistics.Count;
+        completedJob.QualityScore = QualityScoreCalculator.Calculate(result);
+        completedJob.IssueCount = result.QualityViolations.Count + checked((int)Math.Min(result.TotalDuplicateGroups, int.MaxValue));
+        completedJob.ResultJson = JsonSerializer.Serialize(result);
 
         if (_qualityBaselineStore is not null)
         {
-            var baseline = await _qualityBaselineStore.GetAsync(job.SourceName, cancellationToken);
+            var baseline = await _qualityBaselineStore.GetAsync(completedJob.SourceName, cancellationToken);
             if (baseline is not null)
             {
                 var baselineEvaluation = QualityBaselineEvaluator.Evaluate(
                     baseline,
                     QualityMetricsCalculator.Calculate(result));
-                job.QualityBaselineEvaluationJson = JsonSerializer.Serialize(baselineEvaluation);
+                completedJob.QualityBaselineEvaluationJson = JsonSerializer.Serialize(baselineEvaluation);
             }
         }
 
         if (options is not null)
         {
-            job.GateResultsJson = JsonSerializer.Serialize(
+            completedJob.GateResultsJson = JsonSerializer.Serialize(
                 QualityGateEvaluation.EvaluateAll(result, options));
         }
 
-        var currentIssues = CreateQualityIssues(job.Id, result);
-        if (!await _historyStore.TryTransitionAsync(job, AnalysisJobStatus.Running, cancellationToken))
+        var currentIssues = CreateQualityIssues(completedJob.Id, result);
+        var deliveries = await CreateAlertsAsync(completedJob, result, previousJob, cancellationToken);
+        var completion = new AnalysisCompletion(completedJob, CreateQualitySnapshot(completedJob, result),
+            CreateFieldSnapshots(completedJob.Id, result), currentIssues, deliveries);
+        if (!await _historyStore.TryCompleteAsync(completion, cancellationToken))
         {
             await ResyncStateAsync(job, cancellationToken);
             return false;
         }
-
-        await _historyStore.SaveQualitySnapshotAsync(
-            CreateQualitySnapshot(job, result),
-            CreateFieldSnapshots(job.Id, result),
-            currentIssues,
-            cancellationToken);
+        CopyState(completedJob, job);
 
         if (_remediationVerifier is not null)
         {
             await _remediationVerifier.VerifyAsync(job, previousJob, currentIssues, cancellationToken);
         }
 
-        await EnqueueAlertsAsync(job, result, previousJob, cancellationToken);
         return true;
     }
 
@@ -220,9 +218,10 @@ public sealed class AnalysisJobService
             await ResyncStateAsync(job, cancellationToken);
     }
 
-    private async Task EnqueueAlertsAsync(AnalysisJob job, AnalysisResult result, AnalysisJob? previousJob, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<WebhookDelivery>> CreateAlertsAsync(AnalysisJob job, AnalysisResult result, AnalysisJob? previousJob, CancellationToken cancellationToken)
     {
-        if (!job.QualityScore.HasValue) return;
+        var deliveries = new List<WebhookDelivery>();
+        if (!job.QualityScore.HasValue) return deliveries;
 
         var previousScore = previousJob?.QualityScore;
         var scoreDelta = previousScore.HasValue ? job.QualityScore.Value - previousScore.Value : (double?)null;
@@ -244,7 +243,7 @@ public sealed class AnalysisJobService
                 IssueCount = job.IssueCount
             };
 
-            await _webhookDeliveryStore.EnqueueAsync(new WebhookDelivery
+            deliveries.Add(new WebhookDelivery
             {
                 RuleId = rule.Id,
                 JobId = job.Id,
@@ -253,7 +252,8 @@ public sealed class AnalysisJobService
                 PayloadJson = JsonSerializer.Serialize(webhookEvent),
                 Status = WebhookDeliveryStatus.Pending,
                 NextAttemptAtUtc = DateTime.UtcNow
-            }, cancellationToken);
+            });
         }
+        return deliveries;
     }
 }

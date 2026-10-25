@@ -7,6 +7,8 @@ public interface IAnalysisHistoryStore
 
     /// <summary>仅当数据库中的作业仍处于指定状态时，原子地写入新的作业状态。</summary>
     Task<bool> TryTransitionAsync(AnalysisJob job, AnalysisJobStatus expectedStatus, CancellationToken cancellationToken = default);
+    /// <summary>Atomically completes a running job with quality history and its webhook outbox.</summary>
+    Task<bool> TryCompleteAsync(AnalysisCompletion completion, CancellationToken cancellationToken = default);
     Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default);
     Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default);

@@ -276,6 +276,13 @@ public sealed class InMemoryAsyncHistoryStore : IAnalysisHistoryStore
             return Task.FromResult(true);
         }
 
+    public async Task<bool> TryCompleteAsync(AnalysisCompletion completion, CancellationToken cancellationToken = default)
+    {
+        if (!await TryTransitionAsync(completion.Job, AnalysisJobStatus.Running, cancellationToken)) return false;
+        await SaveAsync(completion.Job, cancellationToken);
+        return true;
+    }
+
     public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 

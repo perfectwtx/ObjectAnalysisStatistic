@@ -49,7 +49,14 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
+        await EnqueueCoreAsync(connection, null, delivery, cancellationToken);
+    }
+
+    internal static async Task EnqueueCoreAsync(SqliteConnection connection, SqliteTransaction? transaction,
+        WebhookDelivery delivery, CancellationToken cancellationToken)
+    {
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO webhook_deliveries
             (id, rule_id, job_id, event_type, webhook_url, payload_json, status,
