@@ -63,40 +63,8 @@ await app.Services.GetRequiredService<IQualityBaselineStore>().InitializeAsync()
 await app.Services.GetRequiredService<IAlertRuleStore>().InitializeAsync();
 await app.Services.GetRequiredService<IWebhookDeliveryStore>().InitializeAsync();
 
-// ── 静态资产兜底中间件 ──
-var sourceWwwroot = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
-var staticContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-{
-    [".css"] = "text/css",
-    [".js"] = "text/javascript",
-    [".mjs"] = "text/javascript",
-    [".json"] = "application/json",
-    [".map"] = "application/json",
-    [".png"] = "image/png",
-    [".svg"] = "image/svg+xml",
-    [".ico"] = "image/x-icon",
-    [".woff"] = "font/woff",
-    [".woff2"] = "font/woff2"
-};
-app.Use(async (context, next) =>
-{
-    if (HttpMethods.IsGet(context.Request.Method))
-    {
-        var requestPath = context.Request.Path.Value?.TrimStart('/') ?? "";
-        if (requestPath.Length > 0 && !requestPath.StartsWith("_framework/", StringComparison.OrdinalIgnoreCase))
-        {
-            var local = Path.Combine(sourceWwwroot, requestPath.Replace('/', Path.DirectorySeparatorChar));
-            if (local.StartsWith(sourceWwwroot, StringComparison.OrdinalIgnoreCase) && File.Exists(local))
-            {
-                context.Response.ContentType = staticContentTypes.TryGetValue(Path.GetExtension(local), out var fileContentType)
-                    ? fileContentType : "application/octet-stream";
-                await context.Response.SendFileAsync(local);
-                return;
-            }
-        }
-    }
-    await next();
-});
+// 使用框架文件提供器限定 wwwroot 边界，并处理路径规范化。
+app.UseStaticFiles();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -112,9 +80,17 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.MapGet("/api/checkpoint/{*path}", (string path) =>
 {
-    var checkpointsRoot = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
-    var fullPath = Path.GetFullPath(Path.Combine(checkpointsRoot, path));
-    if (!fullPath.StartsWith(checkpointsRoot, StringComparison.OrdinalIgnoreCase))
+    var checkpointsRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints")) + Path.DirectorySeparatorChar;
+    string fullPath;
+    try
+    {
+        fullPath = Path.GetFullPath(Path.Combine(checkpointsRoot, path.Replace('\\', Path.DirectorySeparatorChar)));
+    }
+    catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+    {
+        return Results.BadRequest("无效的检查点路径。");
+    }
+    if (!fullPath.StartsWith(checkpointsRoot, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
         return Results.BadRequest("拒绝访问：检查点路径必须在 %TEMP%/objectanalyzer-checkpoints/ 内。");
     if (!System.IO.File.Exists(fullPath)) return Results.NotFound();
     return Results.File(fullPath, "application/json", Path.GetFileName(fullPath));

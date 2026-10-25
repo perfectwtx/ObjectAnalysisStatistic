@@ -108,6 +108,34 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
+    public async Task StaticFiles_RejectsEncodedTraversal()
+    {
+        using var client = _factory.CreateClient();
+        using var response = await client.GetAsync("/..%5cappsettings.json");
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CheckpointEndpoint_RejectsExistingSiblingDirectory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"objectanalyzer-checkpoints-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var file = Path.Combine(directory, "secret.snapshot");
+        await File.WriteAllTextAsync(file, "outside-checkpoint-root");
+        try
+        {
+            using var client = _factory.CreateClient();
+            using var response = await client.GetAsync($"/api/checkpoint/..%5c{Path.GetFileName(directory)}%5csecret.snapshot");
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        finally
+        {
+            File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Fact]
     public async Task CheckpointEndpoint_ServesValidSnapshot()
     {
         var dir = Path.Combine(Path.GetTempPath(), "objectanalyzer-checkpoints");
