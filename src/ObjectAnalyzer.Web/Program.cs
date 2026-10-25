@@ -38,15 +38,10 @@ builder.Services.AddScoped<LocalizationService>();
 var historyDbPath = Path.Combine(appBaseDir, "data", "objectanalyzer.db");
 builder.Services.AddAnalysisPlatform(historyDbPath);
 builder.Services.AddScoped<WebAnalysisExecutionService>();
-builder.Services.AddHttpClient("WebhookDelivery", client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
-
 // 集成测试不启动后台投递线程，避免测试宿主与真实 Webhook Outbox worker 相互干扰。
 if (!builder.Environment.IsEnvironment("Testing"))
 {
-    builder.Services.AddHostedService<ObjectAnalyzer.Web.Platform.WebhookDeliveryWorker>();
+    builder.Services.AddAnalysisWebhookDelivery();
 }
 
 var app = builder.Build();

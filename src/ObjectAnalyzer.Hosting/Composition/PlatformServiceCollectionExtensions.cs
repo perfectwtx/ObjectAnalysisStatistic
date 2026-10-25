@@ -4,6 +4,14 @@ namespace ObjectAnalyzer.Platform;
 
 public static class PlatformServiceCollectionExtensions
 {
+    /// <summary>Starts the shared outbox delivery worker in long-running hosts.</summary>
+    public static IServiceCollection AddAnalysisWebhookDelivery(this IServiceCollection services)
+    {
+        services.AddHttpClient("WebhookDelivery", client => client.Timeout = TimeSpan.FromSeconds(10));
+        services.AddHostedService<WebhookDeliveryWorker>();
+        return services;
+    }
+
     public static IServiceCollection AddAnalysisPlatform(this IServiceCollection services, string databasePath)
     {
         services.AddSingleton<IAnalysisHistoryStore>(_ => new SqliteAnalysisHistoryStore(databasePath));

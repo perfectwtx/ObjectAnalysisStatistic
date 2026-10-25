@@ -27,6 +27,8 @@ builder.Services.AddOpenApi();
 var historyDbPath = builder.Configuration["Platform:DatabasePath"]
     ?? Path.Combine(AppContext.BaseDirectory, "data", "objectanalyzer.db");
 builder.Services.AddAnalysisPlatform(historyDbPath);
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddAnalysisWebhookDelivery();
 
 var app = builder.Build();
 

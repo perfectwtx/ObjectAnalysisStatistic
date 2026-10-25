@@ -11,6 +11,7 @@ public class IsolatedApiWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
         builder.UseSetting("Platform:DatabasePath", _databasePath);
     }
 }

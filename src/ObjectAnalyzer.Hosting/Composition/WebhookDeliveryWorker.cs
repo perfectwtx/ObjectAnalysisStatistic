@@ -1,9 +1,8 @@
 using System.Text;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ObjectAnalyzer.Platform;
 
-namespace ObjectAnalyzer.Web.Platform;
+namespace ObjectAnalyzer.Platform;
 
 /// <summary>后台处理 Webhook Outbox，失败后按指数退避重试。</summary>
 public sealed class WebhookDeliveryWorker : BackgroundService
