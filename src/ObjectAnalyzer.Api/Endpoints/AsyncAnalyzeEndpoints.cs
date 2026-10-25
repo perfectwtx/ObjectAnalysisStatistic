@@ -385,6 +385,7 @@ public static class AsyncAnalyzeEndpoints
             // 先读取持久化状态，避免分析已经完成后，旧的 Registry 快照仍被当成可取消。
             if (Guid.TryParse(jobId, out var persistedJobId))
             {
+                jobId = persistedJobId.ToString("N");
                 var job = await historyStore.GetAsync(persistedJobId, cancellationToken);
                 if (job is not null)
                 {

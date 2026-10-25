@@ -18,8 +18,10 @@ public sealed class AnalysisHostOwnershipTests
             var live = new AnalysisJob { SourceName = "live", SourceType = "json", Status = AnalysisJobStatus.Running };
             await history.SaveAsync(live);
             id = live.Id;
+            Assert.Throws<InvalidOperationException>(() => new AnalysisHostLease(path));
             await using var second = new IsolatedApiWebApplicationFactory().WithWebHostBuilder(b => b.UseSetting("Platform:DatabasePath", path));
-            Assert.Throws<InvalidOperationException>(() => second.CreateClient());
+            // The test host can observe disposal before it receives the original startup failure.
+            Assert.ThrowsAny<InvalidOperationException>(() => second.CreateClient());
             Assert.Equal(AnalysisJobStatus.Running, (await history.GetAsync(id))!.Status);
         }
 

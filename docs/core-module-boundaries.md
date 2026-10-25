@@ -143,8 +143,14 @@ dotnet pack src/ObjectAnalyzer -c Release --no-build -o artifacts/packages
 
 ### 宿主数据库所有权
 
-API 和 Web 在初始化、恢复任务前取得 `AnalysisHostLease`，并在宿主退出或启动失败时释放。同一个数据库路径只允许一个分析宿主运行，第二个宿主会明确拒绝启动，不能借启动恢复终止现有宿主的任务。不同数据库可以并行使用。锁由操作系统文件句柄维护；`.host.lock` 文件保留，进程异常退出后句柄自动释放，不需要手工删除锁文件。自定义宿主必须同样持有该锁后再调用全库恢复；该方案不提供共库多宿主分析能力。
+API、Web 与 Desktop 在使用数据库前取得 `AnalysisHostLease`，并在宿主退出或启动失败时释放（Desktop 在窗口关闭时释放）。同一个数据库路径只允许一个分析宿主运行，第二个宿主会明确拒绝启动，不能借启动恢复终止现有宿主的任务。不同数据库可以并行使用。锁由操作系统文件句柄维护；`.host.lock` 文件保留，进程异常退出后句柄自动释放，不需要手工删除锁文件。自定义宿主必须同样持有该锁后再调用全库恢复；该方案不提供共库多宿主分析能力。
 
 ### 整改验证后处理
 
 主分析的成功归档不再因后续整改验证异常而对调用方报失败。验证结果单独保存在历史库中，不修改 AnalysisJobStatus。`GET /api/analysis/jobs/{id}/remediation-verification` 返回 NotStarted、Completed 或 Failed；修复原因后可以调用 `POST /api/analysis/jobs/{id}/remediation-verification/retry` 重试。重试沿用原先记录的前次任务，处理具有幂等性；这里提供显式重试，不会无限自动重试。自定义历史存储需实现 `RecordRemediationVerificationAsync` 与 `GetRemediationVerificationAsync`。
+
+### 任务 ID 与删除一致性
+
+Registry 将合法 GUID 统一为小写 N 格式，GUID 的 D/B/P/X 格式和大小写别名对应同一个运行时任务；非 GUID 字符串键仍区分大小写。删除接口在数据库删除成功后移除运行时条目；异步轮询、取消与 SSE 均要求任务仍存在于持久化历史，缓存不能复活已删除任务。
+
+同源前次成功任务查询使用 `GetPreviousSucceededAsync`，不再先截取全局任务列表；显式质量回归只比较同一数据源的更早任务。

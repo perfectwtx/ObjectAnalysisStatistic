@@ -33,6 +33,7 @@ public sealed class AnalysisJobRegistry
         ArgumentNullException.ThrowIfNull(cts);
         ArgumentNullException.ThrowIfNull(meta);
 
+        jobId = NormalizeId(jobId);
         SweepExpired();
         if (!_jobs.TryAdd(jobId, new AnalysisJob(jobId, cts, meta, DateTimeOffset.UtcNow)))
             throw new InvalidOperationException($"运行时作业 {jobId} 已经注册。 ");
@@ -41,14 +42,14 @@ public sealed class AnalysisJobRegistry
     public AnalysisJobSnapshot? Get(string jobId)
     {
         if (string.IsNullOrEmpty(jobId)) return null;
-        if (!_jobs.TryGetValue(jobId, out var job)) return null;
+        if (!_jobs.TryGetValue(NormalizeId(jobId), out var job)) return null;
         return job.ToSnapshot();
     }
 
     /// <summary>Forgets cached output. An active execution retains ownership of its cancellation source.</summary>
     public bool Remove(string jobId)
     {
-        if (string.IsNullOrEmpty(jobId) || !_jobs.TryRemove(jobId, out var job)) return false;
+        if (string.IsNullOrEmpty(jobId) || !_jobs.TryRemove(NormalizeId(jobId), out var job)) return false;
         if (job.IsTerminal) job.DisposeCts();
         return true;
     }
@@ -56,7 +57,7 @@ public sealed class AnalysisJobRegistry
     public bool Cancel(string jobId)
     {
         if (string.IsNullOrEmpty(jobId)) return false;
-        if (!_jobs.TryGetValue(jobId, out var job)) return false;
+        if (!_jobs.TryGetValue(NormalizeId(jobId), out var job)) return false;
         try
         {
             return job.Cancel();
@@ -70,7 +71,7 @@ public sealed class AnalysisJobRegistry
     public void ReportProgress(string jobId, long processedObjects)
     {
         if (string.IsNullOrEmpty(jobId)) return;
-        if (!_jobs.TryGetValue(jobId, out var job)) return;
+        if (!_jobs.TryGetValue(NormalizeId(jobId), out var job)) return;
         Interlocked.Exchange(ref job.ProcessedObjects, processedObjects);
     }
 
@@ -78,7 +79,7 @@ public sealed class AnalysisJobRegistry
     public void StageOutput(string jobId, IReadOnlyList<Dictionary<string, object?>> preview,
         bool piiRedacted, PiiPolicy pii)
     {
-        if (_jobs.TryGetValue(jobId, out var job))
+        if (_jobs.TryGetValue(NormalizeId(jobId), out var job))
             job.StageOutput(preview, piiRedacted, pii);
     }
 
@@ -89,14 +90,14 @@ public sealed class AnalysisJobRegistry
         bool piiRedacted = true, PiiPolicy? pii = null)
     {
         if (string.IsNullOrEmpty(jobId)) return;
-        if (!_jobs.TryGetValue(jobId, out var job)) return;
+        if (!_jobs.TryGetValue(NormalizeId(jobId), out var job)) return;
         job.MarkCompleted(result, preview, piiRedacted, pii);
     }
 
     public void Fail(string jobId, Exception error)
     {
         if (string.IsNullOrEmpty(jobId)) return;
-        if (!_jobs.TryGetValue(jobId, out var job)) return;
+        if (!_jobs.TryGetValue(NormalizeId(jobId), out var job)) return;
         job.MarkFailed(error);
     }
 
@@ -118,6 +119,9 @@ public sealed class AnalysisJobRegistry
         }
         return removed;
     }
+
+    private static string NormalizeId(string jobId)
+        => Guid.TryParse(jobId, out var id) ? id.ToString("N") : jobId;
 
     private sealed class AnalysisJob
     {
