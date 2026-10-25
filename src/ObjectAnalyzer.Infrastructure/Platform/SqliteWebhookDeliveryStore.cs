@@ -43,6 +43,10 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
                 ON webhook_deliveries(status, next_attempt_at_utc);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await using var migration = connection.CreateCommand();
+        migration.CommandText = "ALTER TABLE webhook_deliveries ADD COLUMN lease_token TEXT NULL";
+        try { await migration.ExecuteNonQueryAsync(cancellationToken); }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase)) { }
     }
 
     public async Task EnqueueAsync(WebhookDelivery delivery, CancellationToken cancellationToken = default)
@@ -76,7 +80,7 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         await using var command = connection.CreateCommand();
         command.CommandText = $"""
             SELECT id, rule_id, job_id, event_type, webhook_url, payload_json, status,
-                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error
+                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error, lease_token
             FROM webhook_deliveries
             ORDER BY created_at_utc DESC
             LIMIT {limit};
@@ -94,7 +98,7 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         await using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, rule_id, job_id, event_type, webhook_url, payload_json, status,
-                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error
+                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error, lease_token
             FROM webhook_deliveries
             WHERE id = $id;
             """;
@@ -124,51 +128,51 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         return await command.ExecuteNonQueryAsync(cancellationToken) > 0;
     }
 
-    public async Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default)
+    public async Task<WebhookDelivery?> TryClaimNextAsync(DateTime utcNow, TimeSpan leaseDuration, CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(leaseDuration, TimeSpan.Zero);
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT id, rule_id, job_id, event_type, webhook_url, payload_json, status,
-                   attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error
-            FROM webhook_deliveries
-            WHERE (status = $pending OR status = $processing)
-              AND next_attempt_at_utc <= $now
-            ORDER BY next_attempt_at_utc, created_at_utc
-            LIMIT 1;
+            UPDATE webhook_deliveries
+            SET status = $processing, lease_token = $token, next_attempt_at_utc = $leaseUntil
+            WHERE id = (
+                SELECT id FROM webhook_deliveries
+                WHERE status IN ($pending, $processing) AND next_attempt_at_utc <= $now
+                ORDER BY next_attempt_at_utc, created_at_utc, id LIMIT 1
+            )
+            RETURNING id, rule_id, job_id, event_type, webhook_url, payload_json, status,
+                attempt_count, next_attempt_at_utc, created_at_utc, sent_at_utc, last_error, lease_token;
             """;
         command.Parameters.AddWithValue("$pending", (int)WebhookDeliveryStatus.Pending);
         command.Parameters.AddWithValue("$processing", (int)WebhookDeliveryStatus.Processing);
         command.Parameters.AddWithValue("$now", utcNow.ToString("O"));
-
+        command.Parameters.AddWithValue("$leaseUntil", utcNow.Add(leaseDuration).ToString("O"));
+        command.Parameters.AddWithValue("$token", Guid.NewGuid().ToString("N"));
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken)) return null;
-        return Read(reader);
+        return await reader.ReadAsync(cancellationToken) ? Read(reader) : null;
     }
 
-    public async Task MarkProcessingAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        await UpdateStatusAsync(id, WebhookDeliveryStatus.Processing, cancellationToken);
-    }
-
-    public async Task MarkSucceededAsync(Guid id, DateTime sentAtUtc, CancellationToken cancellationToken = default)
+    public async Task<bool> MarkSucceededAsync(Guid id, string leaseToken, DateTime sentAtUtc, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE webhook_deliveries
-            SET status = $status, sent_at_utc = $sent_at_utc, last_error = NULL
-            WHERE id = $id;
+            SET status = $status, sent_at_utc = $sent_at_utc, last_error = NULL, lease_token = NULL
+            WHERE id = $id AND status = $processing AND lease_token = $token;
             """;
         command.Parameters.AddWithValue("$status", (int)WebhookDeliveryStatus.Succeeded);
         command.Parameters.AddWithValue("$sent_at_utc", sentAtUtc.ToString("O"));
         command.Parameters.AddWithValue("$id", id.ToString());
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        command.Parameters.AddWithValue("$processing", (int)WebhookDeliveryStatus.Processing);
+        command.Parameters.AddWithValue("$token", leaseToken);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
-    public async Task MarkFailedAsync(Guid id, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default)
+    public async Task<bool> MarkFailedAsync(Guid id, string leaseToken, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -178,25 +182,16 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
             SET status = $status,
                 attempt_count = attempt_count + 1,
                 next_attempt_at_utc = $next_attempt_at_utc,
-                last_error = $last_error
-            WHERE id = $id;
+                last_error = $last_error, lease_token = NULL
+            WHERE id = $id AND status = $processing AND lease_token = $token;
             """;
         command.Parameters.AddWithValue("$status", (int)(permanent ? WebhookDeliveryStatus.Failed : WebhookDeliveryStatus.Pending));
         command.Parameters.AddWithValue("$next_attempt_at_utc", nextAttemptAtUtc.ToString("O"));
         command.Parameters.AddWithValue("$last_error", errorMessage.Length > 2000 ? errorMessage[..2000] : errorMessage);
         command.Parameters.AddWithValue("$id", id.ToString());
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    private async Task UpdateStatusAsync(Guid id, WebhookDeliveryStatus status, CancellationToken cancellationToken)
-    {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE webhook_deliveries SET status = $status WHERE id = $id;";
-        command.Parameters.AddWithValue("$status", (int)status);
-        command.Parameters.AddWithValue("$id", id.ToString());
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        command.Parameters.AddWithValue("$processing", (int)WebhookDeliveryStatus.Processing);
+        command.Parameters.AddWithValue("$token", leaseToken);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
     private static void AddParameters(SqliteCommand command, WebhookDelivery d)
@@ -228,6 +223,7 @@ public sealed class SqliteWebhookDeliveryStore : IWebhookDeliveryStore
         NextAttemptAtUtc = DateTime.Parse(reader.GetString(8), null, System.Globalization.DateTimeStyles.RoundtripKind),
         CreatedAtUtc = DateTime.Parse(reader.GetString(9), null, System.Globalization.DateTimeStyles.RoundtripKind),
         SentAtUtc = reader.IsDBNull(10) ? null : DateTime.Parse(reader.GetString(10), null, System.Globalization.DateTimeStyles.RoundtripKind),
-        LastError = reader.IsDBNull(11) ? null : reader.GetString(11)
+        LastError = reader.IsDBNull(11) ? null : reader.GetString(11),
+        LeaseToken = reader.IsDBNull(12) ? null : reader.GetString(12)
     };
 }

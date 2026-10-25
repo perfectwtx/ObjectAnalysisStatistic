@@ -27,6 +27,7 @@ public sealed class WebhookWorkerTests
         await store.EnqueueAsync(delivery);
 
         Assert.Equal(delivery.PayloadJson, await handler.Received.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal(delivery.Id.ToString("N"), handler.IdempotencyKey);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         WebhookDelivery saved;
         do
@@ -47,9 +48,11 @@ public sealed class WebhookWorkerTests
     private sealed class RecordingHandler(HttpStatusCode status) : HttpMessageHandler
     {
         public TaskCompletionSource<string> Received { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public string? IdempotencyKey { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            IdempotencyKey = request.Headers.GetValues("Idempotency-Key").Single();
             Received.TrySetResult(await request.Content!.ReadAsStringAsync(cancellationToken));
             return new HttpResponseMessage(status);
         }

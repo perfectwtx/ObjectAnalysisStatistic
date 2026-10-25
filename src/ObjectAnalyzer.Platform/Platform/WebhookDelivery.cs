@@ -3,6 +3,8 @@ namespace ObjectAnalyzer.Platform;
 /// <summary>Webhook Outbox 投递记录。</summary>
 public sealed class WebhookDelivery
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? LeaseToken { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid RuleId { get; set; }
     public Guid JobId { get; set; }

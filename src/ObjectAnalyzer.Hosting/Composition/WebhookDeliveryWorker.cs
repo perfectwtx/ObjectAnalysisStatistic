@@ -25,7 +25,7 @@ public sealed class WebhookDeliveryWorker : BackgroundService
         {
             try
             {
-                var delivery = await _store.GetNextPendingAsync(DateTime.UtcNow, stoppingToken);
+                var delivery = await _store.TryClaimNextAsync(DateTime.UtcNow, TimeSpan.FromMinutes(1), stoppingToken);
                 if (delivery is null)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
@@ -48,18 +48,18 @@ public sealed class WebhookDeliveryWorker : BackgroundService
 
     private async Task DeliverAsync(WebhookDelivery delivery, CancellationToken cancellationToken)
     {
-        await _store.MarkProcessingAsync(delivery.Id, cancellationToken);
-
         try
         {
             var client = _httpClientFactory.CreateClient("WebhookDelivery");
             using var content = new StringContent(delivery.PayloadJson, Encoding.UTF8, "application/json");
-            using var response = await client.PostAsync(delivery.WebhookUrl, content, cancellationToken);
+            using var request = new HttpRequestMessage(HttpMethod.Post, delivery.WebhookUrl) { Content = content };
+            request.Headers.Add("Idempotency-Key", delivery.Id.ToString("N"));
+            using var response = await client.SendAsync(request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                await _store.MarkSucceededAsync(delivery.Id, DateTime.UtcNow, cancellationToken);
-                WebhookDeliveryWorkerLog.Succeeded(_logger, delivery.Id, delivery.JobId);
+                if (await _store.MarkSucceededAsync(delivery.Id, delivery.LeaseToken!, DateTime.UtcNow, cancellationToken))
+                    WebhookDeliveryWorkerLog.Succeeded(_logger, delivery.Id, delivery.JobId);
                 return;
             }
 
@@ -83,7 +83,8 @@ public sealed class WebhookDeliveryWorker : BackgroundService
         var delaySeconds = Math.Min(3600, 30 * Math.Pow(2, Math.Max(0, nextAttempt - 1)));
         var nextAttemptAt = permanent ? DateTime.UtcNow : DateTime.UtcNow.AddSeconds(delaySeconds);
 
-        await _store.MarkFailedAsync(delivery.Id, errorMessage, nextAttemptAt, permanent, cancellationToken);
+        if (!await _store.MarkFailedAsync(delivery.Id, delivery.LeaseToken!, errorMessage, nextAttemptAt, permanent, cancellationToken))
+            return;
 
         if (permanent)
             WebhookDeliveryWorkerLog.PermanentFailure(_logger, delivery.Id, delivery.JobId, nextAttempt, errorMessage);

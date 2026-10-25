@@ -292,9 +292,8 @@ public sealed class AnalysisExecutionCoordinatorTests
             => Task.FromResult<IReadOnlyList<WebhookDelivery>>([]);
         public Task<WebhookDelivery?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<WebhookDelivery?>(null);
         public Task<bool> RetryAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public Task<WebhookDelivery?> GetNextPendingAsync(DateTime utcNow, CancellationToken cancellationToken = default) => Task.FromResult<WebhookDelivery?>(null);
-        public Task MarkProcessingAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task MarkSucceededAsync(Guid id, DateTime sentAtUtc, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task MarkFailedAsync(Guid id, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<WebhookDelivery?> TryClaimNextAsync(DateTime utcNow, TimeSpan leaseDuration, CancellationToken cancellationToken = default) => Task.FromResult<WebhookDelivery?>(null);
+        public Task<bool> MarkSucceededAsync(Guid id, string leaseToken, DateTime sentAtUtc, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> MarkFailedAsync(Guid id, string leaseToken, string errorMessage, DateTime nextAttemptAtUtc, bool permanent, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 }
