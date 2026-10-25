@@ -140,3 +140,7 @@ dotnet pack src/ObjectAnalyzer -c Release --no-build -o artifacts/packages
 `IQualityIssueQuery.SearchAsync` 与 `SummarizeAsync` 负责跨历史任务筛选、分页和聚合，未指定任务时不再隐式限制最近 100 条。原有按任务读取问题的接口继续可用。HTTP 作业列表现在返回摘要，增加 `offset` 参数；完整 ResultJson 仍可通过任务详情或 `/api/analysis/jobs/{id}/result` 获取。
 
 `IWebhookDeliveryStore.TryClaimNextAsync` 必须原子领取到期记录，返回 `LeaseToken`；成功和失败更新必须校验同一个领取令牌。SQLite 初始化会自动增加租约列，无需手工迁移。Webhook 仍为至少一次投递，接收方应使用稳定的 `Idempotency-Key`（投递 ID）处理重复请求。长驻宿主在 `AddAnalysisPlatform` 后调用 `AddAnalysisWebhookDelivery`；CLI 和 Desktop 不会因此自动启动后台投递。
+
+### 宿主数据库所有权
+
+API 和 Web 在初始化、恢复任务前取得 `AnalysisHostLease`，并在宿主退出或启动失败时释放。同一个数据库路径只允许一个分析宿主运行，第二个宿主会明确拒绝启动，不能借启动恢复终止现有宿主的任务。不同数据库可以并行使用。锁由操作系统文件句柄维护；`.host.lock` 文件保留，进程异常退出后句柄自动释放，不需要手工删除锁文件。自定义宿主必须同样持有该锁后再调用全库恢复；该方案不提供共库多宿主分析能力。

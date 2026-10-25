@@ -30,8 +30,10 @@ builder.Services.AddAnalysisPlatform(historyDbPath);
 if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddAnalysisWebhookDelivery();
 
-var app = builder.Build();
+await using var app = builder.Build();
 
+// Acquire ownership before recovery can alter any task state.
+_ = app.Services.GetRequiredService<AnalysisHostLease>();
 await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
 await using (var startupScope = app.Services.CreateAsyncScope())
 {

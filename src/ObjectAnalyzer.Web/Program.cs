@@ -44,9 +44,10 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddAnalysisWebhookDelivery();
 }
 
-var app = builder.Build();
+await using var app = builder.Build();
 
 // 平台历史数据库初始化
+_ = app.Services.GetRequiredService<AnalysisHostLease>();
 await app.Services.GetRequiredService<IAnalysisHistoryStore>().InitializeAsync();
 await using (var startupScope = app.Services.CreateAsyncScope())
 {
