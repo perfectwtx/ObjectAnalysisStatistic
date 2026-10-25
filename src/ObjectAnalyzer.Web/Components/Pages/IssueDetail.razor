@@ -185,14 +185,17 @@
             _responsibility = null;
             _remediations = Array.Empty<QualityIssueRemediation>();
 
-            var jobs = (await HistoryStore.GetRecentAsync(100))
+            var jobs = (await HistoryStore.GetRecentSummariesAsync(100, status: AnalysisJobStatus.Succeeded))
                 .Where(x => x.Status == AnalysisJobStatus.Succeeded)
                 .OrderByDescending(x => x.StartedAtUtc)
                 .ToList();
 
             _selectedJob = JobId.HasValue
-                ? jobs.FirstOrDefault(x => x.Id == JobId.Value)
+                ? await HistoryStore.GetAsync(JobId.Value)
                 : jobs.FirstOrDefault();
+            if (_selectedJob is not null)
+                _selectedJob = _selectedJob.Status == AnalysisJobStatus.Succeeded
+                    ? JobResultProjection.Summary(_selectedJob) : null;
 
             if (_selectedJob is null || string.IsNullOrWhiteSpace(FieldFilter) || string.IsNullOrWhiteSpace(CheckFilter))
                 return;

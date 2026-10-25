@@ -218,5 +218,14 @@ public sealed class InMemoryRelationshipHistoryStore : IAnalysisHistoryStore
     public Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(_jobs.GetValueOrDefault(id));
     public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AnalysisJob>>(_jobs.Values.Take(limit).ToList());
+    public async Task<IReadOnlyList<AnalysisJob>> GetRecentSummariesAsync(int limit = 50, int offset = 0,
+        AnalysisJobStatus? status = null, CancellationToken cancellationToken = default)
+    {
+        var jobs = await GetRecentAsync(int.MaxValue, cancellationToken);
+        return jobs.Where(x => !status.HasValue || x.Status == status).OrderByDescending(x => x.StartedAtUtc)
+            .ThenBy(x => x.Id).Skip(Math.Max(0, offset)).Take(Math.Clamp(limit, 1, 500))
+            .Select(JobResultProjection.Summary).ToList();
+    }
+
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(_jobs.Remove(id));
 }

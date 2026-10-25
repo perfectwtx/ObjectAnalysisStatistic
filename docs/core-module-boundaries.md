@@ -132,3 +132,11 @@ dotnet run --project samples/ObjectAnalyzer.MemorySample --no-build -c Release
 dotnet pack src/ObjectAnalyzer.Core -c Release --no-build -o artifacts/packages
 dotnet pack src/ObjectAnalyzer -c Release --no-build -o artifacts/packages
 ```
+
+## 平台存储接口更新（2026-10-25）
+
+自定义平台存储需要实现新增的 `IAnalysisHistoryStore.TryCompleteAsync(AnalysisCompletion)`，将条件状态更新、质量快照、字段问题与告警 Outbox 放入同一事务，只有仍处于 Running 的任务才能完成。调用失败时不得留下部分归档。启动恢复由 `RecoverOrphanedJobsAsync` 直接处理全部未完成记录；`GetRecentSummariesAsync` 按状态筛选后分页，返回不含 ResultJson 的任务摘要。
+
+`IQualityIssueQuery.SearchAsync` 与 `SummarizeAsync` 负责跨历史任务筛选、分页和聚合，未指定任务时不再隐式限制最近 100 条。原有按任务读取问题的接口继续可用。HTTP 作业列表现在返回摘要，增加 `offset` 参数；完整 ResultJson 仍可通过任务详情或 `/api/analysis/jobs/{id}/result` 获取。
+
+`IWebhookDeliveryStore.TryClaimNextAsync` 必须原子领取到期记录，返回 `LeaseToken`；成功和失败更新必须校验同一个领取令牌。SQLite 初始化会自动增加租约列，无需手工迁移。Webhook 仍为至少一次投递，接收方应使用稳定的 `Idempotency-Key`（投递 ID）处理重复请求。长驻宿主在 `AddAnalysisPlatform` 后调用 `AddAnalysisWebhookDelivery`；CLI 和 Desktop 不会因此自动启动后台投递。

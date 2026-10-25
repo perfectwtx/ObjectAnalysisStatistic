@@ -258,10 +258,19 @@
         try
         {
             _jobs.Clear();
-            _jobs.AddRange((await HistoryStore.GetRecentAsync(100))
+            _jobs.AddRange((await HistoryStore.GetRecentSummariesAsync(100, status: AnalysisJobStatus.Succeeded))
                 .Where(x => x.Status == AnalysisJobStatus.Succeeded)
                 .OrderByDescending(x => x.StartedAtUtc));
             _selectedJob = JobId.HasValue ? _jobs.FirstOrDefault(x => x.Id == JobId.Value) : _jobs.FirstOrDefault();
+            if (JobId.HasValue && _selectedJob is null)
+            {
+                var requested = await HistoryStore.GetAsync(JobId.Value);
+                if (requested is { Status: AnalysisJobStatus.Succeeded })
+                {
+                    _selectedJob = JobResultProjection.Summary(requested);
+                    _jobs.Add(_selectedJob);
+                }
+            }
             await LoadIssuesAsync(_selectedJob);
         }
         finally

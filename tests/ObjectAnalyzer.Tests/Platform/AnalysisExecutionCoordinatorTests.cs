@@ -271,6 +271,15 @@ public sealed class AnalysisExecutionCoordinatorTests
         public Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<AnalysisJob>>(Jobs.OrderByDescending(x => x.StartedAtUtc).Take(limit).ToList());
 
+        public async Task<IReadOnlyList<AnalysisJob>> GetRecentSummariesAsync(int limit = 50, int offset = 0,
+            AnalysisJobStatus? status = null, CancellationToken cancellationToken = default)
+        {
+            var jobs = await GetRecentAsync(int.MaxValue, cancellationToken);
+            return jobs.Where(x => !status.HasValue || x.Status == status).OrderByDescending(x => x.StartedAtUtc)
+                .ThenBy(x => x.Id).Skip(Math.Max(0, offset)).Take(Math.Clamp(limit, 1, 500))
+                .Select(JobResultProjection.Summary).ToList();
+        }
+
         public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(Jobs.RemoveAll(x => x.Id == id) > 0);
     }

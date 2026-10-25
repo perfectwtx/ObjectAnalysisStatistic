@@ -125,96 +125,49 @@ public static class IssueEndpoints
     }
 
     private static async Task<Ok<IssueQueryResponse>> GetIssueCenter(
-        Guid? jobId,
-        string? severity,
-        string? check,
-        string? status,
-        int? limit,
-        int? offset,
-        IAnalysisHistoryStore history,
-        IQualityIssueQuery query,
-        IQualityIssueResponsibilityStore responsibilities,
-        CancellationToken cancellationToken)
+        Guid? jobId, string? severity, string? check, string? status, int? limit, int? offset,
+        IAnalysisHistoryStore history, IQualityIssueQuery query, CancellationToken cancellationToken)
     {
-        var jobs = (await history.GetRecentAsync(100, cancellationToken))
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
-            .OrderByDescending(x => x.StartedAtUtc)
-            .ToList();
-
-        var selectedJob = jobId.HasValue
-            ? jobs.FirstOrDefault(x => x.Id == jobId.Value)
-            : jobs.FirstOrDefault();
-
-        var targetJobs = jobId.HasValue
-            ? jobs.Where(x => x.Id == jobId.Value).ToList()
-            : jobs;
-
-        var all = await LoadIssueItemsAsync(targetJobs, query, responsibilities, cancellationToken);
-        var filtered = Filter(all, severity, check, status);
+        var jobs = (await history.GetRecentSummariesAsync(100, status: AnalysisJobStatus.Succeeded,
+            cancellationToken: cancellationToken)).ToList();
+        var selectedJob = jobId.HasValue ? jobs.FirstOrDefault(x => x.Id == jobId) : jobs.FirstOrDefault();
+        if (jobId.HasValue && selectedJob is null)
+        {
+            var requested = await history.GetAsync(jobId.Value, cancellationToken);
+            if (requested is { Status: AnalysisJobStatus.Succeeded })
+            {
+                selectedJob = JobResultProjection.Summary(requested);
+                jobs.Add(selectedJob);
+            }
+        }
         var actualOffset = Math.Max(0, offset ?? 0);
         var actualLimit = Math.Clamp(limit ?? 200, 1, 500);
-        var items = filtered.Skip(actualOffset).Take(actualLimit).ToList();
-
-        return TypedResults.Ok(new IssueQueryResponse(
-            Items: items,
-            Total: filtered.Count,
-            Offset: actualOffset,
-            Limit: actualLimit,
-            Jobs: jobs,
-            SelectedJob: selectedJob,
-            Issues: items));
+        var page = await query.SearchAsync(new QualityIssueSearch(jobId, severity, check, status,
+            actualOffset, actualLimit), cancellationToken);
+        var items = page.Items.Select(x => ToItem(x.Issue, x.StartedAtUtc, x.Responsibility)).ToList();
+        return TypedResults.Ok(new IssueQueryResponse(items, page.Total, actualOffset, actualLimit,
+            jobs, selectedJob, items));
     }
 
     private static async Task<Ok<IssueSummaryResponse>> GetIssueSummary(
-        Guid? jobId,
-        string? severity,
-        string? check,
-        string? status,
-        IAnalysisHistoryStore history,
-        IQualityIssueQuery query,
-        IQualityIssueResponsibilityStore responsibilities,
-        CancellationToken cancellationToken)
+        Guid? jobId, string? severity, string? check, string? status,
+        IQualityIssueQuery query, CancellationToken cancellationToken)
     {
-        var jobs = (await history.GetRecentAsync(100, cancellationToken))
-            .Where(x => x.Status == AnalysisJobStatus.Succeeded)
-            .OrderByDescending(x => x.StartedAtUtc)
-            .ToList();
-        if (jobId.HasValue)
-            jobs = jobs.Where(x => x.Id == jobId.Value).ToList();
-
-        var all = await LoadIssueItemsAsync(jobs, query, responsibilities, cancellationToken);
-        var filtered = Filter(all, severity, check, status);
-
-        return TypedResults.Ok(new IssueSummaryResponse(
-            TotalIssues: filtered.Count,
-            TotalViolations: filtered.Sum(x => x.Count),
-            BySeverity: GroupCounts(filtered.Select(x => x.Severity)),
-            ByCheck: GroupCounts(filtered.Select(x => x.Check)),
-            ByField: GroupCounts(filtered.Select(x => x.Field)),
-            ByStatus: GroupCounts(filtered.Select(x => x.Status))));
+        var summary = await query.SummarizeAsync(new QualityIssueSearch(jobId, severity, check, status), cancellationToken);
+        return TypedResults.Ok(new IssueSummaryResponse(summary.TotalIssues, summary.TotalViolations,
+            summary.BySeverity, summary.ByCheck, summary.ByField, summary.ByStatus));
     }
 
     private static async Task<Results<Ok<IReadOnlyList<IssueItemResponse>>, NotFound<ErrorResponse>>> GetJobIssues(
-        Guid jobId,
-        string? severity,
-        string? check,
-        string? status,
-        int? limit,
-        int? offset,
-        IAnalysisHistoryStore history,
-        IQualityIssueQuery query,
-        IQualityIssueResponsibilityStore responsibilities,
-        CancellationToken cancellationToken)
+        Guid jobId, string? severity, string? check, string? status, int? limit, int? offset,
+        IAnalysisHistoryStore history, IQualityIssueQuery query, CancellationToken cancellationToken)
     {
-        var job = await history.GetAsync(jobId, cancellationToken);
-        if (job is null)
+        if (await history.GetAsync(jobId, cancellationToken) is null)
             return TypedResults.NotFound(new ErrorResponse($"未找到分析作业：{jobId}"));
-
-        var items = await LoadIssueItemsAsync([job], query, responsibilities, cancellationToken);
-        var filtered = Filter(items, severity, check, status);
-        var actualOffset = Math.Max(0, offset ?? 0);
-        var actualLimit = Math.Clamp(limit ?? 200, 1, 500);
-        return TypedResults.Ok<IReadOnlyList<IssueItemResponse>>(filtered.Skip(actualOffset).Take(actualLimit).ToList());
+        var page = await query.SearchAsync(new QualityIssueSearch(jobId, severity, check, status,
+            Math.Max(0, offset ?? 0), Math.Clamp(limit ?? 200, 1, 500)), cancellationToken);
+        return TypedResults.Ok<IReadOnlyList<IssueItemResponse>>(
+            page.Items.Select(x => ToItem(x.Issue, x.StartedAtUtc, x.Responsibility)).ToList());
     }
 
     private static async Task<Results<Ok<IssueItemResponse>, BadRequest<ErrorResponse>, NotFound<ErrorResponse>>> UpdateIssueStatus(
@@ -249,32 +202,9 @@ public static class IssueEndpoints
         return TypedResults.Ok(ToItem(issue, null, saved));
     }
 
-    private static async Task<List<IssueItemResponse>> LoadIssueItemsAsync(
-        IReadOnlyList<AnalysisJob> jobs,
-        IQualityIssueQuery query,
-        IQualityIssueResponsibilityStore responsibilities,
-        CancellationToken cancellationToken)
+    private static IssueItemResponse ToItem(QualityIssue issue, DateTime? createdAt, QualityIssueResponsibility? responsibility)
     {
-        var result = new List<IssueItemResponse>();
-        foreach (var job in jobs)
-        {
-            var issues = await query.GetByJobAsync(job.Id, cancellationToken);
-            var owners = (await responsibilities.GetByJobAsync(job.Id, cancellationToken))
-                .ToDictionary(x => new IssueKey(x.FieldName, x.Check), StringComparerKey.Instance);
-
-            foreach (var issue in issues)
-            {
-                owners.TryGetValue(new IssueKey(issue.FieldName, issue.Check), out var responsibility);
-                result.Add(ToItem(issue, job, responsibility));
-            }
-        }
-
-        return result;
-    }
-
-    private static IssueItemResponse ToItem(QualityIssue issue, AnalysisJob? currentJob, QualityIssueResponsibility? responsibility)
-    {
-        var severity = GetSeverity(issue.Check);
+        var severity = QualityIssueSeverity.Get(issue.Check);
         return new IssueItemResponse(
             Id: $"{issue.JobId:N}:{issue.FieldName}:{issue.Check}",
             JobId: issue.JobId,
@@ -290,39 +220,8 @@ public static class IssueEndpoints
             Status: responsibility?.Status ?? "Open",
             Owner: responsibility?.Owner,
             Comment: responsibility?.Comment,
-            CreatedAt: currentJob?.StartedAtUtc);
+            CreatedAt: createdAt);
     }
-
-    private static List<IssueItemResponse> Filter(
-        IEnumerable<IssueItemResponse> source,
-        string? severity,
-        string? check,
-        string? status)
-        => source
-            .Where(x => string.IsNullOrWhiteSpace(severity)
-                || string.Equals(x.Severity, severity, StringComparison.OrdinalIgnoreCase))
-            .Where(x => string.IsNullOrWhiteSpace(check)
-                || string.Equals(x.Check, check, StringComparison.OrdinalIgnoreCase))
-            .Where(x => string.IsNullOrWhiteSpace(status)
-                || string.Equals(x.Status, status, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(x => x.Count)
-            .ThenBy(x => x.Field, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(x => x.Check, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-    private static Dictionary<string, int> GroupCounts(IEnumerable<string> values)
-        => values.GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .OrderByDescending(x => x.Count())
-            .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.Count(), StringComparer.OrdinalIgnoreCase);
-
-    private static string GetSeverity(string check) => check switch
-    {
-        QualityCheckTypes.Unique or QualityCheckTypes.DuplicateGroups => "critical",
-        QualityCheckTypes.Required or QualityCheckTypes.Range or QualityCheckTypes.Pattern or QualityCheckTypes.EnumValues => "high",
-        QualityCheckTypes.NullRate or QualityCheckTypes.RowCount or QualityCheckTypes.DuplicateRate or QualityCheckTypes.OutlierRatio => "medium",
-        _ => "low"
-    };
 
     private static string GetDimension(string check) => check switch
     {
@@ -333,29 +232,13 @@ public static class IssueEndpoints
         _ => "validity"
     };
 
-    private readonly record struct IssueKey(string Field, string Check);
-
-    private sealed class StringComparerKey : IEqualityComparer<IssueKey>
-    {
-        public static readonly StringComparerKey Instance = new();
-
-        public bool Equals(IssueKey x, IssueKey y) =>
-            string.Equals(x.Field, y.Field, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(x.Check, y.Check, StringComparison.OrdinalIgnoreCase);
-
-        public int GetHashCode(IssueKey obj) =>
-            HashCode.Combine(
-                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Field),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Check));
-    }
-
     public sealed record IssueQueryResponse(
         IReadOnlyList<IssueItemResponse> Items,
         int Total,
         int Offset,
         int Limit,
         IReadOnlyList<AnalysisJob> Jobs,
-        AnalysisJob? SelectedJob,
+        [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)] AnalysisJob? SelectedJob,
         IReadOnlyList<IssueItemResponse> Issues);
 
     public sealed record IssueSummaryResponse(

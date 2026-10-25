@@ -375,6 +375,23 @@ public sealed class SqliteAnalysisHistoryStore : IAnalysisHistoryStore
         return result;
     }
 
+    public async Task<IReadOnlyList<AnalysisJob>> GetRecentSummariesAsync(int limit = 50, int offset = 0, AnalysisJobStatus? status = null, CancellationToken cancellationToken = default)
+    {
+        limit = Math.Clamp(limit, 1, 500);
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT id, source_name, source_type, status, started_at_utc, completed_at_utc, duration_ms, total_objects, field_count, quality_score, issue_count, error_message, NULL AS result_json, gate_results_json, quality_baseline_evaluation_json FROM analysis_jobs WHERE ($status IS NULL OR status = $status) ORDER BY started_at_utc DESC, id LIMIT $limit OFFSET $offset";
+        command.Parameters.AddWithValue("$limit", limit);
+        command.Parameters.AddWithValue("$offset", Math.Max(0, offset));
+        command.Parameters.AddWithValue("$status", status.HasValue ? (object)(int)status.Value : DBNull.Value);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var result = new List<AnalysisJob>();
+        while (await reader.ReadAsync(cancellationToken))
+            result.Add(ReadJob(reader));
+        return result;
+    }
+
     /// <inheritdoc />
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {

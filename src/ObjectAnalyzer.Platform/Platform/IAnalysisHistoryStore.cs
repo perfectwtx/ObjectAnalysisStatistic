@@ -13,6 +13,9 @@ public interface IAnalysisHistoryStore
     Task SaveQualitySnapshotAsync(QualitySnapshot snapshot, IReadOnlyList<FieldQualitySnapshot> fields, IReadOnlyList<QualityIssue> issues, CancellationToken cancellationToken = default);
     Task<AnalysisJob?> GetAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AnalysisJob>> GetRecentAsync(int limit = 50, CancellationToken cancellationToken = default);
+    /// <summary>Reads task metadata without loading result JSON; filtering precedes pagination.</summary>
+    Task<IReadOnlyList<AnalysisJob>> GetRecentSummariesAsync(int limit = 50, int offset = 0,
+        AnalysisJobStatus? status = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 删除指定分析作业及其关联的质量快照、字段质量、问题、责任、整改与 webhook 投递记录。

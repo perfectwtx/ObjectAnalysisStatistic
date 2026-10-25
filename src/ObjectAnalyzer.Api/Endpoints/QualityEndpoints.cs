@@ -52,10 +52,10 @@ public static class QualityEndpoints
         return routes;
     }
 
-    private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetJobs(int? limit, IAnalysisHistoryStore store, CancellationToken cancellationToken)
+    private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetJobs(int? limit, int? offset, IAnalysisHistoryStore store, CancellationToken cancellationToken)
     {
         var actualLimit = Math.Clamp(limit ?? 50, 1, 500);
-        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>((await store.GetRecentAsync(actualLimit, cancellationToken)).Select(JobResultProjection.Job).ToList());
+        return TypedResults.Ok<IReadOnlyList<AnalysisJob>>(await store.GetRecentSummariesAsync(actualLimit, Math.Max(0, offset ?? 0), cancellationToken: cancellationToken));
     }
 
     private static async Task<Ok<IReadOnlyList<AnalysisJob>>> GetFieldJobs(IAnalysisHistoryStore store, CancellationToken cancellationToken)

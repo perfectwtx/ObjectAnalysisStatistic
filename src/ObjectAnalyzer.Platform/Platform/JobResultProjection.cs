@@ -5,6 +5,13 @@ namespace ObjectAnalyzer.Platform;
 /// <summary>Projects a detached job for delivery without modifying historical storage.</summary>
 public static class JobResultProjection
 {
+    public static AnalysisJob Summary(AnalysisJob source)
+    {
+        var copy = AnalysisAccumulator.Clone(source);
+        copy.ResultJson = null;
+        return copy;
+    }
+
     public static AnalysisJob Job(AnalysisJob source)
     {
         var copy = AnalysisAccumulator.Clone(source);

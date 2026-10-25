@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 namespace ObjectAnalyzer.Platform;
 
 /// <summary>基于 SQLite 标准化质量问题表的查询实现。</summary>
-public sealed class SqliteQualityIssueQuery : IQualityIssueQuery
+public sealed partial class SqliteQualityIssueQuery : IQualityIssueQuery
 {
     private readonly string _connectionString;
 

@@ -171,7 +171,7 @@
         try
         {
             _jobs.Clear();
-            _jobs.AddRange(await HistoryStore.GetRecentAsync(100));
+            _jobs.AddRange(await HistoryStore.GetRecentSummariesAsync(100));
         }
         finally
         {
