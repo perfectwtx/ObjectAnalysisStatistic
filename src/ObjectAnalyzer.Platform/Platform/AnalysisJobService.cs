@@ -12,19 +12,22 @@ public sealed class AnalysisJobService
     private readonly IAlertRuleStore _alertRuleStore;
     private readonly IQualityBaselineStore? _qualityBaselineStore;
     private readonly QualityIssueRemediationVerifier? _remediationVerifier;
+    private readonly IPlatformDiagnostics _diagnostics;
 
     public AnalysisJobService(
         IAnalysisHistoryStore historyStore,
         IAlertRuleStore alertRuleStore,
         IWebhookDeliveryStore webhookDeliveryStore,
         IQualityBaselineStore? qualityBaselineStore = null,
-        QualityIssueRemediationVerifier? remediationVerifier = null)
+        QualityIssueRemediationVerifier? remediationVerifier = null,
+        IPlatformDiagnostics? diagnostics = null)
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
         ArgumentNullException.ThrowIfNull(webhookDeliveryStore);
         _qualityBaselineStore = qualityBaselineStore;
         _remediationVerifier = remediationVerifier;
+        _diagnostics = diagnostics ?? NullPlatformDiagnostics.Instance;
     }
 
     public Task<AnalysisJob> StartAsync(string sourceName, string sourceType, CancellationToken cancellationToken = default)
@@ -133,7 +136,7 @@ public sealed class AnalysisJobService
         catch (Exception ex)
         {
             // This is post-processing: the successful analysis and outbox are already committed.
-            Console.Error.WriteLine($"[platform] Remediation verification failed for {job.Id}: {ex.GetType().Name}");
+            _diagnostics.Report($"Remediation verification failed for {job.Id}", ex);
             outcome = new(job.Id, previousJob?.Id, false, "整改验证失败，可以在修复原因后重试。", DateTime.UtcNow);
         }
         try
@@ -142,7 +145,7 @@ public sealed class AnalysisJobService
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[platform] Verification outcome persistence failed for {job.Id}: {ex.GetType().Name}");
+            _diagnostics.Report($"Verification outcome persistence failed for {job.Id}", ex);
             outcome = outcome with { Succeeded = false, Error = "整改验证状态未能保存，请重试。" };
         }
         return outcome;

@@ -14,6 +14,7 @@ public static class PlatformServiceCollectionExtensions
 
     public static IServiceCollection AddAnalysisPlatform(this IServiceCollection services, string databasePath)
     {
+        services.AddSingleton<IPlatformDiagnostics, ConsolePlatformDiagnostics>();
         services.AddSingleton(_ => new AnalysisHostLease(databasePath));
         services.AddSingleton<IAnalysisHistoryStore>(_ => new SqliteAnalysisHistoryStore(databasePath));
         services.AddSingleton<IQualityHistoryQuery>(_ => new SqliteQualityHistoryQuery(databasePath));
