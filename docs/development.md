@@ -4,15 +4,26 @@
 
 ```text
 src/
-├── ObjectAnalyzer.Core
-├── ObjectAnalyzer
-├── ObjectAnalyzer.Api
-└── ObjectAnalyzer.Web
+├── ObjectAnalyzer.Core            # 无第三方依赖的计算内核与契约
+├── ObjectAnalyzer.Application     # 执行管线、事件与输入端口
+├── ObjectAnalyzer.Parsing         # 文件、数据库、压缩与转换适配器
+├── ObjectAnalyzer.Exporting       # 报告、Schema 导出与规则导入
+├── ObjectAnalyzer.Platform        # 作业、质量基线、责任、修复与告警
+├── ObjectAnalyzer.Infrastructure  # SQLite、审计与密钥实现
+├── ObjectAnalyzer.Hosting         # 完整命令及模块组合
+├── ObjectAnalyzer                 # CLI
+├── ObjectAnalyzer.Api             # HTTP API
+├── ObjectAnalyzer.Web             # Blazor Web
+└── ObjectAnalyzer.Desktop         # WPF Desktop
 
 tests/
 ├── ObjectAnalyzer.Tests
 ├── ObjectAnalyzer.Api.Tests
 └── ObjectAnalyzer.Web.Tests
+
+benchmarks/                        # BenchmarkDotNet 工具与实测基线
+testsupport/                       # 契约测试与基准共享的固定负载
+samples/                           # 示例数据、规则与独立内核应用
 ```
 
 ## 开发原则
