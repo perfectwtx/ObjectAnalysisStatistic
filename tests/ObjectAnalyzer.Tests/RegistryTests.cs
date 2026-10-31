@@ -62,22 +62,22 @@ public class RegistryTests : IDisposable
     [Fact]
     public void ReportExporter_CustomExporter_TakesPrecedenceOverBuiltins()
     {
-        var probe = new ProbeExporter();
-        ReportExporter.Register(probe);
         string path = Path.Combine(_dir, "report.csv");
+        var probe = new ProbeExporter(path);
+        ReportExporter.Register(probe);
 
         ReportExporter.Save(new AnalysisResult(), path);
 
-        // probe 的 CanHandle 对所有路径返回 true → 拦截在内置 csv 之前
+        // probe 只接管本用例路径，避免与并行测试的全局注册表争用
         Assert.Equal(path, probe.HandledPath);
         Assert.False(File.Exists(path), "探测实现不应真正落盘");
     }
 
-    private sealed class ProbeExporter : IResultExporter
+    private sealed class ProbeExporter(string targetPath) : IResultExporter
     {
         public string? HandledPath { get; private set; }
         public string Format => "probe";
-        public bool CanHandle(string outputPath) => true;
+        public bool CanHandle(string outputPath) => string.Equals(outputPath, targetPath, StringComparison.Ordinal);
         public void Save(AnalysisResult result, string outputPath) => HandledPath = outputPath;
     }
 

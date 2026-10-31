@@ -180,7 +180,8 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Theory]
-    [InlineData("/quality", "数据质量总览") ]
+    [InlineData("/quality", "数据质量总览")]
+    [InlineData("/quality/dashboard", "数据质量总览")]
     [InlineData("/quality/trend", "质量趋势")]
     [InlineData("/quality/fields", "字段质量")]
     [InlineData("/quality/recommendations", "质量修复建议")]
@@ -193,7 +194,9 @@ public class WebSmokeTests : IClassFixture<TestWebApplicationFactory>
     [InlineData("/quality/baselines", "质量基线")]
     [InlineData("/quality/webhooks", "Webhook")]
     [InlineData("/issues", "Issue Center")]
+    [InlineData("/issues/detail", "质量问题详情")]
     [InlineData("/issues/responsibility", "问题责任")]
+    [InlineData("/alert-rules", "质量告警规则")]
     [InlineData("/jobs", "分析作业中心")]
     public async Task CoreWebPages_ReturnOk(string path, string title)
     {
