@@ -86,7 +86,7 @@ public sealed class AnalysisCompletionTests
             await using var command = connection.CreateCommand();
             command.CommandText = "CREATE TRIGGER fail_snapshot BEFORE INSERT ON quality_snapshots BEGIN SELECT RAISE(ABORT, 'injected failure'); END;";
             await command.ExecuteNonQueryAsync();
-            var service = new AnalysisJobService(history, alerts, deliveries);
+            var service = new AnalysisJobService(history, alerts);
             var job = await service.StartAsync("test", "json");
             await Assert.ThrowsAsync<SqliteException>(() => new AnalysisExecutionCoordinator(service)
                 .ExecuteAsync(job, _ => Task.FromResult(new AnalysisResult()), x => x));

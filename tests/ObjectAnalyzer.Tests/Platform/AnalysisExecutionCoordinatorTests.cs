@@ -10,8 +10,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
 
         await history.SaveAsync(new AnalysisJob { Id = Guid.NewGuid(), Status = AnalysisJobStatus.Pending, StartedAtUtc = DateTime.UtcNow.AddMinutes(-3) });
         await history.SaveAsync(new AnalysisJob { Id = Guid.NewGuid(), Status = AnalysisJobStatus.Running, StartedAtUtc = DateTime.UtcNow.AddMinutes(-2) });
@@ -34,8 +33,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var coordinator = new AnalysisExecutionCoordinator(service);
         using var cts = new CancellationTokenSource();
 
@@ -64,8 +62,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var coordinator = new AnalysisExecutionCoordinator(service);
         using var cts = new CancellationTokenSource();
 
@@ -95,8 +92,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var coordinator = new AnalysisExecutionCoordinator(service);
         using var cts = new CancellationTokenSource();
 
@@ -124,8 +120,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var job = await service.StartAsync(Guid.NewGuid(), "unit-test", "json");
 
         await service.CancelAsync(job);
@@ -142,8 +137,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var job = await service.StartAsync(Guid.NewGuid(), "unit-test", "json");
 
         await service.CancelAsync(job);
@@ -159,8 +153,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var coordinator = new AnalysisExecutionCoordinator(service);
         var jobId = Guid.NewGuid();
         var job = await service.StartAsync(jobId, "unit-test", "json");
@@ -182,8 +175,7 @@ public sealed class AnalysisExecutionCoordinatorTests
     {
         var history = new FakeHistoryStore();
         var alerts = new FakeAlertRuleStore();
-        var deliveries = new FakeWebhookDeliveryStore();
-        var service = new AnalysisJobService(history, alerts, deliveries);
+        var service = new AnalysisJobService(history, alerts);
         var coordinator = new AnalysisExecutionCoordinator(service);
         var jobId = Guid.NewGuid();
         var job = await service.StartAsync(jobId, "unit-test", "json");

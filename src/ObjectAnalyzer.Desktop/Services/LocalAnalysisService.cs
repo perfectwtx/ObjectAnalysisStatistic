@@ -42,7 +42,6 @@ public sealed class LocalAnalysisService
         var jobService = new AnalysisJobService(
             platform.HistoryStore,
             alertStore,
-            webhookStore,
             platform.BaselineStore);
 
         var coordinator = new AnalysisExecutionCoordinator(jobService);

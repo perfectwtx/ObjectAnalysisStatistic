@@ -17,14 +17,12 @@ public sealed class AnalysisJobService
     public AnalysisJobService(
         IAnalysisHistoryStore historyStore,
         IAlertRuleStore alertRuleStore,
-        IWebhookDeliveryStore webhookDeliveryStore,
         IQualityBaselineStore? qualityBaselineStore = null,
         QualityIssueRemediationVerifier? remediationVerifier = null,
         IPlatformDiagnostics? diagnostics = null)
     {
         _historyStore = historyStore;
         _alertRuleStore = alertRuleStore;
-        ArgumentNullException.ThrowIfNull(webhookDeliveryStore);
         _qualityBaselineStore = qualityBaselineStore;
         _remediationVerifier = remediationVerifier;
         _diagnostics = diagnostics ?? NullPlatformDiagnostics.Instance;

@@ -32,7 +32,7 @@ public sealed class SourceHistoryTests
             await history.SaveAsync(new AnalysisJob { SourceName = "orders", SourceType = "json", Status = AnalysisJobStatus.Failed });
             await alerts.SaveAsync(new AlertRule { Name = "regression", QualityRegressionBelow = 1, WebhookUrl = "https://example.invalid" });
             var verifier = new QualityIssueRemediationVerifier(new SqliteQualityIssueQuery(path), responsibilities, remediations);
-            var service = new AnalysisJobService(history, alerts, outbox, remediationVerifier: verifier);
+            var service = new AnalysisJobService(history, alerts, remediationVerifier: verifier);
             var job = await service.StartAsync("orders", "json");
             var result = Analysis.ObjectAnalyzer.Analyze(new[] { new Dictionary<string, object?> { ["value"] = 1 }, new Dictionary<string, object?>() });
             Assert.True(await service.CompleteAsync(job, result));
