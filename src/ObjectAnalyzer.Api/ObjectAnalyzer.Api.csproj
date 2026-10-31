@@ -23,10 +23,10 @@
 
   <ItemGroup>
     <!-- OpenAPI 文档生成 + Scalar 文档界面 -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.*" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
     <!-- 覆盖 Microsoft.AspNetCore.OpenApi 传递引用的 2.0.0（存在已知高危漏洞 NU1903） -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.*" />
+    <PackageReference Include="Microsoft.OpenApi" />
   </ItemGroup>
 
 </Project>
