@@ -15,6 +15,10 @@ public static class PdfReportExporter
     {
         // QuestPDF 社区许可（年收入 &lt; 100 万美元 / 非企业可免费使用）
         QuestPDF.Settings.License = LicenseType.Community;
+        // 2026.9 起不再默认使用系统字体；本报告依赖系统 Calibri/Consolas 并提供中文回退，
+        // 保持旧版行为：找不到指定字体时静默回退而不是中止生成。
+        QuestPDF.Settings.UseSystemFonts = true;
+        QuestPDF.Settings.ThrowOnMissingFontFamilies = false;
     }
 
     public static void Save(AnalysisResult result, string outputPath, bool redactPii = true)
@@ -34,7 +38,7 @@ public static class PdfReportExporter
             p.Size(PageSizes.A4);
             p.Margin(2, Unit.Centimetre);
             p.PageColor(Colors.White);
-            p.DefaultTextStyle(t => t.FontSize(10).FontFamily(Fonts.Calibri));
+            p.DefaultTextStyle(t => t.FontSize(10).FontFamily("Calibri"));
 
             p.Header().Element(h => Header(h, r));
             p.Content().Element(b => Body(b, r));
@@ -286,7 +290,7 @@ public static class PdfReportExporter
                         $"{t2.Template}×{t2.Count} ({(t2.Ratio?.ToString("P0", CultureInfo.InvariantCulture) ?? "—")})"));
                     t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(field);
                     t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(N(profile.TotalSamples));
-                    t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(profile.DominantPattern?.Template ?? "—").FontFamily(Fonts.Consolas);
+                    t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(profile.DominantPattern?.Template ?? "—").FontFamily("Consolas");
                     t.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(top).FontSize(8);
                 }
             });
