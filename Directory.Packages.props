@@ -18,7 +18,8 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <!-- Override the vulnerable 2.0.0 referenced transitively by Microsoft.AspNetCore.OpenApi. -->
+    <!-- Override the vulnerable 2.0.0 referenced transitively by Microsoft.AspNetCore.OpenApi.
+         Held on 2.x: that package requires [2.12.2, 3.0.0), so 3.x is not loadable. -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageVersion Include="MiniExcel" Version="1.46.0" />
     <PackageVersion Include="MySqlConnector" Version="2.6.2" />
