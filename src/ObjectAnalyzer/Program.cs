@@ -18,14 +18,14 @@ var cts = new CancellationTokenSource();
 var cliOptions = new CliOptions();
 var rootCommand = new RootCommand("对象字段分析统计工具 (Object Analyzer)");
 cliOptions.AddTo(rootCommand);
-rootCommand.AddCommand(CliCommands.CreateKmsSecret());
-rootCommand.AddCommand(CliCommands.CreateRulesFromCode());
-rootCommand.AddCommand(CliCommands.CreateRulesFromSchema());
+rootCommand.Subcommands.Add(CliCommands.CreateKmsSecret());
+rootCommand.Subcommands.Add(CliCommands.CreateRulesFromCode());
+rootCommand.Subcommands.Add(CliCommands.CreateRulesFromSchema());
 
-rootCommand.SetHandler(context =>
+rootCommand.SetAction(parseResult =>
 {
-    CliArguments cli = cliOptions.Read(context.ParseResult);
-    context.ExitCode = CliRunner.Run(cli, analysisRunner, cts.Token);
+    CliArguments cli = cliOptions.Read(parseResult);
+    return CliRunner.Run(cli, analysisRunner, cts.Token);
 });
 
 Console.CancelKeyPress += (_, e) =>
@@ -34,4 +34,4 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-return rootCommand.Invoke(args);
+return rootCommand.Parse(args).Invoke();
