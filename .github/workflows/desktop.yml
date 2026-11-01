@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - 'src/ObjectAnalyzer.Desktop/**'
+      - 'src/ObjectAnalyzer.Desktop.Rules/**'
       - 'src/ObjectAnalyzer.Core/**'
       - 'src/ObjectAnalyzer.Application/**'
       - 'src/ObjectAnalyzer.Parsing/**'

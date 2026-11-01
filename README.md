@@ -178,7 +178,8 @@ src/
 ├── ObjectAnalyzer/                # CLI
 ├── ObjectAnalyzer.Api/            # HTTP API
 ├── ObjectAnalyzer.Web/            # Blazor Web
-└── ObjectAnalyzer.Desktop/        # WPF Desktop
+├── ObjectAnalyzer.Desktop/        # WPF Desktop
+└── ObjectAnalyzer.Desktop.Rules/  # 与 UI 无关的规则编辑模型
 
 tests/
 ├── ObjectAnalyzer.Tests/

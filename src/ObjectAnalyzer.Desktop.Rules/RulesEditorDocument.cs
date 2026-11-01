@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 using ObjectAnalyzer.Analysis;
 using ObjectAnalyzer.Analysis.Rules;
 
-namespace ObjectAnalyzer.Desktop.Services;
+namespace ObjectAnalyzer.Desktop.Rules;
 
 /// <summary>UI-independent rules editing model. Each row retains its original advanced properties.</summary>
 public sealed class RulesEditorDocument

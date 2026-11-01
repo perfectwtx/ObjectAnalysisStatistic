@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ObjectAnalyzer.Core\ObjectAnalyzer.Core.csproj" />
+    <ProjectReference Include="..\ObjectAnalyzer.Desktop.Rules\ObjectAnalyzer.Desktop.Rules.csproj" />
     <ProjectReference Include="../ObjectAnalyzer.Parsing/ObjectAnalyzer.Parsing.csproj" />
     <ProjectReference Include="../ObjectAnalyzer.Exporting/ObjectAnalyzer.Exporting.csproj" />
     <ProjectReference Include="../ObjectAnalyzer.Application/ObjectAnalyzer.Application.csproj" />

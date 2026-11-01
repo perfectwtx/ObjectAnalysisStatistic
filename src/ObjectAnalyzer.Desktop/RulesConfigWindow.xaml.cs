@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
+using ObjectAnalyzer.Desktop.Rules;
 using ObjectAnalyzer.Desktop.Services;
 
 namespace ObjectAnalyzer.Desktop;
