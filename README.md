@@ -100,7 +100,7 @@ dotnet run --project samples/ObjectAnalyzer.MemorySample
 
 Core 十项优化已实施，覆盖统一值/路径、可恢复统计状态、可组合分析器、运行隔离、输入契约、资源预算、结果脱敏、Schema 模型和模块拆分。具体范围见 [Core 优化清单](docs/core-optimization-plan.md)。
 
-2026-11-01 本地 Release 验证结果：构建零警告、零错误；综合测试 **867/867**、API **148/148**、Web **80/80** 全部通过。
+2026-11-01 本地 Release 验证结果：构建零警告、零错误；综合测试 **887/887**、API **148/148**、Web **80/80** 全部通过。
 
 独立 BenchmarkDotNet 项目记录固定负载的吞吐、托管分配、GC、检查点恢复及资源探针结果。首次五组实测保存在 [2026-10-18 基线](benchmarks/baselines/2026-10-18/README.md)。运行与比较：
 

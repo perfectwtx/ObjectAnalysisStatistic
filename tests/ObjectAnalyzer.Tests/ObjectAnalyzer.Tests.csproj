@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/ObjectAnalyzer/ObjectAnalyzer.csproj" />
     <ProjectReference Include="..\..\src\ObjectAnalyzer.Core\ObjectAnalyzer.Core.csproj" />
     <ProjectReference Include="../../src/ObjectAnalyzer.Desktop.Core/ObjectAnalyzer.Desktop.Core.csproj" />
     <ProjectReference Include="../../src/ObjectAnalyzer.Parsing/ObjectAnalyzer.Parsing.csproj" />

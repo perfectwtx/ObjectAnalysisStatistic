@@ -25,6 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ObjectAnalyzer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ObjectAnalyzer.Core\ObjectAnalyzer.Core.csproj" />
     <ProjectReference Include="../ObjectAnalyzer.Parsing/ObjectAnalyzer.Parsing.csproj" />
     <ProjectReference Include="../ObjectAnalyzer.Exporting/ObjectAnalyzer.Exporting.csproj" />
