@@ -35,9 +35,7 @@ public sealed class LocalAnalysisService
         await platform.InitializeAsync(cancellationToken);
 
         var alertStore = new SqliteAlertRuleStore(platform.DatabasePath);
-        var webhookStore = new SqliteWebhookDeliveryStore(platform.DatabasePath);
         await alertStore.InitializeAsync(cancellationToken);
-        await webhookStore.InitializeAsync(cancellationToken);
 
         var jobService = new AnalysisJobService(
             platform.HistoryStore,

@@ -15,7 +15,7 @@ src/
 ├── ObjectAnalyzer.Api             # HTTP API
 ├── ObjectAnalyzer.Web             # Blazor Web
 ├── ObjectAnalyzer.Desktop         # WPF Desktop
-└── ObjectAnalyzer.Desktop.Rules   # 与 UI 无关的规则编辑模型
+└── ObjectAnalyzer.Desktop.Core    # 与 UI 无关的 Desktop 模型与服务
 
 tests/
 ├── ObjectAnalyzer.Tests

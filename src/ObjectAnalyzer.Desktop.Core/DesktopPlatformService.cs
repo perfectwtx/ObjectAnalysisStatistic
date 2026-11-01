@@ -16,9 +16,9 @@ public sealed class DesktopPlatformService : IDisposable
     public IQualityHistoryQuery QualityHistoryQuery { get; }
     public IQualityBaselineStore BaselineStore { get; }
 
-    public DesktopPlatformService()
+    public DesktopPlatformService(string? databasePath = null)
     {
-        DatabasePath = Path.Combine(
+        DatabasePath = databasePath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ObjectAnalyzer",
             "object-analyzer.db");
